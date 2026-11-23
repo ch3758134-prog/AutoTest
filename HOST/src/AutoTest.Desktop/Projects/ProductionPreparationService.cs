@@ -79,55 +79,16 @@ public static class ProductionPreparationService
 
         await ProjectBundleContractAudit.ValidateAsync(actual, opened.ManifestPath, ct)
             .ConfigureAwait(false);
-        var testProjects = actual.Assets.Where(a =>
-            a.Kind == ProjectWorkspaceService.TestProjectKind).ToArray();
-        if (testProjects.Length != 1)
-            throw new InvalidDataException(
-                "正式生产当前仅支持唯一有效 TEST 项目；请选择并整理为一份，不从多个项目中猜测。");
-        var testAsset = testProjects[0];
-        var testProjectPath = ProjectPathPolicy.Normalize(opened.RootDirectory,
-            testAsset.RelativePath);
-        var projectFileBytes = await File.ReadAllBytesAsync(testProjectPath, ct)
+        // The operator list and the physical preparation MUST resolve the
+        // identical project entry IDs, TEST programs, DBC and waveform pins.
+        // A failure never becomes a silent skipped case or a physical PASS.
+        var resolved = await AutomaticTestResourceContract.ResolveAsync(opened, ct)
             .ConfigureAwait(false);
-        if (!string.Equals(Convert.ToHexString(SHA256.HashData(projectFileBytes)),
-                testAsset.Sha256, StringComparison.OrdinalIgnoreCase))
-            throw new IOException("TEST 项目文件在冻结期间发生变化，拒绝生产预检。");
-        var testProject = TestProjectCodec.Decode(projectFileBytes);
-        var enabled = testProject.AutomaticRunEntries();
-        if (enabled.Count == 0)
-            throw new InvalidDataException("当前测试项目没有参与自动测试的用例；"
-                + "历史排除设置不能在真实硬件执行前被静默覆盖。");
-        var frozenCases = new List<FrozenProductionCase>();
-        foreach (var entry in enabled)
-        {
-            ct.ThrowIfCancellationRequested();
-            var caseAsset = actual.Assets.SingleOrDefault(x =>
-                x.Id.Value == entry.PackageAssetId &&
-                x.Kind == ProjectWorkspaceService.TestProgramKind)
-                ?? throw new InvalidDataException("Enabled TEST 用例源资源不存在：" +
-                                                  entry.DisplayName);
-            if (entry.PackageRevision != caseAsset.Revision ||
-                !entry.PackageSha256.Equals(caseAsset.Sha256,
-                    StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException("Enabled 用例引用已过期：" +
-                                               entry.DisplayName);
-            var casePath = ProjectPathPolicy.Normalize(opened.RootDirectory,
-                caseAsset.RelativePath);
-            var testBytes = await File.ReadAllBytesAsync(casePath, ct)
-                .ConfigureAwait(false);
-            if (!string.Equals(Convert.ToHexString(SHA256.HashData(testBytes)),
-                    caseAsset.Sha256, StringComparison.OrdinalIgnoreCase))
-                throw new IOException("TEST 用例“" + entry.DisplayName +
-                                      "”在冻结时发生资源 SHA 冲突。");
-            var document = TestDocumentCodec.Deserialize(
-                Encoding.UTF8.GetString(testBytes));
-            if (TestRunStepScope.EnabledSteps(document)
-                .Any(node => node.Type == "Flash"))
-                throw new InvalidDataException("TEST 用例“" + entry.DisplayName +
-                    "”仍含启用 FLASH 步骤。正式生产已前置每台必烧录，禁止重复擦写。");
-            frozenCases.Add(new(entry.ItemId, caseAsset.Id.Value, entry.DisplayName,
-                caseAsset.Revision, caseAsset.Sha256));
-        }
+        resolved.RequireExecutable();
+        var testAsset = resolved.TestProjectAsset;
+        var frozenCases = resolved.Cases.Select(item =>
+            new FrozenProductionCase(item.Entry.ItemId, item.Asset.Id.Value,
+                item.Entry.DisplayName, item.Asset.Revision, item.ContentSha256)).ToList();
 
         // Never promote an autosaved engineering draft into production.
         var native = await NativeFlashPublicationStore.LoadPublishedAsync(
