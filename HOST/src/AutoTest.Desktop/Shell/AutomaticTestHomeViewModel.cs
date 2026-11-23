@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using AutoTest.Desktop.Projects;
 using System.IO;
 using System.Windows;
 using Microsoft.Win32;
@@ -13,7 +14,7 @@ namespace AutoTest.Desktop.Shell;
 /// independently of the developer IDE's selected project. No TEST run or CAN
 /// action is issued by this UI-only iteration.
 /// </summary>
-public sealed class AutomaticTestHomeViewModel : BindableBase, IDisposable
+public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposable
 {
     private readonly AutomaticTestPlanService _plans;
     private readonly HardwareConnectionService _hardware;
@@ -23,15 +24,18 @@ public sealed class AutomaticTestHomeViewModel : BindableBase, IDisposable
     private string _startRequestStatus = "请完成工程与工位准备。软件 START 和实体 START 共享同一检测启动入口。";
 
     public AutomaticTestHomeViewModel(AutomaticTestPlanService plans,
-        HardwareConnectionService hardware, Action openEngineer)
+        HardwareConnectionService hardware,
+        SerialScannerWorkbenchViewModel scanner, Action openEngineer)
     {
         _plans = plans;
         _hardware = hardware;
+        _scanner = scanner;
         _openEngineer = openEngineer;
         ChoosePlanCommand = new DelegateCommand(() => _openEngineer());
         RequestSoftwareStartCommand = new DelegateCommand(RequestSoftwareStart);
         _plans.Changed += OnPlanChanged;
         _hardware.ConnectionChanged += OnConnectionChanged;
+        _scanner.PropertyChanged += OnScannerPropertyChanged;
     }
 
     public ObservableCollection<AutomaticTestCase> Cases { get; } = new();
@@ -72,25 +76,29 @@ public sealed class AutomaticTestHomeViewModel : BindableBase, IDisposable
     public string SetupIssue => _plans.Issue;
     public string ModelCode => _plans.Current?.Project.Definition.EcuModelCode is { Length: > 0 } code
         ? code : "未标定型号";
-    public string DutSerial => "等待扫码";
+    public string DutSerial => _dutSerial;
+    public string ScanStatus => _scanStatus;
     public string Status => _status;
     public string DeploymentStatus => _plans.Current is null
         ? "无有效工位部署"
         : "已核对工程部署 " + _plans.Current.DeploymentFingerprint[..12] +
           "…；实体工位和整机执行仍需验证";
     public int CaseCount => Cases.Count;
-    public string DeviceStatus => _hardware.IsConnected ? "主控已连接" : "主控未连接";
+    public string DeviceStatus => (_hardware.IsConnected ? "主控已连接" : "主控未连接") +
+        " · " + (_scanner.IsConnected ? "扫码枪已连接" : "扫码枪未连接");
     public string CurrentCase => "—";
     public string CurrentStep => "—";
     public string ActualValue => "—";
     public string ExpectedValue => "—";
     public string FailureReason => "—";
     public string ExecutionNotice => !HasPlan
-        ? "当前工位没有可验证的部署工程。进入开发与调试，核对正式项目和工艺后部署。"
+        ? "本工位尚无有效工程部署。进入开发与调试，核对正式资源及工艺后部署。"
         : _plans.Current!.ResourceIssues.Count != 0
-            ? "资源需要修复（不会执行硬件）："+ string.Join("；",
-                _plans.Current.ResourceIssues.Take(5))
-            : "测试用例和资源已读取；自动启动、前置烧录及整机结果仍需实物接线，不能据此给出合格结论。";
+            ? "当前部署包含 " + _plans.Current.ResourceIssues.Count +
+              " 项资源问题，请在工程与调试中定位修复。"
+            : _prepared is null
+                ? "部署资源已读取；请完成真实扫码和工位核验。"
+                : "扫码身份及本次工程资源已冻结；夹具、START、前置烧录、TEST 与 RECORD 的正式执行仍待接线。";
 
     public async Task RestoreAsync()
     {
@@ -116,14 +124,15 @@ public sealed class AutomaticTestHomeViewModel : BindableBase, IDisposable
 
     private void OnPlanChanged(object? sender, EventArgs e)
     {
-        StartRequestStatus = "工程状态已更新；需完成本次扫码、工位预检并生成新的检测任务后方可启动。";
+        InvalidateScan("部署已加载或变化，请重新扫描当前 ECU。");
+        StartRequestStatus = "需完成真实扫码、工位预检及新的检测任务后才能启动。";
         Cases.Clear();
         if (_plans.Current is { } plan)
         {
             foreach (var item in plan.Cases)
                 Cases.Add(item);
         }
-        _status = !HasPlan ? "尚未打开测试工程"
+        _status = !HasPlan ? "本工位尚未部署工程"
             : !_plans.Current!.ResourceReady ? "测试资源未就绪"
             : !_hardware.IsConnected ? "主控未连接"
             : "自动执行尚未接通";
@@ -139,7 +148,7 @@ public sealed class AutomaticTestHomeViewModel : BindableBase, IDisposable
 
     private void UpdateConnection()
     {
-        _status = !HasPlan ? "尚未打开测试工程"
+        _status = !HasPlan ? "本工位尚未部署工程"
             : !_plans.Current!.ResourceReady ? "测试资源未就绪"
             : !_hardware.IsConnected ? "主控未连接"
             : "自动执行尚未接通";
@@ -153,6 +162,7 @@ public sealed class AutomaticTestHomeViewModel : BindableBase, IDisposable
         RaisePropertyChanged(nameof(SetupIssue));
         RaisePropertyChanged(nameof(ModelCode));
         RaisePropertyChanged(nameof(DutSerial));
+        RaisePropertyChanged(nameof(ScanStatus));
         RaisePropertyChanged(nameof(Status));
         RaisePropertyChanged(nameof(DeploymentStatus));
         RaisePropertyChanged(nameof(DeviceStatus));
@@ -169,5 +179,6 @@ public sealed class AutomaticTestHomeViewModel : BindableBase, IDisposable
     {
         _plans.Changed -= OnPlanChanged;
         _hardware.ConnectionChanged -= OnConnectionChanged;
+        _scanner.PropertyChanged -= OnScannerPropertyChanged;
     }
 }
