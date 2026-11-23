@@ -153,14 +153,14 @@
       <MenuItem Header="显示／隐藏属性区" Click="ToggleInspector_Click"/>
       <Separator/>
       <MenuItem Header="查看工程信息" Click="ShowOverview_Click"/>
-      <MenuItem Header="工程配置管理" Command="{Binding OpenProjectConfigurationOverviewCommand}"/>
+      <MenuItem Header="检测准备 · 配置与实测" Command="{Binding OpenProjectConfigurationOverviewCommand}"/>
      </MenuItem>
      <MenuItem Header="运行">
       <MenuItem Header="当前选择的实际预检" Command="{Binding CheckActiveCommand}"/>
      </MenuItem>
      <MenuItem Header="工具">
       <MenuItem Header="手动台架" Command="{Binding OpenManualBenchCommand}"/>
-      <MenuItem Header="扫码枪配置（COM／型号）" Command="{Binding OpenSerialScannerCommand}"/>
+      <MenuItem Header="扫码枪独立诊断" Command="{Binding OpenSerialScannerCommand}"/>
       <MenuItem Header="DBC 工作台" Command="{Binding OpenDbcToolCommand}"/>
 
       <MenuItem Header="波形分析" Command="{Binding OpenWaveWorkbenchCommand}"/>
@@ -183,10 +183,8 @@
       ToolTip="独立真实工位；离线可以编辑，向实体硬件发送命令需要连接 USB" Margin="0,0,5,0"/>
 
      <Button Content="DBC" Command="{Binding OpenDbcToolCommand}" Margin="0,0,5,0"/>
-     <Button Content="扫码配置" Command="{Binding OpenSerialScannerCommand}" Margin="0,0,5,0"
-      ToolTip="设置独立 USB COM 扫码枪、ECU 型号登记和扫码身份预检（不触发生产执行）"/>
-     <Button Content="烧录配置" Command="{Binding OpenNativeFlashProfileCommand}" Margin="0,0,5,0"
-      ToolTip="编辑当前工程原生烧录配置、选择固件和安全算法并发布（不会直接擦写 ECU）"/>
+     <Button Content="检测准备" Command="{Binding OpenProjectConfigurationOverviewCommand}"
+      Margin="0,0,5,0" ToolTip="从当前工程统一配置并实测扫码、烧录、夹具和 TEST"/>
      <Button Content="烧录" Command="{Binding OpenFlashWorkbenchCommand}" Margin="0,0,5,0"
       ToolTip="独立 FlashLab 专业工具，进入前释放主工位 USB 会话"/>
      <Button Content="波形" Command="{Binding OpenWaveWorkbenchCommand}"
