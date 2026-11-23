@@ -4,7 +4,8 @@ using AutoTest.Specialists.Scan;
 namespace AutoTest.Desktop.Projects;
 
 public sealed record ProductionBarcodePreflightResult(string Code, string? ModelCode,
-    string? DutSerial, string? HardwareCode, string Explanation)
+    string? DutSerial, string? HardwareCode, string Explanation,
+    IReadOnlyDictionary<string, string>? MappedFields = null)
 {
     // Identity matched is NOT an authorized production run, clamp, or flash job.
     public bool IdentityMatched => Code == "SCAN_MODEL_MATCHED";
@@ -27,13 +28,16 @@ public static class ProductionBarcodePreflight
     {
         // For serial-only labels, the deployed project's model is already
         // authoritative. Do not require a second scanner-specific model.
-        if (policy.Format == ScanIdentityPolicy.SerialOnly &&
+        if ((policy.Format == ScanIdentityPolicy.SerialOnly ||
+             (policy.Format == ScanIdentityPolicy.Mapped &&
+              policy.FieldMappings?.Any(x =>
+                  x.Target == ScanIdentityPolicy.ModelTarget) != true)) &&
             currentProject?.EcuModelCode is { Length: > 0 } model)
             policy = policy with { FixedModelCode = model };
         var parsed = policy.Decode(rawBarcode);
         if (!parsed.Parsed)
             return new(parsed.Code, parsed.ModelCode, parsed.Serial,
-                parsed.HardwareCode, parsed.Explanation);
+                parsed.HardwareCode, parsed.Explanation, parsed.Fields);
         if (currentProject is null)
             return new("SCAN_PROJECT_NOT_OPEN", parsed.ModelCode, parsed.Serial,
                 parsed.HardwareCode,
@@ -48,6 +52,7 @@ public static class ProductionBarcodePreflight
                 "扫码型号与当前工程不一致。需要检查工位型号登记，不自动选择旧配方。");
         return new("SCAN_MODEL_MATCHED", parsed.ModelCode, parsed.Serial,
             parsed.HardwareCode,
-            "型号与当前工程匹配；仅完成身份预检，尚未取得夹具/实体 START/前置烧录执行许可。");
+            "型号与当前工程匹配；仅完成身份预检，尚未取得夹具/实体 START/前置烧录执行许可。",
+            parsed.Fields);
     }
 }
