@@ -53,13 +53,13 @@
   <Border Grid.Row="1" Background="White" CornerRadius="5"
    BorderBrush="#DDE5ED" BorderThickness="1" Padding="14,10" Margin="0,0,0,9">
    <DockPanel LastChildFill="True">
-    <Button DockPanel.Dock="Right" Content="▶ 开始检测"
+    <Button DockPanel.Dock="Right" Content="核对启动条件"
      Command="{Binding RequestSoftwareStartCommand}"
      Style="{StaticResource AtPrimaryButton}" MinWidth="130" MinHeight="37"
      Padding="13,7" Margin="18,0,0,0" VerticalAlignment="Center"
-     ToolTip="软件 START；只能在本次扫码、实体工位、Flash、TEST 和记录全部满足正式运行条件后执行"/>
+     ToolTip="当前生产实体执行适配器未接通；点击查看准确的阻断原因，不会发送 CAN、FLASH 或实体动作"/>
     <StackPanel>
-     <TextBlock Text="启动检测" FontSize="13" FontWeight="SemiBold"/>
+     <TextBlock Text="正式检测启动检查" FontSize="13" FontWeight="SemiBold"/>
      <TextBlock Text="{Binding PhysicalStartStatus}" FontSize="11"
       Foreground="#9B6A22" Margin="0,5,0,0" TextWrapping="Wrap"/>
      <TextBlock Text="{Binding StartInputHint}" FontSize="11"
@@ -90,35 +90,44 @@
       <TextBlock Text="{Binding CaseCount,StringFormat='共 {0} 项'}"
        DockPanel.Dock="Right" VerticalAlignment="Center"
        Foreground="#758599" FontSize="11"/>
-      <TextBlock Text="当前工程的测试用例" VerticalAlignment="Center"
+      <TextBlock Text="测试用例与步骤（点击展开查看）" VerticalAlignment="Center"
        FontSize="13" FontWeight="SemiBold"/>
      </DockPanel>
-     <DataGrid Grid.Row="1" ItemsSource="{Binding Cases}"
-      IsReadOnly="True" AutoGenerateColumns="False"
-      CanUserAddRows="False" CanUserDeleteRows="False"
-      CanUserSortColumns="False" CanUserResizeColumns="False"
-      CanUserReorderColumns="False" Focusable="False" IsTabStop="False"
+     <!-- Show exactly the deployed, pinned TEST sources; step hierarchy is
+          a read-only operator inspection, not a second test-plan editor. -->
+     <TreeView Grid.Row="1" ItemsSource="{Binding Cases}"
+      SelectedItemChanged="CasesTree_SelectedItemChanged"
       Visibility="{Binding HasPlan,Converter={StaticResource BoolToVisibility}}"
-      BorderThickness="0" GridLinesVisibility="Horizontal"
-      HorizontalGridLinesBrush="#EBF0F4"
-      HeadersVisibility="Column" RowHeaderWidth="0"
-      RowHeight="31" ColumnHeaderHeight="30"
-      AlternatingRowBackground="#FAFBFC"
+      BorderThickness="0" Background="White" Padding="5,5,7,7"
       ScrollViewer.VerticalScrollBarVisibility="Auto"
-      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-      VirtualizingPanel.IsVirtualizing="True">
-      <DataGrid.RowStyle>
-       <Style TargetType="{x:Type DataGridRow}">
-        <Setter Property="IsHitTestVisible" Value="False"/>
-        <Setter Property="Focusable" Value="False"/>
+      ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+      <TreeView.ItemContainerStyle>
+       <Style TargetType="{x:Type TreeViewItem}">
+        <Setter Property="IsExpanded" Value="{Binding IsExpanded,Mode=OneWay}"/>
+        <Setter Property="Margin" Value="0,1"/>
        </Style>
-      </DataGrid.RowStyle>
-      <DataGrid.Columns>
-       <DataGridTextColumn Header="序号" Binding="{Binding Index}" Width="70"/>
-       <DataGridTextColumn Header="测试用例" Binding="{Binding Name}" Width="*"/>
-       <DataGridTextColumn Header="执行状态" Binding="{Binding State}" Width="145"/>
-      </DataGrid.Columns>
-     </DataGrid>
+      </TreeView.ItemContainerStyle>
+      <TreeView.ItemTemplate>
+       <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+        <Grid MinHeight="32" Margin="2,0,5,0">
+         <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="42"/>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="146"/>
+         </Grid.ColumnDefinitions>
+         <TextBlock Grid.Column="0" Text="{Binding Index}" Foreground="#8291A2"
+                    FontSize="11" VerticalAlignment="Center"/>
+         <TextBlock Grid.Column="1" Text="{Binding Name}" Foreground="#273C50"
+                    FontWeight="Medium" TextTrimming="CharacterEllipsis"
+                    VerticalAlignment="Center" Margin="0,0,8,0"
+                    ToolTip="{Binding Name}"/>
+         <TextBlock Grid.Column="2" Text="{Binding State}" Foreground="#657F95"
+                    FontSize="11" VerticalAlignment="Center"
+                    TextTrimming="CharacterEllipsis"/>
+        </Grid>
+       </HierarchicalDataTemplate>
+      </TreeView.ItemTemplate>
+     </TreeView>
      <!-- Only first setup / invalid operator plan has a setup action. -->
      <Border Grid.Row="1" Background="#FCFDFE"
       Visibility="{Binding NeedsSetup,Converter={StaticResource BoolToVisibility}}">
@@ -151,6 +160,12 @@
      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
       HorizontalScrollBarVisibility="Disabled">
       <StackPanel Margin="13,15,13,16">
+       <TextBlock Text="选择的工程步骤（仅结构预览）" Style="{StaticResource SmallCaption}"/>
+       <TextBlock Text="{Binding InspectedNode}" FontWeight="SemiBold" FontSize="13"
+        Foreground="#314C66" TextWrapping="Wrap" Margin="0,5,0,6"/>
+       <TextBlock Text="{Binding InspectedStatus}" FontSize="11" Foreground="#75889A"
+        TextWrapping="Wrap" Margin="0,0,0,14"/>
+       <Border Height="1" Background="#E7EDF3" Margin="0,0,0,12"/>
        <TextBlock Text="当前用例" Style="{StaticResource SmallCaption}"/>
        <TextBlock Text="{Binding CurrentCase}" FontSize="15"
         FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,5,0,14"/>
