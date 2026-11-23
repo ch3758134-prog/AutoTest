@@ -275,6 +275,22 @@
          Foreground="#7C6470" TextWrapping="Wrap" Margin="0,12,0,0"/>
        </StackPanel>
       </Border>
+      <Border Background="White" BorderBrush="#DDE6EE" BorderThickness="1"
+       CornerRadius="7" Padding="13" Margin="0,14,0,0">
+       <StackPanel>
+        <DockPanel Margin="0,0,0,10" LastChildFill="True">
+         <Button DockPanel.Dock="Right" Content="创建／编辑本工程工位动作"
+          Command="{Binding OpenInspectionProcedureCommand}" Padding="12,7"
+          Margin="12,0,0,0"/>
+         <TextBlock Text="本型号检测工艺中的夹具动作"
+          FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
+        </DockPanel>
+        <TextBlock Text="动作定义与测试用例分离，受当前工程正式资源修订管理；下面的配置仅保存草稿，实体执行仍需硬件验证。"
+         Foreground="{StaticResource Subtle}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+        <ContentControl x:Name="InspectionProcedureHost"
+         HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
+       </StackPanel>
+      </Border>
       <Border CornerRadius="7" BorderBrush="#DBE3ED" BorderThickness="1"
        Background="White" Padding="13" Margin="0,14,0,0">
        <StackPanel>
