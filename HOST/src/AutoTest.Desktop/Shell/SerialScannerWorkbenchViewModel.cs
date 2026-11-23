@@ -488,9 +488,13 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
                             "未保存工位条码格式；请先选择格式并用样例验证，扫码不会自动匹配工程。")
                         : ProductionBarcodePreflight.Inspect(
                             captured.Scan.Text, _workspace.Current?.Definition, policy);
+                    var sameIdentityAsPrevious = !string.IsNullOrEmpty(preview.DutSerial) &&
+                        string.Equals(LastModel, preview.ModelCode, StringComparison.Ordinal) &&
+                        string.Equals(LastSerial, preview.DutSerial, StringComparison.Ordinal);
                     LastModel = preview.ModelCode ?? "";
                     LastSerial = preview.DutSerial ?? "";
-                    LastDecision = preview.Code;
+                    LastDecision = sameIdentityAsPrevious
+                        ? "SCAN_REPEAT_IDENTITY" : preview.Code;
                     ProductionPreview = "";
                     _resolvedManifestPath = identity?.Parsed == true &&
                         resolvedStation?.Matched == true
@@ -498,11 +502,14 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
                     MatchedProjectName = resolvedStation?.Matched == true
                         ? resolvedStation.Definition?.Name ?? "" : "";
                     SwitchProjectCommand.RaiseCanExecuteChanged();
-                    Status = resolvedStation?.Matched == true
+                    var repeatNote = sameIdentityAsPrevious
+                        ? "重复识别同一编号；仅更新本次扫码观察，不算新增 DUT，也不会启动复检。"
+                        : "";
+                    Status = repeatNote + (resolvedStation?.Matched == true
                         ? preview.Explanation + " · 已登记工程：" + MatchedProjectName +
                             "（不自动切换、夹紧或启动）"
                         : preview.Explanation + (resolvedStation is null ? "" :
-                            " · " + resolvedStation.Explanation);
+                            " · " + resolvedStation.Explanation));
                 }
                 finally { Interlocked.Exchange(ref _handling, 0); }
             });
