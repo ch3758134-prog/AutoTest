@@ -87,9 +87,9 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
     private string _modelCode = "—";
     private string _dutSerial = "等待扫码";
     private string _phase = "等待工程及扫码";
-    private string _productionReadiness = "尚未完成正式生产配置预检";
-    private string _flashState = "未开始正式生产烧录";
-    private string _testState = "未开始正式生产 TEST";
+    private string _productionReadiness = "尚未完成自动测试配置检查";
+    private string _flashState = "本次烧录尚未开始";
+    private string _testState = "本次自动测试尚未开始";
     private string _monitorMode = "未收到运行事实";
     private string _latestRunId = "—";
     private string _reportPath = "";
@@ -202,9 +202,9 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
             Interlocked.Increment(ref _scanGeneration);
             DutSerial = "等待扫码";
             Phase = "等待扫码";
-            ProductionReadiness = "尚未完成正式生产配置预检";
-            FlashState = "未开始正式生产烧录";
-            TestState = "未开始正式生产 TEST";
+            ProductionReadiness = "尚未完成自动测试配置检查";
+            FlashState = "本次烧录尚未开始";
+            TestState = "本次自动测试尚未开始";
             MonitorMode = "未收到运行事实";
             LatestRunId = "—";
             ReportPath = "";
@@ -326,7 +326,7 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
         var projects = assets.Where(a =>
             a.Kind == ProjectWorkspaceService.TestProjectKind).ToArray();
         if (projects.Length != 1)
-            throw new InvalidDataException("工程须有且只有一个当前 TEST 项目，才能显示生产顺序。");
+            throw new InvalidDataException("工程须有且只有一个当前 TEST 项目，才能显示用例顺序。");
         var projectAsset = projects[0];
         var bytes = await ReadPinnedAssetAsync(opened.RootDirectory,
             projectAsset.RelativePath, projectAsset.Sha256, ct);
@@ -384,11 +384,11 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
                 return;
             }
             DutSerial = serial;
-            Phase = "已识别 ECU，核验生产配置";
+            Phase = "已识别 ECU，检查配置";
             ProductionReadiness = "正在校验已发布烧录参数、固件与全部 Enabled 用例";
             FlashState = "本次前置烧录尚未开始";
-            TestState = "本次正式生产 TEST 尚未开始";
-            MonitorMode = "未收到本次正式生产执行事实";
+            TestState = "本次自动测试尚未开始";
+            MonitorMode = "尚未启动本次自动测试";
             LatestRunId = "—";
             ReportPath = "";
             ObservedStepCount = 0;
@@ -414,11 +414,11 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
                 ProductionReadiness = "配置预检通过 · " +
                     result.Preparation!.OrderedEnabledCases.Count +
                     " 个 Enabled 用例 · 烧录参数已冻结";
-                Phase = "待正式生产启动接线";
+                Phase = "自动测试执行尚未接通";
                 FlashState = "前置烧录尚未执行 · " +
                     result.Preparation.EcuCanKbps + " kbit/s · Job " +
                     result.Preparation.JobFingerprint[..12];
-                AddLog("生产配置", "只读预检通过",
+                AddLog("自动测试配置", "只读预检通过",
                     "配置指纹 " + result.Preparation.PreparationFingerprint[..12] +
                     "；没有获得物理启动授权");
             }
@@ -426,14 +426,14 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
             {
                 ProductionReadiness = result.Explanation;
                 Phase = "配置预检未通过";
-                AddLog("生产配置", "预检拒绝", result.Explanation);
+                AddLog("自动测试配置", "预检拒绝", result.Explanation);
             }
         });
     }
 
     private void OnDevelopmentRunStarted(TestDocumentId id, string name) => OnUi(() =>
     {
-        MonitorMode = "研发 TEST 实时观察 · 不作为生产检测";
+        MonitorMode = "研发 TEST 实时观察 · 仅为开发调试观察";
         TestState = "开发 TEST 已开始：" + name;
         Phase = "观察研发 TEST";
         if (_caseIndex.TryGetValue(id, out var matches) && matches.Count == 1)
@@ -442,7 +442,7 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
             Selected = matches[0];
         }
         else AddLog("TEST", "用例关联不可唯一确定",
-            name + "；运行事实仍显示，但不归属具体生产用例");
+            name + "；运行事实仍显示，但不归属当前用例");
         AddLog("TEST", "研发执行开始", name);
     });
 
@@ -498,11 +498,11 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
         if (_caseIndex.TryGetValue(id, out var matches) && matches.Count == 1)
             matches[0].State = "研发" + VerdictLabel(result.Verdict);
         NotifySelectedReadout();
-        MonitorMode = "研发 TEST 完成 · 非生产放行";
+        MonitorMode = "研发 TEST 完成 · 不作为正式检测结果";
         LatestRunId = result.Run.Value.ToString("D");
         ReportPath = result.EvidencePath ?? "";
         TestState = "研发 TEST 结束：" + VerdictLabel(result.Verdict);
-        Phase = "等待正式生产流程";
+        Phase = "等待下一次自动测试";
         AddLog("TEST", "研发运行完成",
             "RunId " + LatestRunId + " · " + VerdictLabel(result.Verdict));
     });
@@ -511,7 +511,7 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
     {
         if (_caseIndex.TryGetValue(id, out var matches) && matches.Count == 1)
             matches[0].State = "研发执行异常";
-        MonitorMode = "研发 TEST 异常 · 非生产放行";
+        MonitorMode = "研发 TEST 异常 · 不作为正式检测结果";
         TestState = "研发 TEST 异常：" + error;
         Phase = "运行异常";
         AddLog("TEST", "研发执行异常", error);
