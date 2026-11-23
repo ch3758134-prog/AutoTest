@@ -16,6 +16,10 @@ public sealed class ProductionCommandHandler
     private readonly RuleRevision _ruleRevision;
     private readonly ProjectRevision _projectRevision;
     private readonly object _sync = new();
+    // Both START sources claim the same frozen RunId; there is no second
+    // production executor and no scan-to-start shortcut in the operator UI.
+    private readonly ProductionStartGate _startGate = new();
+    public ProductionStartSource? LastStartSource { get; private set; }
     private CancellationTokenSource? _runCancellation;
     private int _handling;
     public bool IsBusy => Volatile.Read(ref _handling) != 0 ||
@@ -56,23 +60,73 @@ public sealed class ProductionCommandHandler
             var confirmed = _session.Confirm(recipe, _ruleRevision, _projectRevision,
                 station.Station, station.IsMockEnvironment);
             if (confirmed.Outcome != Outcome.Accepted) return Feedback(confirmed.FailureCode!, Verdict.Inconclusive);
+            _startGate.Arm(confirmed.Value!.Run);
+            LastStartSource = null;
             if (!autoStart) return Feedback("READY_FOR_START", Verdict.Inconclusive);
-            return await StartPreparedInternalAsync(ct).ConfigureAwait(false);
+            // Compatibility for legacy callers; operator scan flow must use
+            // autoStart=false and await an explicit START from either source.
+            return await StartPreparedInternalAsync(ProductionStartSource.Software, false, ct)
+                .ConfigureAwait(false);
         }
         finally { Interlocked.Exchange(ref _handling, 0); }
     }
 
-    public async Task<ProductionCommandFeedback> StartAsync(CancellationToken ct)
+    public Task<ProductionCommandFeedback> StartAsync(CancellationToken ct) =>
+        StartAsync(ProductionStartSource.Software, ct);
+
+    public async Task<ProductionCommandFeedback> StartAsync(ProductionStartSource source,
+        CancellationToken ct)
     {
+        if (source != ProductionStartSource.Software)
+            return Feedback("PHYSICAL_START_REQUIRES_VERIFIED_INPUT", Verdict.Inconclusive);
         if (Interlocked.CompareExchange(ref _handling, 1, 0) != 0)
             return Feedback("STATION_BUSY", Verdict.Inconclusive);
-        try { return await StartPreparedInternalAsync(ct).ConfigureAwait(false); }
+        try
+        {
+            return await StartPreparedInternalAsync(ProductionStartSource.Software, false, ct)
+                .ConfigureAwait(false);
+        }
         finally { Interlocked.Exchange(ref _handling, 0); }
     }
 
-    private async Task<ProductionCommandFeedback> StartPreparedInternalAsync(CancellationToken ct)
+    /// <summary>
+    /// The eventual verified hardware adapter reports a debounced active
+    /// level here. Releasing after Ready must be observed before a new press
+    /// edge can claim this run. This is not connected to an MCU input yet.
+    /// </summary>
+    public async Task<ProductionCommandFeedback> PhysicalStartSignalAsync(bool pressed,
+        CancellationToken ct)
     {
-        if (_session.State != ProductionState.Ready) return Feedback("RUN_NOT_READY", Verdict.Inconclusive);
+        if (_session.Job is not { } job || _session.State != ProductionState.Ready)
+            return Feedback("RUN_NOT_READY", Verdict.Inconclusive);
+        if (!pressed)
+        {
+            var release = _startGate.ObservePhysical(job.Run, false);
+            return Feedback(release.Code, Verdict.Inconclusive);
+        }
+        if (Interlocked.CompareExchange(ref _handling, 1, 0) != 0)
+            return Feedback("STATION_BUSY", Verdict.Inconclusive);
+        try
+        {
+            var start = _startGate.ObservePhysical(job.Run, true);
+            if (!start.Accepted) return Feedback(start.Code, Verdict.Inconclusive);
+            return await StartPreparedInternalAsync(
+                ProductionStartSource.PhysicalButton, true, ct).ConfigureAwait(false);
+        }
+        finally { Interlocked.Exchange(ref _handling, 0); }
+    }
+
+    private async Task<ProductionCommandFeedback> StartPreparedInternalAsync(
+        ProductionStartSource source, bool claimedByPhysicalEdge, CancellationToken ct)
+    {
+        if (_session.State != ProductionState.Ready || _session.Job is not { } job)
+            return Feedback("RUN_NOT_READY", Verdict.Inconclusive);
+        if (!claimedByPhysicalEdge)
+        {
+            var claim = _startGate.RequestSoftware(job.Run);
+            if (!claim.Accepted) return Feedback(claim.Code, Verdict.Inconclusive);
+        }
+        LastStartSource = source;
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct);
         lock (_sync) _runCancellation = linked;
         try
@@ -101,7 +155,13 @@ public sealed class ProductionCommandHandler
     public OperationResult<Unit> RetryWithNewRun()
     {
         if (IsBusy) return OperationResult.Rejected("STATION_BUSY", "Cannot retry an unfinished run.");
-        return _session.Reset(); // Next Scan creates a distinct RunId; no record is overwritten.
+        var reset = _session.Reset();
+        if (reset.Outcome == Outcome.Accepted)
+        {
+            _startGate.Disarm();
+            LastStartSource = null;
+        }
+        return reset; // A new scan/inspection must create a distinct RunId.
     }
 
     private ProductionCommandFeedback Feedback(string code, Verdict verdict)
