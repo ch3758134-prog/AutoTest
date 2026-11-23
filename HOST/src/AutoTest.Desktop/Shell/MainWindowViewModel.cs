@@ -144,11 +144,9 @@ public sealed partial class MainWindowViewModel : BindableBase
             async () => await CreateConfigurationAsync(ProjectWorkspaceService.WaveSettingsKind),
             () => HasProject && !IsBusy);
         CreateFlashConfigCommand = new DelegateCommand(
-            async () => await CreateConfigurationAsync(ProjectWorkspaceService.FlashSettingsKind),
-            () => HasProject && !IsBusy);
+            OpenNativeFlashProfile, () => HasProject && !IsBusy);
         CreateScanConfigCommand = new DelegateCommand(
-            async () => await CreateConfigurationAsync(ProjectWorkspaceService.ScanSettingsKind),
-            () => HasProject && !IsBusy);
+            ShowProjectConfiguration, () => HasProject && !IsBusy);
         CreateTcfCommand = new DelegateCommand(
             async () => await CreateConfigurationAsync(ProjectWorkspaceService.TestConfigurationKind),
             () => HasProject && !IsBusy);
@@ -197,10 +195,8 @@ public sealed partial class MainWindowViewModel : BindableBase
             ProjectWorkspaceService.ControllerKind));
         OpenWaveConfigCommand = new DelegateCommand(async () => await OpenConfigurationKindAsync(
             ProjectWorkspaceService.WaveSettingsKind));
-        OpenScanConfigCommand = new DelegateCommand(async () => await OpenConfigurationKindAsync(
-            ProjectWorkspaceService.ScanSettingsKind));
-        OpenFlashConfigCommand = new DelegateCommand(async () => await OpenConfigurationKindAsync(
-            ProjectWorkspaceService.FlashSettingsKind));
+        OpenScanConfigCommand = new DelegateCommand(ShowProjectConfiguration);
+        OpenFlashConfigCommand = new DelegateCommand(OpenNativeFlashProfile);
         ApplyScannedRecipeCommand = new DelegateCommand(
             async () => await ApplyScannedRecipeAsync(),
             () => _preparedScanMatch?.Accepted == true &&
