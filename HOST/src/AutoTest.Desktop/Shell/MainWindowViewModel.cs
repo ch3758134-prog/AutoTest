@@ -1587,6 +1587,7 @@ public sealed partial class MainWindowViewModel : BindableBase
             (ProjectWorkspaceService.WaveSettingsKind, "波形判定配置"),
             (ProjectWorkspaceService.TestConfigurationKind, "被测系统配置 · TCF"),
             (ProjectWorkspaceService.BenchConfigurationKind, "台架配置 · TBC"),
+            (ProjectWorkspaceService.InspectionKind, "工位动作 · 检测准备"),
             (ProjectWorkspaceService.FlashSettingsKind, "烧录配置"),
             (ProjectWorkspaceService.FirmwareKind, "固件资源"),
             (ProjectWorkspaceService.ScanSettingsKind, "扫码匹配配置")
@@ -1835,13 +1836,15 @@ public sealed partial class MainWindowViewModel : BindableBase
             ProjectWorkspaceService.ScanSettingsKind => CreateConfigurationAsync(ProjectWorkspaceService.ScanSettingsKind),
             ProjectWorkspaceService.TestConfigurationKind => CreateConfigurationAsync(ProjectWorkspaceService.TestConfigurationKind),
             ProjectWorkspaceService.BenchConfigurationKind => CreateConfigurationAsync(ProjectWorkspaceService.BenchConfigurationKind),
+            ProjectWorkspaceService.InspectionKind => OpenInspectionProcedureAsync(),
             _ => Task.CompletedTask
         };
     }
 
     private static bool IsInlineConfiguration(string kind) =>
         kind is ProjectWorkspaceService.TestConfigurationKind or
-            ProjectWorkspaceService.BenchConfigurationKind;
+            ProjectWorkspaceService.BenchConfigurationKind or
+            ProjectWorkspaceService.InspectionKind;
 
     private async Task CreateConfigurationAsync(string kind)
     {
@@ -1854,6 +1857,7 @@ public sealed partial class MainWindowViewModel : BindableBase
             ProjectWorkspaceService.ScanSettingsKind => "扫码匹配配置",
             ProjectWorkspaceService.TestConfigurationKind => "TCF 被测系统配置",
             ProjectWorkspaceService.BenchConfigurationKind => "TBC 固定台架配置",
+            ProjectWorkspaceService.InspectionKind => "检测工位动作",
             _ => "工程配置"
         };
         var name = _fileDialogs.AskResourceName("新建" + display, "新建" + display);
@@ -1868,7 +1872,9 @@ public sealed partial class MainWindowViewModel : BindableBase
                 ShowProjectConfiguration();
                 var overview = OpenEditors.First(x => x.Key == "config-overview").View
                     as ProjectConfigurationOverviewView;
-                overview!.ShowSession(kind, opened);
+                if (kind == ProjectWorkspaceService.InspectionKind)
+                    overview!.ShowInspectionSession(opened);
+                else overview!.ShowSession(kind, opened);
             }
             else
             {
@@ -1892,7 +1898,9 @@ public sealed partial class MainWindowViewModel : BindableBase
                 ShowProjectConfiguration();
                 var overview = OpenEditors.First(x => x.Key == "config-overview").View
                     as ProjectConfigurationOverviewView;
-                overview!.ShowSession(asset.Kind, opened);
+                if (asset.Kind == ProjectWorkspaceService.InspectionKind)
+                    overview!.ShowInspectionSession(opened);
+                else overview!.ShowSession(asset.Kind, opened);
             }
             else
             {
