@@ -9,6 +9,8 @@ public sealed partial class MainWindowViewModel
     private SerialScannerWorkbenchViewModel _scannerWorkbench = null!;
     private SerialScannerWindow? _serialScannerWindow;
 
+    internal SerialScannerWorkbenchViewModel ScannerSetupModel => _scannerWorkbench;
+
     public DelegateCommand OpenSerialScannerCommand { get; private set; } = null!;
 
     private void InitializeScannerWorkbench()
