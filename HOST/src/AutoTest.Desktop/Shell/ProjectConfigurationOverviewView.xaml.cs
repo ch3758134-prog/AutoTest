@@ -8,8 +8,8 @@ using AutoTest.Projects.Project;
 namespace AutoTest.Desktop.Shell;
 
 /// <summary>
-/// The four HTML configuration tabs host the canonical saved TCF/Controller/TBC
-/// sessions; no alternate persisted config model or duplicate old editor window.
+/// The engineering setup hosts the real scanner, native FLASH entry and
+/// project-owned fixture procedure. No extra ECU-system or bench config.
 /// </summary>
 public partial class ProjectConfigurationOverviewView : UserControl
 {
@@ -47,7 +47,6 @@ public partial class ProjectConfigurationOverviewView : UserControl
         if (sender is not Button { Tag: string stage }) return;
         ConfigTabs.SelectedIndex = stage switch
         {
-            "dut" => 0,
             "scan" => 1,
             "flash" => 2,
             "station" => 3,
