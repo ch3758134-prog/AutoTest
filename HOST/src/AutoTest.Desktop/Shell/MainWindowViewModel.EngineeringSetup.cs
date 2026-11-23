@@ -21,6 +21,43 @@ public sealed partial class MainWindowViewModel
     private string _setupStationStatus = "尚未检查";
     private string _setupOverallStatus = "工程和工位尚未核对。";
     public DelegateCommand RefreshEngineeringSetupCommand { get; private set; } = null!;
+    public DelegateCommand ReadEngineeringClampGpioCommand { get; private set; } = null!;
+
+    private string _engineeringClampReadback = "尚未在本次工位会话读取夹具 MCU GPIO。";
+    public string EngineeringClampReadback
+    {
+        get => _engineeringClampReadback;
+        private set => SetProperty(ref _engineeringClampReadback, value);
+    }
+
+    private async Task ReadEngineeringClampGpioAsync()
+    {
+        if (!_hardware.IsConnected)
+        {
+            EngineeringClampReadback = "USB 主控未连接；没有读取任何 GPIO。";
+            return;
+        }
+        if (!_hardware.HasV02GpioContract)
+        {
+            EngineeringClampReadback =
+                "主控尚未确认夹具协议版本；不发送夹具读取或控制命令。";
+            return;
+        }
+        try
+        {
+            var value = await _hardware.ReadClampLevelsAsync();
+            EngineeringClampReadback = "本次真实 MCU GPIO 回读：" +
+                "夹具1=" + ((value & 1) != 0 ? "HIGH" : "LOW") +
+                "；夹具2=" + ((value & 2) != 0 ? "HIGH" : "LOW") +
+                "。这不是机械到位信号，不能宣告工位就绪。";
+        }
+        catch (Exception error) when (error is IOException or InvalidOperationException or
+            InvalidDataException or TimeoutException or UnauthorizedAccessException)
+        {
+            EngineeringClampReadback = "读取失败，实际夹具状态 UNKNOWN：" + error.Message;
+        }
+    }
+
 
     public string SetupModelStatus => _setupModelStatus;
     public string SetupTestStatus => _setupTestStatus;
