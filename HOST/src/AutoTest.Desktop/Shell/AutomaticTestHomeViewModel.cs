@@ -168,7 +168,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         {
             try
             {
-                preview = await EngineeringTestProjectPreview.ReadAsync(opened);
+                preview = await EngineeringTestProjectPreviewReader.ReadAsync(opened);
             }
             catch (Exception failure) when (failure is IOException or
                 InvalidDataException or UnauthorizedAccessException or ArgumentException or
