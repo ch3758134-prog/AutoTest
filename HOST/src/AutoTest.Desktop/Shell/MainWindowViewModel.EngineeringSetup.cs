@@ -210,9 +210,10 @@ public sealed partial class MainWindowViewModel
             {
                 var snapshot = await AutomaticTestResourceContract.ResolveAsync(project);
                 test = snapshot.CanExecute
-                    ? snapshot.Cases.Count + " 个正式用例的静态资源检查通过（尚未实体运行）"
-                    : snapshot.Cases.Count + " 个用例；待修复：" +
-                      string.Join("；", snapshot.Issues.Take(2));
+                    ? snapshot.Cases.Count + " 个正式用例的静态资源检查通过（仍需实体运行）"
+                    : snapshot.Cases.Count + " 个有效引用 · " +
+                      snapshot.Issues.Count + " 项资源阻断；打开 TEST 项目修订引用与步骤。" +
+                      "工程资源未齐备前不能部署正式测试。";
             }
             catch (Exception error) when (error is IOException or InvalidDataException or
                 ProjectDataException or ArgumentException or FormatException or
