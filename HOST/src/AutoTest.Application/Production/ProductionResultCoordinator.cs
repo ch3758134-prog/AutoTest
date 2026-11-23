@@ -70,7 +70,8 @@ public sealed class ProductionResultCoordinator
                 return new(job.Run, ProductionState.AwaitingCommit, Verdict.Inconclusive,
                     false, false, "PRODUCTION_VERDICT_NOT_DURABLE");
             if (!receipt.EvidenceVerified || receipt.Verdict != test.Verdict ||
-                test.Outcome != Outcome.Accepted || test.SimulationOnly)
+                test.Outcome != Outcome.Accepted || test.SimulationOnly ||
+                test.Evidence.IsDefaultOrEmpty)
                 return new(job.Run, ProductionState.Unknown, Verdict.Inconclusive,
                     true, false, "PRODUCTION_VERDICT_NOT_PROVEN");
             return receipt.Verdict switch
