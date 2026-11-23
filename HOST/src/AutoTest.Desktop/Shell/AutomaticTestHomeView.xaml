@@ -93,15 +93,15 @@
       Visibility="{Binding NeedsSetup,Converter={StaticResource BoolToVisibility}}">
       <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
        MaxWidth="470" Margin="20">
-       <TextBlock Text="尚未配置可执行的自动测试方案" FontSize="16"
+       <TextBlock Text="尚未打开可用的自动测试工程" FontSize="16"
         FontWeight="SemiBold" TextAlignment="Center" Foreground="#344C62"/>
        <TextBlock Text="{Binding SetupIssue}" TextWrapping="Wrap"
         FontSize="12" TextAlignment="Center" Foreground="#6A7E92"
         Margin="0,11,0,19"/>
-       <Button Content="选择测试方案" Command="{Binding ChoosePlanCommand}"
+       <Button Content="打开测试工程" Command="{Binding ChoosePlanCommand}"
         Style="{StaticResource AtPrimaryButton}" Padding="18,8"
         HorizontalAlignment="Center" MinWidth="145" MinHeight="34"/>
-       <TextBlock Text="仅首次配置或更换方案时操作，以后启动自动恢复。"
+       <TextBlock Text="选择现有工程目录中的 project.autotest-project.json；以后自动恢复，不必逐个启用用例。"
         FontSize="11" TextAlignment="Center" Foreground="#8C9AAA"
         Margin="0,14,0,0"/>
       </StackPanel>
