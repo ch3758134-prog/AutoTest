@@ -1,4 +1,5 @@
 using System.IO;
+using System.Collections.Immutable;
 using System.Text.Json;
 using System.Security.Cryptography;
 using System.Text;
@@ -11,6 +12,10 @@ namespace AutoTest.Desktop.Projects;
 
 public sealed record FrozenProductionCase(
     Guid EntryId, Guid TestAssetId, string DisplayName, int Revision, string Sha256);
+public sealed record FrozenStationProcedure(
+    ImmutableArray<InspectionStationAction> BeforeStart,
+    ImmutableArray<InspectionStationAction> AfterFinish);
+
 public sealed record FrozenProductionPreparation(
     string ModelCode, string DutSerial, Guid ProjectId, string ManifestPath,
     string ManifestSha256, Guid TestProjectAssetId, string TestProjectSha256,
@@ -21,7 +26,7 @@ public sealed record FrozenProductionPreparation(
 {
     public Guid FixtureAssetId { get; init; }
     public string FixtureContentSha256 { get; init; } = "";
-    public InspectionStationProcedureDocument? Fixture { get; init; }
+    public FrozenStationProcedure? Fixture { get; init; }
 };
 
 public sealed record ProductionPreparationDecision(
@@ -143,7 +148,9 @@ public static class ProductionPreparationService
         {
             FixtureAssetId = fixtureAsset.Id.Value,
             FixtureContentSha256 = fixtureAsset.Sha256,
-            Fixture = fixture
+            Fixture = new FrozenStationProcedure(
+                fixture.BeforeStart.ToImmutableArray(),
+                fixture.AfterFinish.ToImmutableArray())
         };
     }
 }
