@@ -39,10 +39,9 @@ public sealed record ScanIdentityPolicy(
         if (MinimumSerialLength < 1 || MaximumSerialLength > 64 ||
             MinimumSerialLength > MaximumSerialLength)
             throw new FormatException("唯一编号长度必须在 1～64 内，且最小长度不能大于最大长度。");
-        if (Format == SerialOnly &&
-            (string.IsNullOrWhiteSpace(FixedModelCode) ||
-             !ModelPattern.IsMatch(FixedModelCode)))
-            throw new FormatException("纯序列号模式必须明确绑定一个正式 ECU 型号码。");
+        // The selected ECU inspection project already identifies the model.
+        // The serial reader must not require a second independent model selection.
+        // Older policies with explicit FixedModelCode remain readable.
         if (!string.IsNullOrWhiteSpace(FixedModelCode) &&
             !ModelPattern.IsMatch(FixedModelCode))
             throw new FormatException("固定 ECU 型号码只能使用 2～16 位大写字母和数字。");
@@ -82,7 +81,10 @@ public sealed record ScanIdentityPolicy(
         {
             // Serial-only labels do not identify the product. A deliberate
             // single-model station binding is the only source of the model.
-            model = FixedModelCode!;
+            if (string.IsNullOrWhiteSpace(FixedModelCode))
+                return new("SCAN_PROJECT_MODEL_REQUIRED", null, null, null,
+                    "纯编号标签由当前 ECU 工程提供型号，请核对选定的工程。");
+            model = FixedModelCode;
             serial = raw;
         }
         if (!ModelPattern.IsMatch(model))
