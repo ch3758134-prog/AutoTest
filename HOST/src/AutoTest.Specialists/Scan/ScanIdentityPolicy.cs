@@ -124,8 +124,9 @@ public sealed record ScanIdentityPolicy(
         else if (Format == Mapped)
         {
             var values = new Dictionary<string, string>(StringComparer.Ordinal);
-            var segments = ParseMode == Delimited ?
-                raw.Split(Separator, StringSplitOptions.None) : [];
+            string[] segments = ParseMode == Delimited
+                ? raw.Split(Separator, StringSplitOptions.None)
+                : Array.Empty<string>();
             foreach (var mapping in FieldMappings!)
             {
                 string value;
