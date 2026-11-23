@@ -47,8 +47,10 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
     private string _lastSerial = "";
     private string _lastDecision = "";
     private string _connectedPort = "";
+    private StationScannerDeviceBinding.Saved? _boundDevice;
+    private string _deviceStatus = "尚未绑定实体扫码枪。请先人工选择 COM、读取一次真实条码，再绑定该设备。";
     private ScanIdentityPolicy? _activeIdentityPolicy;
-    private string _identityFormat = ScanIdentityPolicy.ModelSerial;
+    private string _identityFormat = ScanIdentityPolicy.SerialOnly;
     private string _identitySeparator = "-";
     private string _fixedModelCode = "";
     private string _minimumSerialLength = "8";
@@ -81,6 +83,7 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
             catch (OperationCanceledException) when (_routerStop.IsCancellationRequested) { }
         });
         RefreshPortsCommand = new DelegateCommand(RefreshPorts);
+        BindScannerDeviceCommand = new DelegateCommand(BindScannerDevice);
         ConnectCommand = new DelegateCommand(async () => await ConnectAsync());
         DisconnectCommand = new DelegateCommand(async () => await DisconnectAsync());
         SaveModelCodeCommand = new DelegateCommand(async () => await SaveModelCodeAsync());
@@ -110,7 +113,18 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
         catch (Exception error) when (error is IOException or JsonException or ArgumentException or
                                       UnauthorizedAccessException)
         { SetStatus("历史串口设置不可用，请重新选择：" + error.Message); }
+        try
+        {
+            _boundDevice = StationScannerDeviceBinding.Load();
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or
+            ArgumentException or JsonException or InvalidDataException)
+        {
+            DeviceStatus = "旧设备绑定无法读取：" + error.Message;
+        }
         RefreshPorts();
+        // Only an explicitly bound, unique USB PnP instance may auto-connect.
+        if (_boundDevice is not null) _ = TryAutoConnectAsync();
     }
 
     public sealed record ScanFormatChoice(string Mode, string Label);
@@ -189,6 +203,11 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
         }
     }
     public bool CanEditConnection => !IsConnected;
+    public string DeviceStatus
+    {
+        get => _deviceStatus;
+        private set => SetProperty(ref _deviceStatus, value);
+    }
     public string ConnectedPort
     {
         get => _connectedPort;
@@ -251,6 +270,7 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
 
 
     public DelegateCommand RefreshPortsCommand { get; }
+    public DelegateCommand BindScannerDeviceCommand { get; }
     public DelegateCommand ConnectCommand { get; }
     public DelegateCommand DisconnectCommand { get; }
     public DelegateCommand SaveModelCodeCommand { get; }
@@ -360,6 +380,9 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
     private void OnProjectChanged(object? sender, EventArgs e) => OnUi(() =>
     {
         ModelCode = _workspace.Current?.Definition.EcuModelCode ?? "";
+        if (_activeIdentityPolicy is null && string.IsNullOrWhiteSpace(FixedModelCode) &&
+            !string.IsNullOrWhiteSpace(ModelCode))
+            FixedModelCode = ModelCode; // editing suggestion only, not saved binding
         RaisePropertyChanged(nameof(ProjectName));
         // A project switch or version update invalidates a previously scanned
         // identity; old labels may not authorize a different ECU model.
@@ -382,13 +405,69 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
             var ports = SerialPortBarcodeLineSource.GetAvailablePortNames();
             AvailablePorts.Clear();
             foreach (var port in ports) AvailablePorts.Add(port);
-            if (string.IsNullOrWhiteSpace(SelectedPort) && ports.Length > 0)
-                SelectedPort = ports[0];
+            if (_boundDevice is not null)
+            {
+                var device = StationScannerDeviceBinding.Match(_boundDevice);
+                if (device is not null)
+                {
+                    SelectedPort = device.PortName;
+                    DeviceStatus = "已绑定 USB 设备 " + device.PnpInstanceId +
+                        "；当前 " + device.PortName + "（由 Windows 实体设备解析）。";
+                }
+                else
+                {
+                    DeviceStatus = "已绑定扫码枪当前未找到；不连接其他 COM。请检查 USB 设备。";
+                }
+            }
+            else
+                DeviceStatus = "尚未绑定扫码枪；首次通过真实 COM 扫码验证后绑定，之后自动识别端口。";
             if (ports.Length == 0) SetStatus("未发现 COM 端口；请检查扫码枪 USB 串口驱动");
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or
                                       InvalidOperationException or System.ComponentModel.Win32Exception)
         { SetStatus("枚举串口失败：" + error.Message); }
+    }
+
+    private void BindScannerDevice()
+    {
+        if (!IsConnected || string.IsNullOrWhiteSpace(ConnectedPort) ||
+            string.IsNullOrWhiteSpace(LastRaw))
+        {
+            DeviceStatus = "请先人工连接真实 COM 并成功读取一次完整条码，再绑定实体扫码枪。";
+            return;
+        }
+        try
+        {
+            _boundDevice = StationScannerDeviceBinding.Bind(ConnectedPort);
+            DeviceStatus = "已将真实扫描过的 USB 设备绑定为工位扫码枪，后续启动自动查找此设备当前 COM。";
+        }
+        catch (Exception error) when (error is IOException or InvalidDataException or
+            UnauthorizedAccessException or ArgumentException or System.Security.SecurityException)
+        {
+            DeviceStatus = "绑定未完成：" + error.Message;
+        }
+    }
+
+    private async Task TryAutoConnectAsync()
+    {
+        await Task.Yield();
+        if (_boundDevice is null || IsConnected || _disposed) return;
+        try
+        {
+            var device = StationScannerDeviceBinding.Match(_boundDevice);
+            if (device is null)
+            {
+                DeviceStatus = "已绑定扫码枪未连接；不会猜测或打开其它 COM。";
+                return;
+            }
+            SelectedPort = device.PortName;
+            await ConnectAsync();
+        }
+        catch (Exception error) when (error is IOException or InvalidDataException or
+            UnauthorizedAccessException or ArgumentException or System.Security.SecurityException)
+        {
+            DeviceStatus = "自动查找扫码枪失败：" + error.Message;
+        }
     }
 
     private async Task ConnectAsync()
@@ -398,6 +477,14 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
         {
             if (_disposed) return;
             if (_source is not null) await StopPortInsideGateAsync();
+            if (_boundDevice is not null)
+            {
+                var device = StationScannerDeviceBinding.Match(_boundDevice)
+                    ?? throw new IOException("已绑定扫码枪未找到，不允许连接另一台同名 COM 设备。");
+                if (!string.Equals(device.PortName, SelectedPort,
+                        StringComparison.OrdinalIgnoreCase))
+                    throw new IOException("所选 COM 不是已绑定实体扫码枪当前端口。");
+            }
             var settings = new SerialScannerPortSettings(SelectedPort, BaudRate);
             settings.Validate();
             _source = SerialPortBarcodeLineSource.Open(settings);
