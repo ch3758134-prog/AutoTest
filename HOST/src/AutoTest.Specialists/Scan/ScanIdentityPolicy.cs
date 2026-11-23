@@ -70,7 +70,7 @@ public sealed record ScanIdentityPolicy(
             throw new FormatException("字段解析只支持分隔符或固定位置。");
         if (FieldMappings is null || FieldMappings.Count is < 1 or > 8)
             throw new FormatException("请为条码配置 1～8 个字段映射。");
-        if (FieldMappings.Count(x => x.Target == SerialTarget) != 1)
+        if (FieldMappings.Count(x => x is not null && x.Target == SerialTarget) != 1)
             throw new FormatException("必须将且仅将一个字段映射到 ECU 唯一编号。");
         var targets = new HashSet<string>(StringComparer.Ordinal);
         foreach (var field in FieldMappings)
