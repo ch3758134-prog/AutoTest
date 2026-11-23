@@ -61,9 +61,13 @@ public partial class FlashLabWindow : Window
                 frame.Dlc.ToString(),frame.Data,frame.Result));
             ScheduleCanFlush();
         };
-        Loaded+=async (_,_)=>await RefreshDevicesAsync();
+        Loaded += async (_, _) =>
+        {
+            await RefreshDevicesAsync();
+            await LoadEngineeringNativeProfileAsync();
+        };
         UpdateButtons();
-        AddLog("CAN1 烧录工作台已启动。导入 CanTool 配置、固件、安全文件，连接 USB 后开始烧录。");
+        AddLog("ECU 烧录工作台已启动。当前工程优先使用原生烧录配置；没有工程时仍可进入独立参考调试。");
     }
 
     private void ScheduleCanFlush()
@@ -488,6 +492,45 @@ public partial class FlashLabWindow : Window
             AddLog("已导入烧录安全文件："+info.Path);
         }
         catch(Exception ex){Error("导入烧录安全文件",ex);}
+    }
+
+    private async Task LoadEngineeringNativeProfileAsync()
+    {
+        // AutoTest engineering launches with a real ECU project. Reuse its
+        // native HEX / security / parameter configuration without asking the
+        // engineer to import another CanTool XML or choose another recipe.
+        if (string.IsNullOrWhiteSpace(NativeProjectRoot)) return;
+        try
+        {
+            var current = await NativeFlashProfileStore.EnsureHydEpbReferenceAsync(
+                NativeProjectRoot, NativeProjectModelCode);
+            if (current is null)
+            {
+                NativeProfileLabel.Text = "当前工程尚未保存原生烧录参数";
+                AddLog("当前工程没有原生烧录配置；请先在检测准备中编辑工程烧录。");
+                return;
+            }
+            if (!string.IsNullOrWhiteSpace(NativeProjectModelCode) &&
+                !string.Equals(current.Profile.EcuModelCode, NativeProjectModelCode,
+                    StringComparison.Ordinal))
+                throw new InvalidDataException(
+                    "当前工程型号与原生烧录配置不一致，不能自动载入。");
+            _nativeProfileRoot = NativeProjectRoot;
+            _nativeProfileSha = current.ProfileSha256;
+            NativeProfileLabel.Text = "当前执行配置：工程原生 " +
+                current.Profile.EcuModelCode + " · 修订 " + current.Profile.Revision;
+            _vm.Status = "已使用工程内 HEX、安全文件及烧录参数；仍需校验实际 Job 后方可授权。";
+            InvalidateFlashPreview();
+            AddLog("已载入工程原生配置（未发送 CAN）：" + current.FullPath);
+        }
+        catch (Exception error) when (error is IOException or InvalidDataException or
+            UnauthorizedAccessException or FormatException or NotSupportedException)
+        {
+            _nativeProfileRoot = null;
+            _nativeProfileSha = null;
+            _vm.Status = "工程原生烧录配置需修复：" + error.Message;
+            AddLog(_vm.Status);
+        }
     }
 
     private string NativeStorageRoot => NativeProjectRoot ??
