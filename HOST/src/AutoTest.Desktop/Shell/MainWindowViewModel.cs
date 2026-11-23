@@ -1556,9 +1556,18 @@ public sealed partial class MainWindowViewModel : BindableBase
         if (IsBusy || !await PrepareEditorsForCloseAsync() ||
             !await PrepareToolWindowsForCloseAsync()) return;
         IsBusy = true;
-        try { _newDialog.ShowDialog(); }
+        var created = false;
+        try { created = _newDialog.ShowDialog(); }
         catch (Exception e) { StatusMessage = "新建工程窗口打开失败：" + e.Message; }
         finally { IsBusy = false; }
+        if (created && _workspace.Current is not null)
+        {
+            // An ECU project is immediately ready for formal TEST authoring.
+            // Do not send the engineer into another empty TEST-project wizard.
+            ShowOverview();
+            await OpenFirstAssetAsync(ProjectWorkspaceService.TestProgramKind,
+                CreateTestProgramAsync);
+        }
     }
 
     private async Task OpenProjectAsync()
@@ -1676,7 +1685,15 @@ public sealed partial class MainWindowViewModel : BindableBase
     private async Task CreateTestProjectAsync()
     {
         if (!HasProject) return;
-        var name = _fileDialogs.AskResourceName("新建测试项目（Project）", "新建测试项目");
+        if (TestProjectCount != 0)
+        {
+            // The sole formal execution list is part of the ECU project.
+            await OpenFirstAssetAsync(ProjectWorkspaceService.TestProjectKind,
+                CreateTestProjectAsync);
+            return;
+        }
+        var name = _workspace.Current?.Definition.Name ?? "当前 ECU 检测工程";
+        name += " · 用例顺序";
         if (name is null) return;
         await RunOperationAsync(async () =>
         {
