@@ -184,6 +184,54 @@ public sealed record ScanMatchSettingsDocument(int SchemaVersion, string Name, b
     }
 }
 
+/// <summary>
+/// A narrow station process definition for this ECU. These are verified
+/// physical capabilities, not a second TEST DSL. This authored file cannot
+/// authorize live outputs; real production requires a separate stage executor,
+/// station evidence and an immutable release snapshot.
+/// </summary>
+public sealed record InspectionStationAction(Guid ActionId, string Kind, int WaitAfterMilliseconds)
+{
+    public static readonly string[] Kinds =
+        ["Clamp1Press", "Clamp1Release", "Clamp2Press", "Clamp2Release",
+         "IgnOn", "IgnOff", "Wait"];
+
+    public void Validate()
+    {
+        if (ActionId == Guid.Empty || !Kinds.Contains(Kind, StringComparer.Ordinal) ||
+            WaitAfterMilliseconds is < 0 or > 120000 ||
+            (Kind == "Wait" && WaitAfterMilliseconds == 0))
+            throw new ProjectDataException("INSPECTION_ACTION",
+                "工位动作类型、等待时间或动作身份无效。Wait 需要正数毫秒。");
+    }
+}
+
+public sealed record InspectionStationProcedureDocument(int SchemaVersion, string Name,
+    List<InspectionStationAction> BeforeStart, List<InspectionStationAction> AfterFinish)
+{
+    public static InspectionStationProcedureDocument Create(string name) =>
+        new(1, name, [], []);
+
+    public void Validate()
+    {
+        if (SchemaVersion != 1 || string.IsNullOrWhiteSpace(Name) || Name.Length > 120 ||
+            BeforeStart is null || AfterFinish is null ||
+            BeforeStart.Count > 100 || AfterFinish.Count > 100)
+            throw new ProjectDataException("INSPECTION_PROCEDURE",
+                "工位动作配置的名称、版本或动作数量无效。");
+        var actions = BeforeStart.Concat(AfterFinish).ToArray();
+        foreach (var action in actions)
+        {
+            if (action is null)
+                throw new ProjectDataException("INSPECTION_ACTION", "工位动作不能为 null。");
+            action.Validate();
+        }
+        if (actions.Select(x => x.ActionId).Distinct().Count() != actions.Length)
+            throw new ProjectDataException("INSPECTION_ACTION_DUPLICATE",
+                "同一检测工艺中动作身份不能重复。");
+    }
+}
+
 public static class ProjectConfigurationCodec
 {
     public const string ControllerKind = "controller";
@@ -192,6 +240,7 @@ public static class ProjectConfigurationCodec
     public const string ScanSettingsKind = "scan-rules";
     public const string TestConfigurationKind = "test-configuration";
     public const string BenchConfigurationKind = "bench-configuration";
+    public const string InspectionKind = "inspection-station";
     private static readonly JsonSerializerOptions Json = new()
     {
         WriteIndented = true, PropertyNameCaseInsensitive = false,
@@ -201,7 +250,7 @@ public static class ProjectConfigurationCodec
         revision is > 0 && sha is { Length: 64 } && sha.All(Uri.IsHexDigit);
     public static bool IsConfiguration(string kind) => kind is
         ControllerKind or WaveSettingsKind or FlashSettingsKind or ScanSettingsKind or
-        TestConfigurationKind or BenchConfigurationKind;
+        TestConfigurationKind or BenchConfigurationKind or InspectionKind;
 
     public static byte[] Create(string kind, string name) => Encode(kind, kind switch
     {
@@ -211,6 +260,7 @@ public static class ProjectConfigurationCodec
         ScanSettingsKind => ScanMatchSettingsDocument.Create(name),
         TestConfigurationKind => TestSystemConfigurationDocument.Create(name),
         BenchConfigurationKind => TestBenchConfigurationDocument.Create(name),
+        InspectionKind => InspectionStationProcedureDocument.Create(name),
         _ => throw new ArgumentException("不支持的配置类型：" + kind)
     });
 
@@ -233,6 +283,8 @@ public static class ProjectConfigurationCodec
                     ?? throw new ProjectDataException("CONFIG_JSON", "空 TCF。"),
                 BenchConfigurationKind => JsonSerializer.Deserialize<TestBenchConfigurationDocument>(bytes, Json)
                     ?? throw new ProjectDataException("CONFIG_JSON", "空 TBC。"),
+                InspectionKind => JsonSerializer.Deserialize<InspectionStationProcedureDocument>(bytes, Json)
+                    ?? throw new ProjectDataException("CONFIG_JSON", "空工位动作配置。"),
                 _ => throw new ArgumentException("不支持的配置资源：" + kind)
             };
             Validate(kind, document);
@@ -262,6 +314,7 @@ public static class ProjectConfigurationCodec
             case ScanSettingsKind: ((ScanMatchSettingsDocument)document).Validate(); break;
             case TestConfigurationKind: ((TestSystemConfigurationDocument)document).Validate(); break;
             case BenchConfigurationKind: ((TestBenchConfigurationDocument)document).Validate(); break;
+            case InspectionKind: ((InspectionStationProcedureDocument)document).Validate(); break;
             default: throw new ArgumentException("不支持的配置资源：" + kind);
         }
     }
