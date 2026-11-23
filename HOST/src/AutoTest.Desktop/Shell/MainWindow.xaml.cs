@@ -42,7 +42,7 @@ public partial class MainWindow : Window
         SizeChanged += OnShellSizeChanged;
         Loaded += async (_, _) =>
         {
-            await _viewModel.RestoreLastProjectAsync();
+            await _viewModel.RestoreAutomaticTestAtStartupAsync();
             _autosaveTimer.Start();
         };
         _autosaveTimer.Tick += OnAutosaveTick;
