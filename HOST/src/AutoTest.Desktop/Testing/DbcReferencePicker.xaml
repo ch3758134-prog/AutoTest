@@ -42,7 +42,7 @@
   </Button>
   <!-- Inline expansion avoids a detached OS popup whose focus and position
        can drift when the inspector scrolls or the app changes window size. -->
-  <Border x:Name="ChoicePanel" Visibility="Collapsed" MaxHeight="344"
+  <Border x:Name="ChoicePanel" Visibility="Collapsed" MaxHeight="280"
    Background="White" BorderBrush="#DAE6E0" BorderThickness="1"
    CornerRadius="7" Padding="9" Margin="0,5,0,2">
     <Grid>
@@ -69,7 +69,7 @@
      </Border>
      <TextBlock Grid.Row="1" x:Name="ResultCount" FontSize="10"
       Foreground="#97B6DE" Margin="3,0,0,7"/>
-     <ListBox Grid.Row="2" x:Name="ResultsList" MaxHeight="260"
+     <ListBox Grid.Row="2" x:Name="ResultsList" MaxHeight="190"
       BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
       ScrollViewer.VerticalScrollBarVisibility="Auto"
       VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling">
@@ -95,7 +95,7 @@
       </ListBox.ItemContainerStyle>
       <ListBox.ItemTemplate>
        <DataTemplate>
-        <StackPanel ToolTip="{Binding FullDetail}">
+        <StackPanel>
          <DockPanel>
           <TextBlock Text="{Binding KindLabel}" DockPanel.Dock="Right"
            FontSize="10" Foreground="#627C9D" Margin="6,1,0,0"/>
