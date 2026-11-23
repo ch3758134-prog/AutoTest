@@ -494,7 +494,11 @@ public sealed partial class MainWindowViewModel : BindableBase
         }
         var view = new ManualBenchWindow(new ManualBenchViewModel(_workspace, _hardware));
         _manualBenchWindow = view;
-        view.Closed += (_, _) => _manualBenchWindow = null;
+        view.Closed += (_, _) =>
+        {
+            _manualBenchWindow = null;
+            _ = RefreshEngineeringSetupAsync();
+        };
         view.Owner = global::System.Windows.Application.Current.MainWindow;
         view.Show();
     }
@@ -540,6 +544,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         {
             if (ReferenceEquals(_nativeFlashProfileWindow, window))
                 _nativeFlashProfileWindow = null;
+            _ = RefreshEngineeringSetupAsync();
         };
         window.Show();
     }
