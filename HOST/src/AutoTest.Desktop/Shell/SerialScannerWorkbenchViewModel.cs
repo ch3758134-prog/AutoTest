@@ -585,10 +585,18 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
             // model index. It does not switch the live project on scan arrival.
             StationModelCatalog.ResolveResult? station = null;
             var policy = _activeIdentityPolicy;
-            ScanIdentityResult? identity = policy?.Decode(captured.Scan.Text);
+            var activeProject = _workspace.Current?.Definition;
+            var effectivePolicy = policy is { Format: ScanIdentityPolicy.SerialOnly } &&
+                activeProject?.EcuModelCode is { Length: > 0 } activeModel
+                ? policy with { FixedModelCode = activeModel } : policy;
+            ScanIdentityResult? identity = effectivePolicy?.Decode(captured.Scan.Text);
             try
             {
-                if (identity?.Parsed == true && identity.ModelCode is { } code)
+                // Only explicit cross-model label formats may use the old
+                // optional catalogue. A serial-only scanner gets its model
+                // from the current ECU project and never needs registration.
+                if (policy?.Format != ScanIdentityPolicy.SerialOnly &&
+                    identity?.Parsed == true && identity.ModelCode is { } code)
                     station = await _catalog.ResolveAsync(code, ct);
             }
             catch (Exception error) when (error is IOException or InvalidDataException or
@@ -622,17 +630,25 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
                     _resolvedManifestPath = identity?.Parsed == true &&
                         resolvedStation?.Matched == true
                         ? resolvedStation.Entry?.ManifestPath : null;
-                    MatchedProjectName = resolvedStation?.Matched == true
-                        ? resolvedStation.Definition?.Name ?? "" : "";
+                    MatchedProjectName = policy?.Format == ScanIdentityPolicy.SerialOnly &&
+                        preview.IdentityMatched
+                        ? _workspace.Current?.Definition.Name ?? ""
+                        : resolvedStation?.Matched == true
+                            ? resolvedStation.Definition?.Name ?? "" : "";
                     SwitchProjectCommand.RaiseCanExecuteChanged();
                     var repeatNote = sameIdentityAsPrevious
                         ? "重复识别同一编号；仅更新本次扫码观察，不算新增 DUT，也不会启动复检。"
                         : "";
-                    Status = repeatNote + (resolvedStation?.Matched == true
-                        ? preview.Explanation + " · 已登记工程：" + MatchedProjectName +
-                            "（不自动切换、夹紧或启动）"
-                        : preview.Explanation + (resolvedStation is null ? "" :
-                            " · " + resolvedStation.Explanation));
+                    Status = repeatNote +
+                        (policy?.Format == ScanIdentityPolicy.SerialOnly
+                            ? preview.Explanation +
+                              (preview.IdentityMatched
+                                  ? " · 当前工程：" + MatchedProjectName : "")
+                            : resolvedStation?.Matched == true
+                                ? preview.Explanation + " · 已登记工程：" +
+                                  MatchedProjectName
+                                : preview.Explanation + (resolvedStation is null
+                                    ? "" : " · " + resolvedStation.Explanation));
                     // Real scan input is shared with the operator projection.
                     // A repeated physical scan is still a distinct observation,
                     // but it must never create a second DUT automatically.
