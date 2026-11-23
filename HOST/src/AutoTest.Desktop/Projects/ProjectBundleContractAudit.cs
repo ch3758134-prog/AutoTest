@@ -54,6 +54,10 @@ public static class ProjectBundleContractAudit
                                     " 引用的资源修订/指纹已失效。");
                         }
                         break;
+                    case ProjectWorkspaceService.InspectionKind:
+                        _ = (InspectionStationProcedureDocument)ProjectConfigurationCodec.Decode(
+                            asset.Kind, bytes);
+                        break;
                     case ProjectWorkspaceService.TestProjectKind:
                         var testProject = TestProjectCodec.Decode(bytes);
                         foreach (var package in testProject.Packages)
