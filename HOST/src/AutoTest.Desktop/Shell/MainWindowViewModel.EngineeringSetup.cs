@@ -20,6 +20,41 @@ public sealed partial class MainWindowViewModel
     private string _setupFlashStatus = "尚未检查";
     private string _setupStationStatus = "尚未检查";
     private string _setupOverallStatus = "工程和工位尚未核对。";
+    public DelegateCommand OpenInspectionProcedureCommand { get; private set; } = null!;
+
+    private async Task OpenInspectionProcedureAsync()
+    {
+        var project = _workspace.Current;
+        if (project is null || _realTest.IsRunning || _hardwareBusy)
+        {
+            StatusMessage = "请先打开工程并停止正在执行的设备任务，再编辑工位动作。";
+            return;
+        }
+        try
+        {
+            var candidates = project.Definition.Assets.Where(x =>
+                x.Kind == ProjectWorkspaceService.InspectionKind).ToArray();
+            if (candidates.Length > 1)
+                throw new InvalidDataException(
+                    "同一工程存在多个工位过程配置，请先处理资源冲突，不能自动选择。");
+            var asset = candidates.Length == 1 ? candidates[0]
+                : await _workspace.CreateConfigurationAsync(
+                    ProjectWorkspaceService.InspectionKind, "当前检测工位动作");
+            var session = await _workspace.OpenConfigurationAsync(asset.Id);
+            ShowProjectConfiguration();
+            var view = OpenEditors.FirstOrDefault(x => x.Key == "config-overview")?.View
+                as ProjectConfigurationOverviewView;
+            view?.ShowInspectionSession(session);
+            StatusMessage = "已打开工程内受控工位动作配置。实体操作另行使用真实工位按钮。";
+        }
+        catch (Exception error) when (error is IOException or InvalidDataException or
+            ArgumentException or InvalidOperationException or ProjectDataException or
+            UnauthorizedAccessException or FormatException)
+        {
+            StatusMessage = "工位动作配置无法打开：" + error.Message;
+        }
+    }
+
     public DelegateCommand RefreshEngineeringSetupCommand { get; private set; } = null!;
     public DelegateCommand ReadEngineeringClampGpioCommand { get; private set; } = null!;
     public DelegateCommand EngineeringClamp1PressCommand { get; private set; } = null!;
