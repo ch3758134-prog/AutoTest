@@ -28,7 +28,7 @@
       <WrapPanel>
        <StackPanel Width="280" Margin="0,0,15,8">
         <TextBlock Text="ECU 型号代码" Foreground="#617280"/>
-        <TextBox x:Name="ModelBox" Margin="0,4,0,0" Padding="8,6" TextChanged="EditorChanged"/>
+        <TextBox x:Name="ModelBox" Margin="0,4,0,0" Padding="8,6" IsReadOnly="True" ToolTip="正式 ECU 型号只在工程维护，原生烧录配置直接引用，不允许重新输入。" TextChanged="EditorChanged"/>
        </StackPanel>
        <StackPanel Width="400" Margin="0,0,15,8">
         <TextBlock Text="当前编程方法" Foreground="#617280"/>
