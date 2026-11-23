@@ -3,229 +3,251 @@
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  xmlns:shell="clr-namespace:AutoTest.Desktop.Shell"
  FontFamily="{StaticResource UiFont}" FontSize="12"
- Background="#F6F8FA" Foreground="#25313C">
+ Background="#F7F9FB" Foreground="#263644">
  <UserControl.Resources>
-  <Style x:Key="ProductionHeading" TargetType="TextBlock">
-   <Setter Property="Foreground" Value="#25313C"/>
-   <Setter Property="FontSize" Value="14"/>
-   <Setter Property="FontWeight" Value="SemiBold"/>
-  </Style>
+  <!-- Full case/step tree is read-only; the developer TEST editor remains separate. -->
   <HierarchicalDataTemplate DataType="{x:Type shell:ProductionInspectionNode}"
    ItemsSource="{Binding Children}">
-   <DockPanel MinWidth="180" LastChildFill="True" Margin="0,3,0,3">
-    <TextBlock DockPanel.Dock="Right" Text="{Binding State}" FontSize="11"
-     Foreground="#54708B" Margin="12,0,4,0" VerticalAlignment="Center"/>
-    <StackPanel Orientation="Horizontal">
-     <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"
-      Foreground="#263644" FontSize="12" MaxWidth="245"/>
-     <TextBlock Text="{Binding Kind,StringFormat=' · {0}'}" Foreground="#84919D"
-      FontSize="10" Margin="5,1,0,0" MaxWidth="105" TextTrimming="CharacterEllipsis"/>
-    </StackPanel>
-   </DockPanel>
+   <Grid MinHeight="25" Margin="0,1,0,1">
+    <Grid.ColumnDefinitions>
+     <ColumnDefinition Width="30"/>
+     <ColumnDefinition Width="*"/>
+     <ColumnDefinition Width="97"/>
+    </Grid.ColumnDefinitions>
+    <TextBlock Grid.Column="0" Text="{Binding IndexLabel}"
+     FontSize="11" Foreground="#8290A0" VerticalAlignment="Center"/>
+    <TextBlock Grid.Column="1" Text="{Binding Name}"
+     TextTrimming="CharacterEllipsis" FontSize="12" Foreground="#293D50"
+     VerticalAlignment="Center" Margin="0,0,9,0"
+     ToolTip="{Binding Name}"/>
+    <TextBlock Grid.Column="2" Text="{Binding State}" FontSize="11"
+     Foreground="#416E9D" TextAlignment="Center"
+     VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+     ToolTip="{Binding State}"/>
+   </Grid>
   </HierarchicalDataTemplate>
+  <Style x:Key="OperatorFieldCaption" TargetType="{x:Type TextBlock}">
+   <Setter Property="Foreground" Value="#728399"/>
+   <Setter Property="FontSize" Value="11"/>
+  </Style>
  </UserControl.Resources>
- <Grid Margin="16,13,16,14">
+
+ <Grid Margin="13,8,13,11">
   <Grid.RowDefinitions>
-   <RowDefinition Height="56"/>
-   <RowDefinition Height="94"/>
+   <RowDefinition Height="50"/>
+   <RowDefinition Height="69"/>
    <RowDefinition Height="*" MinHeight="230"/>
-   <RowDefinition Height="184" MinHeight="140"/>
+   <RowDefinition Height="Auto"/>
   </Grid.RowDefinitions>
 
-  <!-- Navigation, never a second TEST editor or a fake run button. -->
-  <DockPanel Grid.Row="0" LastChildFill="True">
-   <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-    <Button Content="刷新测试树" Command="{Binding RefreshCommand}"
-     Margin="0,0,8,0" MinHeight="31" Padding="14,5"/>
-    <Button Content="连接／查看扫码枪" Command="{Binding OpenScannerCommand}"
-     MinHeight="31" Padding="14,5" Style="{StaticResource AtPrimaryButton}"/>
-   </StackPanel>
-   <StackPanel VerticalAlignment="Center">
-    <TextBlock Text="生产检测" FontSize="21" FontWeight="SemiBold" Foreground="#263644"/>
-    <TextBlock Text="{Binding ProjectName}" Foreground="#738496" FontSize="12"
-     TextTrimming="CharacterEllipsis" MaxWidth="640"/>
-   </StackPanel>
-  </DockPanel>
-
-  <Grid Grid.Row="1" Margin="0,0,0,11">
-   <Grid.ColumnDefinitions>
-    <ColumnDefinition Width="1.12*"/><ColumnDefinition Width="9"/>
-    <ColumnDefinition Width="1*"/><ColumnDefinition Width="9"/>
-    <ColumnDefinition Width="1.18*"/>
-   </Grid.ColumnDefinitions>
-   <Border Grid.Column="0" CornerRadius="8" Background="White"
-    BorderBrush="#E0E7EE" BorderThickness="1" Padding="12,9">
-    <StackPanel>
-     <TextBlock Text="当前检测对象" Foreground="#778697" FontSize="11"/>
-     <TextBlock Text="{Binding DutSerial}" FontSize="19" FontWeight="SemiBold"
-      Foreground="#263644" TextTrimming="CharacterEllipsis" Margin="0,4,0,2"/>
-     <TextBlock Text="{Binding ModelCode,StringFormat='型号  {0}'}"
-      Foreground="#63788D" FontSize="11"/>
+  <!-- Compact status/header. All engineering navigation is outside this view. -->
+  <Border Grid.Row="0" BorderBrush="#E0E6EB" BorderThickness="0,0,0,1"
+   Margin="0,0,0,7">
+   <DockPanel LastChildFill="True">
+    <TextBlock DockPanel.Dock="Right" Text="{Binding ScannerStatus}"
+     Foreground="#687E93" FontSize="11" VerticalAlignment="Center"
+     Margin="14,0,4,0" TextTrimming="CharacterEllipsis"
+     ToolTip="{Binding ScannerStatus}"/>
+    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+     <TextBlock Text="自动测试" FontSize="17" FontWeight="SemiBold"
+      VerticalAlignment="Center"/>
+     <Border Width="1" Height="18" Background="#D9E1E8"
+      Margin="13,0,11,0" VerticalAlignment="Center"/>
+     <TextBlock Text="{Binding ProjectName}" Foreground="#637A90"
+      FontSize="12" VerticalAlignment="Center"
+      TextTrimming="CharacterEllipsis" MaxWidth="500"
+      ToolTip="{Binding ProjectName}"/>
     </StackPanel>
-   </Border>
-   <Border Grid.Column="2" CornerRadius="8" Background="White"
-    BorderBrush="#E0E7EE" BorderThickness="1" Padding="12,9">
-    <StackPanel>
-     <TextBlock Text="工程已启用用例" Foreground="#778697" FontSize="11"/>
-     <TextBlock Text="{Binding EnabledCaseCount,StringFormat='{}{0} 个'}"
-      Foreground="#263644" FontSize="19" FontWeight="SemiBold" Margin="0,4,0,2"/>
-     <TextBlock Text="{Binding ProductionReadiness}" Foreground="#63788D"
-      FontSize="11" TextTrimming="CharacterEllipsis"
+   </DockPanel>
+  </Border>
+
+  <!-- Single compact identity strip. No fabricated progress or PASS. -->
+  <Border Grid.Row="1" Background="White" BorderBrush="#DCE4EC"
+   BorderThickness="1" CornerRadius="6" Padding="15,9" Margin="0,0,0,10">
+   <Grid>
+    <Grid.ColumnDefinitions>
+     <ColumnDefinition Width="2.2*"/>
+     <ColumnDefinition Width="1.15*"/>
+     <ColumnDefinition Width="2.2*"/>
+    </Grid.ColumnDefinitions>
+    <StackPanel Grid.Column="0">
+     <TextBlock Text="设备编号" Style="{StaticResource OperatorFieldCaption}"/>
+     <TextBlock Text="{Binding DutSerial}" FontSize="17"
+      FontWeight="SemiBold" Foreground="#253A4E"
+      TextTrimming="CharacterEllipsis" Margin="0,4,12,0"
+      ToolTip="{Binding DutSerial}"/>
+    </StackPanel>
+    <StackPanel Grid.Column="1">
+     <TextBlock Text="ECU 型号" Style="{StaticResource OperatorFieldCaption}"/>
+     <TextBlock Text="{Binding ModelCode}" FontSize="13"
+      FontWeight="SemiBold" Foreground="#32485D"
+      Margin="0,5,12,0" TextTrimming="CharacterEllipsis"/>
+    </StackPanel>
+    <StackPanel Grid.Column="2">
+     <TextBlock Text="当前状态" Style="{StaticResource OperatorFieldCaption}"/>
+     <TextBlock Text="{Binding Phase}" FontSize="14" FontWeight="SemiBold"
+      Foreground="#2E6B9C" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"
       ToolTip="{Binding ProductionReadiness}"/>
     </StackPanel>
-   </Border>
-   <Border Grid.Column="4" CornerRadius="8" Background="White"
-    BorderBrush="#E0E7EE" BorderThickness="1" Padding="12,9">
-    <StackPanel>
-     <TextBlock Text="当前阶段" Foreground="#778697" FontSize="11"/>
-     <TextBlock Text="{Binding Phase}" FontSize="17" FontWeight="SemiBold"
-      Foreground="#2F6FA9" TextTrimming="CharacterEllipsis" Margin="0,4,0,2"/>
-     <TextBlock Text="{Binding MonitorMode}" Foreground="#63788D"
-      FontSize="11" TextTrimming="CharacterEllipsis"
-      ToolTip="{Binding MonitorMode}"/>
-    </StackPanel>
-   </Border>
-  </Grid>
+   </Grid>
+  </Border>
 
+  <!-- The main task: dense case table on left; inspected details on right. -->
   <Grid Grid.Row="2">
    <Grid.ColumnDefinitions>
-    <ColumnDefinition Width="2*" MinWidth="310"/><ColumnDefinition Width="10"/>
-    <ColumnDefinition Width="3*" MinWidth="360"/>
+    <ColumnDefinition Width="7*" MinWidth="465"/>
+    <ColumnDefinition Width="10"/>
+    <ColumnDefinition Width="3*" MinWidth="300"/>
    </Grid.ColumnDefinitions>
-   <Border Grid.Column="0" CornerRadius="9" Background="White"
-    BorderBrush="#E0E7EE" BorderThickness="1">
+
+   <Border Grid.Column="0" Background="White" BorderBrush="#DCE4EC"
+    BorderThickness="1" CornerRadius="6">
     <Grid>
-     <Grid.RowDefinitions><RowDefinition Height="43"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-     <Border Grid.Row="0" BorderBrush="#EDF1F5" BorderThickness="0,0,0,1" Padding="13,0">
-      <DockPanel LastChildFill="True">
-       <TextBlock DockPanel.Dock="Right"
-        Text="{Binding ObservedStepCount,StringFormat='已收到 {0} 条步骤结果'}"
-        Foreground="#75869A" FontSize="11" VerticalAlignment="Center"/>
-       <TextBlock Text="测试用例与实际步骤" FontSize="14" FontWeight="SemiBold"
-        Foreground="#263644" VerticalAlignment="Center"/>
-      </DockPanel>
-     </Border>
-     <TreeView Grid.Row="1" Margin="7,5" Background="Transparent"
-      BorderThickness="0" ItemsSource="{Binding Cases}"
-      SelectedItemChanged="Cases_SelectedItemChanged"
-      VirtualizingStackPanel.IsVirtualizing="True"
-      ScrollViewer.HorizontalScrollBarVisibility="Auto"
-      ScrollViewer.VerticalScrollBarVisibility="Auto">
-      <TreeView.Resources>
-       <Style TargetType="{x:Type TreeViewItem}">
-        <Setter Property="IsExpanded" Value="{Binding IsExpanded,Mode=TwoWay}"/>
-        <Setter Property="IsSelected" Value="{Binding IsSelected,Mode=TwoWay}"/>
-       </Style>
-      </TreeView.Resources>
-     </TreeView>
+     <Grid.RowDefinitions>
+      <RowDefinition Height="39"/>
+      <RowDefinition Height="29"/>
+      <RowDefinition Height="*"/>
+     </Grid.RowDefinitions>
+     <DockPanel Grid.Row="0" Margin="12,0">
+      <TextBlock DockPanel.Dock="Right"
+       Text="{Binding EnabledCaseCount,StringFormat='共 {0} 项'}"
+       Foreground="#70849A" FontSize="11" VerticalAlignment="Center"/>
+      <TextBlock Text="测试用例" FontWeight="SemiBold" FontSize="14"
+       VerticalAlignment="Center"/>
+     </DockPanel>
+     <Grid Grid.Row="1" Background="#F2F5F8" Margin="1,0"
+      HorizontalAlignment="Stretch">
+      <Grid.ColumnDefinitions>
+       <ColumnDefinition Width="66"/>
+       <ColumnDefinition Width="*"/>
+       <ColumnDefinition Width="120"/>
+      </Grid.ColumnDefinitions>
+      <TextBlock Grid.Column="0" Text="序号" Margin="12,0,0,0"
+       Foreground="#61758B" FontSize="11" VerticalAlignment="Center"/>
+      <TextBlock Grid.Column="1" Text="测试项目 / 步骤" Foreground="#61758B"
+       FontSize="11" VerticalAlignment="Center"/>
+      <TextBlock Grid.Column="2" Text="状态" TextAlignment="Center"
+       Foreground="#61758B" FontSize="11" VerticalAlignment="Center"/>
+     </Grid>
+     <Grid Grid.Row="2" Margin="6,3,6,4">
+      <TreeView ItemsSource="{Binding Cases}" Background="Transparent"
+       BorderThickness="0" SelectedItemChanged="Cases_SelectedItemChanged"
+       VirtualizingStackPanel.IsVirtualizing="True"
+       ScrollViewer.HorizontalScrollBarVisibility="Auto"
+       ScrollViewer.VerticalScrollBarVisibility="Auto">
+       <TreeView.Resources>
+        <Style TargetType="{x:Type TreeViewItem}">
+         <Setter Property="IsExpanded" Value="{Binding IsExpanded,Mode=TwoWay}"/>
+         <Setter Property="IsSelected" Value="{Binding IsSelected,Mode=TwoWay}"/>
+         <Setter Property="Padding" Value="4,1"/>
+        </Style>
+       </TreeView.Resources>
+      </TreeView>
+      <TextBlock Text="{Binding CaseListHint}"
+       IsHitTestVisible="False" Foreground="#8A98A6" FontSize="12"
+       TextAlignment="Center" TextWrapping="Wrap"
+       VerticalAlignment="Center" HorizontalAlignment="Center"
+       MaxWidth="350" Margin="12"/>
+     </Grid>
     </Grid>
    </Border>
-   <Border Grid.Column="2" CornerRadius="9" Background="White"
-    BorderBrush="#E0E7EE" BorderThickness="1">
+
+   <Border Grid.Column="2" Background="White" BorderBrush="#DCE4EC"
+    BorderThickness="1" CornerRadius="6">
     <Grid>
-     <Grid.RowDefinitions><RowDefinition Height="43"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-     <Border Grid.Row="0" BorderBrush="#EDF1F5" BorderThickness="0,0,0,1" Padding="13,0">
-      <TextBlock Text="步骤与测量详情" FontSize="14" FontWeight="SemiBold"
-       Foreground="#263644" VerticalAlignment="Center"/>
+     <Grid.RowDefinitions>
+      <RowDefinition Height="39"/>
+      <RowDefinition Height="*"/>
+     </Grid.RowDefinitions>
+     <Border Grid.Row="0" BorderBrush="#E8EDF2" BorderThickness="0,0,0,1">
+      <TextBlock Text="检测信息" FontSize="14" FontWeight="SemiBold"
+       VerticalAlignment="Center" Margin="13,0"/>
      </Border>
      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-      <StackPanel Margin="15,13">
-       <DockPanel LastChildFill="True">
-        <TextBlock DockPanel.Dock="Right" Text="{Binding SelectedState}"
-         Foreground="#2F6FA9" FontWeight="SemiBold" FontSize="12"
-         VerticalAlignment="Center" Margin="8,0,0,0"/>
-        <StackPanel>
-         <TextBlock Text="{Binding SelectedName}" FontSize="17" FontWeight="SemiBold"
-          Foreground="#263644" TextTrimming="CharacterEllipsis"/>
-         <TextBlock Text="{Binding SelectedKind}" FontSize="11"
-          Foreground="#738496" Margin="0,3,0,0"/>
+      <StackPanel Margin="13,12,13,15">
+       <TextBlock Text="当前项目 / 步骤" Style="{StaticResource OperatorFieldCaption}"/>
+       <TextBlock Text="{Binding SelectedName}" FontSize="15"
+        FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,5,0,5"/>
+       <TextBlock Text="{Binding SelectedState}" Foreground="#2E6B9C"
+        FontSize="12" FontWeight="SemiBold"/>
+       <Border Height="1" Background="#E9EEF3" Margin="0,13,0,13"/>
+       <TextBlock Text="实际测量" Style="{StaticResource OperatorFieldCaption}"/>
+       <TextBlock Text="{Binding SelectedActual}" FontSize="17" FontWeight="SemiBold"
+        Foreground="#273C51" TextWrapping="Wrap" Margin="0,5,0,13"/>
+       <TextBlock Text="预期与判据" Style="{StaticResource OperatorFieldCaption}"/>
+       <TextBlock Text="{Binding SelectedExpected}" FontSize="13"
+        TextWrapping="Wrap" Margin="0,5,0,13"/>
+       <TextBlock Text="步骤结果 / 失败原因" Style="{StaticResource OperatorFieldCaption}"/>
+       <TextBlock Text="{Binding SelectedDetail}" TextWrapping="Wrap"
+        Foreground="#344D65" Margin="0,5,0,13"/>
+       <TextBlock Text="时间" Style="{StaticResource OperatorFieldCaption}"/>
+       <TextBlock Text="{Binding SelectedTime}" Foreground="#475F76" Margin="0,4,0,14"/>
+       <Border Height="1" Background="#E9EEF3" Margin="0,0,0,11"/>
+       <TextBlock Text="烧录状态" Style="{StaticResource OperatorFieldCaption}"/>
+       <TextBlock Text="{Binding FlashState}" Foreground="#475F76"
+        FontSize="11" TextWrapping="Wrap" Margin="0,4,0,12"/>
+       <TextBlock Text="自动测试状态" Style="{StaticResource OperatorFieldCaption}"/>
+       <TextBlock Text="{Binding TestState}" Foreground="#475F76"
+        FontSize="11" TextWrapping="Wrap" Margin="0,4,0,12"/>
+       <TextBlock Text="{Binding ProductionReadiness}"
+        Foreground="#778796" FontSize="11" TextWrapping="Wrap"
+        Margin="0,0,0,14"/>
+       <Expander Header="执行证据详情" Foreground="#61758B">
+        <StackPanel Margin="8,7,0,5">
+         <TextBlock Text="观测质量" Style="{StaticResource OperatorFieldCaption}"/>
+         <TextBlock Text="{Binding SelectedQuality}" TextWrapping="Wrap" Margin="0,3,0,8"/>
+         <TextBlock Text="步骤实例 ID" Style="{StaticResource OperatorFieldCaption}"/>
+         <TextBlock Text="{Binding SelectedOccurrence}" TextWrapping="Wrap"
+          FontSize="10" Margin="0,3,0,8"/>
+         <TextBlock Text="证据引用" Style="{StaticResource OperatorFieldCaption}"/>
+         <TextBlock Text="{Binding SelectedEvidence}" TextWrapping="Wrap"
+          FontSize="11" Margin="0,3,0,8"/>
+         <TextBlock Text="运行 ID / 报告" Style="{StaticResource OperatorFieldCaption}"/>
+         <TextBlock Text="{Binding LatestRunId}" TextWrapping="Wrap" FontSize="10"
+          Margin="0,3,0,4"/>
+         <TextBlock Text="{Binding ReportPath}" TextWrapping="Wrap" FontSize="10"/>
         </StackPanel>
-       </DockPanel>
-       <Border Height="1" Background="#E8EDF1" Margin="0,12"/>
-       <Grid>
-        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-        <StackPanel Grid.Column="0">
-         <TextBlock Text="实际观测" Foreground="#778697" FontSize="11"/>
-         <TextBlock Text="{Binding SelectedActual}" FontSize="16" FontWeight="SemiBold"
-          Foreground="#263644" TextWrapping="Wrap" Margin="0,4,8,0"/>
-        </StackPanel>
-        <StackPanel Grid.Column="1">
-         <TextBlock Text="预期／判据" Foreground="#778697" FontSize="11"/>
-         <TextBlock Text="{Binding SelectedExpected}" FontSize="14"
-          Foreground="#263644" TextWrapping="Wrap" Margin="0,4,0,0"/>
-        </StackPanel>
-       </Grid>
-       <TextBlock Text="执行时间" Foreground="#778697" FontSize="11" Margin="0,16,0,3"/>
-       <TextBlock Text="{Binding SelectedTime}" Foreground="#263644"/>
-       <TextBlock Text="真实步骤详情" Foreground="#778697" FontSize="11" Margin="0,16,0,3"/>
-       <TextBlock Text="{Binding SelectedDetail}" Foreground="#42556A"
-        TextWrapping="Wrap"/>
-       <Grid Margin="0,13,0,0">
-        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-        <StackPanel Grid.Column="0">
-         <TextBlock Text="观测质量" Foreground="#778697" FontSize="11"/>
-         <TextBlock Text="{Binding SelectedQuality}" Foreground="#42556A"
-          TextWrapping="Wrap" Margin="0,3,0,0"/>
-        </StackPanel>
-        <StackPanel Grid.Column="1">
-         <TextBlock Text="步骤执行实例" Foreground="#778697" FontSize="11"/>
-         <TextBlock Text="{Binding SelectedOccurrence}" Foreground="#42556A"
-          TextWrapping="Wrap" Margin="0,3,0,0" FontSize="10"/>
-        </StackPanel>
-       </Grid>
-       <TextBlock Text="证据引用" Foreground="#778697" FontSize="11" Margin="0,13,0,3"/>
-       <TextBlock Text="{Binding SelectedEvidence}" Foreground="#42556A"
-        TextWrapping="Wrap" FontSize="11"/>
-       <Border Height="1" Background="#E8EDF1" Margin="0,14,0,11"/>
-       <TextBlock Text="生产前置烧录" FontWeight="SemiBold" Foreground="#263644"/>
-       <TextBlock Text="{Binding FlashState}" TextWrapping="Wrap" Foreground="#657A90"
-        Margin="0,5,0,13"/>
-       <TextBlock Text="测试执行" FontWeight="SemiBold" Foreground="#263644"/>
-       <TextBlock Text="{Binding TestState}" TextWrapping="Wrap" Foreground="#657A90"
-        Margin="0,5,0,13"/>
-       <TextBlock Text="{Binding LatestRunId,StringFormat='研发 RunId  {0}'}"
-        Foreground="#60758B" FontSize="11" TextTrimming="CharacterEllipsis"/>
-       <TextBlock Text="{Binding ReportPath}" Foreground="#60758B"
-        FontSize="11" TextTrimming="CharacterEllipsis"
-        ToolTip="{Binding ReportPath}" Margin="0,5,0,0"/>
+       </Expander>
       </StackPanel>
      </ScrollViewer>
     </Grid>
    </Border>
   </Grid>
 
-  <Border Grid.Row="3" Background="White" CornerRadius="9"
-   BorderBrush="#E0E7EE" BorderThickness="1" Margin="0,10,0,0">
-   <TabControl BorderThickness="0" Background="White" Margin="7,3">
+  <Expander Grid.Row="3" Header="执行日志与 CAN 数据（按需展开）"
+   IsExpanded="False" Margin="0,8,0,0"
+   Background="White" Foreground="#516A81">
+   <TabControl BorderThickness="1" BorderBrush="#DCE4EC"
+    Background="White" Height="212" Margin="0,4,0,0">
     <TabItem Header="执行时间线">
      <DataGrid ItemsSource="{Binding Logs}" AutoGenerateColumns="False"
       IsReadOnly="True" CanUserAddRows="False"
-      HeadersVisibility="Column" RowHeaderWidth="0" RowHeight="27"
+      HeadersVisibility="Column" RowHeaderWidth="0" RowHeight="26"
       BorderThickness="0" GridLinesVisibility="None">
       <DataGrid.Columns>
-       <DataGridTextColumn Header="时间" Binding="{Binding Time}" Width="105"/>
-       <DataGridTextColumn Header="来源" Binding="{Binding Source}" Width="95"/>
+       <DataGridTextColumn Header="时间" Binding="{Binding Time}" Width="112"/>
+       <DataGridTextColumn Header="来源" Binding="{Binding Source}" Width="100"/>
        <DataGridTextColumn Header="事件" Binding="{Binding Event}" Width="160"/>
        <DataGridTextColumn Header="真实信息" Binding="{Binding Detail}" Width="*"/>
-       <DataGridTextColumn Header="步骤实例 ID" Binding="{Binding Occurrence}" Width="185"/>
+       <DataGridTextColumn Header="步骤实例 ID" Binding="{Binding Occurrence}" Width="200"/>
       </DataGrid.Columns>
      </DataGrid>
     </TabItem>
-    <TabItem Header="CAN 实时事件">
+    <TabItem Header="CAN 帧">
      <DataGrid ItemsSource="{Binding CanRecords}" AutoGenerateColumns="False"
       IsReadOnly="True" CanUserAddRows="False"
-      HeadersVisibility="Column" RowHeaderWidth="0" RowHeight="27"
+      HeadersVisibility="Column" RowHeaderWidth="0" RowHeight="26"
       BorderThickness="0" GridLinesVisibility="None">
       <DataGrid.Columns>
-       <DataGridTextColumn Header="时间" Binding="{Binding Time}" Width="110"/>
-       <DataGridTextColumn Header="通道" Binding="{Binding Port}" Width="120"/>
-       <DataGridTextColumn Header="CAN ID" Binding="{Binding Id}" Width="100"/>
+       <DataGridTextColumn Header="时间" Binding="{Binding Time}" Width="120"/>
+       <DataGridTextColumn Header="通道" Binding="{Binding Port}" Width="105"/>
+       <DataGridTextColumn Header="CAN ID" Binding="{Binding Id}" Width="105"/>
        <DataGridTextColumn Header="完整帧 DATA" Binding="{Binding Data}" Width="*"/>
-       <DataGridTextColumn Header="丢帧计数" Binding="{Binding Lost}" Width="95"/>
+       <DataGridTextColumn Header="丢帧" Binding="{Binding Lost}" Width="80"/>
       </DataGrid.Columns>
      </DataGrid>
     </TabItem>
    </TabControl>
-  </Border>
+  </Expander>
  </Grid>
 </UserControl>
