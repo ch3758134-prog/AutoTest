@@ -22,13 +22,15 @@ public partial class ProjectExplorerView : UserControl
             // Section/root selections must not leave a stale asset selected:
             // the context menu could otherwise rename/remove the previous resource.
             vm.SelectResource(null);
-            if (node.Role == "Root") vm.ShowOverview();
+            // The project root and inspection setup are both stable entry
+            // points into the genuine, editable engineering setup workbench.
+            if (node.Role is "Root" or "Setup")
+                vm.ShowProjectConfiguration();
             return;
         }
         vm.SelectResource(node);
-        // The standalone DBC editor is deliberately opened on double-click or
-        // explicit command. A single tree selection must not spawn a modal tool.
-        if (node.Asset.Kind == ProjectWorkspaceService.DbcKind) return;
+        // Each real resource opens on one click. The DBC workbench is an
+        // owned nonmodal tool window, not a modal dialog.
         try { await vm.OpenSelectedResourceAsync(); }
         catch (Exception ex) { UiExceptionReporter.Record("Explorer / open asset", ex); }
     }
@@ -48,6 +50,11 @@ public partial class ProjectExplorerView : UserControl
                 yield return root;
                 foreach (var child in All(root.Children)) yield return child;
             }
+        }
+        if ("检测准备".Contains(query, StringComparison.CurrentCultureIgnoreCase))
+        {
+            vm.ShowProjectConfiguration();
+            return;
         }
         var found = All(vm.ResourceNodes).FirstOrDefault(n => n.Asset is not null &&
             (n.Label.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
