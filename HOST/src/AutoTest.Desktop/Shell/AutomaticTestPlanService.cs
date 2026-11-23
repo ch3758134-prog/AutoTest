@@ -1,7 +1,4 @@
 using System.IO;
-using System.Security.Cryptography;
-using System.Text;
-using System.Text.Json;
 using AutoTest.Core;
 using AutoTest.Desktop.Projects;
 using AutoTest.Projects.Project;
@@ -9,7 +6,7 @@ using AutoTest.Testing.Authoring;
 
 namespace AutoTest.Desktop.Shell;
 
-/// <summary>One real test case from the operator's independently selected ECU project.</summary>
+/// <summary>An ordered entry from the same canonical ECU TEST project.</summary>
 public sealed record AutomaticTestCase(string Index, string Name, TestDocumentId DocumentId,
     string State = "未执行");
 
@@ -17,24 +14,21 @@ public sealed record AutomaticTestPlan(OpenProjectContext Project,
     IReadOnlyList<AutomaticTestCase> Cases)
 {
     public IReadOnlyList<string> ResourceIssues { get; init; } = [];
-    public bool ResourceReady => Cases.Count > 0 && ResourceIssues.Count == 0;
+    public string DeploymentFingerprint { get; init; } = "";
+    public bool ResourceReady => Cases.Count > 0 && ResourceIssues.Count == 0 &&
+        DeploymentFingerprint.Length == 64;
 }
 
 /// <summary>
-/// The AUTOMATIC TEST plan is NOT the active project in the developer workbench.
-/// Its selection is saved in a separate operator-local setting, verified on each
-/// restore, and never modifies ProjectWorkspaceService.Current or recent IDE files.
-/// No hardware command, test execution or fake evidence is produced here.
+/// One station deployment of the engineer's canonical ECU project. No separate
+/// operator recipe, test-scope selection or silent adoption of editor drafts.
+/// A station deployment pins the exact manifest, TEST, FLASH and fixture
+/// procedure. It is configuration deployment, NOT physical readiness or PASS.
 /// </summary>
 public sealed class AutomaticTestPlanService
 {
-    private sealed record LocalSettings(int Version, string ManifestPath);
-    private static readonly string SettingsPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "AutoTest", "automatic-test-plan.json");
-
     public AutomaticTestPlan? Current { get; private set; }
-    public string Issue { get; private set; } = "尚未选择自动测试方案";
+    public string Issue { get; private set; } = "本工位尚未部署 ECU 检测工程";
     public string? ConfiguredPath { get; private set; }
     public event EventHandler? Changed;
 
@@ -42,95 +36,54 @@ public sealed class AutomaticTestPlanService
     {
         try
         {
-            if (!File.Exists(SettingsPath))
+            var verified = await StationDeploymentStore.RestoreAsync(ct)
+                .ConfigureAwait(false);
+            if (verified is null)
             {
                 Current = null;
                 ConfiguredPath = null;
-                Issue = "尚未配置自动测试方案";
-                Changed?.Invoke(this, EventArgs.Empty);
-                return;
+                Issue = "尚未部署正式 ECU 工程。请在开发与调试中核对并部署当前工程。";
             }
-            var settings = JsonSerializer.Deserialize<LocalSettings>(
-                await File.ReadAllTextAsync(SettingsPath, ct))
-                ?? throw new InvalidDataException("自动测试方案设置为空");
-            if (settings.Version != 1 || string.IsNullOrWhiteSpace(settings.ManifestPath))
-                throw new InvalidDataException("自动测试方案设置格式无效");
-            ConfiguredPath = settings.ManifestPath;
-            Current = await VerifyAsync(settings.ManifestPath, ct);
-            Issue = string.Join("；", Current.ResourceIssues);
+            else
+            {
+                Current = Map(verified);
+                ConfiguredPath = verified.Project.ManifestPath;
+                Issue = "";
+            }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or
-                                      InvalidDataException or ArgumentException or
-                                      NotSupportedException or JsonException or FormatException or
-                                      ProjectDataException)
+            InvalidDataException or ArgumentException or NotSupportedException or
+            System.Text.Json.JsonException or FormatException or ProjectDataException)
         {
+            // A former deployment remains on disk for explicit repair; never
+            // fall back to the old operator-selected plan or an IDE draft.
             Current = null;
-            Issue = "已配置的自动测试方案不可用：" + error.Message;
+            Issue = "已部署工程不可执行：" + error.Message;
         }
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
-    public async Task SelectAsync(string path, CancellationToken ct = default)
+    public async Task DeployAsync(OpenProjectContext engineerProject,
+        CancellationToken ct = default)
     {
-        // First validate the new selection. An invalid file must not overwrite
-        // the last known-good operator setup.
-        try
-        {
-            var verified = await VerifyAsync(path, ct);
-            var full = Path.GetFullPath(path);
-            var directory = Path.GetDirectoryName(SettingsPath)!;
-            Directory.CreateDirectory(directory);
-            var pending = SettingsPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
-            try
-            {
-                var json = JsonSerializer.Serialize(new LocalSettings(1, full));
-                await File.WriteAllTextAsync(pending, json, Encoding.UTF8, ct);
-                File.Move(pending, SettingsPath, overwrite: true);
-            }
-            finally
-            {
-                if (File.Exists(pending))
-                    try { File.Delete(pending); }
-                    catch (IOException) { /* Failed deletion never means the plan was selected. */ }
-            }
-            ConfiguredPath = full;
-            Current = verified;
-            Issue = string.Join("；", verified.ResourceIssues);
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException or
-                                      InvalidDataException or ArgumentException or
-                                      NotSupportedException or JsonException or FormatException or
-                                      ProjectDataException)
-        {
-            Issue = "无法使用所选自动测试方案：" + error.Message;
-            // Preserve Current and ConfiguredPath; no speculative switching.
-        }
+        // A failed validation must leave the previous valid deployment intact.
+        var verified = await StationDeploymentStore.DeployAsync(engineerProject, ct);
+        Current = Map(verified);
+        ConfiguredPath = verified.Project.ManifestPath;
+        Issue = "";
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
-    private static async Task<AutomaticTestPlan> VerifyAsync(string path, CancellationToken ct)
+    private static AutomaticTestPlan Map(StationDeploymentStore.Verified verified)
     {
-        if (string.IsNullOrWhiteSpace(path))
-            throw new InvalidDataException("请选择自动测试方案文件");
-        var full = Path.GetFullPath(path);
-        if (!File.Exists(full))
-            throw new FileNotFoundException("测试方案文件不存在", full);
-        var definition = await ProjectRepository.OpenDefinitionAsync(full, ct);
-        var manifestSha = Convert.ToHexString(SHA256.HashData(
-            await File.ReadAllBytesAsync(full, ct)));
-        var project = new OpenProjectContext(definition, full, manifestSha);
-        // Open incomplete projects for review, but do not authorize execution.
-        // The production preflight uses the same exact TEST resource closure.
-        var resolved = await AutomaticTestResourceContract.ResolveAsync(project, ct);
-        var cases = resolved.Cases.Select((item, i) =>
+        var cases = verified.Test.Cases.Select((item, i) =>
             new AutomaticTestCase((i + 1).ToString("D2"),
                 item.Entry.DisplayName, item.Program.Id)).ToArray();
-        return new AutomaticTestPlan(project, cases)
+        return new(verified.Project, cases)
         {
-            ResourceIssues = resolved.Issues
+            DeploymentFingerprint = verified.Pin.ManifestSha256,
+            ResourceIssues = verified.Test.Issues
         };
     }
-
 }
