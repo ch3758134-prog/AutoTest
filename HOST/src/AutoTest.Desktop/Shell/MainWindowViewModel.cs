@@ -182,6 +182,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         OpenFirstTestProgramCommand = new DelegateCommand(async () => await OpenFirstAssetAsync(
             ProjectWorkspaceService.TestProgramKind, CreateTestProgramAsync));
         OpenProjectConfigurationOverviewCommand = new DelegateCommand(ShowProjectConfiguration);
+        RefreshEngineeringSetupCommand = new DelegateCommand(async () => await RefreshEngineeringSetupAsync());
         OpenTcfCommand = new DelegateCommand(async () => await OpenConfigurationKindAsync(
             ProjectWorkspaceService.TestConfigurationKind));
         OpenControllerCommand = new DelegateCommand(async () => await OpenConfigurationKindAsync(
@@ -281,6 +282,7 @@ public sealed partial class MainWindowViewModel : BindableBase
                 }
             }
             RefreshCommands();
+            _ = RefreshEngineeringSetupAsync();
         };
         RebuildResourceTree();
         RaiseStartStateChanged();
@@ -448,7 +450,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         }
         if (IsAlreadyOpen("config-overview")) return;
         var view = new ProjectConfigurationOverviewView(this, _workspace, _fileDialogs);
-        ActivateEditor("config-overview", view, "工程配置", view.ConfirmClose);
+        ActivateEditor("config-overview", view, "检测准备 · " + CurrentProjectName, view.ConfirmClose);
     }
 
     private bool _openingFlashLab;
@@ -1657,6 +1659,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         if (!opened) return;
         // A recent DBC is not auto-opened as a modal window on startup.
         await RestoreRecentEditorAsync();
+        if (OpenEditors.Count == 0) ShowProjectConfiguration();
         timer.Stop();
         StatusMessage = "工程打开完成 · " + Path.GetFileName(path) +
             " · " + timer.ElapsedMilliseconds + " ms";
