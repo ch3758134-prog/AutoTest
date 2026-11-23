@@ -11,7 +11,7 @@
  </UserControl.Resources>
  <Grid Margin="11,10,11,11">
   <Grid.RowDefinitions>
-   <RowDefinition Height="68"/>
+   <RowDefinition Height="88"/>
    <RowDefinition Height="Auto"/>
    <RowDefinition Height="*"/>
   </Grid.RowDefinitions>
@@ -28,6 +28,9 @@
      <TextBlock Text="ECU 编号" Style="{StaticResource SmallCaption}"/>
      <TextBlock Text="{Binding DutSerial}" FontSize="17" FontWeight="SemiBold"
       Foreground="#273C50" Margin="0,4,8,0" TextTrimming="CharacterEllipsis"/>
+     <TextBlock Text="{Binding ScanStatus}" FontSize="11" Foreground="#75889A"
+      TextTrimming="CharacterEllipsis" TextWrapping="Wrap" MaxHeight="30"
+      Margin="0,4,12,0"/>
     </StackPanel>
     <StackPanel Grid.Column="1">
      <TextBlock Text="ECU 型号" Style="{StaticResource SmallCaption}"/>
