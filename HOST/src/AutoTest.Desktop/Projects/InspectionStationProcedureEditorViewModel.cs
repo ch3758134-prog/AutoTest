@@ -45,7 +45,17 @@ public sealed class InspectionStationProcedureEditorViewModel : BindableBase
     private bool _closed;
     public ObservableCollection<ActionEdit> BeforeStart { get; } = new();
     public ObservableCollection<ActionEdit> AfterFinish { get; } = new();
-    public IReadOnlyList<string> ActionKinds { get; } = InspectionStationAction.Kinds;
+    public sealed record ActionChoice(string Kind, string Label);
+    public IReadOnlyList<ActionChoice> ActionOptions { get; } =
+    [
+        new("Wait", "仅等待"),
+        new("Clamp1Press", "夹具1 · 压紧"),
+        new("Clamp1Release", "夹具1 · 释放"),
+        new("Clamp2Press", "夹具2 · 压紧"),
+        new("Clamp2Release", "夹具2 · 释放"),
+        new("IgnOn", "IGN · ON"),
+        new("IgnOff", "IGN · OFF")
+    ];
     public string SaveStatus
     {
         get => _saveStatus;
