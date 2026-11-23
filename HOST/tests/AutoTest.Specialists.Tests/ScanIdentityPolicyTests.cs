@@ -24,7 +24,11 @@ public sealed class ScanIdentityPolicyTests
     {
         var unbound = new ScanIdentityPolicy(1, ScanIdentityPolicy.SerialOnly,
             "-", null, 8, 20);
-        Assert.Equal("SCAN_POLICY_INVALID", unbound.Decode("000000123456").Code);
+        // The scanner does not maintain its own ECU-model registration. The
+        // explicit current project supplies the model at the product boundary.
+        unbound.Validate();
+        Assert.Equal("SCAN_PROJECT_MODEL_REQUIRED",
+            unbound.Decode("000000123456").Code);
         var bound = unbound with { FixedModelCode = "HYDEPB" };
         var result = bound.Decode("000000123456");
         Assert.True(result.Parsed);
