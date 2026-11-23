@@ -173,6 +173,23 @@ public sealed class ProductionOrchestrationTests
     }
 
     [Fact]
+    public async Task DurableGenericUnknownCommitCannotBecomePhysicalDutPass()
+    {
+        var config = Config(flash: true);
+        var session = Matched(config);
+        var job = session.Confirm(config, new RuleRevision(_hash),
+            new ProjectRevision(1), Station(false, AuthorizationScope.Programming).Station,
+            isMock: false).Value!;
+        var test = new ProductionStageResult(Outcome.Accepted, Verdict.Pass,
+            "CLAIMED_PASS", false, ImmutableArray<EvidenceRef>.Empty);
+        var result = await new ProductionResultCoordinator(new FakeSink(true))
+            .FinalizeAsync(job, test, CancellationToken.None);
+        Assert.Equal("PRODUCTION_VERIFIED_RECORD_COMMIT_NOT_CONNECTED", result.Code);
+        Assert.Equal(Verdict.Inconclusive, result.Verdict);
+        Assert.False(result.PhysicalReleaseAllowed);
+    }
+
+    [Fact]
     public async Task RealProduction_NeverContinuesToTestWithoutPhysicalFlashEvidence()
     {
         var configuration = Config(flash: true);
