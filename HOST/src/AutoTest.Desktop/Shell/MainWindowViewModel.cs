@@ -183,6 +183,7 @@ public sealed partial class MainWindowViewModel : BindableBase
             ProjectWorkspaceService.TestProgramKind, CreateTestProgramAsync));
         OpenProjectConfigurationOverviewCommand = new DelegateCommand(ShowProjectConfiguration);
         RefreshEngineeringSetupCommand = new DelegateCommand(async () => await RefreshEngineeringSetupAsync());
+        ReadEngineeringClampGpioCommand = new DelegateCommand(async () => await ReadEngineeringClampGpioAsync());
         OpenTcfCommand = new DelegateCommand(async () => await OpenConfigurationKindAsync(
             ProjectWorkspaceService.TestConfigurationKind));
         OpenControllerCommand = new DelegateCommand(async () => await OpenConfigurationKindAsync(
