@@ -23,7 +23,8 @@ public partial class ProjectOverviewView : UserControl
             {
                 // A project overview cannot prevent the user from editing.
                 // The full check surface can be retried after resource repair.
-                viewModel.StatusMessage = "工程配置检查未完成：" + error.Message;
+                AutoTest.Desktop.Diagnostics.UiExceptionReporter.Record(
+                    "ECU engineering project overview", error);
             }
         };
     }
