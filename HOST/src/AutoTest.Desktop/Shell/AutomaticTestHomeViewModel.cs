@@ -26,7 +26,31 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     private EngineeringTestProjectPreview? _draftPreview;
     private string _draftIssue = "";
     private long _previewVersion;
-    private string _startRequestStatus = "请完成工程与工位准备。软件 START 和实体 START 共享同一检测启动入口。";
+    private string _startRequestStatus = "正式生产执行器尚未接通；可检查工程、扫码和工位的具体准备问题。";
+    private string _inspectedNode = "点击左侧用例或展开步骤，查看本工程的完整检测结构。";
+    private string _inspectedStatus = "只读结构预览，未执行任何实体检测。";
+    public string InspectedNode { get => _inspectedNode; private set => SetProperty(ref _inspectedNode, value); }
+    public string InspectedStatus { get => _inspectedStatus; private set => SetProperty(ref _inspectedStatus, value); }
+    public void SelectOperatorNode(object? selected)
+    {
+        switch (selected)
+        {
+            case AutomaticTestCase testCase:
+                InspectedNode = testCase.Name;
+                InspectedStatus = "测试用例 · " + testCase.Children.Count +
+                    " 个顶层步骤 · " + testCase.State + "。实际结果仅能由正式执行器产生。";
+                break;
+            case AutomaticTestStep step:
+                InspectedNode = step.Name;
+                InspectedStatus = "步骤 · " + step.State +
+                    "。点击只是查看结构，不会更改工程或发送硬件命令。";
+                break;
+            default:
+                InspectedNode = "点击左侧用例或展开步骤，查看本工程的完整检测结构。";
+                InspectedStatus = "只读结构预览，未执行任何实体检测。";
+                break;
+        }
+    }
 
     public AutomaticTestHomeViewModel(AutomaticTestPlanService plans,
         HardwareConnectionService hardware,
@@ -61,16 +85,32 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         get => _startRequestStatus;
         private set => SetProperty(ref _startRequestStatus, value);
     }
-    public string PhysicalStartStatus => "实体 START：未接线／未验证（已保留统一启动入口）";
-    public string StartInputHint => "软件按钮或实体按键均可发起同一次检测；运行中与未复位时不会再次启动。";
+    public string PhysicalStartStatus => "实体 START：缺少已验证的独立输入接线，不接受虚拟按键代替。";
+    public string StartInputHint =>
+        "正式启动必须进入唯一 RunId 仲裁，再执行工程夹具工艺、必经 FLASH、完整 TEST 与 RECORD；本页面尚未具备此运行授权。";
 
     private void RequestSoftwareStart()
     {
-        // R1 operator UX: START is always clickable. Until the production
-        // FLASH -> TEST -> RECORD adapter is connected, clicking is a silent
-        // no-op (no popup, no grey-out, no fake RUN or status mutation).
-        // The one-shot gate in ProductionCommandHandler must remain the only
-        // authority once physical execution is connected.
+        // A readiness query is not a START. Until a verified production
+        // adapter and durable RunId record are wired, NEVER issue CAN/FLASH,
+        // claim a START edge, fabricate progress or return PASS.
+        if (_plans.Current is not { } plan)
+            StartRequestStatus = "不能启动：尚未部署并核对正式 ECU 工程。请进入开发与调试完成配置并部署。";
+        else if (!plan.ResourceReady)
+            StartRequestStatus = "不能启动：已部署工程存在资源或有序用例问题，请先修复部署。";
+        else if (!_scanner.IsConnected)
+            StartRequestStatus = "不能启动：工位扫码枪尚未建立真实串口会话。";
+        else if (_prepared is null || string.IsNullOrWhiteSpace(_lastIdentity))
+            StartRequestStatus = "不能启动：尚未接受本次 ECU 的真实扫码并冻结完整工程资源。";
+        else if (!_hardware.IsConnected)
+            StartRequestStatus = "不能启动：USB 主控未连接。";
+        else if (!_hardware.IsEcuCanBitrateApplied)
+            StartRequestStatus = "不能启动：ECU CAN 波特率尚未确认应用，" +
+                _hardware.EcuCanBitrateStatus;
+        else
+            StartRequestStatus = "配置与身份已核对，但尚缺真实工位准备、" +
+                "软件/实体 START 仲裁、FLASH→全量 TEST→RECORD 的生产执行适配器。" +
+                "本按钮不会假执行或生成 PASS；请继续在工程与调试中进行真实专项验证。";
     }
     public bool IsBusy
     {
@@ -150,7 +190,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     private void OnPlanChanged(object? sender, EventArgs e)
     {
         InvalidateScan("正式工程加载或更新后，需要重新核对本次 ECU 的真实扫码身份。");
-        StartRequestStatus = "正式检测需要完整配置、扫码与实体工位确认。";
+        StartRequestStatus = "本次部署已变化：请重新完成扫码与工位核对；正式执行器尚未接通。";
         RebuildCases();
         UpdateConnection();
     }
@@ -189,6 +229,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     private void RebuildCases()
     {
         Cases.Clear();
+        SelectOperatorNode(null);
         if (_plans.Current is { } deployed)
         {
             foreach (var item in deployed.Cases) Cases.Add(item);
