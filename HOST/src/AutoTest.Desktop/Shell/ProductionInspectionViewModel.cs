@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using AutoTest.Core;
 using AutoTest.Desktop.Projects;
+using AutoTest.Desktop.Hardware;
 using AutoTest.Desktop.Testing;
 using AutoTest.Projects.Project;
 using AutoTest.Projects.Resources;
@@ -77,6 +78,7 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
     private readonly ProjectWorkspaceService _workspace;
     private readonly SerialScannerWorkbenchViewModel _scanner;
     private readonly RealTestWorkbenchService _realTest;
+    private readonly HardwareConnectionService _hardware;
     private readonly Action _openScanner;
     private readonly Dictionary<StepId, List<ProductionInspectionNode>> _stepIndex = new();
     private readonly Dictionary<TestDocumentId, List<ProductionInspectionNode>> _caseIndex = new();
@@ -84,6 +86,10 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
     private int _scanGeneration;
     private string? _lastProjectPath;
     private string _projectName = "未打开 ECU 工程";
+    private string _setupIssue = "尚未配置有效的 ECU 测试工程";
+    private bool _loadingCases;
+    private bool _developerRunActive;
+    private string _currentCaseName = "";
     private string _modelCode = "—";
     private string _dutSerial = "等待扫码";
     private string _phase = "等待工程及扫码";
@@ -98,13 +104,15 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
 
     public ProductionInspectionViewModel(ProjectWorkspaceService workspace,
         SerialScannerWorkbenchViewModel scanner,
-        RealTestWorkbenchService realTest,
+        RealTestWorkbenchService realTest, HardwareConnectionService hardware,
         ObservableCollection<MainWindowViewModel.CanMonitorRow> canRecords,
         Action openScanner)
     {
         _workspace = workspace;
         _scanner = scanner;
         _realTest = realTest;
+        _hardware = hardware;
+        _hardware.ConnectionChanged += OnHardwareConnectionChanged;
         _openScanner = openScanner;
         CanRecords = canRecords;
         OpenScannerCommand = new DelegateCommand(_openScanner);
@@ -139,8 +147,44 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
     public string ReportPath { get => _reportPath; private set => SetProperty(ref _reportPath, value); }
     public int ObservedStepCount { get => _observedStepCount; private set => SetProperty(ref _observedStepCount, value); }
     public int EnabledCaseCount => Cases.Count;
-    public string CaseListHint => Cases.Count == 0
-        ? "尚未加载可执行用例。\n请先在“开发与调试”中打开并配置 ECU 工程。" : "";
+    // The ordinary operator display never presents the project file's internal
+    // name, revision, provenance, debug branch, or reference/trace identifiers.
+    public string CurrentCaseName => string.IsNullOrWhiteSpace(_currentCaseName) ? "—" : _currentCaseName;
+    public string CurrentStepName => Selected?.Step is not null ? Selected.Name : "—";
+    public string CurrentStepStatus => Selected?.Step is not null ? Selected.State : "未执行";
+    public string CurrentMeasurement => Selected?.Step is not null && !string.IsNullOrWhiteSpace(Selected.Actual)
+        ? Selected.Actual : "—";
+    public string CurrentExpected => Selected?.Step is not null && !string.IsNullOrWhiteSpace(Selected.Expected)
+        ? Selected.Expected : "—";
+    public string CurrentFailure => Selected?.Step is not null && !string.IsNullOrWhiteSpace(Selected.Detail)
+        ? Selected.Detail : "—";
+    public string StatusSummary => _developerRunActive
+        ? "开发调试执行中（非正式自动测试）"
+        : !string.IsNullOrWhiteSpace(_setupIssue) ? "测试配置未就绪"
+        : _loadingCases ? "正在读取测试项目"
+        : !_hardware.IsConnected ? "主控未连接"
+        : !_scanner.IsConnected ? "扫码设备未连接"
+        : "自动执行功能尚未接通";
+    public string CaseListHint => Cases.Count != 0 ? "" : _loadingCases
+        ? "正在读取测试用例…" : _setupIssue + "\n请通过右上角“开发与调试”处理。";
+    public string OperatorNotice => !string.IsNullOrWhiteSpace(_setupIssue)
+        ? _setupIssue : _developerRunActive
+        ? "当前显示的是开发调试运行，不能作为 ECU 正式检测结果。"
+        : "正式自动测试执行链尚未接通，不能据此作出合格结论。";
+    private void NotifyOperatorDisplay()
+    {
+        RaisePropertyChanged(nameof(EnabledCaseCount));
+        RaisePropertyChanged(nameof(CaseListHint));
+        RaisePropertyChanged(nameof(StatusSummary));
+        RaisePropertyChanged(nameof(OperatorNotice));
+        RaisePropertyChanged(nameof(CurrentCaseName));
+        RaisePropertyChanged(nameof(CurrentStepName));
+        RaisePropertyChanged(nameof(CurrentStepStatus));
+        RaisePropertyChanged(nameof(CurrentMeasurement));
+        RaisePropertyChanged(nameof(CurrentExpected));
+        RaisePropertyChanged(nameof(CurrentFailure));
+    }
+    private void OnHardwareConnectionChanged(long _) => OnUi(NotifyOperatorDisplay);
 
     public ProductionInspectionNode? Selected
     {
@@ -182,6 +226,7 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
         RaisePropertyChanged(nameof(SelectedOccurrence));
         RaisePropertyChanged(nameof(SelectedEvidence));
         RaisePropertyChanged(nameof(SelectedQuality));
+        NotifyOperatorDisplay();
     }
 
     private static void OnUi(Action action)
@@ -209,6 +254,8 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
             LatestRunId = "—";
             ReportPath = "";
             ObservedStepCount = 0;
+            _developerRunActive = false;
+            _currentCaseName = "";
             Logs.Clear();
         }
         _ = RefreshAsync();
@@ -218,6 +265,8 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
     {
         var version = Interlocked.Increment(ref _refreshGeneration);
         var opened = _workspace.Current;
+        _loadingCases = opened is not null;
+        NotifyOperatorDisplay();
         if (opened is null)
         {
             OnUi(() =>
@@ -229,9 +278,10 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
                 Selected = null;
                 ProjectName = "未打开 ECU 工程";
                 ModelCode = "—";
-                RaisePropertyChanged(nameof(EnabledCaseCount));
-                RaisePropertyChanged(nameof(CaseListHint));
-                ProductionReadiness = "请打开对应 ECU 型号的工程";
+                _loadingCases = false;
+                _setupIssue = "尚未打开 ECU 工程";
+                ProductionReadiness = "请在开发与调试中打开 ECU 工程";
+                NotifyOperatorDisplay();
             });
             return;
         }
@@ -249,6 +299,8 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
                 Selected = null;
                 ProjectName = opened.Definition.Name;
                 ModelCode = opened.Definition.EcuModelCode;
+                _loadingCases = false;
+                _setupIssue = "";
                 var caseIndex = 0;
                 foreach (var source in sources)
                 {
@@ -272,8 +324,7 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
                         _caseIndex[source.Document.Id] = roots = new();
                     roots.Add(root);
                 }
-                RaisePropertyChanged(nameof(EnabledCaseCount));
-                RaisePropertyChanged(nameof(CaseListHint));
+                NotifyOperatorDisplay();
                 AddLog("工程", "用例树已核对", "读取 " + Cases.Count +
                     " 个 Enabled 用例；未执行任何设备动作");
             });
@@ -291,9 +342,10 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
                 Selected = null;
                 ProjectName = opened.Definition.Name;
                 ModelCode = opened.Definition.EcuModelCode;
-                ProductionReadiness = "当前工程测试树不可用：" + error.Message;
-                RaisePropertyChanged(nameof(EnabledCaseCount));
-                RaisePropertyChanged(nameof(CaseListHint));
+                _loadingCases = false;
+                _setupIssue = error.Message;
+                ProductionReadiness = "测试配置不可用：" + error.Message;
+                NotifyOperatorDisplay();
                 AddLog("工程", "读取失败", error.Message);
             });
         }
@@ -325,12 +377,18 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
         var assets = opened.Definition.Assets;
         var projects = assets.Where(a =>
             a.Kind == ProjectWorkspaceService.TestProjectKind).ToArray();
-        if (projects.Length != 1)
-            throw new InvalidDataException("工程须有且只有一个当前 TEST 项目，才能显示用例顺序。");
+        if (projects.Length == 0)
+            throw new InvalidDataException("当前工程未建立测试项目，也没有可执行用例");
+        if (projects.Length > 1)
+            throw new InvalidDataException("当前工程登记了多个测试项目，无法确定本次执行用例");
         var projectAsset = projects[0];
         var bytes = await ReadPinnedAssetAsync(opened.RootDirectory,
             projectAsset.RelativePath, projectAsset.Sha256, ct);
         var testProject = TestProjectCodec.Decode(bytes);
+        if (!testProject.Packages.Any())
+            throw new InvalidDataException("当前测试项目尚未关联任何测试用例");
+        if (!testProject.Packages.Any(p => p.Enabled))
+            throw new InvalidDataException("当前测试项目的用例全部未启用");
         var result = new List<VerifiedCase>();
         foreach (var entry in testProject.Packages.Where(p => p.Enabled))
         {
@@ -364,7 +422,7 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
     {
         if (e.PropertyName is nameof(SerialScannerWorkbenchViewModel.IsConnected) or
             nameof(SerialScannerWorkbenchViewModel.ConnectedPort))
-            OnUi(() => RaisePropertyChanged(nameof(ScannerStatus)));
+            OnUi(() => { RaisePropertyChanged(nameof(ScannerStatus)); NotifyOperatorDisplay(); });
         if (e.PropertyName != nameof(SerialScannerWorkbenchViewModel.LastDecision)) return;
         OnUi(() =>
         {
@@ -433,7 +491,10 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
 
     private void OnDevelopmentRunStarted(TestDocumentId id, string name) => OnUi(() =>
     {
+        _developerRunActive = true;
+        _currentCaseName = name;
         MonitorMode = "研发 TEST 实时观察 · 仅为开发调试观察";
+        NotifyOperatorDisplay();
         TestState = "开发 TEST 已开始：" + name;
         Phase = "观察研发 TEST";
         if (_caseIndex.TryGetValue(id, out var matches) && matches.Count == 1)
@@ -498,7 +559,9 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
         if (_caseIndex.TryGetValue(id, out var matches) && matches.Count == 1)
             matches[0].State = "研发" + VerdictLabel(result.Verdict);
         NotifySelectedReadout();
+        _developerRunActive = false;
         MonitorMode = "研发 TEST 完成 · 不作为正式检测结果";
+        NotifyOperatorDisplay();
         LatestRunId = result.Run.Value.ToString("D");
         ReportPath = result.EvidencePath ?? "";
         TestState = "研发 TEST 结束：" + VerdictLabel(result.Verdict);
@@ -511,7 +574,9 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
     {
         if (_caseIndex.TryGetValue(id, out var matches) && matches.Count == 1)
             matches[0].State = "研发执行异常";
+        _developerRunActive = false;
         MonitorMode = "研发 TEST 异常 · 不作为正式检测结果";
+        NotifyOperatorDisplay();
         TestState = "研发 TEST 异常：" + error;
         Phase = "运行异常";
         AddLog("TEST", "研发执行异常", error);
@@ -557,6 +622,7 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
     {
         _workspace.CurrentChanged -= OnProjectChanged;
         _scanner.PropertyChanged -= OnScannerPropertyChanged;
+        _hardware.ConnectionChanged -= OnHardwareConnectionChanged;
         _realTest.StepBegan -= OnStepBegan;
         _realTest.StepReported -= OnStepReported;
         _realTest.DevelopmentRunStarted -= OnDevelopmentRunStarted;
