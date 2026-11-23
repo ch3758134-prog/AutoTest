@@ -65,9 +65,9 @@ public static class StepUiCatalog
         _ => p.ToString()
     };
 
-    // Only formal authoring parameters belong in the operator's step inspector.
-    // Legacy import fingerprints, runtime bookkeeping and unknown keys remain in
-    // the StepNode data so applying an edit never destroys imported evidence.
+    // Only formal TEST authoring parameters are displayed in the step inspector.
+    // Unknown keys remain as data, but never create special step categories or
+    // additional execution gates. Step validity comes from the TEST contracts.
     public static bool IsOperatorProperty(string key) => key switch
     {
         "milliseconds" or "count" or "variable" or "equals" or "value" or
@@ -81,10 +81,6 @@ public static class StepUiCatalog
         _ => false
     };
 
-    public static bool RequiresLegacyReview(StepNode node) =>
-        node.Properties.Any(pair =>
-            pair.Key.Equals("legacy.importStatus", StringComparison.OrdinalIgnoreCase) &&
-            pair.Value.Contains("BLOCKED", StringComparison.OrdinalIgnoreCase));
 
     public static string PropertyLabel(string key) => key switch
     {
