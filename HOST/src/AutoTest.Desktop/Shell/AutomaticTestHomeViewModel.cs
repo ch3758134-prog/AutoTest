@@ -86,7 +86,7 @@ public sealed class AutomaticTestHomeViewModel : BindableBase, IDisposable
         if (_plans.ConfiguredPath is { Length: > 0 } previous &&
             Directory.Exists(Path.GetDirectoryName(previous)))
             picker.InitialDirectory = Path.GetDirectoryName(previous);
-        if (picker.ShowDialog(Application.Current?.MainWindow) != true) return;
+        if (picker.ShowDialog(global::System.Windows.Application.Current?.MainWindow) != true) return;
         IsBusy = true;
         try { await _plans.SelectAsync(picker.FileName); }
         finally { IsBusy = false; }
@@ -108,7 +108,7 @@ public sealed class AutomaticTestHomeViewModel : BindableBase, IDisposable
 
     private void OnConnectionChanged(long _)
     {
-        var dispatcher = Application.Current?.Dispatcher;
+        var dispatcher = global::System.Windows.Application.Current?.Dispatcher;
         if (dispatcher is null || dispatcher.CheckAccess()) UpdateConnection();
         else dispatcher.BeginInvoke(new Action(UpdateConnection));
     }
