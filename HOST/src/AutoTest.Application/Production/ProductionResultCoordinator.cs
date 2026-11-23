@@ -9,6 +9,21 @@ public sealed record ProductionStageResult(Outcome Outcome, Verdict Verdict, str
 public sealed record ProductionRunResult(RunId Run, ProductionState State,
     Verdict Verdict, bool Durable, bool PhysicalReleaseAllowed, string Code);
 
+/// <summary>
+/// The formal production RECORD implementation must prove and durably commit
+/// the SAME Inspection RunId and verified final physical verdict. Plain
+/// IRunFactSink.CommitAsync cannot certify a DUT PASS (the current record
+/// writer commits Unknown by design).
+/// </summary>
+public sealed record VerifiedProductionCommit(RunId Run, bool Durable,
+    bool EvidenceVerified, Verdict Verdict, string Code);
+
+public interface IVerifiedProductionCommitSink : IRunFactSink
+{
+    ValueTask<VerifiedProductionCommit> CommitVerifiedAsync(RunId run,
+        ProductionStageResult test, CancellationToken ct);
+}
+
 public sealed class ProductionResultCoordinator
 {
     private readonly IRunFactSink _facts;
@@ -30,33 +45,64 @@ public sealed class ProductionResultCoordinator
         return OperationResult.Accepted();
     }
 
-    // A non-durable commit is never reported as a completed production record.
+    // Only a record sink that explicitly verifies the physical evidence and
+    // commits the terminal verdict may report a real production DUT PASS.
+    // An ordinary IRunFactSink.CommitAsync can durably record an UNKNOWN, but
+    // cannot be promoted to a passing production conclusion.
     public async ValueTask<ProductionRunResult> FinalizeAsync(ProductionJobSnapshot job,
         ProductionStageResult test, CancellationToken ct)
     {
-        RecordCommitReceipt commit;
-        try { commit = await _facts.CommitAsync(job.Run, ct).ConfigureAwait(false); }
+        if (!job.IsMock && _facts is IVerifiedProductionCommitSink verified)
+        {
+            VerifiedProductionCommit receipt;
+            try
+            {
+                receipt = await verified.CommitVerifiedAsync(job.Run, test, ct)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) { throw; }
+            catch
+            {
+                return new(job.Run, ProductionState.Unknown, Verdict.Inconclusive,
+                    false, false, "PRODUCTION_VERDICT_COMMIT_EXCEPTION");
+            }
+            if (receipt.Run != job.Run || !receipt.Durable)
+                return new(job.Run, ProductionState.AwaitingCommit, Verdict.Inconclusive,
+                    false, false, "PRODUCTION_VERDICT_NOT_DURABLE");
+            if (!receipt.EvidenceVerified || receipt.Verdict != test.Verdict ||
+                test.Outcome != Outcome.Accepted || test.SimulationOnly)
+                return new(job.Run, ProductionState.Unknown, Verdict.Inconclusive,
+                    true, false, "PRODUCTION_VERDICT_NOT_PROVEN");
+            return receipt.Verdict switch
+            {
+                Verdict.Pass => new(job.Run, ProductionState.Completed, Verdict.Pass,
+                    true, false, "AWAIT_REAL_PRODUCTION_RELEASE_POLICY"),
+                Verdict.Fail => new(job.Run, ProductionState.Failed, Verdict.Fail,
+                    true, false, "RUN_FAILED"),
+                _ => new(job.Run, ProductionState.Unknown, Verdict.Inconclusive,
+                    true, false, "PRODUCTION_VERDICT_NOT_PROVEN")
+            };
+        }
+
+        RecordCommitReceipt genericCommit;
+        try { genericCommit = await _facts.CommitAsync(job.Run, ct).ConfigureAwait(false); }
         catch (OperationCanceledException) { throw; }
-        catch { return new(job.Run, ProductionState.Unknown, Verdict.Inconclusive,
-            false, false, "RECORD_COMMIT_EXCEPTION"); }
-        if (!commit.Durable || commit.Run != job.Run)
+        catch
+        {
+            return new(job.Run, ProductionState.Unknown, Verdict.Inconclusive,
+                false, false, "RECORD_COMMIT_EXCEPTION");
+        }
+        if (!genericCommit.Durable || genericCommit.Run != job.Run)
             return new(job.Run, ProductionState.AwaitingCommit, Verdict.Inconclusive,
                 false, false, "RECORD_COMMIT_NOT_DURABLE");
-        if (test.Outcome != Outcome.Accepted || test.Verdict is Verdict.Error or Verdict.Inconclusive)
+        if (!job.IsMock)
             return new(job.Run, ProductionState.Unknown, Verdict.Inconclusive,
-                true, false, "RUN_NOT_PROVEN");
-        if (test.Verdict == Verdict.Fail)
-            return new(job.Run, ProductionState.Failed, Verdict.Fail,
-                true, false, "RUN_FAILED");
-        if (test.Verdict != Verdict.Pass)
-            return new(job.Run, ProductionState.Unknown, test.Verdict,
-                true, false, "RUN_NOT_PASS");
-        // Mock PASS is never a physical DUT PASS and cannot grant release authority.
-        if (job.IsMock || test.SimulationOnly)
-            return new(job.Run, ProductionState.Completed, Verdict.Inconclusive,
-                true, false, "MOCK_COMPLETE_NOT_DUT_PASS");
-        return new(job.Run, ProductionState.Completed, Verdict.Pass,
-            true, false, "AWAIT_REAL_PRODUCTION_RELEASE_POLICY");
+                true, false, "PRODUCTION_VERIFIED_RECORD_COMMIT_NOT_CONNECTED");
+
+        // Mock runs may be useful in isolated contract tests, but never
+        // establish a physical DUT verdict or any release permission.
+        return new(job.Run, ProductionState.Completed, Verdict.Inconclusive,
+            true, false, "MOCK_COMPLETE_NOT_DUT_PASS");
     }
 
     public bool RequireCommit(ProductionRunResult result) => !result.Durable;
