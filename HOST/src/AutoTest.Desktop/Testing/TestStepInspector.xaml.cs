@@ -297,7 +297,7 @@ public partial class TestStepInspector : UserControl
                 _ => "▣"
             };
             TypeLabel.Text = _convertedLegacy
-                ? chosen.Title + " · 核对旧步骤参数" : chosen.Title;
+                ? chosen.Title + " · 转换为正式步骤" : chosen.Title;
             StepCode.Text = editing.Id.ToString()[^5..];
             ActionDescription.Text = chosen.Description;
             ActionDescription.Visibility = _convertedLegacy ||
@@ -338,28 +338,20 @@ public partial class TestStepInspector : UserControl
     {
         ParameterFields.Clear();
         var node = _editing ?? throw new InvalidOperationException("步骤编辑器需要真实 StepId。");
-        // The imported source dictionary is not an operator-editable schema.
-        // Keep its unrecognised keys in StepNode unchanged; expose only formal
-        // TEST parameters that the UI can accurately explain to an engineer.
-        var needsLegacyReview = StepUiCatalog.RequiresLegacyReview(node) ||
-            _legacySourceType.Length > 0;
-        ImportWarning.Visibility = needsLegacyReview ? Visibility.Visible : Visibility.Collapsed;
-        ConvertImportedAssertionButton.Visibility = needsLegacyReview &&
-            !_convertedLegacy && (node.Type is "Read" or "WaitUntil") &&
-            node.Properties.TryGetValue("expectation", out var legacyExpected) &&
-            !string.IsNullOrWhiteSpace(legacyExpected)
+        // Ordinary TEST steps are judged by their formal parameters and resource
+        // mappings, not by metadata recording their source. Only genuinely
+        // unsupported StepNode types need an explicit conversion path.
+        var convertingUnsupportedType = _legacySourceType.Length > 0;
+        ImportWarning.Visibility = convertingUnsupportedType
             ? Visibility.Visible : Visibility.Collapsed;
-        if (needsLegacyReview)
-            ImportWarning.Text = _convertedLegacy
-                ? (_selected?.StepType == "AssertSignal"
-                    ? "旧版 CAN 解析：核对目标 DBC 信号、比较值和超时后，点击应用属性，将转换为正式的信号判定。"
-                    : _legacySourceType == "KeySet"
-                    ? "旧版按键：核对 20 路 KEY 开关组合和持续时间。应用后将转为真实 KEY_SIM 操作，状态保持到下一次按键操作或测试清理。"
-                    : "旧版 CAN 发送：核对报文、信号值和周期后应用。")
-                : "此步骤来自旧测试文件，尚未验证，不能执行。" +
-                  " 原始记录：" + node.Properties.GetValueOrDefault("canId", "未知报文") +
-                  "；信号：" + node.Properties.GetValueOrDefault("displayName", "待核对") +
-                  "；期望：" + node.Properties.GetValueOrDefault("expectation", "未提供") + "。";
+        if (convertingUnsupportedType)
+            ImportWarning.Text = _legacySourceType switch
+            {
+                "CanWait" => "CanWait 当前不能直接运行。请确认 DBC 信号、期望值和超时；应用后转换为正式 CAN 信号判定。",
+                "KeySet" => "KeySet 当前不能直接运行。请确认 20 路 KEY 开关和保持时间；应用后转换为正式 KEY_SIM 操作。",
+                "CanSend" => "CanSend 当前不能直接运行。请确认 CAN ID、数据与周期；应用后转换为正式 CAN 发送。",
+                _ => "当前步骤类型无法执行，请转换为正式操作步骤。"
+            };
         foreach (var item in node.Properties.OrderBy(x => x.Key, StringComparer.Ordinal))
         {
             if (action.StepType == "CallPublicFlow" &&
@@ -417,17 +409,6 @@ public partial class TestStepInspector : UserControl
         }
     }
 
-    private void ConvertImportedAssertion_Click(object sender, RoutedEventArgs e)
-    {
-        if (_editing is null || !StepUiCatalog.RequiresLegacyReview(_editing)) return;
-        _convertedLegacy = true;
-        _legacySourceType = _editing.Type;
-        _selected = Options.First(x => x.StepType == "AssertSignal");
-        TypeLabel.Text = "CAN 信号判定 · 旧文件重建";
-        BuildParameters(_selected);
-        BuildTargets(_selected);
-        MarkDraftChanged();
-    }
 
     private static bool TryLegacyMask(StepNode old, out uint mask)
     {
