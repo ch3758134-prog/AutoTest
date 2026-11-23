@@ -182,6 +182,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         OpenFirstTestProgramCommand = new DelegateCommand(async () => await OpenFirstAssetAsync(
             ProjectWorkspaceService.TestProgramKind, CreateTestProgramAsync));
         OpenProjectConfigurationOverviewCommand = new DelegateCommand(ShowProjectConfiguration);
+        OpenInspectionProcedureCommand = new DelegateCommand(async () => await OpenInspectionProcedureAsync());
         RefreshEngineeringSetupCommand = new DelegateCommand(async () => await RefreshEngineeringSetupAsync());
         ReadEngineeringClampGpioCommand = new DelegateCommand(async () => await ReadEngineeringClampGpioAsync());
         EngineeringClamp1PressCommand = new DelegateCommand(async () => await RunEngineeringClampAsync(1, true));
