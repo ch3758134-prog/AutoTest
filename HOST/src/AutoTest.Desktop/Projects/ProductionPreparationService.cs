@@ -103,16 +103,18 @@ public static class ProductionPreparationService
         // clamp/IGN operation hidden in a UI or duplicated TEST script.
         var fixtureAssets = actual.Assets.Where(x =>
             x.Kind == ProjectWorkspaceService.InspectionKind).ToArray();
-        if (fixtureAssets.Length != 1)
-            throw new InvalidDataException(fixtureAssets.Length == 0
-                ? "当前型号尚未保存工位准备与收尾工艺。"
-                : "工程存在多个工位动作定义，不能猜选其一。");
-        var fixtureAsset = fixtureAssets[0];
-        var fixtureBytes = await AutomaticTestResourceContract.ReadPinnedAsync(
-            opened, fixtureAsset, ct).ConfigureAwait(false);
-        var fixture = (InspectionStationProcedureDocument)
-            ProjectConfigurationCodec.Decode(fixtureAsset.Kind, fixtureBytes);
-        fixture.Validate();
+        if (fixtureAssets.Length > 1)
+            throw new InvalidDataException("工程存在多个工位动作定义，不能猜选其一。");
+        var fixtureAsset = fixtureAssets.SingleOrDefault();
+        InspectionStationProcedureDocument? fixture = null;
+        if (fixtureAsset is not null)
+        {
+            var bytes = await AutomaticTestResourceContract.ReadPinnedAsync(
+                opened, fixtureAsset, ct).ConfigureAwait(false);
+            fixture = (InspectionStationProcedureDocument)
+                ProjectConfigurationCodec.Decode(fixtureAsset.Kind, bytes);
+            fixture.Validate();
+        }
 
         // Never promote an autosaved engineering draft into production.
         var native = await NativeFlashPublicationStore.LoadPublishedAsync(
@@ -128,8 +130,10 @@ public static class ProductionPreparationService
             modelCode, dutSerial, actual.Id.Value.ToString("D"), manifestSha,
             testAsset.Id.Value.ToString("D"), testAsset.Sha256,
             native.ProfileSha256, frozenJob.Fingerprint,
-            "FIXTURE:" + fixtureAsset.Id.Value.ToString("D") + ":" +
-                fixtureAsset.Revision + ":" + fixtureAsset.Sha256,
+            "FIXTURE:" + (fixtureAsset is null
+                ? "NO_EXTRA_ACTIONS:" + StationDeploymentStore.NoProcedureSha256
+                : fixtureAsset.Id.Value.ToString("D") + ":" + fixtureAsset.Revision +
+                  ":" + fixtureAsset.Sha256),
             string.Join("\n", frozenCases.Select(c =>
                 c.EntryId.ToString("D") + ":" + c.TestAssetId.ToString("D") +
                 ":" + c.Revision + ":" + c.Sha256)));
@@ -146,11 +150,14 @@ public static class ProductionPreparationService
             frozenJob.FirmwareSha256, frozenJob.SecuritySha256,
             native.Profile.EcuCanKbps, fingerprint, frozenJob)
         {
-            FixtureAssetId = fixtureAsset.Id.Value,
-            FixtureContentSha256 = fixtureAsset.Sha256,
+            FixtureAssetId = fixtureAsset?.Id.Value ?? Guid.Empty,
+            FixtureContentSha256 = fixtureAsset?.Sha256 ??
+                StationDeploymentStore.NoProcedureSha256,
             Fixture = new FrozenStationProcedure(
-                fixture.BeforeStart.ToImmutableArray(),
-                fixture.AfterFinish.ToImmutableArray())
+                fixture?.BeforeStart.ToImmutableArray() ??
+                    ImmutableArray<InspectionStationAction>.Empty,
+                fixture?.AfterFinish.ToImmutableArray() ??
+                    ImmutableArray<InspectionStationAction>.Empty)
         };
     }
 }
