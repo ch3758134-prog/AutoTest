@@ -144,7 +144,7 @@
          </DataGridTemplateColumn>
         </DataGrid.Columns>
        </DataGrid>
-       <TextBlock Text="工程型号用于匹配唯一 ECU 工程；ECU 编号用于 DUT 身份、复检关联；其他映射作为本次扫码的追溯字段，不能发起设备动作。"
+       <TextBlock Text="工程型号只做唯一工程匹配；ECU 编号用于 DUT 身份与复检关联。其他解析字段目前可在扫码预览中查看并冻结为本次观察，正式生产 RECORD 的持久追溯写入尚未完成，不能在这里宣称已入库。"
                   TextWrapping="Wrap" FontSize="11" Foreground="#788A9B" Margin="0,7,0,0"/>
       </StackPanel>
       <Expander Header="唯一编号合法性约束（可选，默认允许 1～64 字符）"
