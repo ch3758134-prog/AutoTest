@@ -158,6 +158,20 @@ public sealed partial class MainWindowViewModel
 
     public string SetupModelStatus => _setupModelStatus;
     public string SetupTestStatus => _setupTestStatus;
+    public string SetupResourcesStatus
+    {
+        get
+        {
+            var assets = _workspace.Current?.Definition.Assets;
+            if (assets is null) return "请先打开 ECU 工程。";
+            var dbc = assets.Value.Count(x => x.Kind == ProjectWorkspaceService.DbcKind);
+            var wave = assets.Value.Count(x =>
+                x.Kind is ProjectWorkspaceService.WaveKind or
+                    ProjectWorkspaceService.WaveSettingsKind);
+            return "DBC " + dbc + " 份 · 波形/判定资源 " + wave +
+                   " 项。只在实际用到时导入；测试步骤直接引用资源。";
+        }
+    }
     public string SetupScanStatus => _setupScanStatus;
     public string SetupFlashStatus => _setupFlashStatus;
     public string SetupStationStatus => _setupStationStatus;
@@ -174,6 +188,7 @@ public sealed partial class MainWindowViewModel
         _setupOverallStatus = overall;
         RaisePropertyChanged(nameof(SetupModelStatus));
         RaisePropertyChanged(nameof(SetupTestStatus));
+        RaisePropertyChanged(nameof(SetupResourcesStatus));
         RaisePropertyChanged(nameof(SetupScanStatus));
         RaisePropertyChanged(nameof(SetupFlashStatus));
         RaisePropertyChanged(nameof(SetupStationStatus));
@@ -193,8 +208,8 @@ public sealed partial class MainWindowViewModel
         }
         // Never claim a live result based on a resource file or USB ACK.
         var model = string.IsNullOrWhiteSpace(project.Definition.EcuModelCode)
-            ? "未设置正式型号：请在扫码与身份页完成"
-            : "工程型号 " + project.Definition.EcuModelCode + "（已保存工程身份）";
+            ? "尚未设置 ECU 型号代码；编辑测试用例不受影响，正式烧录前需要匹配。"
+            : "当前工程型号：" + project.Definition.EcuModelCode;
         var test = "正在核对 TEST 资源…";
         var scan = "正在核对工位扫码设置…";
         var flash = "正在核对烧录发布版本…";
@@ -228,16 +243,8 @@ public sealed partial class MainWindowViewModel
                 scan = policy is null ? "未配置条码规则；可打开扫码页试扫真实数据"
                     : "规则 " + policy.Format + " 已保存；" +
                       (_scannerWorkbench.IsConnected
-                          ? "串口已连接，仍须真实扫码核对身份"
-                          : "扫码设备未连接，仍须真实试扫");
-                if (project.Definition.EcuModelCode is { Length: > 0 } code)
-                {
-                    var registration = await new StationModelCatalog().ResolveAsync(code);
-                    if (!registration.Matched ||
-                        !string.Equals(registration.Entry?.ManifestPath,
-                            project.ManifestPath, StringComparison.OrdinalIgnoreCase))
-                        scan += "；当前型号尚未登记为本工位唯一工程";
-                }
+                          ? "串口已连接；可在扫码页读取真实唯一编号"
+                          : "扫码设备未连接；可先编辑工程，安装后再试扫");
             }
             catch (Exception error) when (error is IOException or InvalidDataException or
                 UnauthorizedAccessException or ArgumentException or FormatException or
