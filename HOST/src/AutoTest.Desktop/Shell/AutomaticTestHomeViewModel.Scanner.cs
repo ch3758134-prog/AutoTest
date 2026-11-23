@@ -27,9 +27,16 @@ public sealed partial class AutomaticTestHomeViewModel
 
     private void OnScannerPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName != nameof(SerialScannerWorkbenchViewModel.IsConnected) ||
-            _scanner.IsConnected) return;
-        OnUi(() => InvalidateScan("扫码枪断开，本次扫码身份失效；恢复后请重新扫码。"));
+        if (e.PropertyName == nameof(SerialScannerWorkbenchViewModel.IdentityPolicyStatus))
+        {
+            // Re-saving/reloading a rule may change field meaning even if
+            // scanner connection and visible barcode are unchanged.
+            OnUi(() => InvalidateScan("扫码解析与字段映射规则已变化；请重新真实扫码以冻结新规则。"));
+            return;
+        }
+        if (e.PropertyName == nameof(SerialScannerWorkbenchViewModel.IsConnected) &&
+            !_scanner.IsConnected)
+            OnUi(() => InvalidateScan("扫码枪断开，本次扫码身份失效；恢复后请重新扫码。"));
     }
 
     private void OnCompleteBarcodeReceived(string raw) =>
@@ -56,19 +63,21 @@ public sealed partial class AutomaticTestHomeViewModel
     private async Task InspectRealBarcodeAsync(string raw)
     {
         var revision = Interlocked.Increment(ref _scanRevision);
+        var scannedAt = DateTimeOffset.UtcNow;
+        var scannerPort = _scanner.ConnectedPort;
         var plan = _plans.Current;
         if (plan is null || !_scanner.IsConnected || string.IsNullOrWhiteSpace(raw))
             return;
         try
         {
-            var policy = await StationScanIdentityPolicyStore.LoadAsync();
-            if (policy is null)
+            var ruleSnapshot = await StationScanIdentityPolicyStore.LoadSnapshotAsync();
+            if (ruleSnapshot is null)
             {
                 Reject("未保存工位条码识别规则，不能从字符串猜 ECU 型号。");
                 return;
             }
             var parsed = ProductionBarcodePreflight.Inspect(
-                raw, plan.Project.Definition, policy);
+                raw, plan.Project.Definition, ruleSnapshot.Policy);
             if (!parsed.IdentityMatched ||
                 string.IsNullOrWhiteSpace(parsed.ModelCode) ||
                 string.IsNullOrWhiteSpace(parsed.DutSerial))
@@ -104,7 +113,18 @@ public sealed partial class AutomaticTestHomeViewModel
                 ? new Dictionary<string, string>(StringComparer.Ordinal)
                 : new Dictionary<string, string>(parsed.MappedFields,
                     StringComparer.Ordinal);
-            _prepared = decision.Preparation;
+            // Freeze a real observation with exact on-disk parser bytes.
+            // This is not yet a formal RECORD fact; no RunId exists until
+            // the physical START and production record adapter are ready.
+            _prepared = decision.Preparation! with
+            {
+                AcceptedScannerObservation = new FrozenScanIdentity(
+                    Guid.NewGuid(), scannedAt, scannerPort, raw,
+                    ruleSnapshot.SourceJson, ruleSnapshot.Sha256,
+                    parsed.ModelCode, parsed.DutSerial, parsed.HardwareCode,
+                    new Dictionary<string, string>(_scanMappedFields,
+                        StringComparer.Ordinal))
+            };
             _scanStatus = repeated
                 ? "同一 ECU 编号再次扫码：仅更新真实观察，不计新增 DUT，也不触发复检。"
                 : "已接受真实扫码并冻结本次 TEST/固件/算法资源；" +
