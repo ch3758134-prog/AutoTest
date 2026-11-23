@@ -270,14 +270,14 @@ public partial class MainWindow : Window
         if (!_inspectorManualLayout) _inspectorVisible = ActualWidth >= 1120;
         if (!_bottomManualLayout)
             _bottomVisible = _activeRunFacts?.RunFacts.Count > 0;
-        if (ActualWidth < 1050 && !_treeAutoNarrow && TreeColumn.Width.Value > 224)
+        if (ActualWidth < 1050 && !_treeAutoNarrow && TreeColumn.Width.Value > 240)
         {
-            TreeColumn.Width = new GridLength(215);
+            TreeColumn.Width = new GridLength(230);
             _treeAutoNarrow = true;
         }
         else if (ActualWidth >= 1150 && _treeAutoNarrow)
         {
-            TreeColumn.Width = new GridLength(248);
+            TreeColumn.Width = new GridLength(296);
             _treeAutoNarrow = false;
         }
         ApplyPanelLayout();
