@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 using AutoTest.Specialists.Wave;
 
 namespace AutoTest.Desktop.Shell;
@@ -13,6 +14,10 @@ public partial class WaveWorkbenchWindow : Window
     private readonly Action _openConfiguration;
     private double? _cursorA;
     private double? _cursorB;
+    private readonly DispatcherTimer _capturePreviewTimer = new()
+    {
+        Interval = TimeSpan.FromMilliseconds(280)
+    };
 
     public WaveWorkbenchWindow(WaveWorkbenchViewModel model, Action openConfiguration)
     {
@@ -21,12 +26,14 @@ public partial class WaveWorkbenchWindow : Window
         DataContext = model;
         InitializeComponent();
         _model.ChartChanged += OnChartChanged;
+        _capturePreviewTimer.Tick += (_, _) => _model.PollCapturePreview();
         Closed += (_, _) =>
         {
+            _capturePreviewTimer.Stop();
             _model.ChartChanged -= OnChartChanged;
             _model.Close();
         };
-        Loaded += (_, _) => RenderWave();
+        Loaded += (_, _) => { RenderWave(); _capturePreviewTimer.Start(); };
     }
 
     private void OnChartChanged()
