@@ -122,7 +122,7 @@ public sealed partial class AutomaticTestHomeViewModel
                     Guid.NewGuid(), scannedAt, scannerPort, raw,
                     ruleSnapshot.SourceJson, ruleSnapshot.Sha256,
                     parsed.ModelCode, parsed.DutSerial, parsed.HardwareCode,
-                    new Dictionary<string, string>(_scanMappedFields,
+                    _scanMappedFields.ToDictionary(x => x.Key, x => x.Value,
                         StringComparer.Ordinal))
             };
             _scanStatus = repeated
