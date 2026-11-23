@@ -11,6 +11,7 @@
    <RowDefinition Height="Auto"/>
   </Grid.RowDefinitions>
   <DockPanel Grid.Row="0" Margin="0,0,0,12">
+   <Button DockPanel.Dock="Right" Content="填入 HydEPB 已核对参数" Click="LoadHydEpbPreset_Click" Padding="10,6" Margin="12,0,0,0" VerticalAlignment="Center" ToolTip="仅填入已核实的诊断端点和地址范围，不导入固件、不发布、不连接设备"/>
    <StackPanel>
     <TextBlock Text="ECU 原生烧录配置" FontSize="20" FontWeight="SemiBold"
                Foreground="#172F43"/>
