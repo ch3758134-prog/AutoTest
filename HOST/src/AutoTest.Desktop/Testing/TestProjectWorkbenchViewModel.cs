@@ -121,7 +121,6 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     private readonly List<FrozenSelectedCase> _frozen = new();
     private long _frozenStationEpoch;
     private string? _frozenManifestSha;
-    private AssetId? _frozenTcf, _frozenTbc;
     private string _frozenDut = "";
     private string _dutIdentity = "";
     private string _flashApproval = "";
@@ -365,9 +364,6 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
 
             var fixedManifest = context.ManifestSha256;
             var fixedEpoch = _hardware.CurrentStationEpoch;
-            var fixedTcf = _workspace.SelectedTestConfiguration;
-            var fixedTbc = _workspace.SelectedBenchConfiguration;
-            var tcf = await _workspace.ReadSelectedTestConfigurationAsync();
             var prepared = new List<FrozenSelectedCase>();
             string flashConsent = "";
             foreach (var row in selected)
@@ -388,22 +384,6 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
                     throw new InvalidDataException(row.Name + " 步骤预检：" +
                         string.Join("; ", plan.Diagnostics));
                 var mappings = TestRunStepScope.RequiredMappings(opened.Document);
-                if (tcf is not null)
-                    foreach (var mapping in mappings)
-                    {
-                        if (mapping.Kind is TestTargetKind.Signal or TestTargetKind.CanMessage &&
-                            (tcf.DbcAssetId != mapping.Asset.Value ||
-                             tcf.DbcRevision != mapping.AssetRevision ||
-                             !string.Equals(tcf.DbcFingerprint, mapping.AssetSha256,
-                                StringComparison.OrdinalIgnoreCase)))
-                            throw new InvalidDataException(row.Name + " DBC 不属于当前 TCF：" + mapping.Name);
-                        if (mapping.Kind == TestTargetKind.Button &&
-                            (tcf.ButtonAssetId != mapping.Asset.Value ||
-                             tcf.ButtonRevision != mapping.AssetRevision ||
-                             !string.Equals(tcf.ButtonFingerprint, mapping.AssetSha256,
-                                StringComparison.OrdinalIgnoreCase)))
-                            throw new InvalidDataException(row.Name + " 按键不属于当前 TCF：" + mapping.Name);
-                    }
                 var actionCheck = new ConfiguredStationActionPort(_hardware, _workspace);
                 await actionCheck.PrepareAsync(mappings, CancellationToken.None);
                 actionCheck.ValidateRunSteps(opened.Document);
@@ -429,8 +409,6 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
             _frozen.AddRange(prepared);
             _frozenManifestSha = fixedManifest;
             _frozenStationEpoch = fixedEpoch;
-            _frozenTcf = fixedTcf;
-            _frozenTbc = fixedTbc;
             _frozenDut = DutIdentity;
             ExpectedFlashApproval = flashConsent;
             FlashApproval = "";
@@ -470,13 +448,11 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         if (DutIdentity != _frozenDut ||
             _hardware.CurrentStationEpoch != _frozenStationEpoch || !_hardware.IsConnected ||
             _workspace.Current?.ManifestSha256 != _frozenManifestSha ||
-            _workspace.SelectedTestConfiguration != _frozenTcf ||
-            _workspace.SelectedBenchConfiguration != _frozenTbc ||
             !Packages.Where(x => x.RunSelected).Select(x => x.ItemId)
                 .SequenceEqual(_frozen.Select(x => x.Entry.ItemId)))
         {
             ResetFrozenSelection();
-            StatusMessage = "工程、用例选择、DUT、TCF/TBC 或设备会话已变化，必须重新确认。";
+            StatusMessage = "工程、用例选择、ECU 编号或主控会话发生变化，请重新核对。";
             return;
         }
         if (ExpectedFlashApproval.Length > 0 &&
@@ -502,10 +478,8 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
                 index++;
                 if (!_hardware.IsConnected || _hardware.CurrentStationEpoch != _frozenStationEpoch ||
                     _workspace.Current?.ManifestSha256 != _frozenManifestSha ||
-                    _workspace.SelectedTestConfiguration != _frozenTcf ||
-                    _workspace.SelectedBenchConfiguration != _frozenTbc ||
                     DutIdentity != _frozenDut)
-                    throw new IOException("批次中途工程、TCF/TBC、DUT 或 USB 主控会话已变化。");
+                    throw new IOException("批次中途工程、ECU 编号或 USB 主控会话已变化。");
                 var latest = await _workspace.OpenTestEditorAsync(AssetId.Create(item.Entry.PackageAssetId), token);
                 if (latest.AssetRevision != item.Entry.PackageRevision ||
                     !latest.FileHash.Equals(item.Entry.PackageSha256, StringComparison.OrdinalIgnoreCase) ||
