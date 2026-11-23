@@ -41,15 +41,15 @@ public static class ProductionBarcodePreflight
         if (currentProject is null)
             return new("SCAN_PROJECT_NOT_OPEN", parsed.ModelCode, parsed.Serial,
                 parsed.HardwareCode,
-                "已识别条码，但当前没有打开 ECU 工程；不得据此启动硬件。");
+                "已识别条码，但当前没有打开 ECU 工程；不得据此启动硬件。", parsed.Fields);
         if (string.IsNullOrWhiteSpace(currentProject.EcuModelCode))
             return new("SCAN_PROJECT_MODEL_UNBOUND", parsed.ModelCode, parsed.Serial,
                 parsed.HardwareCode,
-                "当前工程尚未设置正式型号代码，不能把显示名称作为型号。");
+                "当前工程尚未设置正式型号代码，不能把显示名称作为型号。", parsed.Fields);
         if (!string.Equals(currentProject.EcuModelCode, parsed.ModelCode, StringComparison.Ordinal))
             return new("SCAN_OTHER_MODEL", parsed.ModelCode, parsed.Serial,
                 parsed.HardwareCode,
-                "扫码型号与当前工程不一致。需要检查工位型号登记，不自动选择旧配方。");
+                "扫码字段的型号与当前工程不一致；不自动切换工程或选择另一套测试方案。", parsed.Fields);
         return new("SCAN_MODEL_MATCHED", parsed.ModelCode, parsed.Serial,
             parsed.HardwareCode,
             "型号与当前工程匹配；仅完成身份预检，尚未取得夹具/实体 START/前置烧录执行许可。",
