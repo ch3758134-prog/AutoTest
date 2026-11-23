@@ -146,13 +146,13 @@
       <MenuItem Header="从工程移除选中资源（保留源文件）" Command="{Binding RemoveReferenceCommand}"/>
      </MenuItem>
      <MenuItem Header="视图">
-      <MenuItem Header="自动测试与调试" Command="{Binding ShowEngineerWorkspaceCommand}"/>
+      <MenuItem Header="工程与调试" Command="{Binding ShowEngineerWorkspaceCommand}"/>
       <MenuItem Header="自动测试首页" Command="{Binding ShowProductionWorkspaceCommand}"/>
       <Separator/>
       <MenuItem Header="显示／隐藏观察区" Click="ToggleBottom_Click"/>
       <MenuItem Header="显示／隐藏属性区" Click="ToggleInspector_Click"/>
       <Separator/>
-      <MenuItem Header="查看工程信息" Click="ShowOverview_Click"/>
+      <MenuItem Header="工程信息与检测准备" Click="ShowOverview_Click"/>
       <MenuItem Header="检测准备 · 配置与实测" Command="{Binding OpenProjectConfigurationOverviewCommand}"/>
      </MenuItem>
      <MenuItem Header="运行">
@@ -165,6 +165,7 @@
 
       <MenuItem Header="波形分析" Command="{Binding OpenWaveWorkbenchCommand}"/>
       <MenuItem Header="波形配置" Command="{Binding OpenWaveConfigCommand}"/>
+       <MenuItem Header="CAN 监视" Command="{Binding OpenCanMonitorCommand}"/>
       <Separator/>
       <MenuItem Header="UDS 工作台（尚未接入）" IsEnabled="False"/>
       <MenuItem Header="原生烧录配置（当前 ECU 工程）" Command="{Binding OpenNativeFlashProfileCommand}"/>
@@ -179,18 +180,12 @@
    Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}">
    <DockPanel Margin="10,0" LastChildFill="False">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+     <!-- Specialist tools remain in the main Tools menu; the toolbar
+          emphasizes two frequent engineering workbenches and live connection. -->
      <Button Content="手动台架" Command="{Binding OpenManualBenchCommand}"
-      ToolTip="独立真实工位；离线可以编辑，向实体硬件发送命令需要连接 USB" Margin="0,0,5,0"/>
-
-     <Button Content="DBC" Command="{Binding OpenDbcToolCommand}" Margin="0,0,5,0"/>
-     <Button Content="检测准备" Command="{Binding OpenProjectConfigurationOverviewCommand}"
-      Margin="0,0,5,0" ToolTip="从当前工程统一配置并实测扫码、烧录、夹具和 TEST"/>
-     <Button Content="烧录" Command="{Binding OpenFlashWorkbenchCommand}" Margin="0,0,5,0"
-      ToolTip="独立 FlashLab 专业工具，进入前释放主工位 USB 会话"/>
+      ToolTip="打开独立手动台架" Margin="0,0,5,0"/>
      <Button Content="波形" Command="{Binding OpenWaveWorkbenchCommand}"
-      ToolTip="查看实际波形证据、参考及双游标分析" Margin="0,0,5,0"/>
-     <Button Content="波形配置" Command="{Binding OpenWaveConfigCommand}"
-      ToolTip="绑定 DBC 信号、编辑判定条件及建立参考" Margin="0,0,5,0"/>
+      ToolTip="打开多信号波形工作台" Margin="0,0,8,0"/>
      <Border Background="#E1E5E9" Width="1" Height="18" Margin="0,0,8,0"/>
      <TextBlock Text="ECU CAN" VerticalAlignment="Center" Foreground="#526172"
       Margin="0,0,5,0" ToolTip="{Binding EcuCanRateStatus}"/>
@@ -203,12 +198,16 @@
       Margin="0,0,7,0" Padding="8,4" ToolTip="{Binding EcuCanRateStatus}"/>
      <Button Content="{Binding ConnectionButtonText}" Command="{Binding ConnectHardwareCommand}"
       ToolTip="{Binding HardwareStatus}" Margin="0,0,5,0"/>
-     <Button Content="CAN 监视" Command="{Binding OpenCanMonitorCommand}" Margin="0"/>
+     <Button Content="CAN 监视" Command="{Binding OpenCanMonitorCommand}" Margin="0"
+       ToolTip="查看真实 CAN 收发记录"/>
     </StackPanel>
     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
      <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
       Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}">
-     <Button Content="▦ 工程" Command="{Binding OpenProjectCommand}" Margin="0,0,8,0"/>
+     <Button Content="检测准备" Command="{Binding OpenProjectConfigurationOverviewCommand}"
+       Margin="0,0,5,0" ToolTip="编辑扫码、前置烧录、夹具工艺、型号及运行前检查"/>
+      <Button Content="测试项目" Command="{Binding OpenFirstTestProjectCommand}"
+       Margin="0,0,9,0" ToolTip="打开本 ECU 工程唯一的有序用例列表"/>
      <TextBlock Text="{Binding CurrentProjectName}" FontWeight="SemiBold"
       VerticalAlignment="Center" MaxWidth="160" TextTrimming="CharacterEllipsis"
       ToolTip="{Binding CurrentProjectPath}"/>
@@ -218,9 +217,7 @@
       ToolTip="撤销 Ctrl+Z" Margin="0,0,4,0"/>
      <Button Content="↷" Command="{Binding RedoActiveCommand}" Width="28" MinWidth="0"
       ToolTip="重做 Ctrl+Y" Margin="0,0,6,0"/>
-     <Button Content="▷ 所选用例检查" Command="{Binding CheckActiveCommand}"
-      Style="{StaticResource AtPrimaryButton}" Foreground="#FFFFFF"
-      Margin="0,0,6,0"/>
+      <!-- Contextual preflight stays inside the current TEST editor. -->
      </StackPanel>
     </StackPanel>
    </DockPanel>
@@ -229,7 +226,7 @@
   <Grid Grid.Row="2" Background="#FFFFFF"
    Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}">
    <Grid.ColumnDefinitions>
-    <ColumnDefinition x:Name="TreeColumn" Width="248" MinWidth="210" MaxWidth="350"/>
+    <ColumnDefinition x:Name="TreeColumn" Width="296" MinWidth="230" MaxWidth="420"/>
     <ColumnDefinition Width="4"/>
     <ColumnDefinition Width="*" MinWidth="460"/>
    </Grid.ColumnDefinitions>
@@ -262,7 +259,17 @@
           <Button Content="×" Tag="{Binding}" Click="CloseEditorTab_Click"
            Width="19" Height="19" MinWidth="0" MinHeight="0"
            Padding="0" Margin="4,0,0,0" Focusable="False"
-           Style="{StaticResource AtQuietButton}" ToolTip="关闭此资源页签"/>
+           ToolTip="关闭此资源页签">
+           <Button.Style>
+            <Style TargetType="{x:Type Button}" BasedOn="{StaticResource AtQuietButton}">
+             <Style.Triggers>
+              <DataTrigger Binding="{Binding Key}" Value="config-overview">
+               <Setter Property="Visibility" Value="Collapsed"/>
+              </DataTrigger>
+             </Style.Triggers>
+            </Style>
+           </Button.Style>
+          </Button>
          </StackPanel>
         </DataTemplate>
        </TabControl.ItemTemplate>
