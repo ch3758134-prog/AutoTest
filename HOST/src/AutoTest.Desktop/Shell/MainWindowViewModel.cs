@@ -1379,6 +1379,7 @@ public sealed partial class MainWindowViewModel : BindableBase
             }
             UpdateProjectCount(node);
             RefreshUnassignedCases();
+            ApplyResourceSearchHighlight();
             RaiseStartStateChanged();
         }
         editor.CreateNewPackageRequested = async () => await CreateCaseInsideProjectAsync(editor);
@@ -1423,6 +1424,7 @@ public sealed partial class MainWindowViewModel : BindableBase
             }
             UpdateProjectCount(node);
             RefreshUnassignedCases();
+            ApplyResourceSearchHighlight();
             RaiseStartStateChanged();
         }
         catch (Exception error) when (error is IOException or InvalidDataException or
@@ -1433,6 +1435,7 @@ public sealed partial class MainWindowViewModel : BindableBase
             node.Children.Add(new ResourceTreeNode("引用读取失败", "", error.Message,
                 role: "Placeholder", isPlaceholder: true));
             node.CountLabel = "!";
+            ApplyResourceSearchHighlight();
             RaiseStartStateChanged();
         }
     }
