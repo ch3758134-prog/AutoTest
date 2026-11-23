@@ -241,6 +241,30 @@
        <Button Content="打开真实夹具操作台架" Command="{Binding OpenManualBenchCommand}"
         Style="{StaticResource AtPrimaryButton}" Padding="14,8" Margin="0,0,9,8"/>
       </WrapPanel>
+      <Border Background="White" BorderBrush="#DDE6EE" BorderThickness="1"
+       CornerRadius="7" Padding="13" Margin="0,12,0,0">
+       <StackPanel>
+        <TextBlock Text="单项真实操作 · 一次点击只发送一条受控请求"
+         FontSize="13" FontWeight="SemiBold" Margin="0,0,0,10"/>
+        <WrapPanel Margin="0,0,0,8">
+         <TextBlock Text="夹具 1" Width="75" VerticalAlignment="Center" FontWeight="SemiBold"/>
+         <Button Content="压紧" Command="{Binding EngineeringClamp1PressCommand}" Padding="14,7" Margin="0,0,9,0"/>
+         <Button Content="释放" Command="{Binding EngineeringClamp1ReleaseCommand}" Padding="14,7" Margin="0,0,9,0"/>
+        </WrapPanel>
+        <WrapPanel Margin="0,0,0,8">
+         <TextBlock Text="夹具 2" Width="75" VerticalAlignment="Center" FontWeight="SemiBold"/>
+         <Button Content="压紧" Command="{Binding EngineeringClamp2PressCommand}" Padding="14,7" Margin="0,0,9,0"/>
+         <Button Content="释放" Command="{Binding EngineeringClamp2ReleaseCommand}" Padding="14,7" Margin="0,0,9,0"/>
+        </WrapPanel>
+        <WrapPanel>
+         <TextBlock Text="IGN" Width="75" VerticalAlignment="Center" FontWeight="SemiBold"/>
+         <Button Content="ON" Command="{Binding EngineeringIgnOnCommand}" Padding="14,7" Margin="0,0,9,0"/>
+         <Button Content="OFF" Command="{Binding EngineeringIgnOffCommand}" Padding="14,7" Margin="0,0,9,0"/>
+        </WrapPanel>
+        <TextBlock Text="这是当前工位的真实手动调试命令，不会修改正式工程流程、不自动运行测试、不声称夹具机械到位。主控未连接或协议不符时后台拒绝发送，按钮仍可点击。"
+         Foreground="#687C8B" TextWrapping="Wrap" Margin="0,12,0,0"/>
+       </StackPanel>
+      </Border>
       <Border Background="#F3F7FC" CornerRadius="7" BorderBrush="#DCE5EF"
        BorderThickness="1" Padding="13" Margin="0,9,0,0">
        <StackPanel>
