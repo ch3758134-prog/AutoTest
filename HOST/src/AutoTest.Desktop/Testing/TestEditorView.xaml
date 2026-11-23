@@ -42,7 +42,7 @@
        <MenuItem Header="期望判定" Command="{Binding QuickAddCommand}" CommandParameter="expect"/>
       </MenuItem>
      </Menu>
-     <Button Content="检查问题" Command="{Binding PreflightCommand}" Margin="0,0,6,0"/>
+     <Button Content="运行前检查" Command="{Binding PreflightCommand}" Margin="0,0,6,0"/>
      <Button Content="保存" Click="SaveEditor_Click"/>
     </StackPanel>
     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -78,13 +78,10 @@
     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
      <TextBlock Text="真实自动测试" FontWeight="SemiBold" Foreground="#42618B"
       VerticalAlignment="Center" Margin="0,0,11,0"/>
-     <Button Content="确认当前用例" Command="{Binding PrepareRunApprovalCommand}"
-      Margin="0,0,6,0" Padding="11,5"
-      ToolTip="先检查步骤和资源版本；确认后仍需点击运行，无需手输长串授权码"/>
-     <Button Content="▶ 运行当前用例" Command="{Binding RunCommand}"
+     <Button Content="▶ 运行此用例" Command="{Binding RunCommand}"
       Style="{StaticResource AtPrimaryButton}" Foreground="White"
       Margin="0,0,6,0" Padding="11,5"
-      ToolTip="需要 USB 主控连接并确认真实运行；开发诊断 ECU 编号可留空，不计出厂；支持真实 CAN/KEY/IGN 与安全停止"/>
+      ToolTip="自动执行资源版本检查并启动本用例；开发调试无需扫码，若包含烧录步骤仍须单独授权"/>
      <Button Content="▶ 运行此步骤" Command="{Binding RunSelectedStepCommand}"
       Margin="0,0,6,0" Padding="10,5"
       ToolTip="选中某个步骤；确认后仅执行该步骤及其子步骤，保留实体安全清理与独立诊断记录"/>
@@ -95,15 +92,16 @@
      VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
      ToolTip="{Binding RunSummary}"/>
    </DockPanel>
-   <StackPanel Grid.Row="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,5,0,0">
-    <TextBlock Text="ECU 编号（开发可留空）：" FontWeight="SemiBold"
-     Margin="0,0,7,0" VerticalAlignment="Center"/>
-    <TextBox Width="315" Height="28" VerticalContentAlignment="Center"
+   <Grid Grid.Row="1" Margin="0,5,0,0">
+    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="200"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+    <TextBlock Grid.Column="0" Text="ECU 编号（可留空）" FontWeight="SemiBold"
+     Margin="0,0,8,0" VerticalAlignment="Center"/>
+    <TextBox Grid.Column="1" Height="28" VerticalContentAlignment="Center"
      Text="{Binding DutIdentity,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-     ToolTip="可直接手工输入真实 ECU 编号；不需要已完成扫码匹配规则。留空时仅作为未绑定 DUT 的诊断运行"/>
-    <TextBlock Text="留空仅诊断运行；无需扫码配置，不计入出厂统计"
-     Foreground="#7A664B" Margin="10,0,0,0" VerticalAlignment="Center"/>
-   </StackPanel>
+     ToolTip="可直接输入真实 ECU 编号；留空则记录为开发诊断，不能作为生产记录"/>
+    <TextBlock Grid.Column="2" Text="开发调试不强制扫码；留空不计生产统计"
+     Foreground="#7A664B" Margin="10,0,0,0" TextWrapping="Wrap" VerticalAlignment="Center"/>
+   </Grid>
    <StackPanel Grid.Row="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,5,0,0">
     <StackPanel.Style><Style TargetType="StackPanel">
      <Style.Triggers><DataTrigger Binding="{Binding ExpectedFlashApproval}" Value="">
@@ -377,7 +375,7 @@
   <!-- Wide grouped palette: common actions visible together, one click inserts a formal TEST draft. -->
   <Popup x:Name="ActionPalette" Placement="Center"
    PlacementTarget="{Binding ElementName=StepsList}" StaysOpen="False" AllowsTransparency="True">
-   <Border x:Name="PaletteSurface" Width="720" MaxHeight="580" Background="White"
+   <Border x:Name="PaletteSurface" Width="810" MaxHeight="540" Background="White"
     CornerRadius="10" BorderBrush="#DFE5E4" BorderThickness="1" Padding="16,13">
     <Border.Effect><DropShadowEffect BlurRadius="22" ShadowDepth="5" Opacity="0.24"/></Border.Effect>
     <DockPanel LastChildFill="True">
@@ -405,45 +403,46 @@
      <DockPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
       <Button DockPanel.Dock="Right" Content="关闭" Click="PaletteCancel_Click"
        MinWidth="72" HorizontalAlignment="Right"/>
-      <TextBlock Text="单击即添加  ·  Enter 添加所选  ·  Esc 关闭"
+      <TextBlock Text="单击即插入列表、右侧立即编辑  ·  Enter 添加  ·  Esc 关闭"
        Foreground="#7A8EA6" FontSize="11" VerticalAlignment="Center"/>
      </DockPanel>
-     <Grid>
-      <Grid.ColumnDefinitions>
-       <ColumnDefinition Width="148"/>
-       <ColumnDefinition Width="10"/>
-       <ColumnDefinition Width="*"/>
-      </Grid.ColumnDefinitions>
-      <ListBox x:Name="PaletteCategories" Grid.Column="0"
+     <DockPanel>
+      <ListBox x:Name="PaletteCategories" DockPanel.Dock="Top" Height="42"
        SelectionChanged="PaletteCategory_Changed" Background="#F6F8FA"
-       BorderBrush="#E1E7E5" BorderThickness="1" FontSize="12">
+       BorderBrush="#E1E7E5" BorderThickness="1" FontSize="11"
+       ScrollViewer.HorizontalScrollBarVisibility="Auto"
+       ScrollViewer.VerticalScrollBarVisibility="Disabled" Margin="0,0,0,8">
+       <ListBox.ItemsPanel>
+        <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+       </ListBox.ItemsPanel>
        <ListBox.ItemContainerStyle>
         <Style TargetType="{x:Type ListBoxItem}">
-         <Setter Property="Padding" Value="10,10"/>
-         <Setter Property="Margin" Value="4,3"/>
+         <Setter Property="Padding" Value="10,7"/>
+         <Setter Property="Margin" Value="3,4"/>
          <Setter Property="Foreground" Value="#334252"/>
          <Style.Triggers>
           <Trigger Property="IsSelected" Value="True">
            <Setter Property="Background" Value="#E8F0FC"/>
            <Setter Property="Foreground" Value="#1C5DA6"/>
+           <Setter Property="FontWeight" Value="SemiBold"/>
           </Trigger>
          </Style.Triggers>
         </Style>
        </ListBox.ItemContainerStyle>
       </ListBox>
-      <ListBox x:Name="PaletteList" Grid.Column="2" MaxHeight="410" MinHeight="230"
+      <ListBox x:Name="PaletteList" MinHeight="165" MaxHeight="320"
        MouseDoubleClick="PaletteList_DoubleClick" KeyDown="PaletteList_KeyDown"
        PreviewMouseLeftButtonUp="PaletteList_PreviewMouseLeftButtonUp"
        ScrollViewer.HorizontalScrollBarVisibility="Disabled"
        ScrollViewer.VerticalScrollBarVisibility="Auto"
        Background="#FFFFFF" BorderBrush="#E1E7E5" BorderThickness="1" FontSize="12">
        <ListBox.ItemsPanel>
-        <ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate>
+        <ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate>
        </ListBox.ItemsPanel>
        <ListBox.ItemContainerStyle>
         <Style TargetType="{x:Type ListBoxItem}">
          <Setter Property="MinHeight" Value="49"/>
-         <Setter Property="Margin" Value="5,4"/>
+         <Setter Property="Margin" Value="4,3"/>
          <Setter Property="Padding" Value="10,8"/>
          <Setter Property="Background" Value="#FBFCFD"/>
          <Setter Property="BorderBrush" Value="#DEE6E8"/>
@@ -472,7 +471,7 @@
         </DataTemplate>
        </ListBox.ItemTemplate>
       </ListBox>
-     </Grid>
+     </DockPanel>
     </DockPanel>
    </Border>
   </Popup>
