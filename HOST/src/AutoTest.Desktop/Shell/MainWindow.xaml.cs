@@ -259,14 +259,14 @@ public partial class MainWindow : Window
         if (!_inspectorManualLayout) _inspectorVisible = ActualWidth >= 1120;
         if (!_bottomManualLayout)
             _bottomVisible = _activeRunFacts?.RunFacts.Count > 0;
-        if (ActualWidth < 1050 && !_treeAutoNarrow && TreeColumn.Width.Value > 235)
+        if (ActualWidth < 1050 && !_treeAutoNarrow && TreeColumn.Width.Value > 224)
         {
-            TreeColumn.Width = new GridLength(225);
+            TreeColumn.Width = new GridLength(215);
             _treeAutoNarrow = true;
         }
         else if (ActualWidth >= 1150 && _treeAutoNarrow)
         {
-            TreeColumn.Width = new GridLength(270);
+            TreeColumn.Width = new GridLength(248);
             _treeAutoNarrow = false;
         }
         ApplyPanelLayout();
@@ -278,7 +278,7 @@ public partial class MainWindow : Window
         // Only reserve the right rail when this document supplies an InspectorHost.
         var showInspector = _inspectorVisible &&
             (_viewModel.ActiveEditorTab?.Inspector is not null);
-        InspectorColumn.Width = new GridLength(showInspector ? 320 : 0);
+        InspectorColumn.Width = new GridLength(showInspector ? Math.Clamp(ActualWidth * 0.28, 350, 440) : 0);
         InspectorSplitterColumn.Width = new GridLength(showInspector ? 4 : 0);
         BottomRow.Height = new GridLength(_bottomVisible ? 180 : 0);
         BottomSplitterRow.Height = new GridLength(_bottomVisible ? 4 : 0);
