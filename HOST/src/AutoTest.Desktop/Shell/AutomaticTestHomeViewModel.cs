@@ -231,6 +231,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         RaisePropertyChanged(nameof(ModelCode));
         RaisePropertyChanged(nameof(DutSerial));
         RaisePropertyChanged(nameof(ScanStatus));
+        RaisePropertyChanged(nameof(ScanTraceSummary));
         RaisePropertyChanged(nameof(Status));
         RaisePropertyChanged(nameof(DeploymentStatus));
         RaisePropertyChanged(nameof(DeviceStatus));
