@@ -1284,7 +1284,21 @@ public sealed class TestEditorViewModel : BindableBase
                     foreach (var child in item.Children)
                         Append(child, depth + (item.Kind == StepTreeItemKind.Phase ? 0 : 1));
             }
-            foreach (var root in StepRoots) Append(root, 0);
+            // Normal TEST authoring is one continuous ordered step list.
+            // The persisted format still includes three phases for existing
+            // files and the real executor, but new documents do not force
+            // users to navigate three empty Prepare/Test/Cleanup headers.
+            // Show nonempty legacy Prepare/Cleanup sections for migration;
+            // never silently move their physical or recovery actions.
+            foreach (var root in StepRoots)
+            {
+                if (root.Phase == TestPhase.Test)
+                {
+                    foreach (var child in root.Children) Append(child, 0);
+                }
+                else if (root.Children.Count > 0)
+                    Append(root, 0);
+            }
             SelectedRow = StepRows.FirstOrDefault(x =>
                 StepSelectionKey.Of(x.Item) == _interaction.Selection);
         }
