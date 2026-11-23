@@ -188,7 +188,11 @@ public sealed record NativeFlashProfileDocument(
         "FlashEndAddr" => Hex(FlashEndInclusive),
         "BaudRate" => EcuCanKbps.ToString(CultureInfo.InvariantCulture) + "K",
         "BlockLength" => Hex(checked((uint)BlockLength)),
-        "VersionID" or "DiagnosticsID" or "ForceMinInterval" or "SafetyFilePath" => "",
+        "VersionID" => ReferenceVersionCanId is { } ver ? Hex(ver) : "",
+        "DiagnosticsID" => ReferenceDiagnosticsCanId is { } diag ? Hex(diag) : "",
+        "BootFeature" => ReferenceBootFeature ?? "",
+        "APPFeature" => ReferenceAppFeature ?? "",
+        "ForceMinInterval" or "SafetyFilePath" => "",
         _ => throw new KeyNotFoundException("未支持的烧录参数：" + name)
     };
 
@@ -203,6 +207,14 @@ public sealed record NativeFlashProfileDocument(
             "BaudRate", "BlockLength", "SafetyFilePath", "ForceMinInterval"
         })
             yield return new(field, Get(field));
+        // Original XML's BootFeature/item and APPFeature/item are preserved
+        // as provenance, not interpreted as newly executable UDS commands.
+        // Include them in newly frozen job identity only when present,
+        // preserving legacy fingerprint behavior for old unset profiles.
+        if (!string.IsNullOrWhiteSpace(ReferenceBootFeature))
+            yield return new("BootFeature", ReferenceBootFeature);
+        if (!string.IsNullOrWhiteSpace(ReferenceAppFeature))
+            yield return new("APPFeature", ReferenceAppFeature);
     }
 
     private static string Hex(uint value) => "0x" + value.ToString("X", CultureInfo.InvariantCulture);
