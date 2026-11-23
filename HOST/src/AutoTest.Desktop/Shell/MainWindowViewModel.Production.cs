@@ -55,6 +55,10 @@ public sealed partial class MainWindowViewModel
             _developerRestored = true;
             if (_workspace.Current is null) await RestoreLastProjectAsync();
         }
+        // Engineer home is the existing project setup/validation document,
+        // not a separate TEST or production recipe. Preserve open editors.
+        if (_workspace.Current is not null && OpenEditors.Count == 0)
+            ShowProjectConfiguration();
     }
 
     private async Task ShowAutomaticTestAsync()
