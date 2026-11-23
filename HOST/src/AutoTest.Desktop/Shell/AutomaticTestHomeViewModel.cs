@@ -18,6 +18,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
 {
     private readonly AutomaticTestPlanService _plans;
     private readonly HardwareConnectionService _hardware;
+    private readonly SerialScannerWorkbenchViewModel _scanner;
     private readonly Action _openEngineer;
     private bool _busy;
     private string _status = "正在读取自动测试工程";
