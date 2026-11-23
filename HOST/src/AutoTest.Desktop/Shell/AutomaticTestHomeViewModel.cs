@@ -52,29 +52,11 @@ public sealed class AutomaticTestHomeViewModel : BindableBase, IDisposable
 
     private void RequestSoftwareStart()
     {
-        if (IsBusy)
-        {
-            StartRequestStatus = "当前正在加载或核对工程，请完成后再启动。";
-            return;
-        }
-        if (!HasPlan)
-        {
-            StartRequestStatus = "无法启动：请先打开并确认正式 ECU 工程。";
-            return;
-        }
-        if (!_plans.Current!.ResourceReady)
-        {
-            StartRequestStatus = "无法启动：工程 TEST 或资源检查未通过：" +
-                string.Join("；", _plans.Current.ResourceIssues.Take(3));
-            return;
-        }
-        if (!_hardware.IsConnected)
-        {
-            StartRequestStatus = "无法启动：主控 USB 未连接，且本次 ECU 扫码、夹具与前置烧录尚未确认。";
-            return;
-        }
-        StartRequestStatus = "软件 START 请求被拒绝：正式检测的扫码身份、夹具、前置烧录及生产记录执行链尚未接通。" +
-            "当前仅有只读工程展示，不会借用开发执行器跳过生产工艺。";
+        // R1 operator UX: START is always clickable. Until the production
+        // FLASH -> TEST -> RECORD adapter is connected, clicking is a silent
+        // no-op (no popup, no grey-out, no fake RUN or status mutation).
+        // The one-shot gate in ProductionCommandHandler must remain the only
+        // authority once physical execution is connected.
     }
     public bool IsBusy
     {
