@@ -45,25 +45,57 @@ public sealed class ProductionWorkflow
             if (job.Configuration.RequiresFlash)
             {
                 var flash = await _executor.ExecuteFlashAsync(job, ct).ConfigureAwait(false);
-                await _records.AppendAsync(job, "FLASH:" + flash.Code,
-                    flash.Outcome == Outcome.Accepted ? RunFactKind.MockObservation : RunFactKind.Uncertainty,
-                    EvidenceQuality.Unknown, ct).ConfigureAwait(false);
-                if (flash.Outcome != Outcome.Accepted || flash.Verdict != Verdict.Pass)
+                // FLASH is destructive. A simulated stage, missing physical
+                // evidence or a non-durable fact can NEVER authorize TEST.
+                var flashProven = flash.Outcome == Outcome.Accepted &&
+                    flash.Verdict == Verdict.Pass && !flash.SimulationOnly &&
+                    !flash.Evidence.IsDefaultOrEmpty;
+                var flashFact = await _records.AppendAsync(job, "FLASH:" + flash.Code,
+                    flashProven ? RunFactKind.CommandAck : RunFactKind.Uncertainty,
+                    flashProven ? EvidenceQuality.HostObserved : EvidenceQuality.Unknown,
+                    ct, flash.Evidence).ConfigureAwait(false);
+                if (flashFact.Outcome != Outcome.Accepted)
                 {
-                    session.Mark(ProductionState.Unknown, "FLASH_NOT_CONFIRMED");
+                    session.Mark(ProductionState.Unknown, "FLASH_FACT_NOT_DURABLE");
                     return new(job.Run, ProductionState.Unknown, Verdict.Inconclusive,
-                        false, false, "FLASH_NOT_CONFIRMED");
+                        false, false, "FLASH_FACT_NOT_DURABLE");
+                }
+                if (!flashProven)
+                {
+                    var reason = flash.SimulationOnly ? "FLASH_SIMULATED" :
+                        flash.Evidence.IsDefaultOrEmpty ? "FLASH_EVIDENCE_MISSING" :
+                        "FLASH_NOT_CONFIRMED";
+                    session.Mark(ProductionState.Unknown, reason);
+                    return new(job.Run, ProductionState.Unknown, Verdict.Inconclusive,
+                        false, false, reason);
                 }
             }
             var test = await _executor.ExecuteTestAsync(job, ct).ConfigureAwait(false);
+            // A development/simulation judgement must not enter a physical
+            // production result path. The caller still gets an explicit fact.
+            var usableTest = test.Outcome == Outcome.Accepted && !test.SimulationOnly &&
+                !test.Evidence.IsDefaultOrEmpty;
             var persisted = await _records.AppendAsync(job, "TEST:" + test.Code,
-                RunFactKind.Judgement, test.SimulationOnly ? EvidenceQuality.Derived :
-                    EvidenceQuality.Unknown, ct).ConfigureAwait(false);
+                usableTest ? RunFactKind.Judgement : RunFactKind.Uncertainty,
+                usableTest ? EvidenceQuality.HostObserved : EvidenceQuality.Unknown,
+                ct, test.Evidence).ConfigureAwait(false);
             if (persisted.Outcome != Outcome.Accepted)
             {
                 session.Mark(ProductionState.Unknown, "TEST_FACT_NOT_DURABLE");
                 return new(job.Run, ProductionState.Unknown, Verdict.Inconclusive,
                     false, false, "TEST_FACT_NOT_DURABLE");
+            }
+            if (!job.IsMock && test.SimulationOnly)
+            {
+                session.Mark(ProductionState.Unknown, "TEST_SIMULATED");
+                return new(job.Run, ProductionState.Unknown, Verdict.Inconclusive,
+                    false, false, "TEST_SIMULATED");
+            }
+            if (!job.IsMock && test.Evidence.IsDefaultOrEmpty)
+            {
+                session.Mark(ProductionState.Unknown, "TEST_EVIDENCE_MISSING");
+                return new(job.Run, ProductionState.Unknown, Verdict.Inconclusive,
+                    false, false, "TEST_EVIDENCE_MISSING");
             }
             session.Mark(ProductionState.AwaitingCommit);
             var result = await _records.FinalizeAsync(job, test, ct).ConfigureAwait(false);
