@@ -127,7 +127,7 @@
       <MenuItem Header="从工程移除选中资源（保留源文件）" Command="{Binding RemoveReferenceCommand}"/>
      </MenuItem>
      <MenuItem Header="视图">
-      <MenuItem Header="工程师工作区" Command="{Binding ShowEngineerWorkspaceCommand}"/>
+      <MenuItem Header="自动测试与调试" Command="{Binding ShowEngineerWorkspaceCommand}"/>
       <MenuItem Header="生产检测工作区" Command="{Binding ShowProductionWorkspaceCommand}"/>
       <Separator/>
       <MenuItem Header="显示／隐藏观察区" Click="ToggleBottom_Click"/>
@@ -184,7 +184,7 @@
      <Button Content="CAN 监视" Command="{Binding OpenCanMonitorCommand}" Margin="0"/>
     </StackPanel>
     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
-     <Button Content="工程师" Command="{Binding ShowEngineerWorkspaceCommand}" Margin="0,0,4,0"
+     <Button Content="自动测试" Command="{Binding ShowEngineerWorkspaceCommand}" Margin="0,0,4,0"
       ToolTip="工程编辑与自动 TEST 调试"/>
      <Button Content="生产检测" Command="{Binding ShowProductionWorkspaceCommand}" Margin="0,0,12,0"
       Style="{StaticResource AtPrimaryButton}" ToolTip="显示实际 ECU 用例树及执行监视，不自动启动烧录"/>
@@ -211,9 +211,9 @@
   <Grid Grid.Row="2" Background="#FFFFFF"
    Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}">
    <Grid.ColumnDefinitions>
-    <ColumnDefinition x:Name="TreeColumn" Width="286" MinWidth="250" MaxWidth="420"/>
+    <ColumnDefinition x:Name="TreeColumn" Width="248" MinWidth="210" MaxWidth="350"/>
     <ColumnDefinition Width="4"/>
-    <ColumnDefinition Width="*" MinWidth="520"/>
+    <ColumnDefinition Width="*" MinWidth="460"/>
    </Grid.ColumnDefinitions>
    <navigation:ProjectExplorerView Grid.Column="0"/>
    <GridSplitter Grid.Column="1" Background="#EDF2F7" ResizeDirection="Columns"
@@ -253,9 +253,9 @@
     </Border>
     <Grid Grid.Row="1">
      <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="*" MinWidth="330"/>
+      <ColumnDefinition Width="*" MinWidth="400"/>
       <ColumnDefinition x:Name="InspectorSplitterColumn" Width="4"/>
-      <ColumnDefinition x:Name="InspectorColumn" Width="366" MinWidth="0" MaxWidth="520"/>
+      <ColumnDefinition x:Name="InspectorColumn" Width="410" MinWidth="0" MaxWidth="520"/>
      </Grid.ColumnDefinitions>
      <Grid Grid.Column="0">
       <Grid.RowDefinitions>
