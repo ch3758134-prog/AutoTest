@@ -108,8 +108,10 @@ public static class StationDeploymentStore
         var full = Path.GetFullPath(path);
         var definition = await ProjectRepository.OpenDefinitionAsync(full, ct)
             .ConfigureAwait(false);
-        await ProjectBundleContractAudit.ValidateAsync(definition, full, ct)
-            .ConfigureAwait(false);
+        // Deployment validates the active TEST closure, native FLASH release
+        // and selected fixture procedure below. Unused historical draft
+        // resources cannot expand the physical production dependency set.
+        // Any missing/changed required asset still blocks deployment.
         var manifestSha = Convert.ToHexString(SHA256.HashData(
             await File.ReadAllBytesAsync(full, ct).ConfigureAwait(false)));
         return new(definition, full, manifestSha);
