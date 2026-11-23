@@ -42,7 +42,7 @@ public sealed class AutomaticTestHomeViewModel : BindableBase, IDisposable
         }
     }
     public bool HasPlan => _plans.Current is not null;
-    public bool NeedsSetup => !HasPlan;
+    public bool NeedsSetup => !HasPlan || Cases.Count == 0;
     public string SetupIssue => _plans.Issue;
     public string ModelCode => _plans.Current?.Project.Definition.EcuModelCode is { Length: > 0 } code
         ? code : "未标定型号";
@@ -55,9 +55,12 @@ public sealed class AutomaticTestHomeViewModel : BindableBase, IDisposable
     public string ActualValue => "—";
     public string ExpectedValue => "—";
     public string FailureReason => "—";
-    public string ExecutionNotice => HasPlan
-        ? "已加载测试项目；正式自动测试执行尚未接通，不能给出合格结论。"
-        : "请在当前页面打开已有的 ECU 测试工程。";
+    public string ExecutionNotice => !HasPlan
+        ? "请在本页选择已有 ECU 工程。"
+        : _plans.Current!.ResourceIssues.Count != 0
+            ? "资源需要修复（不会执行硬件）："+ string.Join("；",
+                _plans.Current.ResourceIssues.Take(5))
+            : "测试用例和资源已读取；自动启动、前置烧录及整机结果仍需实物接线，不能据此给出合格结论。";
 
     public async Task RestoreAsync()
     {
@@ -101,9 +104,10 @@ public sealed class AutomaticTestHomeViewModel : BindableBase, IDisposable
             foreach (var item in plan.Cases)
                 Cases.Add(item);
         }
-        _status = HasPlan
-            ? _hardware.IsConnected ? "自动执行尚未接通" : "主控未连接"
-            : "尚未打开测试工程";
+        _status = !HasPlan ? "尚未打开测试工程"
+            : !_plans.Current!.ResourceReady ? "测试资源未就绪"
+            : !_hardware.IsConnected ? "主控未连接"
+            : "自动执行尚未接通";
         Notify();
     }
 
@@ -116,9 +120,10 @@ public sealed class AutomaticTestHomeViewModel : BindableBase, IDisposable
 
     private void UpdateConnection()
     {
-        _status = HasPlan
-            ? _hardware.IsConnected ? "自动执行尚未接通" : "主控未连接"
-            : "尚未打开测试工程";
+        _status = !HasPlan ? "尚未打开测试工程"
+            : !_plans.Current!.ResourceReady ? "测试资源未就绪"
+            : !_hardware.IsConnected ? "主控未连接"
+            : "自动执行尚未接通";
         Notify();
     }
 
