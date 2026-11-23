@@ -58,6 +58,25 @@ public partial class TestProjectWorkbenchView : UserControl
             vm.AdoptCurrentRevision(row, asset.Revision, asset.Sha256);
     }
 
+    private void RestoreLegacyInclusion_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        if (DataContext is not TestProjectWorkbenchViewModel vm ||
+            sender is not Button { Tag: TestProjectPackageRow row } ||
+            !vm.Packages.Contains(row) || row.Enabled) return;
+        // This only repairs a historical persisted exclusion. Normal project
+        // editing offers no second per-case production enable switch.
+        var result = MessageBox.Show(Window.GetWindow(this),
+            "测试项目中的每条有序用例实例都属于正式检测。\n\n" +
+            "旧工程中的「" + row.Name + "」当前被标记为排除。\n" +
+            "恢复后本条将参与工程完整检测；需要保存并重新完成资源检查。\n\n" +
+            "确认恢复这条历史排除记录？",
+            "恢复完整检测顺序", MessageBoxButton.YesNo,
+            MessageBoxImage.Warning, MessageBoxResult.No);
+        if (result == MessageBoxResult.Yes)
+            row.Enabled = true;
+    }
+
     private void MoveRowUp_Click(object sender, RoutedEventArgs e) => Move(sender, -1, e);
     private void MoveRowDown_Click(object sender, RoutedEventArgs e) => Move(sender, 1, e);
     private void Move(object sender, int direction, RoutedEventArgs e)
