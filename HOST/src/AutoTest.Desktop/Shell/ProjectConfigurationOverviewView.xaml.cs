@@ -66,7 +66,7 @@ public partial class ProjectConfigurationOverviewView : UserControl
             throw new ArgumentException("当前资源不是工程工位动作配置。");
         if (_inspectionEditor is not null && _inspectionEditor.IsDirty)
         {
-            _shell.StatusMessageForSetup("先完成当前工位动作草稿保存，不能直接切换配置。");
+            System.Diagnostics.Trace.TraceWarning("工位动作草稿仍未保存，保留当前编辑页面。");
             return;
         }
         if (InspectionProcedureHost.Content is InspectionStationProcedureEditorView
