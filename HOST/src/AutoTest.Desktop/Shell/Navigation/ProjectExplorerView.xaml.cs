@@ -21,11 +21,15 @@ public partial class ProjectExplorerView : UserControl
         {
             // Section/root selections must not leave a stale asset selected:
             // the context menu could otherwise rename/remove the previous resource.
-            vm.SelectResource(null);
-            // The project root and inspection setup are both stable entry
-            // points into the genuine, editable engineering setup workbench.
+            // Do not clear a Setup selection before restoring it: doing so
+            // can recursively fire TreeView.SelectedItemChanged.
             if (node.Role is "Root" or "Setup")
+            {
+                vm.SelectResource(node);
                 vm.ShowProjectConfiguration();
+            }
+            else
+                vm.SelectResource(null);
             return;
         }
         vm.SelectResource(node);
