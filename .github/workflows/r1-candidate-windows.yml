@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/r1-usb-com-scan-preflight-20261122
+      - 'ui/**'
   workflow_dispatch:
 
 concurrency:
