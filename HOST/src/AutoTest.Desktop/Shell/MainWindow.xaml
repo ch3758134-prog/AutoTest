@@ -83,11 +83,6 @@
    <DockPanel LastChildFill="True">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center"
      chrome:WindowChrome.IsHitTestVisibleInChrome="True">
-     <Button Content="工程配置" Command="{Binding ConfigureAutomaticTestCommand}"
-      Visibility="{Binding IsProductionWorkspace,Converter={StaticResource BoolToVisibility}}"
-      Style="{StaticResource AtQuietButton}" FontSize="11" Foreground="#738397"
-      MinHeight="26" Padding="9,3" Margin="0,0,4,0"
-      ToolTip="进入工程与调试，配置和验证唯一 ECU 工程后部署；自动测试不另选一套用例或配方"/>
      <Button Content="开发与调试" Command="{Binding ShowEngineerWorkspaceCommand}"
       Visibility="{Binding IsProductionWorkspace,Converter={StaticResource BoolToVisibility}}"
       Style="{StaticResource AtQuietButton}" FontSize="11" Foreground="#738397"
@@ -133,7 +128,7 @@
       <MenuItem Header="保存当前" Command="{Binding SaveActiveCommand}" InputGestureText="Ctrl+S"/>
       <Separator/>
       <MenuItem Header="新建测试项目" Command="{Binding NewTestProjectCommand}"/>
-      <MenuItem Header="新建测试用例" Command="{Binding NewTestProgramCommand}"/>
+      <MenuItem Header="新建独立用例定义（需加入测试项目）" Command="{Binding NewTestProgramCommand}"/>
       <MenuItem Header="导入 DBC" Command="{Binding ImportDbcCommand}"/>
       <Separator/>
       <MenuItem Header="退出 AutoTest" Click="Exit_Click" InputGestureText="Alt+F4"/>
@@ -152,11 +147,10 @@
       <MenuItem Header="显示／隐藏观察区" Click="ToggleBottom_Click"/>
       <MenuItem Header="显示／隐藏属性区" Click="ToggleInspector_Click"/>
       <Separator/>
-      <MenuItem Header="工程信息与检测准备" Click="ShowOverview_Click"/>
       <MenuItem Header="检测准备 · 配置与实测" Command="{Binding OpenProjectConfigurationOverviewCommand}"/>
      </MenuItem>
      <MenuItem Header="运行">
-      <MenuItem Header="当前选择的实际预检" Command="{Binding CheckActiveCommand}"/>
+      <MenuItem Header="检查当前开发调试范围" Command="{Binding CheckActiveCommand}"/>
      </MenuItem>
      <MenuItem Header="工具">
       <MenuItem Header="手动台架" Command="{Binding OpenManualBenchCommand}"/>
