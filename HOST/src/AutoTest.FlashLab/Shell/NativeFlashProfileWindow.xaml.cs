@@ -116,6 +116,36 @@ public partial class NativeFlashProfileWindow : Window
         };
     }
 
+    private void LoadHydEpbPreset_Click(object sender, RoutedEventArgs e)
+    {
+        if (_loadFailure || _saving || _closing) return;
+        // This is a read-only reference preset, not a live device
+        // identification or an authorization to write flash.
+        if (!string.Equals(_expectedModel, "HYDEPB", StringComparison.Ordinal) ||
+            !string.Equals(ModelBox.Text.Trim(), "HYDEPB", StringComparison.Ordinal))
+        {
+            StatusLabel.Text = "只允许在正式型号 HYDEPB 的工程中填入该已核对参数；其它型号不得复用。";
+            return;
+        }
+        if (MessageBox.Show(this,
+            "将用已核对的 HydEPB CanTool 参数覆盖当前表单中的 CAN ID、Flash 地址和块长。" +
+            "\n不会更改固件或安全算法资源，不会发布，也不会发送任何 CAN。" +
+            "\n\n确认填入？", "填入 HydEPB 参考参数",
+            MessageBoxButton.YesNo, MessageBoxImage.Question,
+            MessageBoxResult.No) != MessageBoxResult.Yes)
+            return;
+        AppTxBox.Text = "0x747";
+        AppRxBox.Text = "0x74F";
+        BootTxBox.Text = "0x18DA50F1";
+        BootRxBox.Text = "0x18DAF150";
+        BaudBox.SelectedIndex = 1; // 500 kbit/s
+        StartBox.Text = "0x10008000";
+        EndBox.Text = "0x1006FFFF";
+        BlockBox.Text = "512";
+        QueueAutoSave();
+        StatusLabel.Text = "已填入已核对的 HydEPB 参考参数；还需检查 HEX/S19、安全算法，校验 Job 后显式发布。";
+    }
+
     private void EditorChanged(object sender, TextChangedEventArgs e) => QueueAutoSave();
     private void EditorSelectionChanged(object sender, SelectionChangedEventArgs e) => QueueAutoSave();
 
