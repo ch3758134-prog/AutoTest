@@ -17,20 +17,26 @@ namespace AutoTest.Desktop.Shell;
 public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposable
 {
     private readonly AutomaticTestPlanService _plans;
+    private readonly ProjectWorkspaceService _engineering;
     private readonly HardwareConnectionService _hardware;
     private readonly SerialScannerWorkbenchViewModel _scanner;
     private readonly Action _openEngineer;
     private bool _busy;
-    private string _status = "正在读取自动测试工程";
+    private string _status = "正在读取检测工程";
+    private EngineeringTestProjectPreview? _draftPreview;
+    private string _draftIssue = "";
+    private long _previewVersion;
     private string _startRequestStatus = "请完成工程与工位准备。软件 START 和实体 START 共享同一检测启动入口。";
 
     public AutomaticTestHomeViewModel(AutomaticTestPlanService plans,
         HardwareConnectionService hardware,
-        SerialScannerWorkbenchViewModel scanner, Action openEngineer)
+        SerialScannerWorkbenchViewModel scanner,
+        ProjectWorkspaceService engineering, Action openEngineer)
     {
         _plans = plans;
         _hardware = hardware;
         _scanner = scanner;
+        _engineering = engineering;
         _openEngineer = openEngineer;
         ChoosePlanCommand = new DelegateCommand(() => _openEngineer());
         RequestSoftwareStartCommand = new DelegateCommand(RequestSoftwareStart);
@@ -38,6 +44,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         _hardware.ConnectionChanged += OnConnectionChanged;
         _scanner.PropertyChanged += OnScannerPropertyChanged;
         _scanner.CompleteBarcodeReceived += OnCompleteBarcodeReceived;
+        _engineering.CurrentChanged += OnEngineeringProjectChanged;
     }
 
     public ObservableCollection<AutomaticTestCase> Cases { get; } = new();
@@ -73,18 +80,27 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
             if (SetProperty(ref _busy, value)) ChoosePlanCommand.RaiseCanExecuteChanged();
         }
     }
-    public bool HasPlan => _plans.Current is not null;
-    public bool NeedsSetup => !HasPlan || Cases.Count == 0;
-    public string SetupIssue => _plans.Issue;
-    public string ModelCode => _plans.Current?.Project.Definition.EcuModelCode is { Length: > 0 } code
-        ? code : "未标定型号";
+    public bool HasPlan => _plans.Current is not null ||
+        _draftPreview is { HasTestProject: true };
+    public bool NeedsSetup => Cases.Count == 0;
+    public string SetupIssue => _plans.Current is not null ? _plans.Issue :
+        _draftPreview is not null
+            ? "工程可编辑，但尚未发布供正式自动检测：" + _draftPreview.Description
+            : string.IsNullOrWhiteSpace(_draftIssue)
+                ? "尚未打开检测工程。进入开发与调试创建或打开 ECU 工程。"
+                : _draftIssue;
+    public string ModelCode => (_plans.Current?.Project.Definition.EcuModelCode ??
+            _draftPreview?.Project.Definition.EcuModelCode) is { Length: > 0 } code
+        ? code : "未设置";
     public string DutSerial => _dutSerial;
     public string ScanStatus => _scanStatus;
     public string Status => _status;
     public string DeploymentStatus => _plans.Current is null
-        ? "无有效工位部署"
-        : "已核对工程部署 " + _plans.Current.DeploymentFingerprint[..12] +
-          "…；实体工位和整机执行仍需验证";
+        ? _draftPreview is null
+            ? "当前没有可用工程，请进入开发与调试"
+            : "当前展示的是工程草稿 · 尚未用于正式检测"
+        : "正式工程版本已核对 " + _plans.Current.DeploymentFingerprint[..12] +
+          "…；实体工位与完整执行还需验证";
     public int CaseCount => Cases.Count;
     public string DeviceStatus => (_hardware.IsConnected ? "主控已连接" : "主控未连接") +
         " · " + (_scanner.IsConnected ? "扫码枪已连接" : "扫码枪未连接");
@@ -93,20 +109,27 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     public string ActualValue => "—";
     public string ExpectedValue => "—";
     public string FailureReason => "—";
-    public string ExecutionNotice => !HasPlan
-        ? "本工位尚无有效工程部署。进入开发与调试，核对正式资源及工艺后部署。"
-        : _plans.Current!.ResourceIssues.Count != 0
-            ? "当前部署包含 " + _plans.Current.ResourceIssues.Count +
-              " 项资源问题，请在工程与调试中定位修复。"
+    public string ExecutionNotice => _plans.Current is null
+        ? _draftPreview is null ? _plans.Issue
+            : "已显示当前编辑工程的用例（不会发送硬件指令）。" +
+              _draftPreview.Description +
+              "需要完成前置烧录等检测配置并发布后才能进入正式检测。"
+        : _plans.Current.ResourceIssues.Count != 0
+            ? "正式版本有 " + _plans.Current.ResourceIssues.Count +
+              " 项运行资源问题；请进入开发与调试定位。"
             : _prepared is null
-                ? "部署资源已读取；请完成真实扫码和工位核验。"
-                : "扫码身份及本次工程资源已冻结；夹具、START、前置烧录、TEST 与 RECORD 的正式执行仍待接线。";
+                ? "正式版本已读取；需要实际扫码及工位预检。"
+                : "扫码与工程资源已核对；真实夹具、START、FLASH、TEST 和 RECORD 的整机执行尚未接通。";
 
     public async Task RestoreAsync()
     {
         if (IsBusy) return;
         IsBusy = true;
-        try { await _plans.RestoreAsync(); }
+        try
+        {
+            await _plans.RestoreAsync();
+            await RefreshDraftPreviewAsync();
+        }
         finally { IsBusy = false; }
     }
 
@@ -126,19 +149,61 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
 
     private void OnPlanChanged(object? sender, EventArgs e)
     {
-        InvalidateScan("部署已加载或变化，请重新扫描当前 ECU。");
-        StartRequestStatus = "需完成真实扫码、工位预检及新的检测任务后才能启动。";
-        Cases.Clear();
-        if (_plans.Current is { } plan)
+        InvalidateScan("正式工程加载或更新后，需要重新核对本次 ECU 的真实扫码身份。");
+        StartRequestStatus = "正式检测需要完整配置、扫码与实体工位确认。";
+        RebuildCases();
+        UpdateConnection();
+    }
+
+    private void OnEngineeringProjectChanged(object? sender, EventArgs e) =>
+        OnUi(() => { _ = RefreshDraftPreviewAsync(); });
+
+    private async Task RefreshDraftPreviewAsync()
+    {
+        var revision = Interlocked.Increment(ref _previewVersion);
+        var opened = _engineering.Current;
+        EngineeringTestProjectPreview? preview = null;
+        string error = "";
+        if (opened is not null)
         {
-            foreach (var item in plan.Cases)
-                Cases.Add(item);
+            try
+            {
+                preview = await EngineeringTestProjectPreview.ReadAsync(opened);
+            }
+            catch (Exception failure) when (failure is IOException or
+                InvalidDataException or UnauthorizedAccessException or ArgumentException or
+                FormatException or NotSupportedException or
+                AutoTest.Projects.Project.ProjectDataException)
+            {
+                error = "当前工程的测试用例无法读取：" + failure.Message;
+            }
         }
-        _status = !HasPlan ? "本工位尚未部署工程"
-            : !_plans.Current!.ResourceReady ? "测试资源未就绪"
-            : !_hardware.IsConnected ? "主控未连接"
-            : "自动执行尚未接通";
-        Notify();
+        if (revision != _previewVersion ||
+            !ReferenceEquals(_engineering.Current, opened)) return;
+        _draftPreview = preview;
+        _draftIssue = error;
+        RebuildCases();
+        UpdateConnection();
+    }
+
+    private void RebuildCases()
+    {
+        Cases.Clear();
+        if (_plans.Current is { } deployed)
+        {
+            foreach (var item in deployed.Cases) Cases.Add(item);
+        }
+        else if (_draftPreview is { } draft)
+        {
+            for (var i = 0; i < draft.Cases.Count; i++)
+            {
+                var item = draft.Cases[i];
+                Cases.Add(new AutomaticTestCase((i + 1).ToString("D2"),
+                    item.Name, new AutoTest.Core.TestDocumentId(Guid.Empty),
+                    !item.ReferenceCurrent ? "引用需修复" :
+                    item.Included ? "未执行" : "未纳入正式检测"));
+            }
+        }
     }
 
     private void OnConnectionChanged(long _)
@@ -150,10 +215,11 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
 
     private void UpdateConnection()
     {
-        _status = !HasPlan ? "本工位尚未部署工程"
-            : !_plans.Current!.ResourceReady ? "测试资源未就绪"
+        _status = _plans.Current is null
+            ? _draftPreview is null ? "请先打开工程" : "工程草稿 · 尚未发布"
+            : !_plans.Current.ResourceReady ? "测试资源未就绪"
             : !_hardware.IsConnected ? "主控未连接"
-            : "自动执行尚未接通";
+            : "整机执行待接线";
         Notify();
     }
 
@@ -183,5 +249,6 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         _hardware.ConnectionChanged -= OnConnectionChanged;
         _scanner.PropertyChanged -= OnScannerPropertyChanged;
         _scanner.CompleteBarcodeReceived -= OnCompleteBarcodeReceived;
+        _engineering.CurrentChanged -= OnEngineeringProjectChanged;
     }
 }
