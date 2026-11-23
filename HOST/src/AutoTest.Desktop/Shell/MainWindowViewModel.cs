@@ -397,33 +397,15 @@ public sealed partial class MainWindowViewModel : BindableBase
         if (kind == ProjectWorkspaceService.TestProjectKind) await OpenSelectedTestProjectAsync();
         else await OpenSelectedTestProgramAsync();
     }
-    private Window? _projectInformationWindow;
-
-    /// <summary>Non-persistent project metadata; opening the project never pins a home tab.</summary>
+    /// <summary>
+    /// The ECU project home is a normal editor document, not a detached
+    /// information popup that hides the workspace and opens dead buttons.
+    /// </summary>
     public void ShowOverview()
     {
         if (_workspace.Current is null) return;
-        if (_projectInformationWindow is { IsVisible: true })
-        {
-            _projectInformationWindow.Activate();
-            return;
-        }
-        var panel = new ProjectOverviewView(this);
-        var window = new Window
-        {
-            Title = "工程信息 · " + CurrentProjectName,
-            Owner = global::System.Windows.Application.Current.MainWindow,
-            Content = panel,
-            Width = Math.Max(640, Math.Min(980, SystemParameters.WorkArea.Width - 36)),
-            Height = Math.Max(440, Math.Min(640, SystemParameters.WorkArea.Height - 36)),
-            MinWidth = 640,
-            MinHeight = 440,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Background = System.Windows.Media.Brushes.White
-        };
-        _projectInformationWindow = window;
-        window.Closed += (_, _) => _projectInformationWindow = null;
-        window.Show();
+        ActivateEditor("project-overview", new ProjectOverviewView(this),
+            "工程概览 · " + CurrentProjectName, () => true);
     }
 
     public void ShowProjectConfiguration()
