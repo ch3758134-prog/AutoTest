@@ -132,6 +132,7 @@ public partial class NativeFlashProfileWindow : Window
     private void QueueAutoSave()
     {
         if (_initializing || _loadFailure || _closing) return;
+        JobDetailsLabel.Text = "参数已变更，请重新校验实际烧录 Job。";
         _idleSave.Stop();
         _idleSave.Start();
     }
@@ -200,6 +201,7 @@ public partial class NativeFlashProfileWindow : Window
                 FirmwareSha256 = imported.Sha256
             };
             FirmwareLabel.Text = imported.RelativePath;
+            JobDetailsLabel.Text = "固件已更换，原 Job 预览失效，请重新校验。";
             await SaveAsync();
         }
         catch (Exception error) when (error is IOException or FormatException or InvalidDataException
@@ -226,11 +228,39 @@ public partial class NativeFlashProfileWindow : Window
                 SecuritySha256 = imported.Sha256
             };
             SecurityLabel.Text = imported.RelativePath;
+            JobDetailsLabel.Text = "安全文件已更换，原 Job 预览失效，请重新校验。";
             await SaveAsync();
         }
         catch (Exception error) when (error is IOException or FormatException or InvalidDataException
                                       or NotSupportedException or UnauthorizedAccessException or JsonException)
         { StatusLabel.Text = "安全文件导入失败：" + error.Message; }
+    }
+
+    private static string FormatFrozenJob(CanToolFlashJob job)
+    {
+        var text =
+            "编程任务 SHA256：" + job.Fingerprint + "\n" +
+            "固件 SHA256：" + job.FirmwareSha256 + "\n" +
+            "安全文件 SHA256：" + job.SecuritySha256 + "\n" +
+            "Flash 范围：0x" + job.FlashStart.ToString("X8") + "～0x" +
+                job.FlashEndInclusive.ToString("X8") + "\n" +
+            "计划下载：" + job.Blocks.Length + " 块 × " +
+                job.AlignmentBlockLength + " 字节（合计 " +
+                job.PlannedBytes.ToString("N0") + " 字节）";
+        if (job.LegacyTailSignature)
+        {
+            var address = job.FlashEndInclusive - 3;
+            var baseAddress = address / (uint)job.AlignmentBlockLength *
+                (uint)job.AlignmentBlockLength;
+            text += "\n\n注意：已验证的 OEM 工艺自动写入签名 12 34 56 78" +
+                "\n写入地址：0x" + address.ToString("X8") +
+                "～0x" + job.FlashEndInclusive.ToString("X8") +
+                "\n所属对齐块：0x" + baseAddress.ToString("X8") +
+                "；当 HEX 未提供该块时将补入下载计划。" +
+                "\n若 HEX 在此地址有原字节，实际下载内容会被覆盖。";
+        }
+        else text += "\n此任务未启用 HydEPB OEM 末端签名。";
+        return text;
     }
 
     private async void Preview_Click(object sender, RoutedEventArgs e)
@@ -240,12 +270,16 @@ public partial class NativeFlashProfileWindow : Window
         {
             var source = (await NativeFlashProfileStore.LoadAsync(_root))!;
             var job = await Task.Run(() => NativeFlashJobBuilder.Freeze(source.Profile, _root));
+            JobDetailsLabel.Text = FormatFrozenJob(job);
             StatusLabel.Text = $"离线冻结成功：{job.Blocks.Length} 个块，" +
                 $"计划 {job.PlannedBytes:N0} 字节，任务 SHA {job.Fingerprint[..12]}…；没有发送任何 CAN。";
         }
         catch (Exception error) when (error is IOException or FormatException or InvalidDataException
                                       or NotSupportedException or UnauthorizedAccessException or JsonException)
-        { StatusLabel.Text = "原生烧录预检拒绝：" + error.Message; }
+        {
+            JobDetailsLabel.Text = "未获得有效的冻结 Job：" + error.Message;
+            StatusLabel.Text = "原生烧录预检拒绝：" + error.Message;
+        }
     }
 
     private async void Publish_Click(object sender, RoutedEventArgs e)
@@ -256,14 +290,16 @@ public partial class NativeFlashProfileWindow : Window
             var draft = (await NativeFlashProfileStore.LoadAsync(_root))!;
             var preview = await Task.Run(() =>
                 NativeFlashJobBuilder.Freeze(draft.Profile, _root));
+            JobDetailsLabel.Text = FormatFrozenJob(preview);
             var confirm = MessageBox.Show(this,
-                "工程型号：" + draft.Profile.EcuModelCode + "\\n" +
-                "固件 SHA256：" + preview.FirmwareSha256 + "\\n" +
-                "真实编程任务 SHA256：" + preview.Fingerprint + "\\n\\n" +
-                "发布后生产预检将冻结此版本；后续草稿修改不影响已发布版本。" +
-                "\\n本操作不连接设备，也不代表已授权对 ECU 擦写。\\n\\n确认发布？",
-                "发布当前烧录配置", MessageBoxButton.YesNo,
-                MessageBoxImage.Question, MessageBoxResult.No);
+                "工程型号：" + draft.Profile.EcuModelCode + "\n\n" +
+                FormatFrozenJob(preview) + "\n\n" +
+                "发布后生产预检将冻结此版本；草稿修改不会影响已发布版本。" +
+                "\n本操作不连接设备，也不代表已授权对 ECU 擦写。" +
+                "\n\n我已核查固件、算法及上述实际下载镜像行为，确认发布？",
+                "核对完整实际烧录计划后发布",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning,
+                MessageBoxResult.No);
             if (confirm != MessageBoxResult.Yes) return;
             var published = await NativeFlashPublicationStore.PublishAsync(_root,
                 draft.ProfileSha256);
