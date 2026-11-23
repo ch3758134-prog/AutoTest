@@ -200,6 +200,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         OpenManualBenchCommand = new DelegateCommand(OpenManualBench);
         OpenFlashWorkbenchCommand = new DelegateCommand(async () => await OpenFlashWorkbenchAsync(),
             () => !_openingFlashLab && !_hardwareBusy);
+        OpenNativeFlashProfileCommand = new DelegateCommand(OpenNativeFlashProfile);
         OpenTbcCommand = new DelegateCommand(async () => await OpenConfigurationKindAsync(
             ProjectWorkspaceService.BenchConfigurationKind));
         OpenFirstConfigurationCommand = new DelegateCommand(async () =>
@@ -391,6 +392,7 @@ public sealed partial class MainWindowViewModel : BindableBase
     public DelegateCommand OpenWaveWorkbenchCommand { get; }
     public DelegateCommand OpenManualBenchCommand { get; }
     public DelegateCommand OpenFlashWorkbenchCommand { get; }
+    public DelegateCommand OpenNativeFlashProfileCommand { get; }
     public DelegateCommand OpenTbcCommand { get; }
     public int TestProjectCount => _workspace.Current?.Definition.Assets.Count(x =>
         x.Kind == ProjectWorkspaceService.TestProjectKind) ?? 0;
@@ -491,6 +493,47 @@ public sealed partial class MainWindowViewModel : BindableBase
     /// starting another EXE or duplicating the CanTool/UDS implementation.
     /// The host session is fully released before FlashLab may open WinUSB.
     /// After closing, the main IDE stays disconnected until explicit reconnection.</summary>
+    private NativeFlashProfileWindow? _nativeFlashProfileWindow;
+
+    /// <summary>
+    /// Direct engineering entry to the project's native flash configuration.
+    /// It edits a draft and never opens WinUSB or authorizes programming.
+    /// The standalone FlashLab remains a separate physical diagnostic tool.
+    /// </summary>
+    private void OpenNativeFlashProfile()
+    {
+        if (_workspace.Current is not { } project)
+        {
+            MessageBox.Show("请先打开一个 ECU 工程，再配置该型号的烧录工艺。",
+                "原生烧录配置", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        if (_realTest.IsRunning || _hardwareBusy)
+        {
+            MessageBox.Show("当前正在执行测试或切换硬件会话。请停止后再编辑烧录配置。",
+                "烧录配置暂不可编辑", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        if (_nativeFlashProfileWindow is { IsVisible: true } existing)
+        {
+            existing.Activate();
+            return;
+        }
+        var window = new NativeFlashProfileWindow(project.RootDirectory,
+            project.Definition.EcuModelCode)
+        {
+            Owner = global::System.Windows.Application.Current.MainWindow,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner
+        };
+        _nativeFlashProfileWindow = window;
+        window.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(_nativeFlashProfileWindow, window))
+                _nativeFlashProfileWindow = null;
+        };
+        window.Show();
+    }
+
     private async Task OpenFlashWorkbenchAsync()
     {
         if (_openingFlashLab || _hardwareBusy) return;
