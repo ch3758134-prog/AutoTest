@@ -16,7 +16,7 @@ public sealed class ProductionBarcodePreflightTests
         Assert.True(result.IdentityMatched);
         Assert.Equal("000000123456", result.DutSerial);
         Assert.Equal("EPBA", result.ModelCode);
-        Assert.Contains("不允许生产执行", result.Explanation);
+        Assert.Contains("仅完成身份预检", result.Explanation);
     }
 
     [Fact]
