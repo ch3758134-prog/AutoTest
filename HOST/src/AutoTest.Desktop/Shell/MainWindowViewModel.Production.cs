@@ -31,7 +31,7 @@ public sealed partial class MainWindowViewModel
     {
         _automaticTestPlans = new AutomaticTestPlanService();
         _automaticTestHome = new AutomaticTestHomeViewModel(_automaticTestPlans, _hardware,
-            _scannerWorkbench, () => { _ = ShowDeveloperAsync(); });
+            _scannerWorkbench, _workspace, () => { _ = ShowDeveloperAsync(); });
         AutomaticTestView = new AutomaticTestHomeView { DataContext = _automaticTestHome };
         ConfigureAutomaticTestCommand = new DelegateCommand(
             async () => await ShowDeveloperAsync());
