@@ -27,7 +27,13 @@ public sealed record NativeFlashProfileDocument(
     string? FirmwareRelativePath,
     string? FirmwareSha256,
     string? SecurityRelativePath,
-    string? SecuritySha256)
+    string? SecuritySha256,
+    // Preserved from the actual 2026-11-18 HydEPB Configuration(2).xml.
+    // These are original reference/feature fields, NOT additional UDS endpoints.
+    uint? ReferenceVersionCanId = null,
+    uint? ReferenceDiagnosticsCanId = null,
+    string? ReferenceBootFeature = null,
+    string? ReferenceAppFeature = null)
     : IFlashParameterSource
 {
     public const string VerifiedMethod = "CanTool-HydEPB-v1";
@@ -35,6 +41,52 @@ public sealed record NativeFlashProfileDocument(
     public static NativeFlashProfileDocument CreateDraft(string ecuModelCode) =>
         new(CurrentSchema, Guid.NewGuid(), 1, ecuModelCode, VerifiedMethod,
             0, 0, 0, 0, 500, 0, 0, 512, null, null, null, null, null);
+
+    /// <summary>
+    /// Historical HydEPB source: user's Configuration(2).xml (2026-11-18).
+    /// 512-byte block alignment comes separately from the successful reference
+    /// CAN flash trace. This is an engineering DRAFT, never a published Job.
+    /// The HEX image and reviewed SafetyFile are intentionally not fabricated.
+    /// </summary>
+    public static NativeFlashProfileDocument CreateHydEpbReferenceDraft() =>
+        CreateDraft("HYDEPB") with
+        {
+            AppRequestCanId = 0x747,
+            AppResponseCanId = 0x74F,
+            BootRequestCanId = 0x18DA50F1,
+            BootResponseCanId = 0x18DAF150,
+            EcuCanKbps = 500,
+            FlashStart = 0x10008000,
+            FlashEndInclusive = 0x1006FFFF,
+            BlockLength = 512,
+            ReferenceVersionCanId = 0x74F,
+            ReferenceDiagnosticsCanId = 0x18FE150E,
+            ReferenceBootFeature = "73",
+            ReferenceAppFeature = "701"
+        };
+
+    /// <summary>
+    /// Backfills ONLY missing HydEPB reference fields of an existing draft.
+    /// Never overwrite a configured ID, memory limit, baud rate, firmware,
+    /// reviewed security library, stable ProfileId, or published version.
+    /// </summary>
+    public NativeFlashProfileDocument WithMissingHydEpbReference() =>
+        !string.Equals(EcuModelCode, "HYDEPB", StringComparison.Ordinal) ||
+        ProgrammingMethodId != VerifiedMethod ? this : this with
+        {
+            AppRequestCanId = AppRequestCanId == 0 ? 0x747u : AppRequestCanId,
+            AppResponseCanId = AppResponseCanId == 0 ? 0x74Fu : AppResponseCanId,
+            BootRequestCanId = BootRequestCanId == 0 ? 0x18DA50F1u : BootRequestCanId,
+            BootResponseCanId = BootResponseCanId == 0 ? 0x18DAF150u : BootResponseCanId,
+            FlashStart = FlashStart == 0 ? 0x10008000u : FlashStart,
+            FlashEndInclusive = FlashEndInclusive == 0 ? 0x1006FFFFu : FlashEndInclusive,
+            ReferenceVersionCanId = ReferenceVersionCanId ?? 0x74Fu,
+            ReferenceDiagnosticsCanId = ReferenceDiagnosticsCanId ?? 0x18FE150Eu,
+            ReferenceBootFeature = string.IsNullOrWhiteSpace(ReferenceBootFeature)
+                ? "73" : ReferenceBootFeature,
+            ReferenceAppFeature = string.IsNullOrWhiteSpace(ReferenceAppFeature)
+                ? "701" : ReferenceAppFeature
+        };
 
     public void ValidateDraft()
     {
@@ -61,6 +113,17 @@ public sealed record NativeFlashProfileDocument(
             throw new FormatException("擦除地址区间无效。");
         ValidatePin(FirmwareRelativePath, FirmwareSha256, "固件");
         ValidatePin(SecurityRelativePath, SecuritySha256, "安全算法");
+        // Non-executable provenance fields from the user's original CanTool
+        // XML must be retained faithfully without treating them as new services.
+        if (ReferenceVersionCanId is > 0x1FFFFFFF ||
+            ReferenceDiagnosticsCanId is > 0x1FFFFFFF)
+            throw new FormatException("原始配置中的参考 CAN ID 超过 29 位。");
+        static bool ValidFeature(string? value) => value is null ||
+            System.Text.RegularExpressions.Regex.IsMatch(value, @"^[0-9A-Fa-f]{1,8}$",
+                System.Text.RegularExpressions.RegexOptions.CultureInvariant,
+                TimeSpan.FromMilliseconds(100));
+        if (!ValidFeature(ReferenceBootFeature) || !ValidFeature(ReferenceAppFeature))
+            throw new FormatException("原始配置的 Feature/item 必须为十六进制文本。");
     }
 
     private static void ValidatePin(string? path, string? hash, string label)
