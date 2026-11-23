@@ -166,9 +166,11 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
         : _loadingCases ? "正在读取测试项目"
         : !_hardware.IsConnected ? "主控未连接"
         : !_scanner.IsConnected ? "扫码设备未连接"
-        : "自动执行功能尚未接通";
+        : "自动测试暂不可用";
     public string CaseListHint => Cases.Count != 0 ? "" : _loadingCases
-        ? "正在读取测试用例…" : _setupIssue + "\n请通过右上角“开发与调试”处理。";
+        ? "正在读取测试用例…" : _workspace.Current is null
+        ? _setupIssue + "\n打开工程：右上角“开发与调试” → “文件” → “打开工程”。"
+        : _setupIssue + "\n请进入右上角“开发与调试”，核对或启用测试用例。";
     public string OperatorNotice => !string.IsNullOrWhiteSpace(_setupIssue)
         ? _setupIssue : _developerRunActive
         ? "当前显示的是开发调试运行，不能作为 ECU 正式检测结果。"
