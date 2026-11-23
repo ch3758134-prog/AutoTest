@@ -313,6 +313,34 @@ public partial class NativeFlashProfileWindow : Window
         { StatusLabel.Text = "生产配置未发布：" + error.Message; }
     }
 
+    /// <summary>
+    /// Called by AutoTest's parent shell BEFORE it starts asynchronous USB
+    /// teardown. An owned editor must finish its autosave and close in a
+    /// controlled, separate operation; WPF owner shutdown cannot safely
+    /// re-enter an async Closing handler on this child.
+    /// </summary>
+    public async Task<bool> PrepareForParentShutdownAsync()
+    {
+        if (_closing) return false;
+        if (!IsLoaded) return true;
+        _closing = true;
+        _idleSave.Stop();
+        try
+        {
+            if (!await SaveAsync())
+            {
+                StatusLabel.Text = "退出已阻止：" + StatusLabel.Text +
+                    "。请修正烧录配置并重新关闭。";
+                Activate();
+                return false;
+            }
+            _closeApproved = true;
+            Close();
+            return true;
+        }
+        finally { _closing = false; }
+    }
+
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
 
     private async void OnClosing(object? sender, CancelEventArgs e)
