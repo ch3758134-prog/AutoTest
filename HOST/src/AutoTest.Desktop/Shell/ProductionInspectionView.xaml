@@ -1,253 +1,163 @@
 <UserControl x:Class="AutoTest.Desktop.Shell.ProductionInspectionView"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- xmlns:shell="clr-namespace:AutoTest.Desktop.Shell"
  FontFamily="{StaticResource UiFont}" FontSize="12"
- Background="#F7F9FB" Foreground="#263644">
+ Background="#F6F8FA" Foreground="#263847">
  <UserControl.Resources>
-  <!-- Full case/step tree is read-only; the developer TEST editor remains separate. -->
-  <HierarchicalDataTemplate DataType="{x:Type shell:ProductionInspectionNode}"
-   ItemsSource="{Binding Children}">
-   <Grid MinHeight="25" Margin="0,1,0,1">
-    <Grid.ColumnDefinitions>
-     <ColumnDefinition Width="30"/>
-     <ColumnDefinition Width="*"/>
-     <ColumnDefinition Width="97"/>
-    </Grid.ColumnDefinitions>
-    <TextBlock Grid.Column="0" Text="{Binding IndexLabel}"
-     FontSize="11" Foreground="#8290A0" VerticalAlignment="Center"/>
-    <TextBlock Grid.Column="1" Text="{Binding Name}"
-     TextTrimming="CharacterEllipsis" FontSize="12" Foreground="#293D50"
-     VerticalAlignment="Center" Margin="0,0,9,0"
-     ToolTip="{Binding Name}"/>
-    <TextBlock Grid.Column="2" Text="{Binding State}" FontSize="11"
-     Foreground="#416E9D" TextAlignment="Center"
-     VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-     ToolTip="{Binding State}"/>
-   </Grid>
-  </HierarchicalDataTemplate>
-  <Style x:Key="OperatorFieldCaption" TargetType="{x:Type TextBlock}">
-   <Setter Property="Foreground" Value="#728399"/>
+  <Style x:Key="LabelCaption" TargetType="{x:Type TextBlock}">
+   <Setter Property="Foreground" Value="#718093"/>
    <Setter Property="FontSize" Value="11"/>
   </Style>
  </UserControl.Resources>
 
- <Grid Margin="13,8,13,11">
+ <!-- This is a fixed operator display, not an editor or a selectable test browser. -->
+ <Grid Margin="11,9,11,10">
   <Grid.RowDefinitions>
-   <RowDefinition Height="50"/>
    <RowDefinition Height="69"/>
-   <RowDefinition Height="*" MinHeight="230"/>
-   <RowDefinition Height="Auto"/>
+   <RowDefinition Height="*"/>
   </Grid.RowDefinitions>
 
-  <!-- Compact status/header. All engineering navigation is outside this view. -->
-  <Border Grid.Row="0" BorderBrush="#E0E6EB" BorderThickness="0,0,0,1"
-   Margin="0,0,0,7">
-   <DockPanel LastChildFill="True">
-    <TextBlock DockPanel.Dock="Right" Text="{Binding ScannerStatus}"
-     Foreground="#687E93" FontSize="11" VerticalAlignment="Center"
-     Margin="14,0,4,0" TextTrimming="CharacterEllipsis"
-     ToolTip="{Binding ScannerStatus}"/>
-    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-     <TextBlock Text="自动测试" FontSize="17" FontWeight="SemiBold"
-      VerticalAlignment="Center"/>
-     <Border Width="1" Height="18" Background="#D9E1E8"
-      Margin="13,0,11,0" VerticalAlignment="Center"/>
-     <TextBlock Text="{Binding ProjectName}" Foreground="#637A90"
-      FontSize="12" VerticalAlignment="Center"
-      TextTrimming="CharacterEllipsis" MaxWidth="500"
-      ToolTip="{Binding ProjectName}"/>
-    </StackPanel>
-   </DockPanel>
-  </Border>
-
-  <!-- Single compact identity strip. No fabricated progress or PASS. -->
-  <Border Grid.Row="1" Background="White" BorderBrush="#DCE4EC"
-   BorderThickness="1" CornerRadius="6" Padding="15,9" Margin="0,0,0,10">
+  <!-- Do not display source project names, revisions, provenance or filenames. -->
+  <Border Grid.Row="0" Background="White" CornerRadius="5"
+   BorderBrush="#DDE4EC" BorderThickness="1" Margin="0,0,0,9"
+   Padding="14,8">
    <Grid>
     <Grid.ColumnDefinitions>
-     <ColumnDefinition Width="2.2*"/>
-     <ColumnDefinition Width="1.15*"/>
-     <ColumnDefinition Width="2.2*"/>
+     <ColumnDefinition Width="2*"/>
+     <ColumnDefinition Width="1.2*"/>
+     <ColumnDefinition Width="2*"/>
     </Grid.ColumnDefinitions>
     <StackPanel Grid.Column="0">
-     <TextBlock Text="设备编号" Style="{StaticResource OperatorFieldCaption}"/>
-     <TextBlock Text="{Binding DutSerial}" FontSize="17"
-      FontWeight="SemiBold" Foreground="#253A4E"
-      TextTrimming="CharacterEllipsis" Margin="0,4,12,0"
-      ToolTip="{Binding DutSerial}"/>
+     <TextBlock Text="ECU 编号" Style="{StaticResource LabelCaption}"/>
+     <TextBlock Text="{Binding DutSerial}" FontSize="17" FontWeight="SemiBold"
+      Margin="0,3,12,0" TextTrimming="CharacterEllipsis"
+      Foreground="#263A4F"/>
     </StackPanel>
     <StackPanel Grid.Column="1">
-     <TextBlock Text="ECU 型号" Style="{StaticResource OperatorFieldCaption}"/>
+     <TextBlock Text="ECU 型号" Style="{StaticResource LabelCaption}"/>
      <TextBlock Text="{Binding ModelCode}" FontSize="13"
-      FontWeight="SemiBold" Foreground="#32485D"
-      Margin="0,5,12,0" TextTrimming="CharacterEllipsis"/>
+      FontWeight="SemiBold" Margin="0,5,12,0"
+      TextTrimming="CharacterEllipsis"/>
     </StackPanel>
     <StackPanel Grid.Column="2">
-     <TextBlock Text="当前状态" Style="{StaticResource OperatorFieldCaption}"/>
-     <TextBlock Text="{Binding Phase}" FontSize="14" FontWeight="SemiBold"
-      Foreground="#2E6B9C" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"
-      ToolTip="{Binding ProductionReadiness}"/>
+     <TextBlock Text="当前状态" Style="{StaticResource LabelCaption}"/>
+     <TextBlock Text="{Binding StatusSummary}" FontSize="14"
+      FontWeight="SemiBold" Foreground="#346D9C" Margin="0,4,0,0"
+      TextTrimming="CharacterEllipsis" ToolTip="{Binding StatusSummary}"/>
     </StackPanel>
    </Grid>
   </Border>
 
-  <!-- The main task: dense case table on left; inspected details on right. -->
-  <Grid Grid.Row="2">
+  <Grid Grid.Row="1">
    <Grid.ColumnDefinitions>
-    <ColumnDefinition Width="7*" MinWidth="465"/>
-    <ColumnDefinition Width="10"/>
-    <ColumnDefinition Width="3*" MinWidth="300"/>
+    <ColumnDefinition Width="7*" MinWidth="440"/>
+    <ColumnDefinition Width="9"/>
+    <ColumnDefinition Width="3*" MinWidth="315"/>
    </Grid.ColumnDefinitions>
 
-   <Border Grid.Column="0" Background="White" BorderBrush="#DCE4EC"
-    BorderThickness="1" CornerRadius="6">
+   <!-- One dense, read-only, non-navigational execution list. -->
+   <Border Grid.Column="0" CornerRadius="5" Background="White"
+    BorderBrush="#DDE4EC" BorderThickness="1">
     <Grid>
      <Grid.RowDefinitions>
-      <RowDefinition Height="39"/>
-      <RowDefinition Height="29"/>
+      <RowDefinition Height="37"/>
       <RowDefinition Height="*"/>
      </Grid.RowDefinitions>
-     <DockPanel Grid.Row="0" Margin="12,0">
-      <TextBlock DockPanel.Dock="Right"
-       Text="{Binding EnabledCaseCount,StringFormat='共 {0} 项'}"
-       Foreground="#70849A" FontSize="11" VerticalAlignment="Center"/>
-      <TextBlock Text="测试用例" FontWeight="SemiBold" FontSize="14"
-       VerticalAlignment="Center"/>
+     <DockPanel Grid.Row="0" Margin="12,0,13,0">
+      <TextBlock DockPanel.Dock="Right" Text="{Binding EnabledCaseCount,StringFormat='共 {0} 项'}"
+       FontSize="11" Foreground="#73869A" VerticalAlignment="Center"/>
+      <TextBlock Text="测试项目" FontWeight="SemiBold"
+       FontSize="13" VerticalAlignment="Center"/>
      </DockPanel>
-     <Grid Grid.Row="1" Background="#F2F5F8" Margin="1,0"
-      HorizontalAlignment="Stretch">
-      <Grid.ColumnDefinitions>
-       <ColumnDefinition Width="66"/>
-       <ColumnDefinition Width="*"/>
-       <ColumnDefinition Width="120"/>
-      </Grid.ColumnDefinitions>
-      <TextBlock Grid.Column="0" Text="序号" Margin="12,0,0,0"
-       Foreground="#61758B" FontSize="11" VerticalAlignment="Center"/>
-      <TextBlock Grid.Column="1" Text="测试项目 / 步骤" Foreground="#61758B"
-       FontSize="11" VerticalAlignment="Center"/>
-      <TextBlock Grid.Column="2" Text="状态" TextAlignment="Center"
-       Foreground="#61758B" FontSize="11" VerticalAlignment="Center"/>
-     </Grid>
-     <Grid Grid.Row="2" Margin="6,3,6,4">
-      <TreeView ItemsSource="{Binding Cases}" Background="Transparent"
-       BorderThickness="0" SelectedItemChanged="Cases_SelectedItemChanged"
-       VirtualizingStackPanel.IsVirtualizing="True"
-       ScrollViewer.HorizontalScrollBarVisibility="Auto"
-       ScrollViewer.VerticalScrollBarVisibility="Auto">
-       <TreeView.Resources>
-        <Style TargetType="{x:Type TreeViewItem}">
-         <Setter Property="IsExpanded" Value="{Binding IsExpanded,Mode=TwoWay}"/>
-         <Setter Property="IsSelected" Value="{Binding IsSelected,Mode=TwoWay}"/>
-         <Setter Property="Padding" Value="4,1"/>
-        </Style>
-       </TreeView.Resources>
-      </TreeView>
-      <TextBlock Text="{Binding CaseListHint}"
-       IsHitTestVisible="False" Foreground="#8A98A6" FontSize="12"
-       TextAlignment="Center" TextWrapping="Wrap"
-       VerticalAlignment="Center" HorizontalAlignment="Center"
-       MaxWidth="350" Margin="12"/>
-     </Grid>
+     <DataGrid Grid.Row="1" ItemsSource="{Binding Cases}"
+      Visibility="{Binding HasCases,Converter={StaticResource BoolToVisibility}}"
+      IsReadOnly="True" AutoGenerateColumns="False"
+      CanUserAddRows="False" CanUserDeleteRows="False"
+      CanUserResizeColumns="False" CanUserReorderColumns="False"
+      CanUserSortColumns="False" SelectionUnit="FullRow"
+      Focusable="False" IsTabStop="False"
+      RowHeight="31" ColumnHeaderHeight="29"
+      RowHeaderWidth="0" HeadersVisibility="Column"
+      GridLinesVisibility="Horizontal"
+      HorizontalGridLinesBrush="#ECF0F4"
+      BorderThickness="0" Background="White"
+      AlternatingRowBackground="#FAFBFC"
+      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+      ScrollViewer.VerticalScrollBarVisibility="Auto"
+      VirtualizingPanel.IsVirtualizing="True">
+      <DataGrid.RowStyle>
+       <Style TargetType="{x:Type DataGridRow}">
+        <!-- No click-to-select affordance; execution moves the state, not the mouse. -->
+        <Setter Property="IsHitTestVisible" Value="False"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="Background" Value="White"/>
+        <Style.Triggers>
+         <DataTrigger Binding="{Binding State}" Value="执行中">
+          <Setter Property="Background" Value="#EDF4FC"/>
+         </DataTrigger>
+         <DataTrigger Binding="{Binding State}" Value="研发执行中">
+          <Setter Property="Background" Value="#EDF4FC"/>
+         </DataTrigger>
+        </Style.Triggers>
+       </Style>
+      </DataGrid.RowStyle>
+      <DataGrid.Columns>
+       <DataGridTextColumn Header="序号" Binding="{Binding IndexLabel}" Width="67"/>
+       <DataGridTextColumn Header="测试项目" Binding="{Binding Name}" Width="*"/>
+       <DataGridTextColumn Header="执行状态" Binding="{Binding State}" Width="132"/>
+      </DataGrid.Columns>
+     </DataGrid>
+     <Border Grid.Row="1" Visibility="{Binding HasCaseListIssue,Converter={StaticResource BoolToVisibility}}"
+      Background="#FCFDFE" Padding="24">
+      <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="450">
+       <TextBlock Text="当前没有可执行测试项目" TextAlignment="Center"
+        FontSize="16" FontWeight="SemiBold" Foreground="#40566B"/>
+       <TextBlock Text="{Binding CaseListHint}" TextAlignment="Center"
+        TextWrapping="Wrap" Foreground="#6C7F94" FontSize="12"
+        Margin="0,12,0,0"/>
+      </StackPanel>
+     </Border>
     </Grid>
    </Border>
 
-   <Border Grid.Column="2" Background="White" BorderBrush="#DCE4EC"
-    BorderThickness="1" CornerRadius="6">
+   <!-- Automatically follows the actual executing step: no selection and no disclosures. -->
+   <Border Grid.Column="2" CornerRadius="5" Background="White"
+    BorderBrush="#DDE4EC" BorderThickness="1">
     <Grid>
      <Grid.RowDefinitions>
-      <RowDefinition Height="39"/>
+      <RowDefinition Height="37"/>
       <RowDefinition Height="*"/>
      </Grid.RowDefinitions>
-     <Border Grid.Row="0" BorderBrush="#E8EDF2" BorderThickness="0,0,0,1">
-      <TextBlock Text="检测信息" FontSize="14" FontWeight="SemiBold"
-       VerticalAlignment="Center" Margin="13,0"/>
+     <Border Grid.Row="0" BorderBrush="#E7EDF2" BorderThickness="0,0,0,1">
+      <TextBlock Text="当前测试" FontWeight="SemiBold" FontSize="13"
+       VerticalAlignment="Center" Margin="13,0,0,0"/>
      </Border>
-     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-      <StackPanel Margin="13,12,13,15">
-       <TextBlock Text="当前项目 / 步骤" Style="{StaticResource OperatorFieldCaption}"/>
-       <TextBlock Text="{Binding SelectedName}" FontSize="15"
-        FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,5,0,5"/>
-       <TextBlock Text="{Binding SelectedState}" Foreground="#2E6B9C"
-        FontSize="12" FontWeight="SemiBold"/>
-       <Border Height="1" Background="#E9EEF3" Margin="0,13,0,13"/>
-       <TextBlock Text="实际测量" Style="{StaticResource OperatorFieldCaption}"/>
-       <TextBlock Text="{Binding SelectedActual}" FontSize="17" FontWeight="SemiBold"
-        Foreground="#273C51" TextWrapping="Wrap" Margin="0,5,0,13"/>
-       <TextBlock Text="预期与判据" Style="{StaticResource OperatorFieldCaption}"/>
-       <TextBlock Text="{Binding SelectedExpected}" FontSize="13"
-        TextWrapping="Wrap" Margin="0,5,0,13"/>
-       <TextBlock Text="步骤结果 / 失败原因" Style="{StaticResource OperatorFieldCaption}"/>
-       <TextBlock Text="{Binding SelectedDetail}" TextWrapping="Wrap"
-        Foreground="#344D65" Margin="0,5,0,13"/>
-       <TextBlock Text="时间" Style="{StaticResource OperatorFieldCaption}"/>
-       <TextBlock Text="{Binding SelectedTime}" Foreground="#475F76" Margin="0,4,0,14"/>
-       <Border Height="1" Background="#E9EEF3" Margin="0,0,0,11"/>
-       <TextBlock Text="烧录状态" Style="{StaticResource OperatorFieldCaption}"/>
-       <TextBlock Text="{Binding FlashState}" Foreground="#475F76"
-        FontSize="11" TextWrapping="Wrap" Margin="0,4,0,12"/>
-       <TextBlock Text="自动测试状态" Style="{StaticResource OperatorFieldCaption}"/>
-       <TextBlock Text="{Binding TestState}" Foreground="#475F76"
-        FontSize="11" TextWrapping="Wrap" Margin="0,4,0,12"/>
-       <TextBlock Text="{Binding ProductionReadiness}"
-        Foreground="#778796" FontSize="11" TextWrapping="Wrap"
-        Margin="0,0,0,14"/>
-       <Expander Header="执行证据详情" Foreground="#61758B">
-        <StackPanel Margin="8,7,0,5">
-         <TextBlock Text="观测质量" Style="{StaticResource OperatorFieldCaption}"/>
-         <TextBlock Text="{Binding SelectedQuality}" TextWrapping="Wrap" Margin="0,3,0,8"/>
-         <TextBlock Text="步骤实例 ID" Style="{StaticResource OperatorFieldCaption}"/>
-         <TextBlock Text="{Binding SelectedOccurrence}" TextWrapping="Wrap"
-          FontSize="10" Margin="0,3,0,8"/>
-         <TextBlock Text="证据引用" Style="{StaticResource OperatorFieldCaption}"/>
-         <TextBlock Text="{Binding SelectedEvidence}" TextWrapping="Wrap"
-          FontSize="11" Margin="0,3,0,8"/>
-         <TextBlock Text="运行 ID / 报告" Style="{StaticResource OperatorFieldCaption}"/>
-         <TextBlock Text="{Binding LatestRunId}" TextWrapping="Wrap" FontSize="10"
-          Margin="0,3,0,4"/>
-         <TextBlock Text="{Binding ReportPath}" TextWrapping="Wrap" FontSize="10"/>
-        </StackPanel>
-       </Expander>
+     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+      HorizontalScrollBarVisibility="Disabled">
+      <StackPanel Margin="13,13,13,16">
+       <TextBlock Text="测试用例" Style="{StaticResource LabelCaption}"/>
+       <TextBlock Text="{Binding CurrentCaseName}" FontSize="15"
+        FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,4,0,13"/>
+       <TextBlock Text="当前步骤" Style="{StaticResource LabelCaption}"/>
+       <TextBlock Text="{Binding CurrentStepName}" FontSize="14"
+        FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,4,0,5"/>
+       <TextBlock Text="{Binding CurrentStepStatus}" Foreground="#346D9C"
+        FontSize="12" Margin="0,0,0,13"/>
+       <Border Height="1" Background="#E7EDF2" Margin="0,0,0,13"/>
+       <TextBlock Text="实际测量" Style="{StaticResource LabelCaption}"/>
+       <TextBlock Text="{Binding CurrentMeasurement}" FontSize="16"
+        FontWeight="SemiBold" TextWrapping="Wrap" Foreground="#283D50"
+        Margin="0,4,0,16"/>
+       <TextBlock Text="预期与判据" Style="{StaticResource LabelCaption}"/>
+       <TextBlock Text="{Binding CurrentExpected}" FontSize="12"
+        TextWrapping="Wrap" Foreground="#344C60" Margin="0,4,0,16"/>
+       <TextBlock Text="步骤信息 / 失败原因" Style="{StaticResource LabelCaption}"/>
+       <TextBlock Text="{Binding CurrentFailure}" TextWrapping="Wrap"
+        FontSize="12" Foreground="#344C60" Margin="0,4,0,0"/>
       </StackPanel>
      </ScrollViewer>
     </Grid>
    </Border>
   </Grid>
-
-  <Expander Grid.Row="3" Header="执行日志与 CAN 数据（按需展开）"
-   IsExpanded="False" Margin="0,8,0,0"
-   Background="White" Foreground="#516A81">
-   <TabControl BorderThickness="1" BorderBrush="#DCE4EC"
-    Background="White" Height="212" Margin="0,4,0,0">
-    <TabItem Header="执行时间线">
-     <DataGrid ItemsSource="{Binding Logs}" AutoGenerateColumns="False"
-      IsReadOnly="True" CanUserAddRows="False"
-      HeadersVisibility="Column" RowHeaderWidth="0" RowHeight="26"
-      BorderThickness="0" GridLinesVisibility="None">
-      <DataGrid.Columns>
-       <DataGridTextColumn Header="时间" Binding="{Binding Time}" Width="112"/>
-       <DataGridTextColumn Header="来源" Binding="{Binding Source}" Width="100"/>
-       <DataGridTextColumn Header="事件" Binding="{Binding Event}" Width="160"/>
-       <DataGridTextColumn Header="真实信息" Binding="{Binding Detail}" Width="*"/>
-       <DataGridTextColumn Header="步骤实例 ID" Binding="{Binding Occurrence}" Width="200"/>
-      </DataGrid.Columns>
-     </DataGrid>
-    </TabItem>
-    <TabItem Header="CAN 帧">
-     <DataGrid ItemsSource="{Binding CanRecords}" AutoGenerateColumns="False"
-      IsReadOnly="True" CanUserAddRows="False"
-      HeadersVisibility="Column" RowHeaderWidth="0" RowHeight="26"
-      BorderThickness="0" GridLinesVisibility="None">
-      <DataGrid.Columns>
-       <DataGridTextColumn Header="时间" Binding="{Binding Time}" Width="120"/>
-       <DataGridTextColumn Header="通道" Binding="{Binding Port}" Width="105"/>
-       <DataGridTextColumn Header="CAN ID" Binding="{Binding Id}" Width="105"/>
-       <DataGridTextColumn Header="完整帧 DATA" Binding="{Binding Data}" Width="*"/>
-       <DataGridTextColumn Header="丢帧" Binding="{Binding Lost}" Width="80"/>
-      </DataGrid.Columns>
-     </DataGrid>
-    </TabItem>
-   </TabControl>
-  </Expander>
  </Grid>
 </UserControl>
