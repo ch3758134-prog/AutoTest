@@ -104,9 +104,14 @@ typedef void (*EAL_CAN_RxCallbackType)(EAL_CAN_PortType port, const EAL_CAN_Fram
 void EAL_CAN_Open(EAL_CAN_PortType port, EAL_CAN_BaudType baud);
 
 /**
- * @brief  运行时重配置波特率（不停机）
+ * @brief  修改某路 CAN 波特率，仅成功时更新板级记录。
+ * @note   修改前应停止该通路的周期发送；待发 TX MB 忙返回 BUSY。
+ * @return EAL_CAN_OK / EAL_CAN_BUSY / EAL_CAN_ERR
  */
-void EAL_CAN_SetBaudrate(EAL_CAN_PortType port, EAL_CAN_BaudType baud);
+EAL_CAN_RetType EAL_CAN_SetBaudrate(EAL_CAN_PortType port, EAL_CAN_BaudType baud);
+
+/** @brief  读取最近一次成功配置的波特率枚举（不是总线波特率测量）。 */
+EAL_CAN_BaudType EAL_CAN_GetBaudrate(EAL_CAN_PortType port);
 
 /**
  * @brief  配置 RX 过滤器
