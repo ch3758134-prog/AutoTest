@@ -139,6 +139,8 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
     public string ReportPath { get => _reportPath; private set => SetProperty(ref _reportPath, value); }
     public int ObservedStepCount { get => _observedStepCount; private set => SetProperty(ref _observedStepCount, value); }
     public int EnabledCaseCount => Cases.Count;
+    public string CaseListHint => Cases.Count == 0
+        ? "尚未加载可执行用例。\n请先在“开发与调试”中打开并配置 ECU 工程。" : "";
 
     public ProductionInspectionNode? Selected
     {
@@ -228,6 +230,7 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
                 ProjectName = "未打开 ECU 工程";
                 ModelCode = "—";
                 RaisePropertyChanged(nameof(EnabledCaseCount));
+                RaisePropertyChanged(nameof(CaseListHint));
                 ProductionReadiness = "请打开对应 ECU 型号的工程";
             });
             return;
@@ -270,6 +273,7 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
                     roots.Add(root);
                 }
                 RaisePropertyChanged(nameof(EnabledCaseCount));
+                RaisePropertyChanged(nameof(CaseListHint));
                 AddLog("工程", "用例树已核对", "读取 " + Cases.Count +
                     " 个 Enabled 用例；未执行任何设备动作");
             });
@@ -289,6 +293,7 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
                 ModelCode = opened.Definition.EcuModelCode;
                 ProductionReadiness = "当前工程测试树不可用：" + error.Message;
                 RaisePropertyChanged(nameof(EnabledCaseCount));
+                RaisePropertyChanged(nameof(CaseListHint));
                 AddLog("工程", "读取失败", error.Message);
             });
         }
