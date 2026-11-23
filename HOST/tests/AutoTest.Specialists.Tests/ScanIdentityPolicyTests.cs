@@ -52,4 +52,63 @@ public sealed class ScanIdentityPolicyTests
             ScanIdentityPolicy.Default.Decode(prefix + "-" + invalidChecksum).Code);
         Assert.False(ScanIdentityPolicy.Default.Decode("000000123456").Parsed);
     }
+    [Fact]
+    public void MappedDelimitedBarcodeBindsIdentityAndTraceFieldsWithoutRewritingValues()
+    {
+        var policy = new ScanIdentityPolicy(1, ScanIdentityPolicy.Mapped, "-",
+            null, 1, 64, ScanIdentityPolicy.Delimited,
+            [
+                new(ScanIdentityPolicy.ModelTarget, 1),
+                new(ScanIdentityPolicy.HardwareTarget, 2),
+                new(ScanIdentityPolicy.SerialTarget, 3),
+                new("BatchCode", 4)
+            ]);
+        var result = policy.Decode("HYDEPB-EP03-00001234-LOT05");
+        Assert.True(result.Parsed);
+        Assert.Equal("HYDEPB", result.ModelCode);
+        Assert.Equal("00001234", result.Serial);
+        Assert.Equal("EP03", result.HardwareCode);
+        Assert.Equal("LOT05", result.Fields!["BatchCode"]);
+        Assert.Equal("SCAN_FIELD_MISSING",
+            policy.Decode("HYDEPB-EP03-00001234").Code);
+        Assert.Equal("SCAN_FIELD_EMPTY",
+            policy.Decode("HYDEPB--00001234-LOT05").Code);
+        Assert.False(policy.Decode("HYDEPB-EP03-00001234-LOT05").Code
+            .Contains("AUTHORIZED", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void MappedFixedPositionsRemainOneBasedAndRejectTruncatedFrames()
+    {
+        var policy = new ScanIdentityPolicy(1, ScanIdentityPolicy.Mapped, "-",
+            "HYDEPB", 1, 64, ScanIdentityPolicy.Fixed,
+            [
+                new(ScanIdentityPolicy.SerialTarget, 1, 1, 8),
+                new(ScanIdentityPolicy.HardwareTarget, 1, 9, 4)
+            ]);
+        var ok = policy.Decode("00001234EP03");
+        Assert.True(ok.Parsed);
+        Assert.Equal("00001234", ok.Serial);
+        Assert.Equal("HYDEPB", ok.ModelCode);
+        Assert.Equal("EP03", ok.HardwareCode);
+        Assert.Equal("SCAN_FIELD_MISSING", policy.Decode("00001234").Code);
+    }
+
+    [Fact]
+    public void MappedPolicyRejectsDuplicateSystemTargetsAndMissingDutSerial()
+    {
+        var duplicate = new ScanIdentityPolicy(1, ScanIdentityPolicy.Mapped,
+            "-", null, 1, 64, ScanIdentityPolicy.Delimited,
+            [
+                new(ScanIdentityPolicy.SerialTarget, 1),
+                new(ScanIdentityPolicy.SerialTarget, 2)
+            ]);
+        Assert.Equal("SCAN_POLICY_INVALID", duplicate.Decode("01-02").Code);
+        var withoutSerial = duplicate with
+        {
+            FieldMappings = [new ScanFieldMapping(ScanIdentityPolicy.ModelTarget, 1)]
+        };
+        Assert.Equal("SCAN_POLICY_INVALID", withoutSerial.Decode("HYDEPB").Code);
+    }
+
 }
