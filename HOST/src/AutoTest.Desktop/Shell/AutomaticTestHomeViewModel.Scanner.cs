@@ -111,7 +111,7 @@ public sealed partial class AutomaticTestHomeViewModel
             _dutSerial = parsed.DutSerial;
             _scanMappedFields = parsed.MappedFields is null
                 ? new Dictionary<string, string>(StringComparer.Ordinal)
-                : new Dictionary<string, string>(parsed.MappedFields,
+                : parsed.MappedFields.ToDictionary(x => x.Key, x => x.Value,
                     StringComparer.Ordinal);
             // Freeze a real observation with exact on-disk parser bytes.
             // This is not yet a formal RECORD fact; no RunId exists until
