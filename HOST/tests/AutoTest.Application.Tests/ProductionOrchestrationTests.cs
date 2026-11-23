@@ -162,6 +162,60 @@ public sealed class ProductionOrchestrationTests
         Assert.Equal("STATION_BUSY", session.StartDraft(Scan()).FailureCode);
     }
 
+    [Fact]
+    public async Task RealProduction_NeverContinuesToTestWithoutPhysicalFlashEvidence()
+    {
+        var configuration = Config(flash: true);
+        var session = Matched(configuration);
+        session.Confirm(configuration, new RuleRevision(_hash),
+            new ProjectRevision(1), Station(false, AuthorizationScope.Programming).Station,
+            isMock: false);
+        var executor = new FlashProofExecutor(simulated: false);
+        var result = await new ProductionWorkflow(executor,
+            new ProductionResultCoordinator(new FakeSink(true)),
+            new ProductionPreflight()).ExecuteAsync(session, CancellationToken.None);
+        Assert.Equal("FLASH_EVIDENCE_MISSING", result.Code);
+        Assert.Equal(0, executor.TestCalls);
+        Assert.Equal(ProductionState.Unknown, result.State);
+        Assert.False(result.PhysicalReleaseAllowed);
+    }
+
+    [Fact]
+    public async Task RealProduction_RejectsSimulatedFlashEvenWhenItClaimsPass()
+    {
+        var configuration = Config(flash: true);
+        var session = Matched(configuration);
+        session.Confirm(configuration, new RuleRevision(_hash),
+            new ProjectRevision(1), Station(false, AuthorizationScope.Programming).Station,
+            isMock: false);
+        var executor = new FlashProofExecutor(simulated: true);
+        var result = await new ProductionWorkflow(executor,
+            new ProductionResultCoordinator(new FakeSink(true)),
+            new ProductionPreflight()).ExecuteAsync(session, CancellationToken.None);
+        Assert.Equal("FLASH_SIMULATED", result.Code);
+        Assert.Equal(0, executor.TestCalls);
+        Assert.False(result.PhysicalReleaseAllowed);
+    }
+
+    private sealed class FlashProofExecutor(bool simulated) : IProductionStageExecutor
+    {
+        public int TestCalls { get; private set; }
+        public ValueTask<ProductionStageResult> ExecuteFlashAsync(
+            ProductionJobSnapshot job, CancellationToken ct) =>
+            ValueTask.FromResult(new ProductionStageResult(Outcome.Accepted, Verdict.Pass,
+                "CLAIMED_PASS", simulated, ImmutableArray<EvidenceRef>.Empty));
+        public ValueTask<ProductionStageResult> ExecuteTestAsync(
+            ProductionJobSnapshot job, CancellationToken ct)
+        {
+            TestCalls++;
+            return ValueTask.FromResult(new ProductionStageResult(Outcome.Accepted,
+                Verdict.Pass, "UNEXPECTED_TEST", false,
+                ImmutableArray<EvidenceRef>.Empty));
+        }
+        public ValueTask RequestStopAsync(RunId run, CancellationToken ct) =>
+            ValueTask.CompletedTask;
+    }
+
     private sealed class FakeMatcher : IIdentityMatcher
     {
         private readonly ImmutableArray<AssetRef> _assets;
