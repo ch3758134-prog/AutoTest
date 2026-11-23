@@ -120,15 +120,51 @@ public sealed partial class ProjectWorkspaceService
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                // A new ECU inspection project already owns its one TEST
+                // sequence and one completely blank editable case. No separate
+                // "create a TEST project" wizard, TCF/TBC, mock step or recipe.
                 var definition = ProjectDefinition.Create(name);
+                const string caseName = "测试用例 01";
+                const string sequenceName = "功能测试";
+                var caseBytes = Encoding.UTF8.GetBytes(
+                    TestDocumentCodec.Serialize(TestDocument.Create(caseName)));
+                var casePath = "assets/tests/" + Guid.NewGuid().ToString("N") +
+                    ".test.json";
+                var caseAsset = AssetEntry.Create(TestProgramKind, caseName,
+                    casePath, caseBytes);
+                var sequence = TestProjectDocument.Create(sequenceName);
+                sequence.Packages.Add(new TestProjectEntry(Guid.NewGuid(),
+                    caseAsset.Id.Value, caseAsset.Revision, caseAsset.Sha256,
+                    caseName, true));
+                var sequenceBytes = TestProjectCodec.Encode(sequence);
+                var sequencePath = "assets/projects/" +
+                    Guid.NewGuid().ToString("N") + ".prj.json";
+                var sequenceAsset = AssetEntry.Create(TestProjectKind,
+                    sequenceName, sequencePath, sequenceBytes);
+                definition = (definition with
+                {
+                    Assets = definition.Assets.Add(sequenceAsset).Add(caseAsset)
+                }).WithRevision().Validate();
+                var caseFull = ProjectPathPolicy.Normalize(staging, casePath);
+                var sequenceFull = ProjectPathPolicy.Normalize(staging, sequencePath);
+                Directory.CreateDirectory(Path.GetDirectoryName(caseFull)!);
+                Directory.CreateDirectory(Path.GetDirectoryName(sequenceFull)!);
+                await File.WriteAllBytesAsync(caseFull, caseBytes, cancellationToken)
+                    .ConfigureAwait(false);
+                await File.WriteAllBytesAsync(sequenceFull, sequenceBytes,
+                    cancellationToken).ConfigureAwait(false);
                 var stagedManifest = Path.Combine(staging, ManifestFileName);
-                await ProjectRepository.SaveDefinitionAsync(definition, stagedManifest, cancellationToken)
-                    .ConfigureAwait(false);
-                // Read the actual persisted file; no fabricated successful project state.
-                var verified = await ProjectRepository.OpenDefinitionAsync(stagedManifest, cancellationToken)
-                    .ConfigureAwait(false);
-                if (verified.Id != definition.Id || verified.Name != name)
-                    throw new InvalidDataException("工程文件写入后校验未通过。");
+                await ProjectRepository.SaveDefinitionAsync(definition, stagedManifest,
+                    cancellationToken).ConfigureAwait(false);
+                // Verify the complete saved asset closure before publishing the
+                // newly created folder. On failure the staging folder is discarded.
+                var verified = await ProjectRepository.OpenDefinitionAsync(stagedManifest,
+                    cancellationToken).ConfigureAwait(false);
+                await ProjectBundleContractAudit.ValidateAsync(verified,
+                    stagedManifest, cancellationToken).ConfigureAwait(false);
+                if (verified.Id != definition.Id || verified.Name != name ||
+                    verified.Assets.Length != 2)
+                    throw new InvalidDataException("新建 ECU 工程的用例资源未通过保存检查。");
                 cancellationToken.ThrowIfCancellationRequested();
                 Directory.Move(staging, target); // refuses a pre-existing target
                 var finalManifest = Path.Combine(target, ManifestFileName);
