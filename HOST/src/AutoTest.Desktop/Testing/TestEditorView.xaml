@@ -462,11 +462,11 @@
        </ListBox.ItemContainerStyle>
        <ListBox.ItemTemplate>
         <DataTemplate>
-         <StackPanel ToolTip="{Binding Description}">
+         <StackPanel>
           <TextBlock Text="{Binding Title}" FontWeight="SemiBold"
            Foreground="#273B50" FontSize="12" TextTrimming="CharacterEllipsis"/>
-          <TextBlock Text="{Binding Category}" FontSize="10"
-           Foreground="#6B7F94" Margin="0,4,0,0"/>
+          <TextBlock Text="{Binding Description}" FontSize="10"
+           Foreground="#6B7F94" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"/>
          </StackPanel>
         </DataTemplate>
        </ListBox.ItemTemplate>
