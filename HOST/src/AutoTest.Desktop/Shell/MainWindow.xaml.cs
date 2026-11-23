@@ -285,9 +285,11 @@ public partial class MainWindow : Window
 
     private void ApplyPanelLayout()
     {
-        // DBC and Controller configurations already own their actual editor.
-        // Only reserve the right rail when this document supplies an InspectorHost.
+        // Inspection preparation already contains its own full-width editors
+        // (scanner, FLASH entry and fixture procedure). A redundant shell-side
+        // Inspector would unnecessarily compress those configuration tabs.
         var showInspector = _inspectorVisible &&
+            _viewModel.ActiveEditorTab?.View is not ProjectConfigurationOverviewView &&
             (_viewModel.ActiveEditorTab?.Inspector is not null);
         InspectorColumn.Width = new GridLength(showInspector ? Math.Clamp(ActualWidth * 0.28, 350, 440) : 0);
         InspectorSplitterColumn.Width = new GridLength(showInspector ? 4 : 0);
