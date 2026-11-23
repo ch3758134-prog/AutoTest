@@ -8,6 +8,7 @@ namespace AutoTest.Desktop.Projects;
 public sealed class ResourceTreeNode : INotifyPropertyChanged
 {
     private bool _isSelected;
+    private bool _isSearchMatch;
     private string _count;
     public ResourceTreeNode(string label, string icon, string description, string category = "",
         AssetEntry? asset = null, bool isPlaceholder = false, string role = "Asset",
@@ -36,6 +37,18 @@ public sealed class ResourceTreeNode : INotifyPropertyChanged
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CountLabel)));
         }
     }
+    /// <summary>Transient navigation highlight. Search never edits or opens an asset.</summary>
+    public bool IsSearchMatch
+    {
+        get => _isSearchMatch;
+        set
+        {
+            if (_isSearchMatch == value) return;
+            _isSearchMatch = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsSearchMatch)));
+        }
+    }
+
     public bool IsSelected
     {
         get => _isSelected;
