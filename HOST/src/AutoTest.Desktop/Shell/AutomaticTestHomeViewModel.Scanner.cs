@@ -16,6 +16,14 @@ public sealed partial class AutomaticTestHomeViewModel
     private string _scanStatus = "等待已绑定工位扫码枪输入唯一编号";
     private string? _lastIdentity;
     private FrozenProductionPreparation? _prepared;
+    private IReadOnlyDictionary<string, string> _scanMappedFields =
+        new Dictionary<string, string>(StringComparer.Ordinal);
+
+    /// <summary>Operator-facing trace only; no formal RECORD is claimed
+    /// until the production run and evidence writer are connected.</summary>
+    public string ScanTraceSummary => _scanMappedFields.Count == 0 ? "" :
+        "本次扫码字段：" + string.Join(" · ",
+            _scanMappedFields.Select(x => x.Key + "=" + x.Value));
 
     private void OnScannerPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -38,6 +46,7 @@ public sealed partial class AutomaticTestHomeViewModel
     {
         Interlocked.Increment(ref _scanRevision);
         _prepared = null;
+        _scanMappedFields = new Dictionary<string, string>(StringComparer.Ordinal);
         _dutSerial = "等待扫码";
         _lastIdentity = null;
         _scanStatus = reason;
@@ -91,6 +100,10 @@ public sealed partial class AutomaticTestHomeViewModel
                 StringComparison.Ordinal);
             _lastIdentity = identity;
             _dutSerial = parsed.DutSerial;
+            _scanMappedFields = parsed.MappedFields is null
+                ? new Dictionary<string, string>(StringComparer.Ordinal)
+                : new Dictionary<string, string>(parsed.MappedFields,
+                    StringComparer.Ordinal);
             _prepared = decision.Preparation;
             _scanStatus = repeated
                 ? "同一 ECU 编号再次扫码：仅更新真实观察，不计新增 DUT，也不触发复检。"
@@ -111,6 +124,7 @@ public sealed partial class AutomaticTestHomeViewModel
         {
             if (revision != _scanRevision) return;
             _prepared = null;
+            _scanMappedFields = new Dictionary<string, string>(StringComparer.Ordinal);
             _dutSerial = "等待扫码";
             _scanStatus = reason;
             Notify();
