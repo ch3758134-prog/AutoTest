@@ -190,13 +190,12 @@
                   Foreground="#20364A" Margin="0,0,0,12"/>
        <TextBlock Text="{Binding ProjectName}" Foreground="#2B5277"
                   FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,0,11"/>
-       <TextBlock Text="工程型号代码（仅在本工程维护）" Foreground="#64798C"/>
-       <TextBox Text="{Binding ModelCode,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-                Padding="8,6" Margin="0,4,0,8"/>
-       <Button Content="保存当前工程型号" Command="{Binding SaveModelCodeCommand}"
-               HorizontalAlignment="Left" Padding="12,7"/>
-       <TextBlock Text="未从条码提取型号时使用此处工程型号；扫描不可改变正式测试项目、烧录工艺或用例顺序。"
-                  Foreground="#788A9A" TextWrapping="Wrap" FontSize="11" Margin="0,10,0,0"/>
+       <TextBlock Text="当前工程型号（由 ECU 工程管理，不在扫码枪重复配置）"
+                  Foreground="#64798C" FontSize="11"/>
+       <TextBlock Text="{Binding ModelCode}" FontSize="16" FontWeight="SemiBold"
+                  Foreground="#285A87" Margin="0,6,0,8"/>
+       <TextBlock Text="条码含型号字段时只与当前工程做匹配；不含型号时以当前工程型号作为身份上下文。条码不得自动切换工程、测试用例或烧录工艺。"
+                  Foreground="#788A9A" TextWrapping="Wrap" FontSize="11" Margin="0,5,0,0"/>
       </StackPanel>
      </Border>
      <Border Grid.Column="2" Background="White" BorderBrush="#DEE7EF"
@@ -221,8 +220,6 @@
        <TextBlock Text="{Binding MatchedProjectName}" FontWeight="SemiBold" TextWrapping="Wrap"
                   Foreground="#3C6280" Margin="0,6,0,0"/>
        <WrapPanel Margin="0,8,0,0">
-        <Button Content="切换到已登记的型号工程" Command="{Binding SwitchProjectCommand}"
-                IsEnabled="{Binding CanSwitchProject}" Padding="10,6" Margin="0,0,6,5"/>
         <Button Content="当前工程配置预检" Command="{Binding PrepareProductionCommand}"
                 Padding="10,6" Margin="0,0,0,5"/>
        </WrapPanel>
