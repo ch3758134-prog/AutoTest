@@ -59,8 +59,8 @@ public static class AutomaticTestResourceContract
         var cases = new List<AutomaticTestCaseBinding>();
         if (tree.Packages.Count == 0)
             issues.Add("自动测试项目尚未添加测试用例。");
-        else if (included.Count == 0)
-            issues.Add("历史工程中所有用例均被排除在自动测试外，请在工程编辑器中确认原有设置；不会擅自启用硬件动作。");
+        else if (tree.Packages.Any(entry => !entry.Enabled))
+            issues.Add("工程包含历史排除的用例实例；正式生产必须运行完整有序项目。请在测试项目中逐条确认“恢复历史排除”并保存，或显式从工程顺序中移除不需要的实例。禁止静默跳过。");
 
         foreach (var entry in included)
         {
