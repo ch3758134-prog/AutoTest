@@ -305,6 +305,15 @@
    <TabItem Header="运行前检查">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
      <StackPanel Margin="16,16,16,12">
+      <TextBlock Text="本工位部署 · 正式运行来源" FontSize="15" FontWeight="SemiBold"
+       Margin="0,0,0,10"/>
+      <TextBlock Text="仅部署当前 ECU 工程的一份受指纹保护的配置，直接引用唯一 TEST 项目、已发布原生 Flash 工艺和工程夹具动作。不创建另一套扫码配方或测试方案；不能把未经实体实测的配置称为生产 PASS。"
+       TextWrapping="Wrap" Foreground="#566F86" Margin="0,0,0,12"/>
+      <Button Content="核对并部署当前 ECU 工程" Command="{Binding DeployCurrentProjectCommand}"
+       HorizontalAlignment="Left" Style="{StaticResource AtPrimaryButton}"
+       Padding="14,9" Margin="0,0,0,15"/>
+      <TextBlock Text="部署前要求所有正式用例通过静态资源检查、存在有效原生烧录发布和唯一夹具工艺。部署后修改工程或发布资源必须重新核对并部署。"
+       Foreground="#75859A" TextWrapping="Wrap" Margin="0,0,0,15"/>
       <TextBlock Text="当前工程与实体运行条件" FontSize="13" FontWeight="SemiBold"
        Margin="0,0,0,12"/>
       <Border Background="#F5F8FC" BorderBrush="#E5ECF4"
