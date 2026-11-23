@@ -48,10 +48,10 @@
       Height="136" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
       Background="White" BorderBrush="#DBE3ED" Padding="16,11">
       <StackPanel>
-       <TextBlock Text="⚙  工程配置" FontSize="11" Foreground="#64758C" Margin="0,0,0,13"/>
+       <TextBlock Text="⚙  已登记的工程资源" FontSize="11" Foreground="#64758C" Margin="0,0,0,13"/>
        <TextBlock Text="{Binding ConfigurationCount,StringFormat='{}{0} 项资源'}" FontSize="18"
         Foreground="#2368BD" FontWeight="Bold" Margin="0,0,0,11"/>
-       <TextBlock Text="DUT、输入、DBC 与工位" FontSize="11" Foreground="#64758C"
+       <TextBlock Text="DBC、固件、波形与检测工艺" FontSize="11" Foreground="#64758C"
         TextWrapping="Wrap"/>
       </StackPanel>
      </Button>
