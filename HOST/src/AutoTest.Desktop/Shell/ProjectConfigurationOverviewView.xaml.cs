@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using AutoTest.Desktop.Configuration;
 using AutoTest.Desktop.Diagnostics;
 using AutoTest.Desktop.Projects;
+using AutoTest.Projects.Project;
 
 namespace AutoTest.Desktop.Shell;
 
