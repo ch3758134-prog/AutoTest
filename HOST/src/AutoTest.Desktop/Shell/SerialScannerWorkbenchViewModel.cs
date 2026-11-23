@@ -31,13 +31,18 @@ public sealed class ScannerFieldMappingRow : BindableBase
         _start = rule.Start.ToString();
         _length = rule.Length.ToString();
     }
-    public ScanFieldMapping ToRule()
+    public ScanFieldMapping ToRule(bool fixedWidth)
     {
-        if (!int.TryParse(FieldNumber, out var field) ||
-            !int.TryParse(Start, out var start) ||
-            !int.TryParse(Length, out var length))
-            throw new FormatException("字段编号、起始位置和长度必须为整数。");
-        return new(Target, field, start, length);
+        if (fixedWidth)
+        {
+            if (!int.TryParse(Start, out var start) ||
+                !int.TryParse(Length, out var length))
+                throw new FormatException("固定位置的起始值与长度必须为整数。");
+            return new(Target, 1, start, length);
+        }
+        if (!int.TryParse(FieldNumber, out var field))
+            throw new FormatException("分隔符字段序号必须为整数。");
+        return new(Target, field, 1, 0);
     }
 }
 
@@ -425,7 +430,19 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
     private static string DescribeFields(IReadOnlyDictionary<string, string>? values)
     {
         if (values is null || values.Count == 0) return "";
-        return string.Join("  |  ", values.Select(x => x.Key + " = " + x.Value));
+        static string Title(string target) => target switch
+        {
+            ScanIdentityPolicy.ModelTarget => "ECU 型号 → 工程",
+            ScanIdentityPolicy.SerialTarget => "ECU 唯一编号 → DUT",
+            ScanIdentityPolicy.HardwareTarget => "硬件版本",
+            "BatchCode" => "生产批次",
+            "ProductionDate" => "生产日期",
+            "SupplierCode" => "供应商",
+            "Custom1" => "自定义字段 1",
+            "Custom2" => "自定义字段 2",
+            _ => target
+        };
+        return string.Join("  |  ", values.Select(x => Title(x.Key) + " = " + x.Value));
     }
 
     private ScanIdentityPolicy DraftIdentityPolicy()
@@ -435,12 +452,14 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
             throw new FormatException("请输入合法的最小/最大编号长度。");
         var policy = new ScanIdentityPolicy(ScanIdentityPolicy.CurrentSchema,
             IdentityFormat, IdentitySeparator,
-            IdentityFormat == ScanIdentityPolicy.SerialOnly ? null :
-                string.IsNullOrEmpty(FixedModelCode) ? null : FixedModelCode,
+            IdentityFormat is ScanIdentityPolicy.SerialOnly or ScanIdentityPolicy.Mapped
+                ? null
+                : string.IsNullOrEmpty(FixedModelCode) ? null : FixedModelCode,
             minimum, maximum,
             MappingMethod,
             IdentityFormat == ScanIdentityPolicy.Mapped
-                ? MappingRows.Select(x => x.ToRule()).ToArray()
+                ? MappingRows.Select(x =>
+                    x.ToRule(MappingMethod == ScanIdentityPolicy.Fixed)).ToArray()
                 : null);
         policy.Validate();
         return policy;
@@ -462,8 +481,10 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
                 MaximumSerialLength = loaded.MaximumSerialLength.ToString();
                 MappingMethod = loaded.ParseMode;
                 MappingRows.Clear();
+                SelectedMapping = null;
                 foreach (var rule in loaded.FieldMappings ?? [])
                     MappingRows.Add(new ScannerFieldMappingRow(rule));
+                SelectedMapping = MappingRows.FirstOrDefault();
                 IdentityPolicyStatus = "工位扫码格式已保存：" + loaded.Format +
                     "。扫码只做身份识别，不执行夹具、START 或烧录。";
             });
