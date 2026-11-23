@@ -192,6 +192,17 @@ public partial class MainWindow : Window
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        // The default automatic-test surface is read-only. Hidden engineer
+        // Ctrl+N/O/S bindings must not create/open/write resources from here.
+        // The full shortcut set continues to work after switching to Studio.
+        if (_viewModel.IsProductionWorkspace &&
+            ((Keyboard.Modifiers.HasFlag(ModifierKeys.Control) &&
+              e.Key is Key.N or Key.O or Key.S or Key.Z or Key.Y or Key.Space) ||
+             e.Key is Key.F2 or Key.F9 or Key.Insert or Key.Delete))
+        {
+            e.Handled = true;
+            return;
+        }
         if (e.SystemKey == Key.F4 && Keyboard.Modifiers.HasFlag(ModifierKeys.Alt))
         {
             e.Handled = true;
