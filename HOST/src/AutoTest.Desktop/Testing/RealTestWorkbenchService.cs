@@ -127,6 +127,8 @@ public sealed class RealTestWorkbenchService
             // consent; avoid discovering malformed frames after earlier steps
             // have already changed the DUT.
             actions.ValidateRunSteps(document);
+            var wave = new ConfiguredWavePort(_projects, _signals);
+            await wave.FreezeProfileReferencesAsync(mappings, ct);
             if (!_hardware.IsConnected ||
                 _hardware.CurrentStationEpoch != openingEpoch)
                 throw new IOException("测试预检期间主控会话已切换；拒绝使用旧授权执行。");
@@ -136,7 +138,8 @@ public sealed class RealTestWorkbenchService
             if (!_hardware.IsConnected ||
                 _hardware.CurrentStationEpoch != openingEpoch)
                 throw new IOException("测试授权期间 USB 会话已改变；中止运行并清理。");
-            var wave = new ConfiguredWavePort(_projects, _signals);
+            // The WAVE references were already fixed and checked before
+            // the first authorized physical step.
             // Subscribe to physical evidence before any FLASH workflow can run.
             evidence = new RealRunEvidenceRecorder(_hardware, _signals);
             ITestFlashPort? flash = jobs.Count == 0 ? null :
