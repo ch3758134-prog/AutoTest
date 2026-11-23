@@ -60,6 +60,8 @@
       Foreground="#687C91" Margin="0,4,0,0" TextWrapping="Wrap"/>
      <TextBlock Text="{Binding StartRequestStatus}" FontSize="11"
       Foreground="#526B86" Margin="0,6,0,0" TextWrapping="Wrap"/>
+     <TextBlock Text="{Binding DeploymentStatus}" FontSize="11"
+      Foreground="#547C70" Margin="0,6,0,0" TextWrapping="Wrap"/>
     </StackPanel>
    </DockPanel>
   </Border>
@@ -121,10 +123,10 @@
        <TextBlock Text="{Binding SetupIssue}" TextWrapping="Wrap"
         FontSize="12" TextAlignment="Center" Foreground="#6A7E92"
         Margin="0,11,0,19"/>
-       <Button Content="打开测试工程" Command="{Binding ChoosePlanCommand}"
+       <Button Content="前往工程部署" Command="{Binding ChoosePlanCommand}"
         Style="{StaticResource AtPrimaryButton}" Padding="18,8"
         HorizontalAlignment="Center" MinWidth="145" MinHeight="34"/>
-       <TextBlock Text="选择现有工程目录中的 project.autotest-project.json；以后自动恢复，不必逐个启用用例。"
+       <TextBlock Text="在工程与调试中核对正式资源并部署一次；自动测试只读取已部署的工程版本，不再另选 TEST 方案。"
         FontSize="11" TextAlignment="Center" Foreground="#8C9AAA"
         Margin="0,14,0,0"/>
       </StackPanel>
