@@ -30,14 +30,16 @@ public sealed class ProductionInspectionNode : BindableBase
     private bool _isSelected;
 
     public ProductionInspectionNode(string name, string kind,
-        StepId? step = null, TestDocumentId? document = null)
+        StepId? step = null, TestDocumentId? document = null, int sequence = 0)
     {
         Name = name;
         Kind = kind;
         Step = step;
         Document = document;
+        IndexLabel = sequence > 0 ? sequence.ToString("D2") : "";
     }
 
+    public string IndexLabel { get; }
     public string Name { get; }
     public string Kind { get; }
     public StepId? Step { get; }
@@ -124,6 +126,9 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
     public DelegateCommand OpenScannerCommand { get; }
     public string ProjectName { get => _projectName; private set => SetProperty(ref _projectName, value); }
     public string ModelCode { get => _modelCode; private set => SetProperty(ref _modelCode, value); }
+    public string ScannerStatus => _scanner.IsConnected
+        ? "扫码枪已连接 · " + _scanner.ConnectedPort
+        : "扫码枪未连接 · 请在开发与调试中配置";
     public string DutSerial { get => _dutSerial; private set => SetProperty(ref _dutSerial, value); }
     public string Phase { get => _phase; private set => SetProperty(ref _phase, value); }
     public string ProductionReadiness { get => _productionReadiness; private set => SetProperty(ref _productionReadiness, value); }
@@ -241,10 +246,11 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
                 Selected = null;
                 ProjectName = opened.Definition.Name;
                 ModelCode = opened.Definition.EcuModelCode;
+                var caseIndex = 0;
                 foreach (var source in sources)
                 {
                     var root = new ProductionInspectionNode(source.Name, "TEST 用例",
-                        document: source.Document.Id) { IsExpanded = true };
+                        document: source.Document.Id, sequence: ++caseIndex);
                     foreach (var phase in Enum.GetValues<TestPhase>())
                     {
                         var phaseNode = new ProductionInspectionNode(phase switch
@@ -351,6 +357,9 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
 
     private void OnScannerPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName is nameof(SerialScannerWorkbenchViewModel.IsConnected) or
+            nameof(SerialScannerWorkbenchViewModel.ConnectedPort))
+            OnUi(() => RaisePropertyChanged(nameof(ScannerStatus)));
         if (e.PropertyName != nameof(SerialScannerWorkbenchViewModel.LastDecision)) return;
         OnUi(() =>
         {
