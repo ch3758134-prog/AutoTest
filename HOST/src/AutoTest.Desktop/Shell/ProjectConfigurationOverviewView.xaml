@@ -9,7 +9,7 @@
     <Button DockPanel.Dock="Right" Content="核对检测配置"
      Command="{Binding RefreshEngineeringSetupCommand}" Margin="0,0,0,0"
      VerticalAlignment="Center"/>
-    <TextBlock Text="当前 ECU 工程 · 配置与真实调试" FontSize="14" FontWeight="SemiBold"
+    <TextBlock Text="检测准备 · 当前 ECU 工程" FontSize="14" FontWeight="SemiBold"
      VerticalAlignment="Center"/>
    </DockPanel>
   </Border>
@@ -55,7 +55,7 @@
      </Grid>
     </ControlTemplate>
    </TabControl.Template>
-   <TabItem Header="工程概览">
+   <TabItem Header="配置总览">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
      <StackPanel MaxWidth="1050" Margin="22,20,22,24">
       <DockPanel LastChildFill="True" Margin="0,0,0,12">
@@ -71,15 +71,15 @@
       <Border CornerRadius="8" Background="#F3F7FC" BorderBrush="#DFE8F2"
        BorderThickness="1" Padding="13" Margin="0,0,0,13">
        <StackPanel>
-        <TextBlock Text="打开工程后，从这里完成整套 ECU 检测的编辑与调试" FontWeight="SemiBold"
+        <TextBlock Text="在这里维护工程检测准备，TEST 用例在左侧单独编辑" FontWeight="SemiBold"
          Foreground="#2B507D" FontSize="13" Margin="0,0,0,5"/>
-        <TextBlock Text="先编辑用例和实际需要的资源，再配置该 ECU 的烧录与工位动作。扫码枪只需安装绑定一次。独立调试不强制完成全部生产配置。"
+        <TextBlock Text="扫码身份、工程原生烧录工艺、夹具准备和收尾、实际工程资源均可在此编辑与核对；固定 COM 设备只需在本工位安装绑定一次。开发 TEST 调试无需先通过生产工位检查。"
          Foreground="#4F647E" TextWrapping="Wrap"/>
         <TextBlock Text="{Binding SetupOverallStatus}" Foreground="#6D7683"
          TextWrapping="Wrap" Margin="0,8,0,0"/>
        </StackPanel>
       </Border>
-      <TextBlock Text="本工程可编辑的内容" Foreground="{StaticResource Ink}" FontWeight="SemiBold"
+      <TextBlock Text="工程配置与资源入口" Foreground="{StaticResource Ink}" FontWeight="SemiBold"
        FontSize="14" Margin="0,0,0,10"/>
       <Border CornerRadius="8" BorderBrush="{StaticResource Line}" Background="White"
        BorderThickness="1" Padding="15" Margin="0,0,0,9">
@@ -170,7 +170,7 @@
      </StackPanel>
     </ScrollViewer>
    </TabItem>
-   <TabItem Header="扫码枪与编号">
+   <TabItem Header="扫码与编号">
     <Grid>
      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
      <Border Grid.Row="0" Background="#F3F7FC" BorderBrush="#DBE5F0"
@@ -185,7 +185,7 @@
    <TabItem Header="烧录工艺">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
      <StackPanel MaxWidth="880" Margin="22,22,22,18">
-      <TextBlock Text="当前 ECU 工程 · 原生烧录工艺" FontSize="18" FontWeight="SemiBold"
+      <TextBlock Text="工程前置烧录 · 原生工艺配置" FontSize="18" FontWeight="SemiBold"
        Foreground="{StaticResource Ink}"/>
       <TextBlock Text="{Binding SetupFlashStatus}" Foreground="#516B83"
        TextWrapping="Wrap" Margin="0,10,0,14"/>
@@ -212,10 +212,10 @@
      </StackPanel>
     </ScrollViewer>
    </TabItem>
-   <TabItem Header="工位动作">
+   <TabItem Header="夹具与 IGN">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
      <StackPanel MaxWidth="900" Margin="22,22,22,18">
-      <TextBlock Text="工位能力 · 夹具 / IGN / 软件与实体 START" FontSize="18"
+      <TextBlock Text="夹具与 IGN · 工艺编辑和实体操作" FontSize="18"
        FontWeight="SemiBold" Foreground="{StaticResource Ink}"/>
       <TextBlock Text="{Binding SetupStationStatus}" Foreground="#516B83"
        TextWrapping="Wrap" Margin="0,10,0,14"/>
@@ -290,7 +290,7 @@
      </StackPanel>
     </ScrollViewer>
    </TabItem>
-   <TabItem Header="发布与检查">
+   <TabItem Header="运行前检查">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
      <StackPanel MaxWidth="1010" Margin="22,22,22,24">
       <DockPanel Margin="0,0,0,12">
