@@ -17,12 +17,14 @@ public sealed class ProductionResultCoordinator
     { _facts = facts; _clock = clock ?? TimeProvider.System; }
 
     public async ValueTask<OperationResult<Unit>> AppendAsync(ProductionJobSnapshot job,
-        string code, RunFactKind kind, EvidenceQuality quality, CancellationToken ct)
+        string code, RunFactKind kind, EvidenceQuality quality, CancellationToken ct,
+        ImmutableArray<EvidenceRef> evidence = default)
     {
         var result = await _facts.AppendAsync(new RunFact(job.Run, Guid.NewGuid(), Guid.NewGuid(),
             kind, code, new TimePoint(_clock.GetUtcNow(), _clock.GetTimestamp(),
                 TimeSource.HostArrival, TimeQuality.HostArrivalOnly), quality,
-            ImmutableArray<EvidenceRef>.Empty), ct).ConfigureAwait(false);
+            evidence.IsDefault ? ImmutableArray<EvidenceRef>.Empty : evidence),
+            ct).ConfigureAwait(false);
         if (!result.Durable && !job.IsMock)
             return OperationResult.Uncertain("RECORD_APPEND_NOT_DURABLE", "Run fact not durably stored.");
         return OperationResult.Accepted();
