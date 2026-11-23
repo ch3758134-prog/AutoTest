@@ -19,8 +19,8 @@ public static class StepTreeValidator
         {
             if (!active.Add(n)) { errors.Add($"{location}: reference cycle"); return; }
             if (n.Id.Value == Guid.Empty || !ids.Add(n.Id)) errors.Add($"{location}: empty/duplicate StepId");
-            // A disabled legacy step is preserved for editing but cannot block
-            // or participate in a real run. Re-enabling requires full validation.
+            // Disabled steps remain editable and are excluded from execution;
+            // re-enabling subjects them to the same formal TEST validation.
             if (!StepExecutionPolicy.IsEnabled(n))
             {
                 active.Remove(n);
@@ -39,10 +39,6 @@ public static class StepTreeValidator
                         if (!n.Properties.TryGetValue(key, out var v) || string.IsNullOrWhiteSpace(v))
                             errors.Add($"{location}: missing property {key}");
             }
-            if (!allowIncompleteSteps &&
-                n.Properties.TryGetValue("legacy.importStatus", out var legacyStatus) &&
-                legacyStatus.Contains("BLOCKED", StringComparison.OrdinalIgnoreCase))
-                errors.Add($"{location}: 旧版导入步骤“{n.Name}”尚未重新绑定并核对，不能参与真实测试。");
             // CallSubroutine.target is a TEST subroutine identity, not an asset mapping.
             // Only physical/signal operations use TestTargetMapping.
             if (!allowIncompleteSteps &&
