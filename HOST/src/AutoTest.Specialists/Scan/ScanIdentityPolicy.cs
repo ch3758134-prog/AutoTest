@@ -3,10 +3,18 @@ using System.Text.RegularExpressions;
 namespace AutoTest.Specialists.Scan;
 
 /// <summary>
-/// Scanner payload interpretation, never a hardware or production authorization.
-/// Transport COM settings and the ECU model/project registry are separate.
-/// No inference from project file names, no serial allocation, and no implicit
-/// conversion of an arbitrary barcode to a UT1 label.
+/// A field from one completed serial scanner frame. Both field numbers and
+/// fixed-position offsets are ONE-based for operator-facing configuration.
+/// No extraction can perform an ECU action.
+/// </summary>
+public sealed record ScanFieldMapping(string Target, int FieldNumber = 1,
+    int Start = 1, int Length = 0);
+
+/// <summary>
+/// Physical scanner port and framing are configured separately. This station
+/// rule only interprets a COMPLETE serial barcode and maps parsed fields to
+/// stable system destinations: model, DUT identity, hardware and trace data.
+/// Production still requires independently pinned ECU engineering resources.
 /// </summary>
 public sealed record ScanIdentityPolicy(
     int SchemaVersion,
@@ -14,12 +22,27 @@ public sealed record ScanIdentityPolicy(
     string Separator,
     string? FixedModelCode,
     int MinimumSerialLength,
-    int MaximumSerialLength)
+    int MaximumSerialLength,
+    string ParseMode = Delimited,
+    IReadOnlyList<ScanFieldMapping>? FieldMappings = null)
 {
     public const int CurrentSchema = 1;
     public const string Ut1 = "UT1";
     public const string ModelSerial = "ModelSerial";
     public const string SerialOnly = "SerialOnly";
+    public const string Mapped = "Mapped";
+    public const string Delimited = "Delimited";
+    public const string Fixed = "Fixed";
+
+    public const string ModelTarget = "ModelCode";
+    public const string SerialTarget = "DutSerial";
+    public const string HardwareTarget = "HardwareCode";
+    public static readonly IReadOnlyList<string> SupportedTargets =
+    [
+        ModelTarget, SerialTarget, HardwareTarget, "BatchCode",
+        "ProductionDate", "SupplierCode", "Custom1", "Custom2"
+    ];
+
     public static ScanIdentityPolicy Default => new(CurrentSchema, Ut1, "-", null, 8, 20);
 
     private static readonly Regex ModelPattern = new(
@@ -32,19 +55,36 @@ public sealed record ScanIdentityPolicy(
     public void Validate()
     {
         if (SchemaVersion != CurrentSchema ||
-            Format is not (Ut1 or ModelSerial or SerialOnly))
-            throw new FormatException("扫码规则版本或格式不受支持。");
+            Format is not (Ut1 or ModelSerial or SerialOnly or Mapped))
+            throw new FormatException("扫码规则版本或解析格式不受支持。");
         if (Separator is not ("-" or "|" or ":" or "/"))
-            throw new FormatException("型号+编号模式的分隔符只允许 -、|、:、/。");
+            throw new FormatException("字段分隔符只允许 -、|、:、/。");
         if (MinimumSerialLength < 1 || MaximumSerialLength > 64 ||
             MinimumSerialLength > MaximumSerialLength)
             throw new FormatException("唯一编号长度必须在 1～64 内，且最小长度不能大于最大长度。");
-        // The selected ECU inspection project already identifies the model.
-        // The serial reader must not require a second independent model selection.
-        // Older policies with explicit FixedModelCode remain readable.
         if (!string.IsNullOrWhiteSpace(FixedModelCode) &&
             !ModelPattern.IsMatch(FixedModelCode))
-            throw new FormatException("固定 ECU 型号码只能使用 2～16 位大写字母和数字。");
+            throw new FormatException("工程型号只能使用 2～16 位大写字母和数字。");
+        if (Format != Mapped) return;
+        if (ParseMode is not (Delimited or Fixed))
+            throw new FormatException("字段解析只支持分隔符或固定位置。");
+        if (FieldMappings is null || FieldMappings.Count is < 1 or > 8)
+            throw new FormatException("请为条码配置 1～8 个字段映射。");
+        if (FieldMappings.Count(x => x.Target == SerialTarget) != 1)
+            throw new FormatException("必须将且仅将一个字段映射到 ECU 唯一编号。");
+        var targets = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var field in FieldMappings)
+        {
+            if (field is null || !SupportedTargets.Contains(field.Target) ||
+                !targets.Add(field.Target))
+                throw new FormatException("字段目标不支持或重复映射。");
+            if (ParseMode == Delimited && field.FieldNumber is < 1 or > 32)
+                throw new FormatException("分隔符字段编号必须为 1～32。");
+            if (ParseMode == Fixed && (field.Start is < 1 or > 256 ||
+                                       field.Length is < 1 or > 256 ||
+                                       field.Start + field.Length - 1 > 256))
+                throw new FormatException("固定位置需填写 1～256 内有效的起始位置和长度。");
+        }
     }
 
     public ScanIdentityResult Decode(string? raw)
@@ -55,14 +95,18 @@ public sealed record ScanIdentityPolicy(
             return new("SCAN_POLICY_INVALID", null, null, null, e.Message);
         }
         if (string.IsNullOrEmpty(raw) || raw.Length > 256 ||
-            raw.Any(c => c is < ' ' or > '~') || !string.Equals(raw, raw.Trim(), StringComparison.Ordinal))
+            raw.Any(c => c is < ' ' or > '~') ||
+            !string.Equals(raw, raw.Trim(), StringComparison.Ordinal))
             return new("SCAN_PAYLOAD_INVALID", null, null, null,
-                "原始扫码为空、包含非 ASCII 可打印字符、首尾空白或超过长度限制。");
+                "扫码为空、含非 ASCII 可打印字符、首尾空白或超过长度限制。");
+
         string model, serial;
         string? hardware = null;
+        IReadOnlyDictionary<string, string>? fields = null;
         if (Format == Ut1)
         {
-            if (!Ut1BarcodeCodec.TryParse(raw, out var parsed, out var reason) || parsed is null)
+            if (!Ut1BarcodeCodec.TryParse(raw, out var parsed, out var reason) ||
+                parsed is null)
                 return new(reason, null, null, null, "UT1 格式或 CRC 校验失败。");
             model = parsed.ProductCode;
             serial = parsed.Serial;
@@ -77,33 +121,66 @@ public sealed record ScanIdentityPolicy(
             model = raw[..split];
             serial = raw[(split + Separator.Length)..];
         }
+        else if (Format == Mapped)
+        {
+            var values = new Dictionary<string, string>(StringComparer.Ordinal);
+            var segments = ParseMode == Delimited ?
+                raw.Split(Separator, StringSplitOptions.None) : [];
+            foreach (var mapping in FieldMappings!)
+            {
+                string value;
+                if (ParseMode == Delimited)
+                {
+                    if (mapping.FieldNumber > segments.Length)
+                        return new("SCAN_FIELD_MISSING", null, null, null,
+                            "条码缺少第 " + mapping.FieldNumber + " 个字段。");
+                    value = segments[mapping.FieldNumber - 1];
+                }
+                else
+                {
+                    if (mapping.Start + mapping.Length - 1 > raw.Length)
+                        return new("SCAN_FIELD_MISSING", null, null, null,
+                            "固定位置字段「" + mapping.Target + "」超出本次扫码长度。");
+                    value = raw.Substring(mapping.Start - 1, mapping.Length);
+                }
+                if (string.IsNullOrWhiteSpace(value) ||
+                    !string.Equals(value, value.Trim(), StringComparison.Ordinal))
+                    return new("SCAN_FIELD_EMPTY", null, null, null,
+                        "字段「" + mapping.Target + "」为空或包含首尾空格。");
+                values.Add(mapping.Target, value);
+            }
+            model = values.GetValueOrDefault(ModelTarget) ?? FixedModelCode ?? "";
+            serial = values[SerialTarget];
+            hardware = values.GetValueOrDefault(HardwareTarget);
+            fields = values;
+        }
         else
         {
-            // Serial-only labels do not identify the product. A deliberate
-            // single-model station binding is the only source of the model.
             if (string.IsNullOrWhiteSpace(FixedModelCode))
                 return new("SCAN_PROJECT_MODEL_REQUIRED", null, null, null,
-                    "纯编号标签由当前 ECU 工程提供型号，请核对选定的工程。");
+                    "纯编号由当前 ECU 工程提供型号，请先打开或部署工程。");
             model = FixedModelCode;
             serial = raw;
         }
+
         if (!ModelPattern.IsMatch(model))
             return new("SCAN_MODEL_INVALID", null, null, null,
-                "型号字段只能使用 2～16 位大写字母和数字。");
+                "型号字段不是有效的工程型号代码（2～16 位大写字母或数字）。");
         if (serial.Length < MinimumSerialLength || serial.Length > MaximumSerialLength ||
             !SerialPattern.IsMatch(serial))
             return new("SCAN_SERIAL_INVALID", model, null, hardware,
-                "唯一编号不满足长度或字符规则；不自动去零、大小写转换或截断。");
+                "ECU 唯一编号不符合长度或字符约束；不自动去零、转换大小写或截断。");
         return new("SCAN_IDENTITY_PARSED", model, serial, hardware,
             Format == SerialOnly
-                ? "纯序列号已按显式绑定的工位型号解析；仅为身份，不代表实体型号验证。"
-                : "已解析型号和唯一编号；等待型号工程匹配及真实生产预检。");
+                ? "完整条码已映射到 ECU 唯一编号；型号由当前工程提供。"
+                : "字段已解析，等待型号工程匹配；不是任何实体运行授权。",
+            fields);
     }
 }
 
 public sealed record ScanIdentityResult(
     string Code, string? ModelCode, string? Serial, string? HardwareCode,
-    string Explanation)
+    string Explanation, IReadOnlyDictionary<string, string>? Fields = null)
 {
     public bool Parsed => Code == "SCAN_IDENTITY_PARSED";
 }
