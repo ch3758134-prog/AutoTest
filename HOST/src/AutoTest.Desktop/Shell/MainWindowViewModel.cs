@@ -394,12 +394,8 @@ public sealed partial class MainWindowViewModel : BindableBase
     /// The ECU project home is a normal editor document, not a detached
     /// information popup that hides the workspace and opens dead buttons.
     /// </summary>
-    public void ShowOverview()
-    {
-        if (_workspace.Current is null) return;
-        ActivateEditor("project-overview", new ProjectOverviewView(this),
-            "工程概览 · " + CurrentProjectName, () => true);
-    }
+    // Project root is a real entry into engineering setup, not another welcome page.
+    public void ShowOverview() => ShowProjectConfiguration();
 
     public void ShowProjectConfiguration()
     {
@@ -408,6 +404,10 @@ public sealed partial class MainWindowViewModel : BindableBase
             StatusMessage = "请先打开测试工程再编辑配置。";
             return;
         }
+        // Inspection setup is a first-class editor object with its own
+        // permanent navigation entry, not a hidden prerequisite for TEST.
+        var setupNode = ResourceNodes.FirstOrDefault(x => x.Role == "Setup");
+        if (setupNode is not null) SelectResource(setupNode);
         if (IsAlreadyOpen("config-overview")) return;
         var view = new ProjectConfigurationOverviewView(this, _workspace);
         ActivateEditor("config-overview", view, "检测准备 · " + CurrentProjectName, view.ConfirmClose);
@@ -601,7 +601,7 @@ public sealed partial class MainWindowViewModel : BindableBase
     {
         "none" => "新建工程",
         "project" when TestProgramCount > 0 => "打开独立用例",
-        "ready" => "管理测试项目",
+        "ready" => "检测准备",
         _ => "查看工程信息"
     };
     public bool ShowStartSecondary => StartMode is "none" or "ready" ||
@@ -653,9 +653,7 @@ public sealed partial class MainWindowViewModel : BindableBase
             case "project" when TestProgramCount > 0:
                 await OpenFirstAssetAsync(ProjectWorkspaceService.TestProgramKind,
                     CreateTestProgramAsync); break;
-            case "ready":
-                await OpenFirstAssetAsync(ProjectWorkspaceService.TestProjectKind,
-                    CreateTestProjectAsync); break;
+            case "ready": ShowProjectConfiguration(); break;
             default: ShowOverview(); break;
         }
     }
@@ -1052,6 +1050,10 @@ public sealed partial class MainWindowViewModel : BindableBase
         RaiseActiveEditorChanged();
         RaisePropertyChanged(nameof(HasActiveEditor));
         RaisePropertyChanged(nameof(NoOpenEditors));
+        // Closing the last TEST document returns to editable project preparation;
+        // an opened ECU must not fall back to an empty, misleading welcome page.
+        if (OpenEditors.Count == 0 && HasProject && IsEngineerWorkspace && !IsBusy)
+            ShowProjectConfiguration();
         return true;
     }
     private bool IsAlreadyOpen(string key)
@@ -1190,6 +1192,12 @@ public sealed partial class MainWindowViewModel : BindableBase
                                            ArgumentException or JsonException)
         {
             StatusMessage = "最近文档记录无法读取，仍可从工程树打开：" + error.Message;
+            return;
+        }
+        if (lastKey is "config-overview" or "project-overview")
+        {
+            // Both new and old workspace preferences restore the actual setup editor.
+            ShowProjectConfiguration();
             return;
         }
         if (lastKey is null) return;
@@ -1426,6 +1434,7 @@ public sealed partial class MainWindowViewModel : BindableBase
     private void RebuildResourceTree()
     {
         var selectedId = _selectedResource?.Asset?.Id;
+        var wasSetupSelected = _selectedResource?.Role == "Setup";
         ResourceNodes.Clear();
         _selectedResource = null;
         if (_workspace.Current is not { } current)
@@ -1438,7 +1447,11 @@ public sealed partial class MainWindowViewModel : BindableBase
         // and a separate categorized asset section. Do not nest the latter under root.
         ResourceNodes.Add(new ResourceTreeNode(current.Definition.Name, "", current.ManifestPath,
             role: "Root"));
-        ResourceNodes.Add(new ResourceTreeNode("自动测试", "", "测试项目与用例",
+        ResourceNodes.Add(new ResourceTreeNode("检测准备", "",
+            "配置 ECU 型号、扫码身份、原生烧录、夹具工艺与运行前检查",
+            role: "Setup"));
+        ResourceNodes.Add(new ResourceTreeNode("测试项目与用例", "",
+            "唯一有序用例实例；临时勾选仅用于开发调试",
             ProjectWorkspaceService.TestProjectKind, role: "Section"));
         var assets = current.Definition.Assets;
         var projects = assets.Where(x => x.Kind == ProjectWorkspaceService.TestProjectKind)
@@ -1540,10 +1553,10 @@ public sealed partial class MainWindowViewModel : BindableBase
         }
 
         if (selectedId is { } id)
-        {
             _selectedResource = AllNodes(ResourceNodes).FirstOrDefault(x => x.Asset?.Id == id);
-            if (_selectedResource is not null) _selectedResource.IsSelected = true;
-        }
+        else if (wasSetupSelected)
+            _selectedResource = ResourceNodes.FirstOrDefault(x => x.Role == "Setup");
+        if (_selectedResource is not null) _selectedResource.IsSelected = true;
         RaiseSelectedResourceChanges();
     }
 
@@ -1562,11 +1575,15 @@ public sealed partial class MainWindowViewModel : BindableBase
         finally { IsBusy = false; }
         if (created && _workspace.Current is not null)
         {
-            // An ECU project is immediately ready for formal TEST authoring.
-            // Do not send the engineer into another empty TEST-project wizard.
-            ShowOverview();
-            await OpenFirstAssetAsync(ProjectWorkspaceService.TestProgramKind,
-                CreateTestProgramAsync);
+            // First-class setup stays available in a document tab. When no TEST
+            // project exists create ONE formal order and its first linked case:
+            // never leave a loose TEST asset outside the order by default.
+            ShowProjectConfiguration();
+            if (TestProjectCount == 0)
+                await CreateStarterProjectAsync(useDefaultName: true);
+            else
+                await OpenFirstAssetAsync(ProjectWorkspaceService.TestProjectKind,
+                    CreateTestProjectAsync);
         }
     }
 
@@ -1642,7 +1659,7 @@ public sealed partial class MainWindowViewModel : BindableBase
     /// Each resource and the project entry use the existing formal codecs and
     /// version-pinned project workspace service.
     /// </summary>
-    private async Task CreateStarterProjectAsync()
+    private async Task CreateStarterProjectAsync(bool useDefaultName = false)
     {
         if (!HasProject) return;
         if (TestProjectCount > 0)
@@ -1650,7 +1667,9 @@ public sealed partial class MainWindowViewModel : BindableBase
             await OpenFirstAssetAsync(ProjectWorkspaceService.TestProjectKind, CreateTestProjectAsync);
             return;
         }
-        var name = _fileDialogs.AskResourceName("建立首个测试项目和空白用例", "自动测试项目");
+        var name = useDefaultName
+            ? CurrentProjectName + " · 用例顺序"
+            : _fileDialogs.AskResourceName("建立首个测试项目和空白用例", "自动测试项目");
         if (name is null) return;
         await RunOperationAsync(async () =>
         {
@@ -1678,7 +1697,7 @@ public sealed partial class MainWindowViewModel : BindableBase
             ActivateEditor("test|" + caseAsset.Id, new TestEditorView(editor),
                 "测试用例 · " + caseAsset.Name, editor.ConfirmClose);
             SelectAsset(caseAsset.Id);
-            StatusMessage = "已建立正式测试项目与空白用例。可直接在准备／测试／清理阶段添加真实步骤。";
+            StatusMessage = "已建立唯一测试项目和第一条正式用例引用，可直接编辑真实测试步骤。";
         });
     }
 
