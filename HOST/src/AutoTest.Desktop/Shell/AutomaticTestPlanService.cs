@@ -121,19 +121,25 @@ public sealed class AutomaticTestPlanService
         return steps;
     }
 
-    private static AutomaticTestStep ProjectStep(StepNode node, string index)
+    private static AutomaticTestStep ProjectStep(StepNode node, string index,
+        string? branch = null)
     {
         var children = new List<AutomaticTestStep>();
+        // Name the IF/ELSE/WHEN/SWITCH/LOOP slot explicitly. Otherwise a
+        // read-only operator would see a flat list and mistake alternative
+        // branches for sequential unconditional physical actions.
         foreach (var slot in node.Slots.OrderBy(x => x.Key, StringComparer.Ordinal))
         {
             for (var i = 0; i < slot.Value.Length; i++)
             {
                 var child = slot.Value[i];
-                children.Add(ProjectStep(child, (i + 1).ToString("D2")));
+                children.Add(ProjectStep(child, (i + 1).ToString("D2"),
+                    slot.Key));
             }
         }
         var state = StepExecutionPolicy.IsEnabled(node)
             ? "未执行" : "步骤已禁用（不执行）";
-        return new(index, node.Name, state, children);
+        var label = branch is null ? node.Name : "〔" + branch + "〕 " + node.Name;
+        return new(index, label, state, children);
     }
 }
