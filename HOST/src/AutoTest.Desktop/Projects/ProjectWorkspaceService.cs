@@ -561,6 +561,12 @@ public sealed partial class ProjectWorkspaceService
     public Task<AssetEntry> CreateConfigurationAsync(string kind, string name,
         CancellationToken ct = default)
     {
+        // TCF/TBC are old descriptions of the DUT and this fixed station.
+        // Neither belongs in a new ECU inspection project. Keep their codec
+        // for existing manifests, but never issue a new one.
+        if (kind is TestConfigurationKind or BenchConfigurationKind)
+            throw new ProjectDataException("LEGACY_CONFIGURATION_RETIRED",
+                "当前 ECU 检测工程不需要 TCF/TBC；请直接配置 TEST、DBC、烧录和工位动作。");
         if (!ProjectConfigurationCodec.IsConfiguration(kind))
             throw new ArgumentException("不支持的配置资源类型：" + kind);
         var extension = kind switch
