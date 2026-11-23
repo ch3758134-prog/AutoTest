@@ -1593,9 +1593,9 @@ public sealed partial class MainWindowViewModel : BindableBase
             (ProjectWorkspaceService.TestConfigurationKind, "被测系统配置 · TCF"),
             (ProjectWorkspaceService.BenchConfigurationKind, "台架配置 · TBC"),
             (ProjectWorkspaceService.InspectionKind, "工位动作 · 检测准备"),
-            (ProjectWorkspaceService.FlashSettingsKind, "烧录配置"),
+            (ProjectWorkspaceService.FlashSettingsKind, "历史烧录设置（仅迁移）"),
             (ProjectWorkspaceService.FirmwareKind, "固件资源"),
-            (ProjectWorkspaceService.ScanSettingsKind, "扫码匹配配置")
+            (ProjectWorkspaceService.ScanSettingsKind, "历史扫码配方（仅迁移）")
         };
         // Frequent resources remain prominent. Empty technical kinds are still
         // creatable inside one collapsed group, not deleted from the project.
@@ -1605,6 +1605,9 @@ public sealed partial class MainWindowViewModel : BindableBase
         {
             var entries = assets.Where(x => x.Kind.Equals(kind, StringComparison.OrdinalIgnoreCase))
                 .OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase).ToArray();
+            if (entries.Length == 0 && kind is ProjectWorkspaceService.FlashSettingsKind or
+                ProjectWorkspaceService.ScanSettingsKind)
+                continue; // old recipe types are never suggested for new projects
             var group = new ResourceTreeNode(label, "", "实际工程资产", kind,
                 role: "Folder", count: entries.Length == 0 ? "" : entries.Length.ToString());
             foreach (var entry in entries)
@@ -1837,8 +1840,8 @@ public sealed partial class MainWindowViewModel : BindableBase
             ProjectWorkspaceService.FirmwareKind => ImportFirmwareAsync(),
             ProjectWorkspaceService.WaveKind => ImportWaveAsync(),
             ProjectWorkspaceService.WaveSettingsKind => CreateConfigurationAsync(ProjectWorkspaceService.WaveSettingsKind),
-            ProjectWorkspaceService.FlashSettingsKind => CreateConfigurationAsync(ProjectWorkspaceService.FlashSettingsKind),
-            ProjectWorkspaceService.ScanSettingsKind => CreateConfigurationAsync(ProjectWorkspaceService.ScanSettingsKind),
+            ProjectWorkspaceService.FlashSettingsKind => Task.CompletedTask, // legacy read only
+            ProjectWorkspaceService.ScanSettingsKind => Task.CompletedTask, // legacy read only
             ProjectWorkspaceService.TestConfigurationKind => CreateConfigurationAsync(ProjectWorkspaceService.TestConfigurationKind),
             ProjectWorkspaceService.BenchConfigurationKind => CreateConfigurationAsync(ProjectWorkspaceService.BenchConfigurationKind),
             ProjectWorkspaceService.InspectionKind => OpenInspectionProcedureAsync(),
