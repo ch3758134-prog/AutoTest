@@ -102,14 +102,8 @@ public sealed class TestEditorViewModel : BindableBase
         RemoveMappingCommand = new DelegateCommand(RemoveMapping, () => SelectedMapping is not null && !IsBusy);
         PrepareRunApprovalCommand = new DelegateCommand(PrepareRealRunApproval,
             () => !IsBusy && !IsDirty && !HasNewStepDraft);
-        RunCommand = new DelegateCommand(async () => await RunRealAsync(),
-            () => !IsBusy && !IsDirty && !HasNewStepDraft &&
-                _preparedStepId is null && _preparedRunDocument is not null &&
-                _preparedStationEpoch > 0 &&
-                _realTest.IsHardwareConnected &&
-                _realTest.ConnectedStationEpoch == _preparedStationEpoch &&
-                _preparedDutIdentity == DutIdentity &&
-                RunApproval.Length > 0);
+        RunCommand = new DelegateCommand(async () => await RunCurrentCaseInteractiveAsync(),
+            () => !IsBusy && !IsDirty && !HasNewStepDraft);
         RunSelectedStepCommand = new DelegateCommand(
             async () => await RunSelectedStepInteractiveAsync(),
             () => !IsBusy && !IsDirty && !HasNewStepDraft &&
@@ -966,6 +960,22 @@ public sealed class TestEditorViewModel : BindableBase
         {
             StatusMessage = "准备真实运行失败：" + error.Message;
         }
+    }
+
+    /// <summary>One visible run action: do the same version-pinned preflight/authorization
+    /// as the former separate confirmation button before entering the existing executor.
+    /// A FLASH step still needs its explicit physical FLASH consent.</summary>
+    private async Task RunCurrentCaseInteractiveAsync()
+    {
+        if (IsBusy || IsDirty || HasNewStepDraft || !CanProceed()) return;
+        if (_preparedRunDocument is null || _preparedStepId is not null ||
+            _preparedStationEpoch != _realTest.ConnectedStationEpoch ||
+            _preparedDutIdentity != DutIdentity ||
+            _realTest.Prepare(_transaction.Current).Fingerprint !=
+                _realTest.Prepare(_preparedRunDocument).Fingerprint)
+            PrepareRunApproval(null);
+        if (_preparedRunDocument is null || _preparedStepId is not null) return;
+        await RunRealAsync();
     }
 
     private async Task RunSelectedStepInteractiveAsync()
