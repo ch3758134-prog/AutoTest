@@ -31,6 +31,9 @@ static const MCAL_CAN_BaudrateType s_baudMap[] = {
  * ============================================ */
 static EAL_CAN_RxCallbackType s_rxCallback[2] = {NULL, NULL};
 
+/* 初始配置与 main.c 的 KEY/ECU 500k 初始化一致；仅更新配置成功的端口。 */
+static EAL_CAN_BaudType s_currentBaud[2] = {EAL_CAN_BAUD_500K, EAL_CAN_BAUD_500K};
+
 /* ============================================
  * MCAL 回调 → EAL 回调（适配层）
  * ============================================ */
@@ -56,16 +59,38 @@ static void MCAL_RxCbAdapter(MCAL_CAN_ChannelType mcal_ch,
  * ============================================ */
 void EAL_CAN_Open(EAL_CAN_PortType port, EAL_CAN_BaudType baud)
 {
+    if ((uint32_t)port > (uint32_t)EAL_CAN1 || (uint32_t)baud > (uint32_t)EAL_CAN_BAUD_1M)
+        return;
     MCAL_CAN_Init(s_chMap[port], s_baudMap[baud]);
     MCAL_CAN_EnableIRQ(s_chMap[port]);
+    s_currentBaud[port] = baud;
 }
 
 /* ============================================
  * 波特率重配置
  * ============================================ */
-void EAL_CAN_SetBaudrate(EAL_CAN_PortType port, EAL_CAN_BaudType baud)
+EAL_CAN_RetType EAL_CAN_SetBaudrate(EAL_CAN_PortType port, EAL_CAN_BaudType baud)
 {
-    MCAL_CAN_SetBaudrate(s_chMap[port], s_baudMap[baud]);
+    MCAL_CAN_RetType ret;
+
+    if ((uint32_t)port > (uint32_t)EAL_CAN1 || (uint32_t)baud > (uint32_t)EAL_CAN_BAUD_1M)
+        return EAL_CAN_ERR;
+    if (s_currentBaud[port] == baud)
+        return EAL_CAN_OK;
+
+    ret = MCAL_CAN_SetBaudrate(s_chMap[port], s_baudMap[baud]);
+    if (ret == MCAL_CAN_BUSY)
+        return EAL_CAN_BUSY;
+    if (ret != MCAL_CAN_OK)
+        return EAL_CAN_ERR;
+    s_currentBaud[port] = baud;
+    return EAL_CAN_OK;
+}
+
+EAL_CAN_BaudType EAL_CAN_GetBaudrate(EAL_CAN_PortType port)
+{
+    return ((uint32_t)port <= (uint32_t)EAL_CAN1) ? s_currentBaud[port]
+                                                  : EAL_CAN_BAUD_500K;
 }
 
 /* ============================================
