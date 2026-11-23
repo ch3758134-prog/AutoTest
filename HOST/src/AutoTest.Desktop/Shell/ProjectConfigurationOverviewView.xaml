@@ -9,7 +9,7 @@
     <Button DockPanel.Dock="Right" Content="检查当前工程"
      Command="{Binding CheckActiveCommand}" Margin="0,0,0,0"
      VerticalAlignment="Center"/>
-    <TextBlock Text="检测准备 · 工程配置与实测" FontSize="14" FontWeight="SemiBold"
+    <TextBlock Text="当前 ECU 工程 · 配置与真实调试" FontSize="14" FontWeight="SemiBold"
      VerticalAlignment="Center"/>
    </DockPanel>
   </Border>
@@ -55,7 +55,7 @@
      </Grid>
     </ControlTemplate>
    </TabControl.Template>
-   <TabItem Header="检测准备">
+   <TabItem Header="工程概览">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
      <StackPanel MaxWidth="1050" Margin="22,20,22,24">
       <DockPanel LastChildFill="True" Margin="0,0,0,12">
@@ -64,28 +64,28 @@
        <StackPanel>
         <TextBlock Text="{Binding CurrentProjectName}" FontWeight="SemiBold"
          FontSize="21" Foreground="{StaticResource Ink}"/>
-        <TextBlock Text="检测准备 · 同一 ECU 工程、同一测试项目、同一套正式资源"
+        <TextBlock Text="一份工程包含用例、资源和检测过程；无需额外建立被测系统或台架配置"
          Margin="0,5,0,0" Foreground="{StaticResource Subtle}"/>
        </StackPanel>
       </DockPanel>
       <Border CornerRadius="8" Background="#F3F7FC" BorderBrush="#DFE8F2"
        BorderThickness="1" Padding="13" Margin="0,0,0,13">
        <StackPanel>
-        <TextBlock Text="从工程配置直接进入真实实测" FontWeight="SemiBold"
+        <TextBlock Text="打开工程后，从这里完成整套 ECU 检测的编辑与调试" FontWeight="SemiBold"
          Foreground="#2B507D" FontSize="13" Margin="0,0,0,5"/>
-        <TextBlock Text="点击任何一项，可在同一个工作台处理配置、实际试验与问题。TEST、DBC、固件及原生烧录资源只维护一次；独立工具仍可脱离工程使用。"
+        <TextBlock Text="先编辑用例和实际需要的资源，再配置该 ECU 的烧录与工位动作。扫码枪只需安装绑定一次。独立调试不强制完成全部生产配置。"
          Foreground="#4F647E" TextWrapping="Wrap"/>
         <TextBlock Text="{Binding SetupOverallStatus}" Foreground="#6D7683"
          TextWrapping="Wrap" Margin="0,8,0,0"/>
        </StackPanel>
       </Border>
-      <TextBlock Text="工程工作清单" Foreground="{StaticResource Ink}" FontWeight="SemiBold"
+      <TextBlock Text="本工程可编辑的内容" Foreground="{StaticResource Ink}" FontWeight="SemiBold"
        FontSize="14" Margin="0,0,0,10"/>
       <Border CornerRadius="8" BorderBrush="{StaticResource Line}" Background="White"
        BorderThickness="1" Padding="15" Margin="0,0,0,9">
        <DockPanel LastChildFill="True">
         <StackPanel>
-         <TextBlock Text="01  当前 ECU 工程" FontWeight="SemiBold" FontSize="13"/>
+         <TextBlock Text="当前 ECU 工程" FontWeight="SemiBold" FontSize="13"/>
          <TextBlock Text="{Binding SetupModelStatus}" Foreground="{StaticResource Subtle}"
           Margin="0,5,0,0" TextWrapping="Wrap"/>
         </StackPanel>
@@ -94,10 +94,10 @@
       <Border CornerRadius="8" BorderBrush="{StaticResource Line}" Background="White"
        BorderThickness="1" Padding="15" Margin="0,0,0,9">
        <DockPanel LastChildFill="True">
-        <Button DockPanel.Dock="Right" Content="编辑 TEST 项目" Command="{Binding OpenFirstTestProjectCommand}"
+        <Button DockPanel.Dock="Right" Content="编辑用例及顺序" Command="{Binding OpenFirstTestProjectCommand}"
          Padding="11,7" VerticalAlignment="Center" Margin="12,0,0,0"/>
         <StackPanel>
-         <TextBlock Text="02  测试项目与用例" FontWeight="SemiBold" FontSize="13"/>
+         <TextBlock Text="01  测试用例与执行顺序" FontWeight="SemiBold" FontSize="13"/>
          <TextBlock Text="{Binding SetupTestStatus}" Foreground="{StaticResource Subtle}"
           Margin="0,5,0,0" TextWrapping="Wrap"/>
         </StackPanel>
@@ -106,10 +106,26 @@
       <Border CornerRadius="8" BorderBrush="{StaticResource Line}" Background="White"
        BorderThickness="1" Padding="15" Margin="0,0,0,9">
        <DockPanel LastChildFill="True">
-        <Button DockPanel.Dock="Right" Content="配置并试扫" Tag="scan" Click="NavigateToStage_Click"
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="12,0,0,0">
+         <Button Content="导入 DBC" Command="{Binding ImportDbcCommand}"
+          Padding="11,7" Margin="0,0,8,0"/>
+         <Button Content="打开波形工具" Command="{Binding OpenWaveWorkbenchCommand}"
+          Padding="11,7"/>
+        </StackPanel>
+        <StackPanel>
+         <TextBlock Text="02  测试资源 · DBC 与波形" FontWeight="SemiBold" FontSize="13"/>
+         <TextBlock Text="{Binding SetupResourcesStatus}" Foreground="{StaticResource Subtle}"
+          Margin="0,5,0,0" TextWrapping="Wrap"/>
+        </StackPanel>
+       </DockPanel>
+      </Border>
+      <Border CornerRadius="8" BorderBrush="{StaticResource Line}" Background="White"
+       BorderThickness="1" Padding="15" Margin="0,0,0,9">
+       <DockPanel LastChildFill="True">
+        <Button DockPanel.Dock="Right" Content="试扫唯一编号" Tag="scan" Click="NavigateToStage_Click"
          Padding="11,7" VerticalAlignment="Center" Margin="12,0,0,0"/>
         <StackPanel>
-         <TextBlock Text="03  扫码身份与工程匹配" FontWeight="SemiBold" FontSize="13"/>
+         <TextBlock Text="03  唯一编号扫码" FontWeight="SemiBold" FontSize="13"/>
          <TextBlock Text="{Binding SetupScanStatus}" Foreground="{StaticResource Subtle}"
           Margin="0,5,0,0" TextWrapping="Wrap"/>
         </StackPanel>
@@ -121,7 +137,7 @@
         <Button DockPanel.Dock="Right" Content="配置与验证烧录" Tag="flash" Click="NavigateToStage_Click"
          Padding="11,7" VerticalAlignment="Center" Margin="12,0,0,0"/>
         <StackPanel>
-         <TextBlock Text="04  原生烧录工艺" FontWeight="SemiBold" FontSize="13"/>
+         <TextBlock Text="04  前置烧录" FontWeight="SemiBold" FontSize="13"/>
          <TextBlock Text="{Binding SetupFlashStatus}" Foreground="{StaticResource Subtle}"
           Margin="0,5,0,0" TextWrapping="Wrap"/>
         </StackPanel>
@@ -130,10 +146,10 @@
       <Border CornerRadius="8" BorderBrush="{StaticResource Line}" Background="White"
        BorderThickness="1" Padding="15" Margin="0,0,0,9">
        <DockPanel LastChildFill="True">
-        <Button DockPanel.Dock="Right" Content="操作夹具与 IGN" Tag="station" Click="NavigateToStage_Click"
+        <Button DockPanel.Dock="Right" Content="配置与试验夹具" Tag="station" Click="NavigateToStage_Click"
          Padding="11,7" VerticalAlignment="Center" Margin="12,0,0,0"/>
         <StackPanel>
-         <TextBlock Text="05  工位与夹具 / START" FontWeight="SemiBold" FontSize="13"/>
+         <TextBlock Text="05  夹具与 IGN 动作" FontWeight="SemiBold" FontSize="13"/>
          <TextBlock Text="{Binding SetupStationStatus}" Foreground="{StaticResource Subtle}"
           Margin="0,5,0,0" TextWrapping="Wrap"/>
         </StackPanel>
@@ -142,10 +158,10 @@
       <Border CornerRadius="8" BorderBrush="{StaticResource Line}" Background="White"
        BorderThickness="1" Padding="15">
        <DockPanel LastChildFill="True">
-        <Button DockPanel.Dock="Right" Content="检查整机条件" Tag="check" Click="NavigateToStage_Click"
+        <Button DockPanel.Dock="Right" Content="查看检测准备情况" Tag="check" Click="NavigateToStage_Click"
          Padding="11,7" VerticalAlignment="Center" Margin="12,0,0,0"/>
         <StackPanel>
-         <TextBlock Text="06  整机联调与投产" FontWeight="SemiBold" FontSize="13"/>
+         <TextBlock Text="06  完整检测检查与发布" FontWeight="SemiBold" FontSize="13"/>
          <TextBlock Text="统一检查身份、夹具、START、必烧录、全部 TEST 与记录。缺少真机证据时不得宣告生产就绪。"
           Foreground="{StaticResource Subtle}" Margin="0,5,0,0" TextWrapping="Wrap"/>
         </StackPanel>
@@ -154,7 +170,7 @@
      </StackPanel>
     </ScrollViewer>
    </TabItem>
-   <TabItem Header="扫码与身份">
+   <TabItem Header="扫码枪与编号">
     <Grid>
      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
      <Border Grid.Row="0" Background="#F3F7FC" BorderBrush="#DBE5F0"
@@ -196,7 +212,7 @@
      </StackPanel>
     </ScrollViewer>
    </TabItem>
-   <TabItem Header="夹具与 START">
+   <TabItem Header="工位动作">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
      <StackPanel MaxWidth="900" Margin="22,22,22,18">
       <TextBlock Text="工位能力 · 夹具 / IGN / 软件与实体 START" FontSize="18"
@@ -254,10 +270,10 @@
          <Button DockPanel.Dock="Right" Content="创建／编辑本工程工位动作"
           Command="{Binding OpenInspectionProcedureCommand}" Padding="12,7"
           Margin="12,0,0,0"/>
-         <TextBlock Text="本型号检测工艺中的夹具动作"
+         <TextBlock Text="本工程实际需要的夹具动作"
           FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
         </DockPanel>
-        <TextBlock Text="动作定义与测试用例分离，受当前工程正式资源修订管理；下面的配置仅保存草稿，实体执行仍需硬件验证。"
+        <TextBlock Text="只有确实需要额外夹具或 IGN 准备/收尾动作时才创建；没有动作不需要空文件。保存后仍须验证真实硬件。"
          Foreground="{StaticResource Subtle}" TextWrapping="Wrap" Margin="0,0,0,12"/>
         <ContentControl x:Name="InspectionProcedureHost"
          HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
@@ -274,7 +290,7 @@
      </StackPanel>
     </ScrollViewer>
    </TabItem>
-   <TabItem Header="运行前检查">
+   <TabItem Header="发布与检查">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
      <StackPanel Margin="16,16,16,12">
       <TextBlock Text="本工位部署 · 正式运行来源" FontSize="15" FontWeight="SemiBold"
@@ -284,7 +300,7 @@
       <Button Content="核对并部署当前 ECU 工程" Command="{Binding DeployCurrentProjectCommand}"
        HorizontalAlignment="Left" Style="{StaticResource AtPrimaryButton}"
        Padding="14,9" Margin="0,0,0,15"/>
-      <TextBlock Text="部署前要求所有正式用例通过静态资源检查、存在有效原生烧录发布和唯一夹具工艺。部署后修改工程或发布资源必须重新核对并部署。"
+      <TextBlock Text="正式检测要求用例资源有效、原生烧录已发布。额外夹具工艺只有存在时才需验证；工程改变后须重新确认发布。"
        Foreground="#75859A" TextWrapping="Wrap" Margin="0,0,0,15"/>
       <TextBlock Text="当前工程与实体运行条件" FontSize="13" FontWeight="SemiBold"
        Margin="0,0,0,12"/>
