@@ -968,12 +968,23 @@ public sealed class TestEditorViewModel : BindableBase
     private async Task RunCurrentCaseInteractiveAsync()
     {
         if (IsBusy || IsDirty || HasNewStepDraft || !CanProceed()) return;
-        if (_preparedRunDocument is null || _preparedStepId is not null ||
+        bool needsPreparation = _preparedRunDocument is null || _preparedStepId is not null ||
             _preparedStationEpoch != _realTest.ConnectedStationEpoch ||
-            _preparedDutIdentity != DutIdentity ||
-            _realTest.Prepare(_transaction.Current).Fingerprint !=
-                _realTest.Prepare(_preparedRunDocument).Fingerprint)
-            PrepareRunApproval(null);
+            _preparedDutIdentity != DutIdentity;
+        if (!needsPreparation)
+        {
+            try
+            {
+                needsPreparation = _realTest.Prepare(_transaction.Current).Fingerprint !=
+                    _realTest.Prepare(_preparedRunDocument!).Fingerprint;
+            }
+            catch (Exception error) when (error is not OutOfMemoryException)
+            {
+                StatusMessage = "当前测试配置未通过运行前检查：" + error.Message;
+                return;
+            }
+        }
+        if (needsPreparation) PrepareRunApproval(null);
         if (_preparedRunDocument is null || _preparedStepId is not null) return;
         await RunRealAsync();
     }
