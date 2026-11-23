@@ -303,8 +303,10 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
             !int.TryParse(MaximumSerialLength, out var maximum))
             throw new FormatException("请输入合法的最小/最大编号长度。");
         var policy = new ScanIdentityPolicy(ScanIdentityPolicy.CurrentSchema,
-            IdentityFormat, IdentitySeparator, string.IsNullOrEmpty(FixedModelCode)
-                ? null : FixedModelCode, minimum, maximum);
+            IdentityFormat, IdentitySeparator,
+            IdentityFormat == ScanIdentityPolicy.SerialOnly ? null :
+                string.IsNullOrEmpty(FixedModelCode) ? null : FixedModelCode,
+            minimum, maximum);
         policy.Validate();
         return policy;
     }
@@ -348,13 +350,6 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
         try
         {
             var candidate = DraftIdentityPolicy();
-            if (candidate.Format == ScanIdentityPolicy.SerialOnly)
-            {
-                var binding = await _catalog.ResolveAsync(candidate.FixedModelCode!);
-                if (!binding.Matched)
-                    throw new InvalidDataException(
-                        "纯编号模式绑定的型号尚未在工位登记唯一工程：" + binding.Explanation);
-            }
             await StationScanIdentityPolicyStore.SaveAsync(candidate);
             _activeIdentityPolicy = candidate;
             IdentityPolicyStatus = "已保存工位扫码格式：" + candidate.Format +
@@ -372,12 +367,12 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
         try
         {
             var draft = DraftIdentityPolicy();
-            var outcome = draft.Decode(SampleRaw);
-            SampleResult = outcome.Parsed
-                ? "解析成功｜型号 " + outcome.ModelCode + "｜编号 " + outcome.Serial +
-                  (outcome.HardwareCode is null ? "" : "｜硬件版 " + outcome.HardwareCode) +
-                  "。这是离线样例检查，不是实物扫描、不能启动设备。"
-                : "拒绝 " + outcome.Code + "｜" + outcome.Explanation;
+            var outcome = ProductionBarcodePreflight.Inspect(
+                SampleRaw, _workspace.Current?.Definition, draft);
+            SampleResult = outcome.IdentityMatched
+                ? "解析成功｜当前工程型号 " + outcome.ModelCode + "｜编号 " +
+                  outcome.DutSerial + "。这是离线样例检查，不是实体扫描或执行授权。"
+                : "未通过｜" + outcome.Explanation;
         }
         catch (FormatException error)
         { SampleResult = "配置不合法：" + error.Message; }
@@ -397,9 +392,6 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
     private void OnProjectChanged(object? sender, EventArgs e) => OnUi(() =>
     {
         ModelCode = _workspace.Current?.Definition.EcuModelCode ?? "";
-        if (_activeIdentityPolicy is null && string.IsNullOrWhiteSpace(FixedModelCode) &&
-            !string.IsNullOrWhiteSpace(ModelCode))
-            FixedModelCode = ModelCode; // editing suggestion only, not saved binding
         RaisePropertyChanged(nameof(ProjectName));
         // A project switch or version update invalidates a previously scanned
         // identity; old labels may not authorize a different ECU model.
