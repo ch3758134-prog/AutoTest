@@ -3,7 +3,7 @@
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  xmlns:chrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
  xmlns:navigation="clr-namespace:AutoTest.Desktop.Shell.Navigation"
- Title="AutoTest · ECU 测试 IDE" Width="1530" Height="880" MinWidth="1220" MinHeight="680"
+ Title="{Binding WindowTitle}" Width="1530" Height="880" MinWidth="1220" MinHeight="680"
  WindowStartupLocation="CenterScreen" WindowState="Maximized" WindowStyle="None"
  PreviewKeyDown="Window_PreviewKeyDown"
  ResizeMode="CanResize" Background="#F6F7F8" Foreground="#252C34"
@@ -75,14 +75,23 @@
   </Style>
  </Window.Resources>
  <Grid Background="#F6F7F8">
-  <Grid.RowDefinitions><RowDefinition Height="41"/><RowDefinition Height="44"/>
-   <RowDefinition Height="*"/><RowDefinition Height="35"/></Grid.RowDefinitions>
+  <Grid.RowDefinitions><RowDefinition Height="41"/><RowDefinition Height="Auto"/>
+   <RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
 
   <!-- A single desktop-native 38px caption and IDE menu; no second OS titlebar. -->
   <Border Grid.Row="0" Background="White" BorderBrush="#E1E5E9" BorderThickness="0,0,0,1">
    <DockPanel LastChildFill="True">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center"
      chrome:WindowChrome.IsHitTestVisibleInChrome="True">
+     <Button Content="开发与调试" Command="{Binding ShowEngineerWorkspaceCommand}"
+      Visibility="{Binding IsProductionWorkspace,Converter={StaticResource BoolToVisibility}}"
+      Style="{StaticResource AtQuietButton}" FontSize="11" Foreground="#738397"
+      MinHeight="26" Padding="10,3" Margin="0,0,8,0"
+      ToolTip="打开工程编辑、测试调试与专业工具（UI-01 尚未设置维护身份验证）"/>
+     <Button Content="返回自动测试" Command="{Binding ShowProductionWorkspaceCommand}"
+      Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}"
+      Style="{StaticResource AtQuietButton}" FontSize="11" Foreground="#446B97"
+      MinHeight="26" Padding="10,3" Margin="0,0,8,0"/>
      <TextBlock Text="{Binding HardwareStatus}" FontSize="10" Foreground="#9B6A22"
       VerticalAlignment="Center" MaxWidth="165" TextTrimming="CharacterEllipsis"
       Margin="0,0,10,0"/>
@@ -102,11 +111,16 @@
      </Border>
      <TextBlock Text="AutoTest" Margin="7,0,0,0" FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
      <Border Margin="6,0,0,0" Background="#EAF4F0" BorderBrush="#E7EFFB"
-      BorderThickness="1" CornerRadius="3" Padding="4,1" VerticalAlignment="Center">
+      BorderThickness="1" CornerRadius="3" Padding="4,1" VerticalAlignment="Center"
+      Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}">
       <TextBlock Text="IDE" Foreground="#3478D6" FontSize="10"/>
      </Border>
+     <TextBlock Text="· 自动测试" Margin="8,0,0,0" Foreground="#51667A"
+      FontSize="12" VerticalAlignment="Center"
+      Visibility="{Binding IsProductionWorkspace,Converter={StaticResource BoolToVisibility}}"/>
     </StackPanel>
     <Menu Background="Transparent" VerticalAlignment="Center" FontSize="13"
+     Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}"
      chrome:WindowChrome.IsHitTestVisibleInChrome="True">
      <MenuItem Header="文件">
       <MenuItem Header="新建工程" Command="{Binding NewProjectCommand}" InputGestureText="Ctrl+N"/>
@@ -156,7 +170,8 @@
    </DockPanel>
   </Border>
 
-  <Border Grid.Row="1" Background="#FAFBFB" BorderBrush="#E1E5E9" BorderThickness="0,0,0,1">
+  <Border Grid.Row="1" Height="44" Background="#FAFBFB" BorderBrush="#E1E5E9" BorderThickness="0,0,0,1"
+   Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}">
    <DockPanel Margin="10,0" LastChildFill="False">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
      <Button Content="手动台架" Command="{Binding OpenManualBenchCommand}"
@@ -184,10 +199,6 @@
      <Button Content="CAN 监视" Command="{Binding OpenCanMonitorCommand}" Margin="0"/>
     </StackPanel>
     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
-     <Button Content="自动测试" Command="{Binding ShowEngineerWorkspaceCommand}" Margin="0,0,4,0"
-      ToolTip="工程编辑与自动 TEST 调试"/>
-     <Button Content="生产检测" Command="{Binding ShowProductionWorkspaceCommand}" Margin="0,0,12,0"
-      Style="{StaticResource AtPrimaryButton}" ToolTip="显示实际 ECU 用例树及执行监视，不自动启动烧录"/>
      <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
       Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}">
      <Button Content="▦ 工程" Command="{Binding OpenProjectCommand}" Margin="0,0,8,0"/>
@@ -372,7 +383,8 @@
    HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
    Visibility="{Binding IsProductionWorkspace,Converter={StaticResource BoolToVisibility}}"/>
 
-  <Border Grid.Row="3" Background="#F8FAFA" BorderBrush="#E1E6E8" BorderThickness="0,1,0,0">
+  <Border Grid.Row="3" Height="35" Background="#F8FAFA" BorderBrush="#E1E6E8" BorderThickness="0,1,0,0"
+   Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}">
    <DockPanel Margin="11,0">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
      <TextBlock Text="{Binding HardwareStatus}" Foreground="{StaticResource Ink}"
