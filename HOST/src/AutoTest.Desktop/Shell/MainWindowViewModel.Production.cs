@@ -33,7 +33,7 @@ public sealed partial class MainWindowViewModel
         RaisePropertyChanged(nameof(IsProductionWorkspace));
         RaisePropertyChanged(nameof(IsEngineerWorkspace));
         StatusMessage = production
-            ? "生产监视工作区已打开。正式生产物理执行链尚未接通；当前只展示真实工程、扫码预检及研发 TEST 观察。"
-            : "已返回工程师工作区；编辑器与调试状态保留。";
+            ? "生产检测工作区已打开；正式生产执行链尚未接通，当前只读观察实际工程与开发测试。"
+            : "已返回自动测试与调试工作区，原有用例和编辑状态保留。";
     }
 }
