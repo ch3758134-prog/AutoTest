@@ -106,14 +106,18 @@ public static class StationDeploymentStore
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
             throw new FileNotFoundException("部署工程文件不存在。", path);
         var full = Path.GetFullPath(path);
+        // Protect against the editor or an external process rewriting the
+        // manifest while the station is opening and freezing its references.
+        var before = await File.ReadAllBytesAsync(full, ct).ConfigureAwait(false);
         var definition = await ProjectRepository.OpenDefinitionAsync(full, ct)
             .ConfigureAwait(false);
-        // Deployment validates the active TEST closure, native FLASH release
-        // and selected fixture procedure below. Unused historical draft
-        // resources cannot expand the physical production dependency set.
-        // Any missing/changed required asset still blocks deployment.
-        var manifestSha = Convert.ToHexString(SHA256.HashData(
-            await File.ReadAllBytesAsync(full, ct).ConfigureAwait(false)));
+        var after = await File.ReadAllBytesAsync(full, ct).ConfigureAwait(false);
+        if (!SHA256.HashData(before).AsSpan()
+                .SequenceEqual(SHA256.HashData(after)))
+            throw new IOException("ECU 工程清单在部署校验中发生变更，拒绝使用中间状态。");
+        // Only the active TEST closure, native FLASH release and selected
+        // station procedure can authorize a deployed production scope.
+        var manifestSha = Convert.ToHexString(SHA256.HashData(after));
         return new(definition, full, manifestSha);
     }
 
