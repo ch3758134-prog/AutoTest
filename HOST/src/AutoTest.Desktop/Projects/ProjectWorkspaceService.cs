@@ -97,8 +97,20 @@ public sealed partial class ProjectWorkspaceService
         catch (Exception) { return "工程路径暂不可用"; }
     }
 
-    public async Task<OpenProjectContext> CreateAsync(
-        string name, string parentDirectory, CancellationToken cancellationToken = default)
+    // The bare project API is retained for existing import, migration and
+    // backend tests. The normal desktop New Project command instead creates
+    // a ready-to-edit TEST case with no mock or hardware output.
+    public Task<OpenProjectContext> CreateAsync(
+        string name, string parentDirectory, CancellationToken cancellationToken = default) =>
+        CreateCoreAsync(name, parentDirectory, withInitialTest: false, cancellationToken);
+
+    public Task<OpenProjectContext> CreateReadyToEditAsync(
+        string name, string parentDirectory, CancellationToken cancellationToken = default) =>
+        CreateCoreAsync(name, parentDirectory, withInitialTest: true, cancellationToken);
+
+    private async Task<OpenProjectContext> CreateCoreAsync(
+        string name, string parentDirectory, bool withInitialTest,
+        CancellationToken cancellationToken)
     {
         var error = ValidateInput(name, parentDirectory);
         if (error.Length > 0) throw new ArgumentException(error);
@@ -120,10 +132,11 @@ public sealed partial class ProjectWorkspaceService
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                // A new ECU inspection project already owns its one TEST
-                // sequence and one completely blank editable case. No separate
-                // "create a TEST project" wizard, TCF/TBC, mock step or recipe.
                 var definition = ProjectDefinition.Create(name);
+                if (withInitialTest)
+                {
+                // Normal desktop creation yields one TEST sequence and one
+                // blank editable case, with no simulated operations.
                 const string caseName = "测试用例 01";
                 const string sequenceName = "功能测试";
                 var caseBytes = Encoding.UTF8.GetBytes(
@@ -153,6 +166,7 @@ public sealed partial class ProjectWorkspaceService
                     .ConfigureAwait(false);
                 await File.WriteAllBytesAsync(sequenceFull, sequenceBytes,
                     cancellationToken).ConfigureAwait(false);
+                }
                 var stagedManifest = Path.Combine(staging, ManifestFileName);
                 await ProjectRepository.SaveDefinitionAsync(definition, stagedManifest,
                     cancellationToken).ConfigureAwait(false);
@@ -163,7 +177,7 @@ public sealed partial class ProjectWorkspaceService
                 await ProjectBundleContractAudit.ValidateAsync(verified,
                     stagedManifest, cancellationToken).ConfigureAwait(false);
                 if (verified.Id != definition.Id || verified.Name != name ||
-                    verified.Assets.Length != 2)
+                    (withInitialTest && verified.Assets.Length != 2))
                     throw new InvalidDataException("新建 ECU 工程的用例资源未通过保存检查。");
                 cancellationToken.ThrowIfCancellationRequested();
                 Directory.Move(staging, target); // refuses a pre-existing target
