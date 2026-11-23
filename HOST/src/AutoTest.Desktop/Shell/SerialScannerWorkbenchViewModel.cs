@@ -11,6 +11,36 @@ using Prism.Mvvm;
 
 namespace AutoTest.Desktop.Shell;
 
+/// <summary>The operator chooses which parsed barcode field maps to which system value.</summary>
+public sealed class ScannerFieldMappingRow : BindableBase
+{
+    private string _target = ScanIdentityPolicy.SerialTarget;
+    private string _fieldNumber = "1";
+    private string _start = "1";
+    private string _length = "8";
+    public string Target { get => _target; set => SetProperty(ref _target, value); }
+    public string FieldNumber { get => _fieldNumber; set => SetProperty(ref _fieldNumber, value); }
+    public string Start { get => _start; set => SetProperty(ref _start, value); }
+    public string Length { get => _length; set => SetProperty(ref _length, value); }
+
+    public ScannerFieldMappingRow() { }
+    public ScannerFieldMappingRow(ScanFieldMapping rule)
+    {
+        _target = rule.Target;
+        _fieldNumber = rule.FieldNumber.ToString();
+        _start = rule.Start.ToString();
+        _length = rule.Length.ToString();
+    }
+    public ScanFieldMapping ToRule()
+    {
+        if (!int.TryParse(FieldNumber, out var field) ||
+            !int.TryParse(Start, out var start) ||
+            !int.TryParse(Length, out var length))
+            throw new FormatException("字段编号、起始位置和长度必须为整数。");
+        return new(Target, field, start, length);
+    }
+}
+
 /// <summary>
 /// An owned, non-production USB COM scanner console. It never presses START,
 /// selects a recipe, commands a clamp, flashes, or changes TEST Enabled flags.
@@ -56,8 +86,12 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
     private string _identityFormat = ScanIdentityPolicy.SerialOnly;
     private string _identitySeparator = "-";
     private string _fixedModelCode = "";
-    private string _minimumSerialLength = "8";
-    private string _maximumSerialLength = "20";
+    private string _minimumSerialLength = "1";
+    private string _maximumSerialLength = "64";
+    private string _mappingMethod = ScanIdentityPolicy.Delimited;
+    private ScannerFieldMappingRow? _selectedMapping;
+    private string _sampleMappedFields = "";
+    private string _lastMappedFields = "";
     private string _sampleRaw = "";
     private string _sampleResult = "";
     private string _identityPolicyStatus = "条码解析规则尚未保存；扫码数据不会获得身份匹配资格。";
@@ -97,6 +131,9 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
         PrepareProductionCommand = new DelegateCommand(async () => await PrepareProductionAsync());
         SaveIdentityPolicyCommand = new DelegateCommand(async () => await SaveIdentityPolicyAsync());
         TestIdentitySampleCommand = new DelegateCommand(TestIdentitySample);
+        AddFieldMappingCommand = new DelegateCommand(AddMapping);
+        RemoveFieldMappingCommand = new DelegateCommand(RemoveMapping,
+            () => SelectedMapping is not null);
         _ = LoadIdentityPolicyAsync();
         _workspace.CurrentChanged += OnProjectChanged;
         OnProjectChanged(this, EventArgs.Empty);
@@ -140,17 +177,69 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
     public sealed record ScanFormatChoice(string Mode, string Label);
     public IReadOnlyList<ScanFormatChoice> IdentityFormats { get; } = new[]
     {
-        new ScanFormatChoice(ScanIdentityPolicy.Ut1, "UT1 · 型号/硬件版/SN/CRC"),
-        new ScanFormatChoice(ScanIdentityPolicy.ModelSerial, "型号 + 分隔符 + 编号"),
-        new ScanFormatChoice(ScanIdentityPolicy.SerialOnly, "纯编号 · 固定单型号工位")
+        new ScanFormatChoice(ScanIdentityPolicy.SerialOnly, "完整条码 → ECU 唯一编号"),
+        new ScanFormatChoice(ScanIdentityPolicy.Mapped, "自定义解析 + 字段映射"),
+        new ScanFormatChoice(ScanIdentityPolicy.ModelSerial, "旧格式：型号 + 编号"),
+        new ScanFormatChoice(ScanIdentityPolicy.Ut1, "旧格式：UT1 含 CRC")
     };
+    public sealed record ScannerTargetChoice(string Target, string Label);
+    public IReadOnlyList<ScannerTargetChoice> MappingTargets { get; } = new[]
+    {
+        new ScannerTargetChoice(ScanIdentityPolicy.SerialTarget, "ECU 唯一编号 → DUT 身份 / 复检关联"),
+        new ScannerTargetChoice(ScanIdentityPolicy.ModelTarget, "ECU 型号 → 当前工程匹配"),
+        new ScannerTargetChoice(ScanIdentityPolicy.HardwareTarget, "硬件版本 → 本次扫码身份附加字段"),
+        new ScannerTargetChoice("BatchCode", "生产批次 → 本次扫码追溯字段"),
+        new ScannerTargetChoice("ProductionDate", "生产日期 → 本次扫码追溯字段"),
+        new ScannerTargetChoice("SupplierCode", "供应商代码 → 本次扫码追溯字段"),
+        new ScannerTargetChoice("Custom1", "自定义字段 1 → 本次扫码追溯字段"),
+        new ScannerTargetChoice("Custom2", "自定义字段 2 → 本次扫码追溯字段")
+    };
+    public sealed record ScannerExtractChoice(string Mode, string Label);
+    public IReadOnlyList<ScannerExtractChoice> MappingMethods { get; } = new[]
+    {
+        new ScannerExtractChoice(ScanIdentityPolicy.Delimited, "按分隔符拆分字段"),
+        new ScannerExtractChoice(ScanIdentityPolicy.Fixed, "按固定位置截取")
+    };
+    public ObservableCollection<ScannerFieldMappingRow> MappingRows { get; } = new();
+    public ScannerFieldMappingRow? SelectedMapping
+    {
+        get => _selectedMapping;
+        set
+        {
+            if (SetProperty(ref _selectedMapping, value))
+                RemoveFieldMappingCommand.RaiseCanExecuteChanged();
+        }
+    }
+    public string MappingMethod
+    {
+        get => _mappingMethod;
+        set
+        {
+            if (SetProperty(ref _mappingMethod, value))
+            {
+                RaisePropertyChanged(nameof(IsDelimitedMapping));
+                RaisePropertyChanged(nameof(IsFixedMapping));
+                RaisePropertyChanged(nameof(UsesDelimiter));
+            }
+        }
+    }
+    public bool IsMappedMode => IdentityFormat == ScanIdentityPolicy.Mapped;
+    public bool IsDelimitedMapping => IsMappedMode && MappingMethod == ScanIdentityPolicy.Delimited;
+    public bool IsFixedMapping => IsMappedMode && MappingMethod == ScanIdentityPolicy.Fixed;
+    public bool UsesDelimiter => IsDelimitedMapping || IdentityFormat == ScanIdentityPolicy.ModelSerial;
     public string IdentityFormat
     {
         get => _identityFormat;
         set
         {
             if (SetProperty(ref _identityFormat, value))
+            {
                 RaisePropertyChanged(nameof(IsFixedModelMode));
+                RaisePropertyChanged(nameof(IsMappedMode));
+                RaisePropertyChanged(nameof(IsDelimitedMapping));
+                RaisePropertyChanged(nameof(IsFixedMapping));
+                RaisePropertyChanged(nameof(UsesDelimiter));
+            }
         }
     }
     public bool IsFixedModelMode => IdentityFormat == ScanIdentityPolicy.SerialOnly;
@@ -183,6 +272,16 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
     {
         get => _sampleResult;
         private set => SetProperty(ref _sampleResult, value);
+    }
+    public string SampleMappedFields
+    {
+        get => _sampleMappedFields;
+        private set => SetProperty(ref _sampleMappedFields, value);
+    }
+    public string LastMappedFields
+    {
+        get => _lastMappedFields;
+        private set => SetProperty(ref _lastMappedFields, value);
     }
     public string IdentityPolicyStatus
     {
@@ -296,6 +395,36 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
     public DelegateCommand PrepareProductionCommand { get; }
     public DelegateCommand SaveIdentityPolicyCommand { get; }
     public DelegateCommand TestIdentitySampleCommand { get; }
+    public DelegateCommand AddFieldMappingCommand { get; }
+    public DelegateCommand RemoveFieldMappingCommand { get; }
+
+    private void AddMapping()
+    {
+        if (MappingRows.Count >= 8) return;
+        var target = MappingTargets.Select(x => x.Target)
+            .FirstOrDefault(x => MappingRows.All(r => r.Target != x));
+        if (target is null) return;
+        var row = new ScannerFieldMappingRow
+        {
+            Target = target,
+            FieldNumber = (MappingRows.Count + 1).ToString(),
+            Start = "1",
+            Length = "8"
+        };
+        MappingRows.Add(row);
+        SelectedMapping = row;
+    }
+    private void RemoveMapping()
+    {
+        if (SelectedMapping is { } row && MappingRows.Remove(row))
+            SelectedMapping = MappingRows.LastOrDefault();
+    }
+
+    private static string DescribeFields(IReadOnlyDictionary<string, string>? values)
+    {
+        if (values is null || values.Count == 0) return "";
+        return string.Join("  |  ", values.Select(x => x.Key + " = " + x.Value));
+    }
 
     private ScanIdentityPolicy DraftIdentityPolicy()
     {
@@ -306,7 +435,11 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
             IdentityFormat, IdentitySeparator,
             IdentityFormat == ScanIdentityPolicy.SerialOnly ? null :
                 string.IsNullOrEmpty(FixedModelCode) ? null : FixedModelCode,
-            minimum, maximum);
+            minimum, maximum,
+            MappingMethod,
+            IdentityFormat == ScanIdentityPolicy.Mapped
+                ? MappingRows.Select(x => x.ToRule()).ToArray()
+                : null);
         policy.Validate();
         return policy;
     }
@@ -325,6 +458,10 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
                 FixedModelCode = loaded.FixedModelCode ?? "";
                 MinimumSerialLength = loaded.MinimumSerialLength.ToString();
                 MaximumSerialLength = loaded.MaximumSerialLength.ToString();
+                MappingMethod = loaded.ParseMode;
+                MappingRows.Clear();
+                foreach (var rule in loaded.FieldMappings ?? [])
+                    MappingRows.Add(new ScannerFieldMappingRow(rule));
                 IdentityPolicyStatus = "工位扫码格式已保存：" + loaded.Format +
                     "。扫码只做身份识别，不执行夹具、START 或烧录。";
             });
@@ -370,12 +507,16 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
             var outcome = ProductionBarcodePreflight.Inspect(
                 SampleRaw, _workspace.Current?.Definition, draft);
             SampleResult = outcome.IdentityMatched
-                ? "解析成功｜当前工程型号 " + outcome.ModelCode + "｜编号 " +
-                  outcome.DutSerial + "。这是离线样例检查，不是实体扫描或执行授权。"
+                ? "解析成功｜工程型号 " + outcome.ModelCode + "｜ECU 唯一编号 " +
+                  outcome.DutSerial + "。只做身份匹配，不执行硬件动作。"
                 : "未通过｜" + outcome.Explanation;
+            SampleMappedFields = DescribeFields(outcome.MappedFields);
         }
         catch (FormatException error)
-        { SampleResult = "配置不合法：" + error.Message; }
+        {
+            SampleResult = "配置不合法：" + error.Message;
+            SampleMappedFields = "";
+        }
     }
 
     private void InvalidateScanIdentity()
@@ -384,6 +525,7 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
         LastSerial = "";
         LastDecision = "SCAN_CONFIG_CHANGED";
         ProductionPreview = "";
+        LastMappedFields = "";
         _resolvedManifestPath = null;
         MatchedProjectName = "";
         SwitchProjectCommand.RaiseCanExecuteChanged();
