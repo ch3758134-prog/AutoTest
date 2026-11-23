@@ -482,6 +482,10 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
                 {
                     LastRaw = captured.Scan.Text;
                     LastHex = capturedHex;
+                    // A real raw sample is useful even before the station has
+                    // a published decoder. Do not infer a format from it.
+                    if (string.IsNullOrWhiteSpace(SampleRaw))
+                        SampleRaw = captured.Scan.Text;
                     var preview = policy is null
                         ? new ProductionBarcodePreflightResult(
                             "SCAN_POLICY_NOT_CONFIGURED", null, null, null,
