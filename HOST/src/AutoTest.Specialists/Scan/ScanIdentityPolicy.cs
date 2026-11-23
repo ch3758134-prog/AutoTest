@@ -23,7 +23,7 @@ public sealed record ScanIdentityPolicy(
     string? FixedModelCode,
     int MinimumSerialLength,
     int MaximumSerialLength,
-    string ParseMode = Delimited,
+    string ParseMode = "Delimited",
     IReadOnlyList<ScanFieldMapping>? FieldMappings = null)
 {
     public const int CurrentSchema = 1;
