@@ -1,4 +1,5 @@
 using System.IO;
+using AutoTest.FlashLab.Programming;
 using AutoTest.Projects.Project;
 using AutoTest.Testing.Authoring;
 
@@ -58,11 +59,44 @@ public static class EngineeringTestProjectPreview
         {
             var checkedScope = await AutomaticTestResourceContract.ResolveAsync(
                 project, ct).ConfigureAwait(false);
-            return new(project, displayed, checkedScope.Issues.Count == 0
-                    ? "已读取 TEST 项目；实体运行仍须满足真实硬件和资源条件。"
-                    : "TEST 还有 " + checkedScope.Issues.Count +
-                      " 项运行前问题；可进入测试项目或对应步骤处理。",
-                checkedScope.Issues.Count);
+            var blockers = new List<string>(checkedScope.Issues);
+            // Read existing configuration, without creating a new recipe.
+            // This is a diagnosis of a draft, never a physical run admission.
+            if (string.IsNullOrWhiteSpace(project.Definition.EcuModelCode))
+                blockers.Add("工程尚未设置用于烧录匹配的 ECU 型号");
+            var scannerPolicy = await StationScanIdentityPolicyStore.LoadAsync(ct)
+                .ConfigureAwait(false);
+            if (scannerPolicy is null)
+                blockers.Add("固定扫码枪的唯一编号解析规则尚未保存");
+            var flash = await NativeFlashPublicationStore.LoadPublishedAsync(
+                project.RootDirectory, ct).ConfigureAwait(false);
+            if (flash is null)
+                blockers.Add("当前工程的前置烧录工艺尚未发布");
+            else
+            {
+                if (!string.Equals(flash.Profile.EcuModelCode,
+                        project.Definition.EcuModelCode, StringComparison.Ordinal))
+                    blockers.Add("烧录工艺型号与当前工程不一致");
+                else
+                    _ = NativeFlashPublicationStore.FreezePublished(
+                        project.RootDirectory, flash);
+            }
+            var fixtures = project.Definition.Assets.Where(x =>
+                x.Kind == ProjectWorkspaceService.InspectionKind).ToArray();
+            if (fixtures.Length > 1)
+                blockers.Add("工程存在多份夹具工艺，无法确定本次应使用哪一份");
+            else if (fixtures.Length == 1)
+            {
+                var data = await AutomaticTestResourceContract.ReadPinnedAsync(
+                    project, fixtures[0], ct).ConfigureAwait(false);
+                var fixture = (InspectionStationProcedureDocument)
+                    ProjectConfigurationCodec.Decode(fixtures[0].Kind, data);
+                fixture.Validate();
+            }
+            return new(project, displayed, blockers.Count == 0
+                ? "静态检测配置已核对；仍需真实工位连接及执行链验收。"
+                : "配置有 " + blockers.Count + " 项未完成：" +
+                  string.Join("；", blockers.Take(4)), blockers.Count);
         }
         catch (Exception error) when (error is IOException or
             InvalidDataException or ProjectDataException or
