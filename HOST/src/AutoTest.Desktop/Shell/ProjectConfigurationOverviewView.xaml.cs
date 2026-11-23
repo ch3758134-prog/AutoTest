@@ -13,6 +13,7 @@ namespace AutoTest.Desktop.Shell;
 /// </summary>
 public partial class ProjectConfigurationOverviewView : UserControl
 {
+    private readonly MainWindowViewModel _shell;
     private readonly ProjectWorkspaceService _workspace;
     private readonly ProjectFileDialogService _dialogs;
     private readonly List<ConfigurationWorkbenchViewModel> _opened = new();
@@ -28,10 +29,34 @@ public partial class ProjectConfigurationOverviewView : UserControl
     {
         InitializeComponent();
         DataContext = shell;
+        _shell = shell;
+        ScannerSetupHost.Content = new SerialScannerSetupView
+        {
+            DataContext = shell.ScannerSetupModel
+        };
         _workspace = workspace;
         _dialogs = dialogs;
         InspectorHost.Content = new ProjectConfigurationOverviewInspector(shell);
         Loaded += OnLoaded;
+    }
+
+    /// <summary>
+    /// Stage navigation changes the visible part of this one engineer workbench;
+    /// it does not create or select another project/recipe.
+    /// </summary>
+    private void NavigateToStage_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string stage }) return;
+        ConfigTabs.SelectedIndex = stage switch
+        {
+            "dut" => 1,
+            "scan" => 3,
+            "flash" => 4,
+            "station" => 5,
+            "check" => 6,
+            _ => 0
+        };
+        _ = _shell.RefreshEngineeringSetupAsync();
     }
 
     private static bool IsInlineKind(string kind) =>
@@ -49,8 +74,8 @@ public partial class ProjectConfigurationOverviewView : UserControl
     {
         ConfigTabs.SelectedIndex = kind switch
         {
-            ProjectWorkspaceService.TestConfigurationKind => 0,
-                ProjectWorkspaceService.BenchConfigurationKind => 1,
+            ProjectWorkspaceService.TestConfigurationKind => 1,
+            ProjectWorkspaceService.BenchConfigurationKind => 2,
             _ => ConfigTabs.SelectedIndex
         };
     }
@@ -79,6 +104,7 @@ public partial class ProjectConfigurationOverviewView : UserControl
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
         Loaded -= OnLoaded;
+        await _shell.RefreshEngineeringSetupAsync();
         await LoadKindAsync(ProjectWorkspaceService.TestConfigurationKind);
         await LoadKindAsync(ProjectWorkspaceService.BenchConfigurationKind);
     }
