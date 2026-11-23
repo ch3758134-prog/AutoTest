@@ -526,7 +526,7 @@ public partial class TestStepInspector : UserControl
                 new TestTargetMapping("IGN", TestTargetKind.Ignition,
                     default, 0, "")));
         if (action.TargetCategory == "can")
-            _allTargets.Add(new MappingChoice("不绑定 DBC · 直接编辑 CAN 报文",
+            _allTargets.Add(new MappingChoice("CAN 字节直编 · DBC 辅助可选",
                 new TestTargetMapping("原始 ECU CAN", TestTargetKind.RawCan, default, 0, "",
                     BusRole.DutCan, 0)));
         else if (action.TargetCategory == "button")
@@ -725,7 +725,7 @@ public partial class TestStepInspector : UserControl
         {
             _canSignalError = "";
             CanRebindButton.Visibility = Visibility.Collapsed;
-            CanTargetHint.Text = "可选择 DBC 辅助解析，或直接编辑完整 CAN 数据。";
+            CanTargetHint.Text = "CAN ID 与 DATA 始终可以直接编辑；输入 ID 后自动寻找匹配的 DBC 报文。";
             CanPreviewIssue.Text = "";
             CanFramePreview.Text = "填写 CAN ID 和 DATA";
             _loadingCanData = true;
@@ -870,7 +870,7 @@ public partial class TestStepInspector : UserControl
                     SynchronizeCanSignals();
                 }
             }
-            else CanTargetHint.Text = "当前没有 DBC 辅助；若有匹配定义，可直接选择。";
+            else CanTargetHint.Text = "DATA 可直接编辑；如工程存在匹配 DBC，可选择报文来解析或修改信号。";
             UpdateCanFramePreview();
             if (warning.Length > 0) CanPreviewIssue.Text = warning;
             return;
