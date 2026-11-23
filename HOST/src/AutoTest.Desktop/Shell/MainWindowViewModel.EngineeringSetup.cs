@@ -257,10 +257,20 @@ public sealed partial class MainWindowViewModel
                 }
                 else
                 {
-                    flash = !string.Equals(published.Profile.EcuModelCode,
-                        project.Definition.EcuModelCode, StringComparison.Ordinal)
-                        ? "已发布烧录型号与工程不符，禁止正式运行"
-                        : "已发布原生烧录配置（仅文件审查，不代表真实 ECU 烧录通过）";
+                    if (!string.Equals(published.Profile.EcuModelCode,
+                        project.Definition.EcuModelCode, StringComparison.Ordinal))
+                        flash = "已发布烧录型号与工程不符，禁止正式运行";
+                    else
+                    {
+                        // A valid pointer is not enough: ensure the live firmware,
+                        // verified algorithm and immutable job still match SHA.
+                        var frozenJob = await Task.Run(() =>
+                            NativeFlashPublicationStore.FreezePublished(
+                                project.RootDirectory, published));
+                        flash = "原生烧录已发布，固件/算法/Job 指纹可重建（" +
+                            frozenJob.Fingerprint[..12] +
+                            "…）；真实 ECU 烧录与 APP 后验仍待实测";
+                    }
                 }
             }
             catch (Exception error) when (error is IOException or InvalidDataException or
