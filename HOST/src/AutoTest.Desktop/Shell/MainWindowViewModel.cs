@@ -184,6 +184,12 @@ public sealed partial class MainWindowViewModel : BindableBase
         OpenProjectConfigurationOverviewCommand = new DelegateCommand(ShowProjectConfiguration);
         RefreshEngineeringSetupCommand = new DelegateCommand(async () => await RefreshEngineeringSetupAsync());
         ReadEngineeringClampGpioCommand = new DelegateCommand(async () => await ReadEngineeringClampGpioAsync());
+        EngineeringClamp1PressCommand = new DelegateCommand(async () => await RunEngineeringClampAsync(1, true));
+        EngineeringClamp1ReleaseCommand = new DelegateCommand(async () => await RunEngineeringClampAsync(1, false));
+        EngineeringClamp2PressCommand = new DelegateCommand(async () => await RunEngineeringClampAsync(2, true));
+        EngineeringClamp2ReleaseCommand = new DelegateCommand(async () => await RunEngineeringClampAsync(2, false));
+        EngineeringIgnOnCommand = new DelegateCommand(async () => await RunEngineeringIgnAsync(true));
+        EngineeringIgnOffCommand = new DelegateCommand(async () => await RunEngineeringIgnAsync(false));
         OpenTcfCommand = new DelegateCommand(async () => await OpenConfigurationKindAsync(
             ProjectWorkspaceService.TestConfigurationKind));
         OpenControllerCommand = new DelegateCommand(async () => await OpenConfigurationKindAsync(
