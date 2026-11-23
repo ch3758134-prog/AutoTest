@@ -7,6 +7,7 @@ using AutoTest.Core;
 using AutoTest.Testing.Authoring;
 using AutoTest.Specialists.Flash;
 using AutoTest.Specialists.Wave;
+using AutoTest.FlashLab.Programming;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -215,6 +216,26 @@ public sealed partial class ProjectWorkspaceService
             var hash = await HashFileAsync(full, ct).ConfigureAwait(false);
             return new OpenProjectContext(definition, full, hash);
         }, ct);
+        // The approved HydEPB CanTool XML is part of the ECU engineering
+        // baseline: materialize missing native FLASH fields in the fixed project
+        // path, not in a second external XML configuration. This never imports
+        // firmware, authorizes a write, or silently publishes a production Job.
+        // Do not block TEST editing if an existing profile needs manual repair.
+        if (string.Equals(result.Definition.EcuModelCode, "HYDEPB",
+                StringComparison.Ordinal))
+        {
+            try
+            {
+                await NativeFlashProfileStore.EnsureHydEpbReferenceAsync(
+                    result.RootDirectory, result.Definition.EcuModelCode, ct);
+            }
+            catch (Exception error) when (error is IOException or InvalidDataException or
+                FormatException or UnauthorizedAccessException or NotSupportedException)
+            {
+                System.Diagnostics.Trace.TraceWarning(
+                    "HydEPB FLASH profile requires manual repair: " + error.Message);
+            }
+        }
         Current = result;
         CurrentChanged?.Invoke(this, EventArgs.Empty);
         return result;
