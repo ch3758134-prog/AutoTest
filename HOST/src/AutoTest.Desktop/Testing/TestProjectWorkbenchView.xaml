@@ -196,13 +196,14 @@
          </DataTemplate>
          </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
-        <DataGridTemplateColumn Header="工程默认" Width="112">
+        <DataGridTemplateColumn Header="特殊设置" Width="112">
          <DataGridTemplateColumn.CellTemplate>
           <DataTemplate>
-           <CheckBox Content="默认启用" IsChecked="{Binding Enabled,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-            FontSize="10" Foreground="#97B6DE"
+           <CheckBox Content="排除自动测试"
+            IsChecked="{Binding ExcludedFromAutomaticTest,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+            FontSize="10" Foreground="#677C93"
             VerticalAlignment="Center" HorizontalAlignment="Center"
-            ToolTip="保存至正式项目；不等于本次选择"/>
+            ToolTip="仅在特殊情况下排除该项目实例；新加入的用例默认参与完整自动测试。与本次调试勾选无关。"/>
           </DataTemplate>
          </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
