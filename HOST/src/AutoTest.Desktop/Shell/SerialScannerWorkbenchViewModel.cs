@@ -190,6 +190,12 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
         private set => SetProperty(ref _identityPolicyStatus, value);
     }
 
+    /// <summary>
+    /// One event per complete physical scan, even if the text equals the
+    /// previous scan. Observers must not control the scanner's USB lifecycle.
+    /// </summary>
+    public event Action<string>? CompleteBarcodeReceived;
+
     public ObservableCollection<string> AvailablePorts { get; } = new();
     public IReadOnlyList<int> SupportedBaudRates { get; } =
         new[] { 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200 };
@@ -635,6 +641,11 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
                             "（不自动切换、夹紧或启动）"
                         : preview.Explanation + (resolvedStation is null ? "" :
                             " · " + resolvedStation.Explanation));
+                    // Real scan input is shared with the operator projection.
+                    // A repeated physical scan is still a distinct observation,
+                    // but it must never create a second DUT automatically.
+                    try { CompleteBarcodeReceived?.Invoke(captured.Scan.Text); }
+                    catch { /* UI observers cannot alter scanner safety. */ }
                 }
                 finally { Interlocked.Exchange(ref _handling, 0); }
             });
