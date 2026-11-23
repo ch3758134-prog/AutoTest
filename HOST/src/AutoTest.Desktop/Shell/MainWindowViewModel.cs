@@ -147,12 +147,6 @@ public sealed partial class MainWindowViewModel : BindableBase
             OpenNativeFlashProfile, () => HasProject && !IsBusy);
         CreateScanConfigCommand = new DelegateCommand(
             ShowProjectConfiguration, () => HasProject && !IsBusy);
-        CreateTcfCommand = new DelegateCommand(
-            async () => await CreateConfigurationAsync(ProjectWorkspaceService.TestConfigurationKind),
-            () => HasProject && !IsBusy);
-        CreateTbcCommand = new DelegateCommand(
-            async () => await CreateConfigurationAsync(ProjectWorkspaceService.BenchConfigurationKind),
-            () => HasProject && !IsBusy);
         OpenConfigurationCommand = new DelegateCommand(async () => await OpenSelectedConfigurationAsync(),
             () => SelectedResourceIsConfiguration && !IsBusy);
         OpenDbcCommand = new DelegateCommand(async () => await OpenSelectedDbcAsync(),
@@ -189,8 +183,6 @@ public sealed partial class MainWindowViewModel : BindableBase
         EngineeringClamp2ReleaseCommand = new DelegateCommand(async () => await RunEngineeringClampAsync(2, false));
         EngineeringIgnOnCommand = new DelegateCommand(async () => await RunEngineeringIgnAsync(true));
         EngineeringIgnOffCommand = new DelegateCommand(async () => await RunEngineeringIgnAsync(false));
-        OpenTcfCommand = new DelegateCommand(async () => await OpenConfigurationKindAsync(
-            ProjectWorkspaceService.TestConfigurationKind));
         OpenControllerCommand = new DelegateCommand(async () => await OpenConfigurationKindAsync(
             ProjectWorkspaceService.ControllerKind));
         OpenWaveConfigCommand = new DelegateCommand(async () => await OpenConfigurationKindAsync(
@@ -206,19 +198,9 @@ public sealed partial class MainWindowViewModel : BindableBase
         OpenFlashWorkbenchCommand = new DelegateCommand(async () => await OpenFlashWorkbenchAsync(),
             () => !_openingFlashLab && !_hardwareBusy);
         OpenNativeFlashProfileCommand = new DelegateCommand(OpenNativeFlashProfile);
-        OpenTbcCommand = new DelegateCommand(async () => await OpenConfigurationKindAsync(
-            ProjectWorkspaceService.BenchConfigurationKind));
-        OpenFirstConfigurationCommand = new DelegateCommand(async () =>
-        {
-            if (_workspace.Current is null) return;
-            var first = _workspace.Current.Definition.Assets.FirstOrDefault(a =>
-                a.Kind == ProjectWorkspaceService.TestConfigurationKind ||
-                a.Kind == ProjectWorkspaceService.ControllerKind ||
-                a.Kind == ProjectWorkspaceService.BenchConfigurationKind);
-            if (first is null) { await CreateConfigurationAsync(ProjectWorkspaceService.TestConfigurationKind); return; }
-            SelectAsset(first.Id);
-            await OpenSelectedConfigurationAsync();
-        });
+        // The ECU project itself is the authoring scope; no TCF/TBC
+        // selection is required to begin configuring this fixed station.
+        OpenFirstConfigurationCommand = new DelegateCommand(ShowProjectConfiguration);
         HelpCommand = new DelegateCommand(() =>
             MessageBox.Show(
                 "工程资源：左侧点击打开。测试用例：Ctrl+Space 新增、F2 编辑名称、F9 断点、" +
@@ -252,8 +234,6 @@ public sealed partial class MainWindowViewModel : BindableBase
                     f.Dlc, Convert.ToHexString(f.Data.ToArray()), frame.LostFrames));
                 if (CanRecords.Count > 500) CanRecords.RemoveAt(0);
             }));
-        _workspace.SelectedConfigurationsChanged += (_, _) =>
-            RaisePropertyChanged(nameof(SelectedConfigurationSummary));
         _workspace.CurrentChanged += (_, _) =>
         {
             RaisePropertyChanged(nameof(SelectedConfigurationSummary));
@@ -389,7 +369,6 @@ public sealed partial class MainWindowViewModel : BindableBase
     public DelegateCommand OpenFirstTestProgramCommand { get; }
     public DelegateCommand OpenFirstConfigurationCommand { get; }
     public DelegateCommand OpenProjectConfigurationOverviewCommand { get; }
-    public DelegateCommand OpenTcfCommand { get; }
     public DelegateCommand OpenControllerCommand { get; }
     public DelegateCommand OpenWaveConfigCommand { get; }
     public DelegateCommand OpenScanConfigCommand { get; }
@@ -399,14 +378,16 @@ public sealed partial class MainWindowViewModel : BindableBase
     public DelegateCommand OpenManualBenchCommand { get; }
     public DelegateCommand OpenFlashWorkbenchCommand { get; }
     public DelegateCommand OpenNativeFlashProfileCommand { get; }
-    public DelegateCommand OpenTbcCommand { get; }
     public int TestProjectCount => _workspace.Current?.Definition.Assets.Count(x =>
         x.Kind == ProjectWorkspaceService.TestProjectKind) ?? 0;
     public int TestProgramCount => _workspace.Current?.Definition.Assets.Count(x =>
         x.Kind == ProjectWorkspaceService.TestProgramKind) ?? 0;
+    // Counts actual manifest resources, excluding TEST definitions and old
+    // format placeholders. Native FLASH publication is managed separately.
     public int ConfigurationCount => _workspace.Current?.Definition.Assets.Count(x =>
-        x.Kind is ProjectWorkspaceService.TestConfigurationKind or ProjectWorkspaceService.BenchConfigurationKind
-            or ProjectWorkspaceService.ControllerKind or ProjectWorkspaceService.DbcKind) ?? 0;
+        x.Kind is ProjectWorkspaceService.DbcKind or ProjectWorkspaceService.FirmwareKind
+            or ProjectWorkspaceService.WaveKind or ProjectWorkspaceService.WaveSettingsKind
+            or ProjectWorkspaceService.InspectionKind) ?? 0;
     private async Task OpenFirstAssetAsync(string kind, Func<Task> create)
     {
         if (_workspace.Current is null) return;
@@ -453,7 +434,7 @@ public sealed partial class MainWindowViewModel : BindableBase
             return;
         }
         if (IsAlreadyOpen("config-overview")) return;
-        var view = new ProjectConfigurationOverviewView(this, _workspace, _fileDialogs);
+        var view = new ProjectConfigurationOverviewView(this, _workspace);
         ActivateEditor("config-overview", view, "检测准备 · " + CurrentProjectName, view.ConfirmClose);
     }
 
@@ -1193,9 +1174,9 @@ public sealed partial class MainWindowViewModel : BindableBase
     public string CurrentProjectName => _workspace.Current?.Definition.Name ?? "未打开工程";
     public string CurrentProjectPath => _workspace.Current?.ManifestPath ?? "";
     public int AssetCount => _workspace.Current?.Definition.Assets.Length ?? 0;
-    public string SelectedConfigurationSummary => "TCF: " +
-        _workspace.SelectedTestConfigurationName + "  ·  TBC: " +
-        _workspace.SelectedBenchConfigurationName;
+    public string SelectedConfigurationSummary =>
+        "当前 ECU 工程：" + (_workspace.Current?.Definition.Name ?? "未打开") +
+        "。固定设备由工位统一管理；功能测试、烧录和工位动作直接使用工程配置。";
     public bool HasSelectedResource => _selectedResource is not null && HasProject;
     public bool SelectedResourceIsAsset => _selectedResource?.Asset is not null;
     public bool SelectedResourceIsDbc => string.Equals(_selectedResource?.Asset?.Kind,
@@ -1239,8 +1220,6 @@ public sealed partial class MainWindowViewModel : BindableBase
     public DelegateCommand CreateWaveConfigCommand { get; }
     public DelegateCommand CreateFlashConfigCommand { get; }
     public DelegateCommand CreateScanConfigCommand { get; }
-    public DelegateCommand CreateTcfCommand { get; }
-    public DelegateCommand CreateTbcCommand { get; }
     public DelegateCommand OpenConfigurationCommand { get; }
     public DelegateCommand OpenDbcCommand { get; }
     public DelegateCommand OpenTestProgramCommand { get; }
@@ -1583,27 +1562,19 @@ public sealed partial class MainWindowViewModel : BindableBase
         var categories = new[]
         {
             (ProjectWorkspaceService.DbcKind, "DBC 报文"),
-
             (ProjectWorkspaceService.WaveKind, "波形记录"),
             (ProjectWorkspaceService.WaveSettingsKind, "波形判定配置"),
-            (ProjectWorkspaceService.TestConfigurationKind, "被测系统配置 · TCF"),
-            (ProjectWorkspaceService.BenchConfigurationKind, "台架配置 · TBC"),
-            (ProjectWorkspaceService.InspectionKind, "工位动作 · 检测准备"),
-            (ProjectWorkspaceService.FlashSettingsKind, "历史烧录设置（仅迁移）"),
             (ProjectWorkspaceService.FirmwareKind, "固件资源"),
-            (ProjectWorkspaceService.ScanSettingsKind, "历史扫码配方（仅迁移）")
+            (ProjectWorkspaceService.InspectionKind, "检测前后工位动作")
         };
-        // Frequent resources remain prominent. Empty technical kinds are still
-        // creatable inside one collapsed group, not deleted from the project.
-        var advanced = new ResourceTreeNode("更多资源与配置", "", "可展开创建 TCF、TBC 等资源",
+        // Keep useful resources visible and avoid presenting obsolete
+        // system/bench descriptions as new configuration obligations.
+        var advanced = new ResourceTreeNode("更多工程资源", "", "其他可创建的正式工程资源",
             role: "Advanced");
         foreach (var (kind, label) in categories)
         {
             var entries = assets.Where(x => x.Kind.Equals(kind, StringComparison.OrdinalIgnoreCase))
                 .OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase).ToArray();
-            if (entries.Length == 0 && kind is ProjectWorkspaceService.FlashSettingsKind or
-                ProjectWorkspaceService.ScanSettingsKind)
-                continue; // old recipe types are never suggested for new projects
             var group = new ResourceTreeNode(label, "", "实际工程资产", kind,
                 role: "Folder", count: entries.Length == 0 ? "" : entries.Length.ToString());
             foreach (var entry in entries)
@@ -1615,11 +1586,32 @@ public sealed partial class MainWindowViewModel : BindableBase
                 advanced.Children.Add(group);
         }
         if (advanced.Children.Count > 0) ResourceNodes.Add(advanced);
+        // Keep archived configuration files discoverable without making them
+        // part of the supported new-project setup. Nothing is deleted from disk.
+        var obsoleteKinds = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ProjectWorkspaceService.TestConfigurationKind,
+            ProjectWorkspaceService.BenchConfigurationKind,
+            ProjectWorkspaceService.ScanSettingsKind,
+            ProjectWorkspaceService.FlashSettingsKind,
+            ProjectWorkspaceService.ControllerKind
+        };
+        var existingLegacy = assets.Where(a => obsoleteKinds.Contains(a.Kind))
+            .OrderBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase).ToArray();
+        if (existingLegacy.Length > 0)
+        {
+            var archive = new ResourceTreeNode("兼容保留的旧配置", "",
+                "仅为已有工程保留，不用于新建检测配置",
+                role: "Folder", count: existingLegacy.Length.ToString());
+            foreach (var entry in existingLegacy)
+                archive.Children.Add(ToAssetNode(entry));
+            ResourceNodes.Add(archive);
+        }
         var defined = categories.Select(x => x.Item1)
             .Append(ProjectWorkspaceService.TestProjectKind)
             .Append(ProjectWorkspaceService.TestProgramKind)
             .Append(ProjectWorkspaceService.PublicFlowKind)
-            .Append(ProjectWorkspaceService.ControllerKind)
+            .Concat(obsoleteKinds)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var extras = assets.Where(x => !defined.Contains(x.Kind)).ToArray();
         if (extras.Length > 0)
@@ -1838,17 +1830,13 @@ public sealed partial class MainWindowViewModel : BindableBase
             ProjectWorkspaceService.WaveSettingsKind => CreateConfigurationAsync(ProjectWorkspaceService.WaveSettingsKind),
             ProjectWorkspaceService.FlashSettingsKind => Task.CompletedTask, // legacy read only
             ProjectWorkspaceService.ScanSettingsKind => Task.CompletedTask, // legacy read only
-            ProjectWorkspaceService.TestConfigurationKind => CreateConfigurationAsync(ProjectWorkspaceService.TestConfigurationKind),
-            ProjectWorkspaceService.BenchConfigurationKind => CreateConfigurationAsync(ProjectWorkspaceService.BenchConfigurationKind),
             ProjectWorkspaceService.InspectionKind => OpenInspectionProcedureAsync(),
             _ => Task.CompletedTask
         };
     }
 
     private static bool IsInlineConfiguration(string kind) =>
-        kind is ProjectWorkspaceService.TestConfigurationKind or
-            ProjectWorkspaceService.BenchConfigurationKind or
-            ProjectWorkspaceService.InspectionKind;
+        kind == ProjectWorkspaceService.InspectionKind;
 
     private async Task CreateConfigurationAsync(string kind)
     {
@@ -1859,8 +1847,6 @@ public sealed partial class MainWindowViewModel : BindableBase
             ProjectWorkspaceService.WaveSettingsKind => "波形判定配置",
             ProjectWorkspaceService.FlashSettingsKind => "烧录配置",
             ProjectWorkspaceService.ScanSettingsKind => "扫码匹配配置",
-            ProjectWorkspaceService.TestConfigurationKind => "TCF 被测系统配置",
-            ProjectWorkspaceService.BenchConfigurationKind => "TBC 固定台架配置",
             ProjectWorkspaceService.InspectionKind => "检测工位动作",
             _ => "工程配置"
         };
@@ -1876,9 +1862,7 @@ public sealed partial class MainWindowViewModel : BindableBase
                 ShowProjectConfiguration();
                 var overview = OpenEditors.First(x => x.Key == "config-overview").View
                     as ProjectConfigurationOverviewView;
-                if (kind == ProjectWorkspaceService.InspectionKind)
-                    overview!.ShowInspectionSession(opened);
-                else overview!.ShowSession(kind, opened);
+                overview!.ShowInspectionSession(opened);
             }
             else
             {
@@ -1902,9 +1886,7 @@ public sealed partial class MainWindowViewModel : BindableBase
                 ShowProjectConfiguration();
                 var overview = OpenEditors.First(x => x.Key == "config-overview").View
                     as ProjectConfigurationOverviewView;
-                if (asset.Kind == ProjectWorkspaceService.InspectionKind)
-                    overview!.ShowInspectionSession(opened);
-                else overview!.ShowSession(asset.Kind, opened);
+                overview!.ShowInspectionSession(opened);
             }
             else
             {
@@ -2228,8 +2210,6 @@ public sealed partial class MainWindowViewModel : BindableBase
         CreateWaveConfigCommand?.RaiseCanExecuteChanged();
         CreateFlashConfigCommand?.RaiseCanExecuteChanged();
         CreateScanConfigCommand?.RaiseCanExecuteChanged();
-        CreateTcfCommand?.RaiseCanExecuteChanged();
-        CreateTbcCommand?.RaiseCanExecuteChanged();
         OpenConfigurationCommand?.RaiseCanExecuteChanged();
         OpenDbcCommand?.RaiseCanExecuteChanged();
         OpenTestProgramCommand?.RaiseCanExecuteChanged();
