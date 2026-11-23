@@ -15,5 +15,16 @@ public partial class ProjectOverviewView : UserControl
         InitializeComponent();
         DataContext = viewModel;
         InspectorHost.Content = new ProjectOverviewInspector(viewModel);
+        Loaded += async (_, _) =>
+        {
+            try { await viewModel.RefreshEngineeringSetupAsync(); }
+            catch (Exception error) when (error is System.IO.IOException or
+                InvalidOperationException or UnauthorizedAccessException)
+            {
+                // A project overview cannot prevent the user from editing.
+                // The full check surface can be retried after resource repair.
+                viewModel.StatusMessage = "工程配置检查未完成：" + error.Message;
+            }
+        };
     }
 }
