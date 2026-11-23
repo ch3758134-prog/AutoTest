@@ -156,32 +156,6 @@
      </StackPanel>
     </ScrollViewer>
    </TabItem>
-   <TabItem Header="DUT 配置">
-    <Grid>
-     <Grid.RowDefinitions><RowDefinition Height="37"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-     <DockPanel Grid.Row="0" Margin="12,4">
-      <Button DockPanel.Dock="Right" Content="创建／打开 TCF"
-       Command="{Binding OpenTcfCommand}"/>
-      <TextBlock Text="ECU 与 DBC 资源"
-       FontSize="11" Foreground="#64758C" VerticalAlignment="Center"/>
-     </DockPanel>
-     <ContentControl x:Name="DutFormHost" Grid.Row="1"
-      HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
-    </Grid>
-   </TabItem>
-   <TabItem Header="工位状态">
-    <Grid>
-     <Grid.RowDefinitions><RowDefinition Height="37"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-     <DockPanel Grid.Row="0" Margin="12,4">
-      <Button DockPanel.Dock="Right" Content="创建／打开 TBC"
-       Command="{Binding OpenTbcCommand}"/>
-      <TextBlock Text="固定台架：ECU CAN（A1/A12）／KEY CAN（B1/B11）"
-       Foreground="#64758C" FontSize="11" VerticalAlignment="Center"/>
-     </DockPanel>
-     <ContentControl x:Name="BenchFormHost" Grid.Row="1"
-      HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
-    </Grid>
-   </TabItem>
    <TabItem Header="扫码与身份">
     <Grid>
      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
