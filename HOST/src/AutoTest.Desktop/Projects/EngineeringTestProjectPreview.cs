@@ -23,7 +23,7 @@ public sealed record EngineeringTestProjectPreview(
     public bool HasTestProject => Cases.Count > 0;
 }
 
-public static class EngineeringTestProjectPreview
+public static class EngineeringTestProjectPreviewReader
 {
     public static async Task<EngineeringTestProjectPreview> ReadAsync(
         OpenProjectContext project, CancellationToken ct = default)
