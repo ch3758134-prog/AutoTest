@@ -12,6 +12,7 @@
  <Grid Margin="11,10,11,11">
   <Grid.RowDefinitions>
    <RowDefinition Height="68"/>
+   <RowDefinition Height="Auto"/>
    <RowDefinition Height="*"/>
   </Grid.RowDefinitions>
 
@@ -41,8 +42,30 @@
    </Grid>
   </Border>
 
+  <!-- One START job, two input sources. This is a fail-closed readiness
+       surface until the verified production adapter and physical input arrive. -->
+  <Border Grid.Row="1" Background="White" CornerRadius="5"
+   BorderBrush="#DDE5ED" BorderThickness="1" Padding="14,10" Margin="0,0,0,9">
+   <DockPanel LastChildFill="True">
+    <Button DockPanel.Dock="Right" Content="▶ 开始检测"
+     Command="{Binding RequestSoftwareStartCommand}"
+     Style="{StaticResource AtPrimaryButton}" MinWidth="130" MinHeight="37"
+     Padding="13,7" Margin="18,0,0,0" VerticalAlignment="Center"
+     ToolTip="软件 START；只能在本次扫码、实体工位、Flash、TEST 和记录全部满足正式运行条件后执行"/>
+    <StackPanel>
+     <TextBlock Text="启动检测" FontSize="13" FontWeight="SemiBold"/>
+     <TextBlock Text="{Binding PhysicalStartStatus}" FontSize="11"
+      Foreground="#9B6A22" Margin="0,5,0,0" TextWrapping="Wrap"/>
+     <TextBlock Text="{Binding StartInputHint}" FontSize="11"
+      Foreground="#687C91" Margin="0,4,0,0" TextWrapping="Wrap"/>
+     <TextBlock Text="{Binding StartRequestStatus}" FontSize="11"
+      Foreground="#526B86" Margin="0,6,0,0" TextWrapping="Wrap"/>
+    </StackPanel>
+   </DockPanel>
+  </Border>
+
   <!-- The operator sees a test program, never a developer project explorer. -->
-  <Grid Grid.Row="1">
+  <Grid Grid.Row="2">
    <Grid.ColumnDefinitions>
     <ColumnDefinition Width="7*" MinWidth="440"/>
     <ColumnDefinition Width="9"/>
