@@ -9,7 +9,7 @@ using AutoTest.Testing.Authoring;
 
 namespace AutoTest.Desktop.Shell;
 
-/// <summary>One verified, enabled test case from the operator's own selected plan.</summary>
+/// <summary>One real test case from the operator's independently selected ECU project.</summary>
 public sealed record AutomaticTestCase(string Index, string Name, TestDocumentId DocumentId,
     string State = "未执行");
 
@@ -128,11 +128,12 @@ public sealed class AutomaticTestPlanService
         var testProject = TestProjectCodec.Decode(testBytes);
         if (testProject.Packages.Count == 0)
             throw new InvalidDataException("测试项目没有关联用例");
-        var enabled = testProject.Packages.Where(p => p.Enabled).ToArray();
-        if (enabled.Length == 0)
-            throw new InvalidDataException("测试项目的所有用例均未启用");
-        var cases = new List<AutomaticTestCase>(enabled.Length);
-        foreach (var entry in enabled)
+        // "Enabled" belongs to the developer's current run selection. The
+        // automatic-test home loads every test case explicitly listed in the
+        // selected TEST project, in its recorded order. Never require the
+        // operator to visit the editor and toggle these flags.
+        var cases = new List<AutomaticTestCase>(testProject.Packages.Count);
+        foreach (var entry in testProject.Packages)
         {
             var matches = definition.Assets.Where(a =>
                 a.Id.Value == entry.PackageAssetId &&
