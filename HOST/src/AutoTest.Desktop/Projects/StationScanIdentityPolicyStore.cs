@@ -1,4 +1,5 @@
 using System.IO;
+using System.Security.Cryptography;
 using System.Text.Json;
 using AutoTest.Specialists.Scan;
 
@@ -15,7 +16,17 @@ public static class StationScanIdentityPolicyStore
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "AutoTest", "scanner-identity-policy.json");
 
-    public static async Task<ScanIdentityPolicy?> LoadAsync(CancellationToken ct = default)
+    /// <summary>
+    /// Immutable proof of the EXACT rule bytes used to interpret one scan.
+    /// Use one read for both the decoded rule and its SHA256; rereading a
+    /// changed file later cannot silently reinterpret an already accepted DUT.
+    /// </summary>
+    public sealed record Snapshot(ScanIdentityPolicy Policy, string Sha256);
+
+    public static async Task<ScanIdentityPolicy?> LoadAsync(CancellationToken ct = default) =>
+        (await LoadSnapshotAsync(ct).ConfigureAwait(false))?.Policy;
+
+    public static async Task<Snapshot?> LoadSnapshotAsync(CancellationToken ct = default)
     {
         if (!File.Exists(PathName)) return null;
         var bytes = await File.ReadAllBytesAsync(PathName, ct).ConfigureAwait(false);
@@ -32,7 +43,7 @@ public static class StationScanIdentityPolicyStore
         {
             throw new InvalidDataException("扫码解析规则无法读取；保留原始文件。", error);
         }
-        return value;
+        return new Snapshot(value, Convert.ToHexString(SHA256.HashData(bytes)));
     }
 
     public static async Task SaveAsync(ScanIdentityPolicy policy,
