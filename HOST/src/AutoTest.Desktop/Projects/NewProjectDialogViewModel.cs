@@ -99,7 +99,7 @@ public sealed class NewProjectDialogViewModel : BindableBase
         IsCreating = true;
         try
         {
-            await _workspace.CreateAsync(ProjectName, ParentDirectory);
+            await _workspace.CreateReadyToEditAsync(ProjectName, ParentDirectory);
             // Allow WPF Window.Closing to complete before setting DialogResult.
             IsCreating = false;
             CloseRequested?.Invoke(true);
