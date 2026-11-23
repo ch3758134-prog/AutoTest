@@ -1431,6 +1431,28 @@ public sealed partial class MainWindowViewModel : BindableBase
         }
     }
 
+    private string _resourceSearchText = "";
+
+    /// <summary>
+    /// Keep the complete tree and its current editor selection. Search is
+    /// only a non-destructive highlight: never auto-open, filter, rename or
+    /// re-order a resource on keystrokes or Enter.
+    /// </summary>
+    public void HighlightResourceSearch(string? raw)
+    {
+        _resourceSearchText = (raw ?? "").Trim();
+        ApplyResourceSearchHighlight();
+    }
+
+    private void ApplyResourceSearchHighlight()
+    {
+        var query = _resourceSearchText;
+        foreach (var node in AllNodes(ResourceNodes))
+            node.IsSearchMatch = query.Length > 0 &&
+                (node.Label.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
+                 node.Description.Contains(query, StringComparison.CurrentCultureIgnoreCase));
+    }
+
     private void RebuildResourceTree()
     {
         var selectedId = _selectedResource?.Asset?.Id;
@@ -1557,6 +1579,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         else if (wasSetupSelected)
             _selectedResource = ResourceNodes.FirstOrDefault(x => x.Role == "Setup");
         if (_selectedResource is not null) _selectedResource.IsSelected = true;
+        ApplyResourceSearchHighlight();
         RaiseSelectedResourceChanges();
     }
 
