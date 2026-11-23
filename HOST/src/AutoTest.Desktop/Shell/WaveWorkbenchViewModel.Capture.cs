@@ -80,10 +80,11 @@ public sealed partial class WaveWorkbenchViewModel
         _liveSignals = signals;
         _hardware = hardware;
         _realTest = realTest;
+        _hardware.ConnectionChanged += CaptureStationChanged;
         StartCaptureCommand = new DelegateCommand(
             async () => await StartCaptureAsync(),
             () => !_closed && !IsCapturing && SelectedSignal is not null &&
-                  _hardware.IsConnected && !_realTest.IsRunning);
+                  !_realTest.IsRunning);
         StopCaptureCommand = new DelegateCommand(
             async () => await StopCaptureAsync(),
             () => !_closed && IsCapturing && _activeCapture.HasValue);
@@ -92,6 +93,13 @@ public sealed partial class WaveWorkbenchViewModel
             SaveReference, () => !_closed && !IsCapturing && _series is not null &&
                 !string.IsNullOrWhiteSpace(ReferenceName) && Selected is { IsReference: false });
         ReloadAvailableSignals();
+    }
+
+    private void CaptureStationChanged(long _)
+    {
+        var dispatcher = global::System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher is null || dispatcher.CheckAccess()) RefreshCaptureCommands();
+        else dispatcher.BeginInvoke(new Action(RefreshCaptureCommands));
     }
 
     private void RefreshCaptureCommands()
@@ -292,5 +300,9 @@ public sealed partial class WaveWorkbenchViewModel
     }
 
     private void AbortCaptureForProjectChange() => _ = StopCaptureAsync();
-    private void AbortCaptureForWindowClose() => _ = StopCaptureAsync();
+    private void AbortCaptureForWindowClose()
+    {
+        _hardware.ConnectionChanged -= CaptureStationChanged;
+        _ = StopCaptureAsync();
+    }
 }
