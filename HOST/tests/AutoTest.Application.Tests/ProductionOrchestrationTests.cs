@@ -173,6 +173,23 @@ public sealed class ProductionOrchestrationTests
     }
 
     [Fact]
+    public async Task ClaimedVerifiedCommitWithoutStageEvidenceCannotYieldPhysicalPass()
+    {
+        var config = Config(flash: true);
+        var session = Matched(config);
+        var job = session.Confirm(config, new RuleRevision(_hash),
+            new ProjectRevision(1), Station(false, AuthorizationScope.Programming).Station,
+            isMock: false).Value!;
+        var test = new ProductionStageResult(Outcome.Accepted, Verdict.Pass,
+            "UNPROVEN", false, ImmutableArray<EvidenceRef>.Empty);
+        var result = await new ProductionResultCoordinator(new ClaimingVerifiedSink())
+            .FinalizeAsync(job, test, CancellationToken.None);
+        Assert.Equal("PRODUCTION_VERDICT_NOT_PROVEN", result.Code);
+        Assert.Equal(Verdict.Inconclusive, result.Verdict);
+        Assert.False(result.PhysicalReleaseAllowed);
+    }
+
+    [Fact]
     public async Task DurableGenericUnknownCommitCannotBecomePhysicalDutPass()
     {
         var config = Config(flash: true);
@@ -269,6 +286,21 @@ public sealed class ProductionOrchestrationTests
         public ValueTask<ProductionSummary> QuerySummaryAsync(ProductionSummaryFilter filter, CancellationToken ct)
         { Calls++; return ValueTask.FromResult(new ProductionSummary(2, 1, 1, 1, 0, true)); }
     }
+    private sealed class ClaimingVerifiedSink : IVerifiedProductionCommitSink
+    {
+        public ValueTask<RecordWriteReceipt> AppendAsync(RunFact fact,
+            CancellationToken ct) =>
+            ValueTask.FromResult(new RecordWriteReceipt(
+                fact.Run, fact.EventId, true, "DURABLE"));
+        public ValueTask<RecordCommitReceipt> CommitAsync(RunId run,
+            CancellationToken ct) =>
+            ValueTask.FromResult(new RecordCommitReceipt(run, true, "DURABLE"));
+        public ValueTask<VerifiedProductionCommit> CommitVerifiedAsync(RunId run,
+            ProductionStageResult test, CancellationToken ct) =>
+            ValueTask.FromResult(new VerifiedProductionCommit(
+                run, true, true, Verdict.Pass, "CLAIMED"));
+    }
+
     private sealed class FakeSink : IRunFactSink
     {
         private readonly bool _durable;
