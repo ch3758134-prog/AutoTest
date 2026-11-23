@@ -84,6 +84,7 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
         });
         RefreshPortsCommand = new DelegateCommand(RefreshPorts);
         BindScannerDeviceCommand = new DelegateCommand(BindScannerDevice);
+        ReplaceScannerDeviceCommand = new DelegateCommand(ReplaceScannerDevice);
         ConnectCommand = new DelegateCommand(async () => await ConnectAsync());
         DisconnectCommand = new DelegateCommand(async () => await DisconnectAsync());
         SaveModelCodeCommand = new DelegateCommand(async () => await SaveModelCodeAsync());
@@ -271,6 +272,7 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
 
     public DelegateCommand RefreshPortsCommand { get; }
     public DelegateCommand BindScannerDeviceCommand { get; }
+    public DelegateCommand ReplaceScannerDeviceCommand { get; }
     public DelegateCommand ConnectCommand { get; }
     public DelegateCommand DisconnectCommand { get; }
     public DelegateCommand SaveModelCodeCommand { get; }
@@ -424,8 +426,29 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
             if (ports.Length == 0) SetStatus("未发现 COM 端口；请检查扫码枪 USB 串口驱动");
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or
-                                      InvalidOperationException or System.ComponentModel.Win32Exception)
+                                      InvalidOperationException or System.ComponentModel.Win32Exception or System.Security.SecurityException)
         { SetStatus("枚举串口失败：" + error.Message); }
+    }
+
+    private void ReplaceScannerDevice()
+    {
+        if (IsConnected)
+        {
+            DeviceStatus = "请先断开旧扫码枪，再解除设备绑定。";
+            return;
+        }
+        try
+        {
+            StationScannerDeviceBinding.Unbind();
+            _boundDevice = null;
+            SelectedPort = "";
+            DeviceStatus = "已解除当前工位设备绑定。请重新选真实 COM，试扫后绑定新扫码枪。";
+            RefreshPorts();
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            DeviceStatus = "解除绑定失败：" + error.Message;
+        }
     }
 
     private void BindScannerDevice()
