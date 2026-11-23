@@ -6,24 +6,56 @@
  Background="#F5F8FC" FontFamily="{StaticResource UiFont}" Foreground="#253C59">
  <Grid>
   <Grid.RowDefinitions>
-   <RowDefinition Height="65"/>
+   <RowDefinition Height="123"/>
    <RowDefinition Height="*"/>
    <RowDefinition Height="38"/>
   </Grid.RowDefinitions>
-  <Border Background="White" BorderBrush="#DDE7F2" BorderThickness="0,0,0,1">
+  <Grid Background="White">
+   <Grid.RowDefinitions><RowDefinition Height="65"/><RowDefinition Height="58"/></Grid.RowDefinitions>
+   <Border Grid.Row="0" Background="White" BorderBrush="#DDE7F2" BorderThickness="0,0,0,1">
    <DockPanel Margin="17,10">
     <Button DockPanel.Dock="Right" Content="波形配置与参考建立"
      Click="OpenConfiguration_Click" Margin="10,0,0,0"/>
     <Button DockPanel.Dock="Right" Content="刷新实际证据"
      Command="{Binding RefreshCommand}" Margin="10,0,0,0"/>
     <StackPanel>
-     <TextBlock Text="波形分析 · 真实采集证据" FontSize="17"
+     <TextBlock Text="波形分析 · 实时采集与历史证据" FontSize="17"
       FontWeight="SemiBold" Foreground="#214B7D"/>
-     <TextBlock Text="从当前工程读取完整证据与参考；不生成模拟曲线，不隐式形成测试结论"
+     <TextBlock Text="连接主控，选择 DBC 信号，采集并查看波形；参考波形需显式建立"
       Foreground="#7589A0" FontSize="11" Margin="0,4,0,0"/>
     </StackPanel>
    </DockPanel>
-  </Border>
+   </Border>
+   <Border Grid.Row="1" Background="#F8FAFC" BorderBrush="#E1E7EF"
+    BorderThickness="0,0,0,1" Padding="14,9">
+    <DockPanel LastChildFill="True">
+     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+      <TextBlock Text="采集信号" VerticalAlignment="Center" FontWeight="SemiBold"
+       Foreground="#475A70" Margin="0,0,8,0"/>
+      <ComboBox Width="330" Height="30" Margin="0,0,10,0"
+       ItemsSource="{Binding AvailableSignals}" DisplayMemberPath="Label"
+       SelectedItem="{Binding SelectedSignal,Mode=TwoWay}"
+       IsTextSearchEnabled="True" ToolTip="选择工程内真实 DBC 信号；不模拟 ECU 数据"/>
+      <TextBlock Text="时长" VerticalAlignment="Center" Foreground="#61758B"
+       Margin="0,0,5,0"/>
+      <ComboBox Width="68" Height="30" Margin="0,0,10,0"
+       ItemsSource="{Binding CaptureDurations}"
+       SelectedItem="{Binding CaptureDurationSeconds,Mode=TwoWay}"
+       ToolTip="实际采集时长（秒）"/>
+      <Button Content="▶ 开始采集" Command="{Binding StartCaptureCommand}"
+       Padding="13,5" Style="{StaticResource AtPrimaryButton}" Margin="0,0,7,0"
+       ToolTip="读取真实 USB ECU CAN 和当前 DBC 解码，保存原始波形证据"/>
+      <Button Content="■ 结束" Command="{Binding StopCaptureCommand}"
+       Padding="12,5" Margin="0,0,8,0"
+       ToolTip="停止本次采集并归档实际样本"/>
+      <Button Content="刷新信号" Command="{Binding ReloadSignalsCommand}"
+       Padding="10,5" Margin="0,0,10,0"/>
+     </StackPanel>
+     <TextBlock Text="{Binding CaptureState}" Foreground="#61758B"
+      VerticalAlignment="Center" FontSize="11" TextTrimming="CharacterEllipsis"/>
+    </DockPanel>
+   </Border>
+  </Grid>
   <Grid Grid.Row="1" Margin="13,13,13,10">
    <Grid.ColumnDefinitions>
     <ColumnDefinition Width="318" MinWidth="255"/>
@@ -36,6 +68,7 @@
      <TextBlock DockPanel.Dock="Top" Text="波形资源"
       FontWeight="SemiBold" FontSize="14" Foreground="#244D7B"
       Margin="4,5,0,12"/>
+     <Grid>
      <ListBox ItemsSource="{Binding Items}" SelectedItem="{Binding Selected,Mode=TwoWay}"
       ScrollViewer.VerticalScrollBarVisibility="Auto"
       BorderThickness="0" Background="Transparent">
@@ -51,6 +84,10 @@
        </DataTemplate>
       </ListBox.ItemTemplate>
      </ListBox>
+     <TextBlock Text="{Binding EmptyListMessage}" TextWrapping="Wrap"
+      HorizontalAlignment="Center" VerticalAlignment="Center"
+      FontSize="12" Foreground="#8295A8" Margin="16" IsHitTestVisible="False"/>
+     </Grid>
     </DockPanel>
    </Border>
    <GridSplitter Grid.Column="1" Width="6" Background="Transparent"
@@ -74,6 +111,10 @@
       <Grid>
        <Canvas x:Name="WavePlot" Background="#FBFDFF" Margin="10"
         SizeChanged="WavePlot_SizeChanged" MouseLeftButtonDown="WavePlot_Click"/>
+       <TextBlock Text="{Binding EmptyWaveMessage}" TextAlignment="Center"
+        HorizontalAlignment="Center" VerticalAlignment="Center"
+        Foreground="#8093A8" FontSize="15" TextWrapping="Wrap"
+        IsHitTestVisible="False"/>
        <TextBlock Text="时间（秒） →" HorizontalAlignment="Right" VerticalAlignment="Bottom"
         Foreground="#9BB0C3" Margin="0,0,12,5" FontSize="10" IsHitTestVisible="False"/>
       </Grid>
@@ -81,14 +122,23 @@
      <StackPanel Grid.Row="2">
       <TextBlock Text="{Binding CursorInfo}" FontSize="12"
        Foreground="#365E84" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,1,0,9"/>
+      <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+       <TextBlock Text="参考名称" Foreground="#526B82" VerticalAlignment="Center" Margin="0,0,7,0"/>
+       <TextBox Width="240" Height="29" VerticalContentAlignment="Center"
+        Text="{Binding ReferenceName,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+        ToolTip="只有经过真实采集和时间质量检查的波形才能显式保存为参考"/>
+       <Button Content="保存为参考波形" Command="{Binding SaveReferenceCommand}"
+        Padding="12,5" Margin="8,0,0,0"/>
+      </StackPanel>
       <TextBlock Text="曲线仅为降采样视觉投影；原始证据、时间质量、丢帧与参考身份在专业存储中独立保存。"
        Foreground="#7B90A7" FontSize="11" TextWrapping="Wrap"/>
      </StackPanel>
     </Grid>
    </Border>
   </Grid>
-  <Border Grid.Row="2" Background="#2368AD" Padding="14,8">
-   <TextBlock Text="{Binding Status}" Foreground="White" TextTrimming="CharacterEllipsis"/>
+  <Border Grid.Row="2" Background="#F8FAFC" BorderBrush="#E1E7EF"
+   BorderThickness="0,1,0,0" Padding="14,8">
+   <TextBlock Text="{Binding Status}" Foreground="#44576B" TextTrimming="CharacterEllipsis"/>
   </Border>
  </Grid>
 </Window>
