@@ -35,6 +35,7 @@ public sealed partial class ProjectWorkspaceService
     public const string ScanSettingsKind = ProjectConfigurationCodec.ScanSettingsKind;
     public const string TestConfigurationKind = ProjectConfigurationCodec.TestConfigurationKind;
     public const string BenchConfigurationKind = ProjectConfigurationCodec.BenchConfigurationKind;
+    public const string InspectionKind = ProjectConfigurationCodec.InspectionKind;
     public const string KeyActionsKind = "bench-key-actions";
     private AssetId? _selectedTestConfiguration;
     private AssetId? _selectedBenchConfiguration;
@@ -566,6 +567,7 @@ public sealed partial class ProjectWorkspaceService
         {
             TestConfigurationKind => ".tcf.json",
             BenchConfigurationKind => ".tbc.json",
+            InspectionKind => ".inspection.json",
             _ => ".settings.json"
         };
         return AddAssetAsync(kind, name, extension,
@@ -787,6 +789,7 @@ public sealed partial class ProjectWorkspaceService
                     TestProjectKind => "projects",
                     TestConfigurationKind => "tcf",
                     BenchConfigurationKind => "tbc",
+                    InspectionKind => "inspection",
                     FirmwareKind => "firmware",
                     WaveKind => "wave",
                     ControllerKind => "controller",
