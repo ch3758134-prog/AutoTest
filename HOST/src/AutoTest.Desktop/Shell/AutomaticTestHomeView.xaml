@@ -87,7 +87,7 @@
       <TextBlock Text="{Binding CaseCount,StringFormat='共 {0} 项'}"
        DockPanel.Dock="Right" VerticalAlignment="Center"
        Foreground="#758599" FontSize="11"/>
-      <TextBlock Text="测试项目" VerticalAlignment="Center"
+      <TextBlock Text="当前工程的测试用例" VerticalAlignment="Center"
        FontSize="13" FontWeight="SemiBold"/>
      </DockPanel>
      <DataGrid Grid.Row="1" ItemsSource="{Binding Cases}"
@@ -112,7 +112,7 @@
       </DataGrid.RowStyle>
       <DataGrid.Columns>
        <DataGridTextColumn Header="序号" Binding="{Binding Index}" Width="70"/>
-       <DataGridTextColumn Header="测试项目" Binding="{Binding Name}" Width="*"/>
+       <DataGridTextColumn Header="测试用例" Binding="{Binding Name}" Width="*"/>
        <DataGridTextColumn Header="执行状态" Binding="{Binding State}" Width="145"/>
       </DataGrid.Columns>
      </DataGrid>
@@ -121,15 +121,15 @@
       Visibility="{Binding NeedsSetup,Converter={StaticResource BoolToVisibility}}">
       <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
        MaxWidth="470" Margin="20">
-       <TextBlock Text="尚未打开可用的自动测试工程" FontSize="16"
+       <TextBlock Text="当前没有可浏览的测试用例" FontSize="16"
         FontWeight="SemiBold" TextAlignment="Center" Foreground="#344C62"/>
        <TextBlock Text="{Binding SetupIssue}" TextWrapping="Wrap"
         FontSize="12" TextAlignment="Center" Foreground="#6A7E92"
         Margin="0,11,0,19"/>
-       <Button Content="前往工程部署" Command="{Binding ChoosePlanCommand}"
+       <Button Content="打开工程与调试" Command="{Binding ChoosePlanCommand}"
         Style="{StaticResource AtPrimaryButton}" Padding="18,8"
         HorizontalAlignment="Center" MinWidth="145" MinHeight="34"/>
-       <TextBlock Text="在工程与调试中核对正式资源并部署一次；自动测试只读取已部署的工程版本，不再另选 TEST 方案。"
+       <TextBlock Text="请在开发与调试中打开或创建 ECU 工程。工程配置未完成时仍可浏览用例，但不能进行真实生产检测。"
         FontSize="11" TextAlignment="Center" Foreground="#8C9AAA"
         Margin="0,14,0,0"/>
       </StackPanel>
@@ -143,7 +143,7 @@
       <RowDefinition Height="36"/>
       <RowDefinition Height="*"/>
      </Grid.RowDefinitions>
-     <TextBlock Grid.Row="0" Text="当前测试" FontSize="13"
+     <TextBlock Grid.Row="0" Text="运行与结果" FontSize="13"
       FontWeight="SemiBold" VerticalAlignment="Center" Margin="13,0,0,0"/>
      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
       HorizontalScrollBarVisibility="Disabled">
