@@ -71,4 +71,73 @@ public sealed class NativeFlashProfileTests
         Assert.Throws<NotSupportedException>(() =>
             (plan with { EcuCanKbps = 125 }).ValidateForFreeze());
     }
+    [Fact]
+    public async Task HydEpbProjectAutoLoadsAllOriginalXmlFieldsWithoutExternalXml()
+    {
+        var root = Path.Combine(Path.GetTempPath(),
+            "autotest-hydepb-reference-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var first = await NativeFlashProfileStore.EnsureHydEpbReferenceAsync(
+                root, "HYDEPB");
+            Assert.NotNull(first);
+            var profile = first!.Profile;
+            Assert.Equal((uint)0x747, profile.AppRequestCanId);
+            Assert.Equal((uint)0x74F, profile.AppResponseCanId);
+            Assert.Equal((uint)0x18DA50F1, profile.BootRequestCanId);
+            Assert.Equal((uint)0x18DAF150, profile.BootResponseCanId);
+            Assert.Equal((uint)0x10008000, profile.FlashStart);
+            Assert.Equal((uint)0x1006FFFF, profile.FlashEndInclusive);
+            Assert.Equal(500, profile.EcuCanKbps);
+            Assert.Equal(512, profile.BlockLength);
+            Assert.Equal("0x74F", profile.Get("VersionID"));
+            Assert.Equal("0x18FE150E", profile.Get("DiagnosticsID"));
+            Assert.Equal("73", profile.Get("BootFeature"));
+            Assert.Equal("701", profile.Get("APPFeature"));
+            Assert.Contains(profile.FingerprintEntries(),
+                x => x.Key == "BootFeature" && x.Value == "73");
+            Assert.Contains(profile.FingerprintEntries(),
+                x => x.Key == "APPFeature" && x.Value == "701");
+            var second = await NativeFlashProfileStore.EnsureHydEpbReferenceAsync(
+                root, "HYDEPB");
+            Assert.NotNull(second);
+            Assert.Equal(first.Profile.ProfileId, second!.Profile.ProfileId);
+            Assert.Equal(first.ProfileSha256, second.ProfileSha256);
+            Assert.Null(profile.FirmwareRelativePath);
+            Assert.Null(profile.SecurityRelativePath);
+        }
+        finally { Directory.Delete(root, true); }
+    }
+
+    [Fact]
+    public async Task ReferenceBackfillPreservesPinnedResourcesAndExplicitUserOverrides()
+    {
+        var root = Path.Combine(Path.GetTempPath(),
+            "autotest-hydepb-merge-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var draft = NativeFlashProfileDocument.CreateDraft("HYDEPB") with
+            {
+                AppRequestCanId = 0x765,
+                FirmwareRelativePath = "assets/flash/firmware/firmware.hex",
+                FirmwareSha256 = new string('A', 64),
+                SecurityRelativePath = "assets/flash/security/safety.dll",
+                SecuritySha256 = new string('B', 64)
+            };
+            var saved = await NativeFlashProfileStore.SaveDraftAsync(root, draft, null);
+            var merged = await NativeFlashProfileStore.EnsureHydEpbReferenceAsync(
+                root, "HYDEPB");
+            Assert.NotNull(merged);
+            Assert.Equal(saved.Profile.ProfileId, merged!.Profile.ProfileId);
+            Assert.Equal((uint)0x765, merged.Profile.AppRequestCanId);
+            Assert.Equal((uint)0x74F, merged.Profile.AppResponseCanId);
+            Assert.Equal(saved.Profile.FirmwareSha256, merged.Profile.FirmwareSha256);
+            Assert.Equal(saved.Profile.SecuritySha256, merged.Profile.SecuritySha256);
+            Assert.Throws<NotSupportedException>(() => merged.Profile.ValidateForFreeze());
+        }
+        finally { Directory.Delete(root, true); }
+    }
+
 }
