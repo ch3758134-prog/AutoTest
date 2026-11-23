@@ -457,7 +457,7 @@ public sealed partial class MainWindowViewModel : BindableBase
     {
         if (_workspace.Current is null)
         {
-            StatusMessage = "请先打开工程，再查看真实波形证据。";
+            StatusMessage = "请先打开 ECU 工程并导入 DBC，波形工具将从主控真实 CAN 采集信号并保存证据。";
             return;
         }
         if (_waveWorkbenchWindow is { IsVisible: true })
@@ -465,7 +465,7 @@ public sealed partial class MainWindowViewModel : BindableBase
             _waveWorkbenchWindow.Activate();
             return;
         }
-        var view = new WaveWorkbenchWindow(new WaveWorkbenchViewModel(_workspace),
+        var view = new WaveWorkbenchWindow(new WaveWorkbenchViewModel(_workspace, _liveSignals, _hardware, _realTest),
             () => OpenWaveConfigCommand.Execute());
         _waveWorkbenchWindow = view;
         view.Owner = global::System.Windows.Application.Current.MainWindow;
