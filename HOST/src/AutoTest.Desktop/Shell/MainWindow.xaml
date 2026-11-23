@@ -87,7 +87,7 @@
       Visibility="{Binding IsProductionWorkspace,Converter={StaticResource BoolToVisibility}}"
       Style="{StaticResource AtQuietButton}" FontSize="11" Foreground="#738397"
       MinHeight="26" Padding="10,3" Margin="0,0,8,0"
-      ToolTip="打开工程编辑、测试调试与专业工具（UI-01 尚未设置维护身份验证）"/>
+      ToolTip="打开工程、编辑测试程序和使用专业工具"/>
      <Button Content="返回自动测试" Command="{Binding ShowProductionWorkspaceCommand}"
       Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}"
       Style="{StaticResource AtQuietButton}" FontSize="11" Foreground="#446B97"
