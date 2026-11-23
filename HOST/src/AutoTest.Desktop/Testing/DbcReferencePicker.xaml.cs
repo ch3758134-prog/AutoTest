@@ -107,9 +107,9 @@ public partial class DbcReferencePicker : UserControl
         if (info is null)
         {
             CurrentTitle.Text = _benchMode
-                ? "未关联 DBC · 直接编辑 CAN DATA" : "选择 DBC 资源";
+                ? "CAN DATA 字节直编" : "选择 DBC 资源";
             CurrentDetail.Text = _benchMode
-                ? "选择报文后可直接修改信号，不影响原始 DATA 编辑"
+                ? "可选 DBC 信号辅助；原始字节始终可编辑"
                 : "点击搜索名称、中文别名、信号或 CAN ID";
             SelectionButton.ToolTip = CurrentDetail.Text;
             return;
@@ -131,9 +131,9 @@ public partial class DbcReferencePicker : UserControl
         string detail;
         if (mapping.Kind == TestTargetKind.RawCan)
         {
-            title = "不绑定 DBC · 原始 CAN";
-            kind = "原始报文";
-            detail = "直接编辑 CAN ID、DLC 与 DATA";
+            title = "按字节发送 CAN";
+            kind = "直编模式";
+            detail = "DBC 辅助可选 · CAN ID 与 DATA 直接可用";
         }
         else if (mapping.Kind == TestTargetKind.Signal)
         {
@@ -154,8 +154,8 @@ public partial class DbcReferencePicker : UserControl
                 ? mapping.Name.Split('.').Last()
                 : choice.DisplayNames?.MessageLabel(message) ?? message.Name;
             kind = message is null ? "引用待核对" : "CAN 报文";
-            detail = formattedId + "  ·  " + frameType + "  ·  " +
-                resourceName + " r" + mapping.AssetRevision;
+            detail = formattedId + " · DLC " + (message?.Dlc.ToString(CultureInfo.InvariantCulture) ?? "?") +
+                " · " + frameType + " · r" + mapping.AssetRevision;
         }
         else
         {
