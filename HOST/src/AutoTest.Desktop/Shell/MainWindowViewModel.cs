@@ -73,8 +73,6 @@ public sealed partial class MainWindowViewModel : BindableBase
     private string? _activeEditorProjectPath;
     private string _hardwareStatus = "USB 未连接";
     private string _scanStatus = "扫码未开始";
-    private ProjectScanMatchResult? _preparedScanMatch;
-    private OpenProjectContext? _preparedScanProject;
     private bool _hardwareBusy;
     private bool _ecuCanBaudApplying;
     public DelegateCommand ApplyEcuCanBitrateCommand { get; }
@@ -189,10 +187,6 @@ public sealed partial class MainWindowViewModel : BindableBase
             ProjectWorkspaceService.WaveSettingsKind));
         OpenScanConfigCommand = new DelegateCommand(ShowProjectConfiguration);
         OpenFlashConfigCommand = new DelegateCommand(OpenNativeFlashProfile);
-        ApplyScannedRecipeCommand = new DelegateCommand(
-            async () => await ApplyScannedRecipeAsync(),
-            () => _preparedScanMatch?.Accepted == true &&
-                  _preparedScanProject is not null && !_realTest.IsRunning && !IsBusy);
         OpenWaveWorkbenchCommand = new DelegateCommand(OpenWaveWorkbench);
         OpenManualBenchCommand = new DelegateCommand(OpenManualBench);
         OpenFlashWorkbenchCommand = new DelegateCommand(async () => await OpenFlashWorkbenchAsync(),
@@ -373,7 +367,6 @@ public sealed partial class MainWindowViewModel : BindableBase
     public DelegateCommand OpenWaveConfigCommand { get; }
     public DelegateCommand OpenScanConfigCommand { get; }
     public DelegateCommand OpenFlashConfigCommand { get; }
-    public DelegateCommand ApplyScannedRecipeCommand { get; }
     public DelegateCommand OpenWaveWorkbenchCommand { get; }
     public DelegateCommand OpenManualBenchCommand { get; }
     public DelegateCommand OpenFlashWorkbenchCommand { get; }
@@ -841,64 +834,6 @@ public sealed partial class MainWindowViewModel : BindableBase
             _hardwareBusy = false;
             ConnectHardwareCommand.RaiseCanExecuteChanged();
             TransmitCanCommand.RaiseCanExecuteChanged();
-        }
-    }
-
-    /// <summary>
-    /// A scan chooses an existing TEST scope only. It does not execute, grant
-    /// USB authority, or convert a Development run into production release.
-    /// The operator still uses the unchanged real TEST preflight/run workflow.
-    /// </summary>
-    private async Task ApplyScannedRecipeAsync()
-    {
-        var match = _preparedScanMatch;
-        var snapshot = _preparedScanProject;
-        var preview = match?.Preview;
-        if (match?.Accepted != true || snapshot is null || preview is null ||
-            _realTest.IsRunning || IsBusy)
-        {
-            StatusMessage = "没有可应用的扫码配方，或当前 TEST 正在运行。";
-            return;
-        }
-        if (!ProjectScanMatcher.SameProjectSnapshot(snapshot, _workspace.Current))
-        {
-            StatusMessage = "扫码后工程资源发生改变，请重新扫码并准备运行范围。";
-            return;
-        }
-        try
-        {
-            if (preview.TestProjectAssetId is Guid projectId)
-            {
-                var session = await _workspace.OpenTestProjectEditorAsync(AssetId.Create(projectId));
-                if (!ProjectScanMatcher.SameProjectSnapshot(snapshot, _workspace.Current))
-                    throw new IOException("TEST 项目打开期间工程变化，请重新扫码。");
-                var selected = preview.CaseEntryIds?.ToHashSet() ?? new HashSet<Guid>();
-                if (selected.Count == 0 || session.Document.Packages
-                        .Count(p => p.Enabled && selected.Contains(p.ItemId)) != selected.Count)
-                    throw new IOException("扫码配方原有已启用用例改变，请重新扫码。");
-                foreach (var row in session.Document.Packages)
-                    _runSelections.Get(projectId, row.ItemId, row.Enabled).IsSelected =
-                        row.Enabled && selected.Contains(row.ItemId);
-                SelectAsset(session.AssetId);
-                await OpenSelectedTestProjectAsync();
-                if (ActiveEditorTab?.Editor is TestProjectWorkbenchViewModel editor)
-                    editor.DutIdentity = match.Identity ?? "";
-                StatusMessage = "已把扫码配方的 " + selected.Count +
-                    " 个用例选择到真实 TEST 项目；请检查后手动预检/执行。" +
-                    " 当前仍是研发运行，不计正式新增出厂。";
-            }
-            else if (preview.TestProgramAssetId is Guid testId)
-            {
-                SelectAsset(AssetId.Create(testId));
-                await OpenSelectedTestProgramAsync();
-                StatusMessage = "已打开扫码对应的 TEST 程序；请自行选择运行范围并预检。" +
-                    " 不自动执行烧录或测试。";
-            }
-        }
-        catch (Exception error) when (error is IOException or ProjectDataException or
-                                       InvalidDataException or InvalidOperationException)
-        {
-            StatusMessage = "无法应用扫码配方：" + error.Message;
         }
     }
 
