@@ -22,6 +22,68 @@ public sealed partial class MainWindowViewModel
     private string _setupOverallStatus = "工程和工位尚未核对。";
     public DelegateCommand RefreshEngineeringSetupCommand { get; private set; } = null!;
     public DelegateCommand ReadEngineeringClampGpioCommand { get; private set; } = null!;
+    public DelegateCommand EngineeringClamp1PressCommand { get; private set; } = null!;
+    public DelegateCommand EngineeringClamp1ReleaseCommand { get; private set; } = null!;
+    public DelegateCommand EngineeringClamp2PressCommand { get; private set; } = null!;
+    public DelegateCommand EngineeringClamp2ReleaseCommand { get; private set; } = null!;
+    public DelegateCommand EngineeringIgnOnCommand { get; private set; } = null!;
+    public DelegateCommand EngineeringIgnOffCommand { get; private set; } = null!;
+    private int _engineeringOperationBusy;
+
+    /// <summary>
+    /// Real, one-shot engineering verification using exactly the same manual
+    /// device calls as the existing bench. This NEVER saves a production
+    /// fixture procedure or grants a TEST run authorization.
+    /// </summary>
+    private async Task RunEngineeringClampAsync(byte clamp, bool press)
+    {
+        if (System.Threading.Interlocked.Exchange(ref _engineeringOperationBusy, 1) != 0)
+            return;
+        try
+        {
+            if (!_hardware.IsConnected)
+                throw new IOException("主控 USB 未连接。");
+            if (!_hardware.HasV02GpioContract)
+                throw new InvalidOperationException(
+                    "当前主控未确认夹具协议，禁止向电磁阀发送动作。");
+            var consent = "AUTHORIZE CLAMP " + clamp + (press ? " PRESS" : " RELEASE");
+            await _hardware.SendManualClampAsync(clamp, press, consent);
+            EngineeringClampReadback = "夹具" + clamp + " 已向主控请求" +
+                (press ? "压紧" : "释放") + "，USB ACK 已返回；正在读取 MCU GPIO。";
+            await ReadEngineeringClampGpioAsync();
+        }
+        catch (Exception error) when (error is IOException or InvalidOperationException or
+            InvalidDataException or TimeoutException or UnauthorizedAccessException)
+        {
+            EngineeringClampReadback = "夹具" + clamp + " 实体操作未确认，实际状态 UNKNOWN：" +
+                error.Message;
+        }
+        finally { System.Threading.Interlocked.Exchange(ref _engineeringOperationBusy, 0); }
+    }
+
+    private async Task RunEngineeringIgnAsync(bool on)
+    {
+        if (System.Threading.Interlocked.Exchange(ref _engineeringOperationBusy, 1) != 0)
+            return;
+        try
+        {
+            if (!_hardware.IsConnected)
+                throw new IOException("主控 USB 未连接。");
+            await _hardware.SendManualIgnAsync(on,
+                "AUTHORIZE IGN " + (on ? "ON" : "OFF"));
+            var level = await _hardware.ReadIgnLevelAsync();
+            EngineeringClampReadback = "IGN " + (on ? "ON" : "OFF") +
+                " 请求已由主控 ACK；MCU GPIO 回读为 " +
+                (level ? "HIGH" : "LOW") +
+                "。不代表 ECU 的 IGN 引脚实测电压。";
+        }
+        catch (Exception error) when (error is IOException or InvalidOperationException or
+            InvalidDataException or TimeoutException or UnauthorizedAccessException)
+        {
+            EngineeringClampReadback = "IGN 请求状态 UNKNOWN：" + error.Message;
+        }
+        finally { System.Threading.Interlocked.Exchange(ref _engineeringOperationBusy, 0); }
+    }
 
     private string _engineeringClampReadback = "尚未在本次工位会话读取夹具 MCU GPIO。";
     public string EngineeringClampReadback
