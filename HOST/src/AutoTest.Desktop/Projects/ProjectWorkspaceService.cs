@@ -102,11 +102,11 @@ public sealed partial class ProjectWorkspaceService
     // a ready-to-edit TEST case with no mock or hardware output.
     public Task<OpenProjectContext> CreateAsync(
         string name, string parentDirectory, CancellationToken cancellationToken = default) =>
-        CreateCoreAsync(name, parentDirectory, withInitialTest: false, cancellationToken);
+        CreateCoreAsync(name, parentDirectory, false, cancellationToken);
 
     public Task<OpenProjectContext> CreateReadyToEditAsync(
         string name, string parentDirectory, CancellationToken cancellationToken = default) =>
-        CreateCoreAsync(name, parentDirectory, withInitialTest: true, cancellationToken);
+        CreateCoreAsync(name, parentDirectory, true, cancellationToken);
 
     private async Task<OpenProjectContext> CreateCoreAsync(
         string name, string parentDirectory, bool withInitialTest,
