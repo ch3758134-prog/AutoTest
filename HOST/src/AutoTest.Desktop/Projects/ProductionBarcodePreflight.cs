@@ -11,28 +11,38 @@ public sealed record ProductionBarcodePreflightResult(string Code, string? Model
 }
 
 /// <summary>
-/// Initial read-only identity preflight. Intentionally does not reuse the obsolete
-/// multi-Recipe selector, silently change projects or authorize a physical output.
-/// An installed-project index and formal production plan are later gates.
+/// Read-only identity preflight. Never selects the legacy multi-recipe,
+/// switches projects, authorizes the clamp or START, or allocates a new unit.
 /// </summary>
 public static class ProductionBarcodePreflight
 {
+    // Compatibility with existing explicit UT1 checks; NOT fallback inference
+    // for an unconfigured scanner in the live production workbench.
     public static ProductionBarcodePreflightResult Inspect(
-        string rawBarcode, ProjectDefinition? currentProject)
+        string rawBarcode, ProjectDefinition? currentProject) =>
+        Inspect(rawBarcode, currentProject, ScanIdentityPolicy.Default);
+
+    public static ProductionBarcodePreflightResult Inspect(
+        string rawBarcode, ProjectDefinition? currentProject, ScanIdentityPolicy policy)
     {
-        if (!Ut1BarcodeCodec.TryParse(rawBarcode, out var label, out var parseCode))
-            return new(parseCode, null, null, null,
-                "条码未通过 UT1 格式/CRC 校验。当前仅开放 UT1 试验编码；不会降级为纯序列号或旧配方。");
+        var parsed = policy.Decode(rawBarcode);
+        if (!parsed.Parsed)
+            return new(parsed.Code, parsed.ModelCode, parsed.Serial,
+                parsed.HardwareCode, parsed.Explanation);
         if (currentProject is null)
-            return new("SCAN_PROJECT_NOT_OPEN", label!.ProductCode, label.Serial,
-                label.HardwareCode, "已收到扫码数据，尚未打开 ECU 工程；未执行任何设备动作。");
+            return new("SCAN_PROJECT_NOT_OPEN", parsed.ModelCode, parsed.Serial,
+                parsed.HardwareCode,
+                "已识别条码，但当前没有打开 ECU 工程；不得据此启动硬件。");
         if (string.IsNullOrWhiteSpace(currentProject.EcuModelCode))
-            return new("SCAN_PROJECT_MODEL_UNBOUND", label!.ProductCode, label.Serial,
-                label.HardwareCode, "当前工程尚未配置 ECU 型号代码，请在扫码设置中明确绑定。");
-        if (!string.Equals(currentProject.EcuModelCode, label!.ProductCode, StringComparison.Ordinal))
-            return new("SCAN_OTHER_MODEL", label.ProductCode, label.Serial, label.HardwareCode,
-                "扫描型号与当前工程不一致。未自动切换工程或选择旧配方。");
-        return new("SCAN_MODEL_MATCHED", label.ProductCode, label.Serial, label.HardwareCode,
-            "型号与当前工程匹配，编号已识别；尚未完成夹具/实体 START/原生烧录生产预检，不允许生产执行。");
+            return new("SCAN_PROJECT_MODEL_UNBOUND", parsed.ModelCode, parsed.Serial,
+                parsed.HardwareCode,
+                "当前工程尚未设置正式型号代码，不能把显示名称作为型号。");
+        if (!string.Equals(currentProject.EcuModelCode, parsed.ModelCode, StringComparison.Ordinal))
+            return new("SCAN_OTHER_MODEL", parsed.ModelCode, parsed.Serial,
+                parsed.HardwareCode,
+                "扫码型号与当前工程不一致。需要检查工位型号登记，不自动选择旧配方。");
+        return new("SCAN_MODEL_MATCHED", parsed.ModelCode, parsed.Serial,
+            parsed.HardwareCode,
+            "型号与当前工程匹配；仅完成身份预检，尚未取得夹具/实体 START/前置烧录执行许可。");
     }
 }
