@@ -18,7 +18,7 @@ public sealed class AutomaticTestHomeViewModel : BindableBase, IDisposable
     private readonly AutomaticTestPlanService _plans;
     private readonly HardwareConnectionService _hardware;
     private bool _busy;
-    private string _status = "正在读取自动测试方案";
+    private string _status = "正在读取自动测试工程";
 
     public AutomaticTestHomeViewModel(AutomaticTestPlanService plans,
         HardwareConnectionService hardware)
@@ -57,7 +57,7 @@ public sealed class AutomaticTestHomeViewModel : BindableBase, IDisposable
     public string FailureReason => "—";
     public string ExecutionNotice => HasPlan
         ? "已加载测试项目；正式自动测试执行尚未接通，不能给出合格结论。"
-        : "请在当前自动测试界面选择测试方案。";
+        : "请在当前页面打开已有的 ECU 测试工程。";
 
     public async Task RestoreAsync()
     {
@@ -78,8 +78,9 @@ public sealed class AutomaticTestHomeViewModel : BindableBase, IDisposable
         if (IsBusy) return;
         var picker = new OpenFileDialog
         {
-            Title = "选择自动测试方案（仅首次配置或需要更换时操作）",
-            Filter = "AutoTest 测试工程 (*.autotest-project.json)|*.autotest-project.json",
+            Title = "打开测试工程（选择工程文件 project.autotest-project.json）",
+            Filter = "AutoTest 工程文件 (project.autotest-project.json)|project.autotest-project.json|AutoTest 工程 (*.autotest-project.json)|*.autotest-project.json",
+            FileName = "project.autotest-project.json",
             CheckFileExists = true,
             Multiselect = false
         };
@@ -102,7 +103,7 @@ public sealed class AutomaticTestHomeViewModel : BindableBase, IDisposable
         }
         _status = HasPlan
             ? _hardware.IsConnected ? "自动执行尚未接通" : "主控未连接"
-            : "尚未配置测试方案";
+            : "尚未打开测试工程";
         Notify();
     }
 
@@ -117,7 +118,7 @@ public sealed class AutomaticTestHomeViewModel : BindableBase, IDisposable
     {
         _status = HasPlan
             ? _hardware.IsConnected ? "自动执行尚未接通" : "主控未连接"
-            : "尚未配置测试方案";
+            : "尚未打开测试工程";
         Notify();
     }
 
