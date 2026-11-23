@@ -118,7 +118,6 @@
     <TextBlock x:Name="NodeText" Grid.Column="2" Text="{Binding Label}"
      FontSize="13" Foreground="#3B4B5A" TextTrimming="CharacterEllipsis"
      VerticalAlignment="Center" Margin="5,0,3,0" Cursor="Hand"
-     PreviewMouseLeftButtonDown="NodeText_PreviewMouseLeftButtonDown"
      ToolTip="单击打开当前对象 · F2 重命名资源 · 右键更多操作"/>
     <TextBlock x:Name="NodeCount" Grid.Column="3" Text="{Binding CountLabel}"
      FontSize="10" FontWeight="SemiBold" Foreground="#627C9D" VerticalAlignment="Center"
@@ -169,6 +168,11 @@
      <Setter TargetName="NodeText" Property="Foreground" Value="#97B6DE"/>
      <Setter TargetName="NodeIcon" Property="Visibility" Value="Collapsed"/>
     </DataTrigger>
+    <DataTrigger Binding="{Binding IsSearchMatch}" Value="True">
+     <Setter TargetName="NodeText" Property="Background" Value="#FFF0BE"/>
+     <Setter TargetName="NodeText" Property="Foreground" Value="#935510"/>
+     <Setter TargetName="NodeText" Property="FontWeight" Value="SemiBold"/>
+    </DataTrigger>
    </HierarchicalDataTemplate.Triggers>
   </HierarchicalDataTemplate>
  </UserControl.Resources>
@@ -178,8 +182,8 @@
    <DockPanel LastChildFill="True">
     <TextBox x:Name="ResourceSearch" DockPanel.Dock="Right" Width="148" Height="31"
      VerticalContentAlignment="Center" Padding="6,3" FontSize="11"
-     KeyDown="ResourceSearch_KeyDown"
-     ToolTip="输入资源名称，按 Enter 打开；也可搜索检测准备"/>
+     TextChanged="ResourceSearch_TextChanged"
+     ToolTip="输入名称，仅高亮工程树匹配对象；清空后恢复，单击再打开编辑"/>
     <TextBlock Text="工程导航" FontSize="14" FontWeight="SemiBold"
      VerticalAlignment="Center" Margin="0,0,8,0"
      ToolTip="检测准备、测试项目和测试用例均可单击进入编辑；F2 重命名资源"/>
