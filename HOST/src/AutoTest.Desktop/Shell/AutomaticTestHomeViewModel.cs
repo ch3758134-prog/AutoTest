@@ -36,6 +36,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         _plans.Changed += OnPlanChanged;
         _hardware.ConnectionChanged += OnConnectionChanged;
         _scanner.PropertyChanged += OnScannerPropertyChanged;
+        _scanner.CompleteBarcodeReceived += OnCompleteBarcodeReceived;
     }
 
     public ObservableCollection<AutomaticTestCase> Cases { get; } = new();
@@ -180,5 +181,6 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         _plans.Changed -= OnPlanChanged;
         _hardware.ConnectionChanged -= OnConnectionChanged;
         _scanner.PropertyChanged -= OnScannerPropertyChanged;
+        _scanner.CompleteBarcodeReceived -= OnCompleteBarcodeReceived;
     }
 }
