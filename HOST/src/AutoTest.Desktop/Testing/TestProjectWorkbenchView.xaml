@@ -14,9 +14,9 @@
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
      <Button Content="＋ 新建用例" Command="{Binding CreateNewPackageCommand}"
       Style="{StaticResource AtPrimaryButton}" Margin="0,0,6,0"
-      ToolTip="创建空白真实 TEST，加入当前项目并打开步骤编辑器"/>
+      ToolTip="新建 TEST 用例定义、自动加入当前工程的正式用例顺序，然后打开步骤编辑器"/>
      <Button Content="添加已有用例" Command="{Binding AddCommand}" Margin="0,0,6,0"
-      ToolTip="从现有工程 TEST 资产中添加到本测试项目"/>
+      ToolTip="将已有 TEST 定义作为一个有序调用实例加入当前正式项目；该实例默认参加全部生产检测"/>
      <Button Content="移除所选用例" Command="{Binding RemoveCommand}"
       Margin="0,0,6,0" Foreground="#B94949"
       ToolTip="从当前测试项目移除选中的用例并立即保存；源 TEST 文件仍保留"/>
@@ -47,7 +47,7 @@
         Style="{StaticResource AtPrimaryButton}"/>
       </StackPanel>
       <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-       <TextBlock Text="本次执行" FontSize="13" FontWeight="SemiBold" Margin="0,0,14,0"
+       <TextBlock Text="本次开发调试" FontSize="13" FontWeight="SemiBold" Margin="0,0,14,0"
         VerticalAlignment="Center"/>
        <TextBlock Text="{Binding SelectedCount}" Foreground="#3478D6" FontSize="19"
         FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,2,0"/>
@@ -94,7 +94,7 @@
          Margin="0,2,0,0"/>
        </DataTemplate></ItemsControl.ItemTemplate>
       </ItemsControl>
-      <TextBlock Text="本次勾选只影响开发调试；正式生产按工程中全部有序用例执行，不存在额外的生产启用配置。"
+      <TextBlock Text="本次勾选只控制这里的开发调试范围，不保存为工程测试方案；正式生产按工程全部有序用例执行。"
        FontSize="10" Foreground="#64758C" Margin="0,6,0,0"/>
      </StackPanel>
     </Border>
