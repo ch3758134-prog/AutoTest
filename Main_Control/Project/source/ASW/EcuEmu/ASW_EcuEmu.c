@@ -31,6 +31,11 @@ static EcuEmuFrame g_table[ECU_EMU_MAX_FRAMES];
 static uint8_t     g_count   = 0;    /* 帧表大小 */
 static uint8_t     g_running = 0;    /* 1=正在广播 */
 
+uint8_t ASW_EcuEmu_IsRunning(void)
+{
+    return g_running;
+}
+
 /* ============================================
  * SET_BROADCAST: 装填帧表
  * payload = {count, frame×N}, frame={ide,id(4LE),period_ms(2LE),dlc,data[8]} = 16B
