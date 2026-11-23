@@ -93,7 +93,7 @@ public static class ScanRecipePreparationService
             var opened = await workspace.OpenTestProjectEditorAsync(AssetId.Create(projectId), ct);
             CheckProject();
             scope = opened.Document.Name;
-            foreach (var entry in opened.Document.Packages.Where(p => p.Enabled))
+            foreach (var entry in opened.Document.AutomaticRunEntries())
             {
                 CheckPin(entry.PackageAssetId, entry.PackageRevision,
                     entry.PackageSha256, ProjectWorkspaceService.TestProgramKind);
