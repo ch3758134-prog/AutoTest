@@ -88,6 +88,16 @@ public sealed class ProductionOrchestrationTests
         Assert.Contains("FLASH_AUTH_REQUIRED", result.Blockers);
     }
 
+    [Fact]
+    public void PhysicalInspectionCannotUseAnOldNoFlashRecipe()
+    {
+        var config = Config(flash: false);
+        var status = new ProductionPreflight().ValidateStation(config,
+            Station(false, AuthorizationScope.Programming));
+        Assert.False(status.Ready);
+        Assert.Contains("PRODUCTION_FLASH_REQUIRED", status.Blockers);
+    }
+
     [Fact] // E1-T06
     public void E1_T06_ScanDuringExecutionCannotReplaceUnit()
     {
