@@ -18,7 +18,7 @@ public sealed partial class MainWindowViewModel
     private void InitializeProductionWorkspace()
     {
         _productionInspection = new ProductionInspectionViewModel(
-            _workspace, _scannerWorkbench, _realTest, CanRecords, OpenSerialScannerWindow);
+            _workspace, _scannerWorkbench, _realTest, _hardware, CanRecords, OpenSerialScannerWindow);
         ProductionView = new ProductionInspectionView
         {
             DataContext = _productionInspection
