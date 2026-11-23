@@ -17,17 +17,18 @@ public sealed class AutomaticTestHomeViewModel : BindableBase, IDisposable
 {
     private readonly AutomaticTestPlanService _plans;
     private readonly HardwareConnectionService _hardware;
+    private readonly Action _openEngineer;
     private bool _busy;
     private string _status = "正在读取自动测试工程";
     private string _startRequestStatus = "请完成工程与工位准备。软件 START 和实体 START 共享同一检测启动入口。";
 
     public AutomaticTestHomeViewModel(AutomaticTestPlanService plans,
-        HardwareConnectionService hardware)
+        HardwareConnectionService hardware, Action openEngineer)
     {
         _plans = plans;
         _hardware = hardware;
-        ChoosePlanCommand = new DelegateCommand(async () => await ChoosePlanAsync(),
-            () => !IsBusy);
+        _openEngineer = openEngineer;
+        ChoosePlanCommand = new DelegateCommand(() => _openEngineer());
         RequestSoftwareStartCommand = new DelegateCommand(RequestSoftwareStart);
         _plans.Changed += OnPlanChanged;
         _hardware.ConnectionChanged += OnConnectionChanged;
@@ -73,6 +74,10 @@ public sealed class AutomaticTestHomeViewModel : BindableBase, IDisposable
         ? code : "未标定型号";
     public string DutSerial => "等待扫码";
     public string Status => _status;
+    public string DeploymentStatus => _plans.Current is null
+        ? "无有效工位部署"
+        : "已核对工程部署 " + _plans.Current.DeploymentFingerprint[..12] +
+          "…；实体工位和整机执行仍需验证";
     public int CaseCount => Cases.Count;
     public string DeviceStatus => _hardware.IsConnected ? "主控已连接" : "主控未连接";
     public string CurrentCase => "—";
@@ -81,7 +86,7 @@ public sealed class AutomaticTestHomeViewModel : BindableBase, IDisposable
     public string ExpectedValue => "—";
     public string FailureReason => "—";
     public string ExecutionNotice => !HasPlan
-        ? "请在本页选择已有 ECU 工程。"
+        ? "当前工位没有可验证的部署工程。进入开发与调试，核对正式项目和工艺后部署。"
         : _plans.Current!.ResourceIssues.Count != 0
             ? "资源需要修复（不会执行硬件）："+ string.Join("；",
                 _plans.Current.ResourceIssues.Take(5))
@@ -101,24 +106,12 @@ public sealed class AutomaticTestHomeViewModel : BindableBase, IDisposable
         await RestoreAsync(); // Reverify the operator plan, NOT the IDE's project.
     }
 
-    public async Task ChoosePlanAsync()
+    public Task ChoosePlanAsync()
     {
-        if (IsBusy) return;
-        var picker = new OpenFileDialog
-        {
-            Title = "打开测试工程（选择工程文件 project.autotest-project.json）",
-            Filter = "AutoTest 工程文件 (project.autotest-project.json)|project.autotest-project.json|AutoTest 工程 (*.autotest-project.json)|*.autotest-project.json",
-            FileName = "project.autotest-project.json",
-            CheckFileExists = true,
-            Multiselect = false
-        };
-        if (_plans.ConfiguredPath is { Length: > 0 } previous &&
-            Directory.Exists(Path.GetDirectoryName(previous)))
-            picker.InitialDirectory = Path.GetDirectoryName(previous);
-        if (picker.ShowDialog(global::System.Windows.Application.Current?.MainWindow) != true) return;
-        IsBusy = true;
-        try { await _plans.SelectAsync(picker.FileName); }
-        finally { IsBusy = false; }
+        // The operator cannot create a second TEST plan or select a mutable
+        // developer file. Deployment is explicitly controlled in the IDE.
+        _openEngineer();
+        return Task.CompletedTask;
     }
 
     private void OnPlanChanged(object? sender, EventArgs e)
@@ -161,6 +154,7 @@ public sealed class AutomaticTestHomeViewModel : BindableBase, IDisposable
         RaisePropertyChanged(nameof(ModelCode));
         RaisePropertyChanged(nameof(DutSerial));
         RaisePropertyChanged(nameof(Status));
+        RaisePropertyChanged(nameof(DeploymentStatus));
         RaisePropertyChanged(nameof(DeviceStatus));
         RaisePropertyChanged(nameof(CaseCount));
         RaisePropertyChanged(nameof(CurrentCase));
