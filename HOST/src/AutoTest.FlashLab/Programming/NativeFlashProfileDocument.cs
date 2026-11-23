@@ -43,7 +43,7 @@ public sealed record NativeFlashProfileDocument(
             0, 0, 0, 0, 500, 0, 0, 512, null, null, null, null, null);
 
     /// <summary>
-    /// Historical HydEPB source: user's Configuration(2).xml (2026-11-18).
+    /// Historical HydEPB source: user's Configuration(3).xml (same values as the 2026-11-18 source).
     /// 512-byte block alignment comes separately from the successful reference
     /// CAN flash trace. This is an engineering DRAFT, never a published Job.
     /// The HEX image and reviewed SafetyFile are intentionally not fabricated.
