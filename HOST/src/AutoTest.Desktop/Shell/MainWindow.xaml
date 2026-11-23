@@ -160,13 +160,14 @@
      </MenuItem>
      <MenuItem Header="工具">
       <MenuItem Header="手动台架" Command="{Binding OpenManualBenchCommand}"/>
-      <MenuItem Header="扫码枪 · USB 串口" Command="{Binding OpenSerialScannerCommand}"/>
+      <MenuItem Header="扫码枪配置（COM／型号）" Command="{Binding OpenSerialScannerCommand}"/>
       <MenuItem Header="DBC 工作台" Command="{Binding OpenDbcToolCommand}"/>
 
       <MenuItem Header="波形分析" Command="{Binding OpenWaveWorkbenchCommand}"/>
       <MenuItem Header="波形配置" Command="{Binding OpenWaveConfigCommand}"/>
       <Separator/>
       <MenuItem Header="UDS 工作台（尚未接入）" IsEnabled="False"/>
+      <MenuItem Header="原生烧录配置（当前 ECU 工程）" Command="{Binding OpenNativeFlashProfileCommand}"/>
       <MenuItem Header="ECU 烧录工具" Command="{Binding OpenFlashWorkbenchCommand}" ToolTip="实测过的 CanTool 流程，独立专业窗口；切换 USB 所有权前先断开主工位连接"/>
      </MenuItem>
      <MenuItem Header="帮助" Command="{Binding HelpCommand}"/>
@@ -182,6 +183,10 @@
       ToolTip="独立真实工位；离线可以编辑，向实体硬件发送命令需要连接 USB" Margin="0,0,5,0"/>
 
      <Button Content="DBC" Command="{Binding OpenDbcToolCommand}" Margin="0,0,5,0"/>
+     <Button Content="扫码配置" Command="{Binding OpenSerialScannerCommand}" Margin="0,0,5,0"
+      ToolTip="设置独立 USB COM 扫码枪、ECU 型号登记和扫码身份预检（不触发生产执行）"/>
+     <Button Content="烧录配置" Command="{Binding OpenNativeFlashProfileCommand}" Margin="0,0,5,0"
+      ToolTip="编辑当前工程原生烧录配置、选择固件和安全算法并发布（不会直接擦写 ECU）"/>
      <Button Content="烧录" Command="{Binding OpenFlashWorkbenchCommand}" Margin="0,0,5,0"
       ToolTip="独立 FlashLab 专业工具，进入前释放主工位 USB 会话"/>
      <Button Content="波形" Command="{Binding OpenWaveWorkbenchCommand}"
