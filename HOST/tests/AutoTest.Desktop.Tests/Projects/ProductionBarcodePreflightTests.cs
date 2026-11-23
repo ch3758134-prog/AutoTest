@@ -20,6 +20,29 @@ public sealed class ProductionBarcodePreflightTests
     }
 
     [Fact]
+    public void SerialOnlyScannerUsesCurrentEcuProjectWithoutSecondModelRegistration()
+    {
+        var project = ProjectDefinition.Create("任何工程名称") with
+        {
+            EcuModelCode = "HYDEPB"
+        };
+        var policy = new AutoTest.Specialists.Scan.ScanIdentityPolicy(1,
+            AutoTest.Specialists.Scan.ScanIdentityPolicy.SerialOnly,
+            "-", null, 8, 20);
+        var valid = ProductionBarcodePreflight.Inspect("000000123456",
+            project, policy);
+        Assert.True(valid.IdentityMatched);
+        Assert.Equal("000000123456", valid.DutSerial);
+        Assert.Equal("HYDEPB", valid.ModelCode);
+
+        // Without an explicit ECU project it must never guess a model.
+        var withoutProject = ProductionBarcodePreflight.Inspect(
+            "000000123456", null, policy);
+        Assert.False(withoutProject.IdentityMatched);
+        Assert.Equal("SCAN_PROJECT_MODEL_REQUIRED", withoutProject.Code);
+    }
+
+    [Fact]
     public void LegacyUnboundProjectMustNotGuessModelFromDisplayName()
     {
         var project = ProjectDefinition.Create("EPBA");
