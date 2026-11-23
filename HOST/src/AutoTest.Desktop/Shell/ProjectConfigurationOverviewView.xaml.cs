@@ -17,6 +17,7 @@ public partial class ProjectConfigurationOverviewView : UserControl
     private readonly ProjectWorkspaceService _workspace;
     private readonly ProjectFileDialogService _dialogs;
     private readonly List<ConfigurationWorkbenchViewModel> _opened = new();
+    private InspectionStationProcedureEditorViewModel? _inspectionEditor;
 
     public ContentControl InspectorHost { get; } = new()
     {
@@ -57,6 +58,67 @@ public partial class ProjectConfigurationOverviewView : UserControl
             _ => 0
         };
         _ = _shell.RefreshEngineeringSetupAsync();
+    }
+
+    public void ShowInspectionSession(ProjectConfigurationSession session)
+    {
+        if (session.Kind != ProjectWorkspaceService.InspectionKind)
+            throw new ArgumentException("当前资源不是工程工位动作配置。");
+        if (_inspectionEditor is not null && _inspectionEditor.IsDirty)
+        {
+            _shell.StatusMessageForSetup("先完成当前工位动作草稿保存，不能直接切换配置。");
+            return;
+        }
+        if (InspectionProcedureHost.Content is InspectionStationProcedureEditorView
+            && _inspectionEditor is not null &&
+            _workspace.Current?.ManifestPath == session.ManifestPath)
+        {
+            ConfigTabs.SelectedIndex = 5;
+            return;
+        }
+        _inspectionEditor?.Dispose();
+        _inspectionEditor = new InspectionStationProcedureEditorViewModel(_workspace, session);
+        InspectionProcedureHost.Content = new InspectionStationProcedureEditorView(_inspectionEditor);
+        ConfigTabs.SelectedIndex = 5;
+    }
+
+    private async Task LoadInspectionAsync()
+    {
+        var project = _workspace.Current;
+        if (project is null) return;
+        var candidates = project.Definition.Assets
+            .Where(x => x.Kind == ProjectWorkspaceService.InspectionKind).ToArray();
+        if (candidates.Length == 0) return;
+        if (candidates.Length != 1)
+        {
+            InspectionProcedureHost.Content = new TextBlock
+            {
+                Text = "同一工程存在多个工位动作配置，必须先处理冲突。",
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(12)
+            };
+            return;
+        }
+        try
+        {
+            var session = await _workspace.OpenConfigurationAsync(candidates[0].Id);
+            if (!string.Equals(project.ManifestPath, _workspace.Current?.ManifestPath,
+                    StringComparison.OrdinalIgnoreCase)) return;
+            var currentTab = ConfigTabs.SelectedIndex;
+            ShowInspectionSession(session);
+            ConfigTabs.SelectedIndex = currentTab;
+        }
+        catch (Exception error) when (error is IOException or InvalidDataException or
+            ArgumentException or ProjectDataException or UnauthorizedAccessException)
+        {
+            UiExceptionReporter.Record("Station procedure setup", error);
+            InspectionProcedureHost.Content = new TextBlock
+            {
+                Text = "工位动作配置不可读取：" + error.Message,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(12)
+            };
+        }
     }
 
     private static bool IsInlineKind(string kind) =>
@@ -107,6 +169,7 @@ public partial class ProjectConfigurationOverviewView : UserControl
         await _shell.RefreshEngineeringSetupAsync();
         await LoadKindAsync(ProjectWorkspaceService.TestConfigurationKind);
         await LoadKindAsync(ProjectWorkspaceService.BenchConfigurationKind);
+        await LoadInspectionAsync();
     }
 
     private async Task LoadKindAsync(string kind)
@@ -150,16 +213,19 @@ public partial class ProjectConfigurationOverviewView : UserControl
         }
     }
 
-    public bool HasUnsavedDrafts => _opened.Any(x => x.IsDirty);
-    public bool IsBusy => _opened.Any(x => x.IsBusy);
+    public bool HasUnsavedDrafts => _opened.Any(x => x.IsDirty) || _inspectionEditor?.IsDirty == true;
+    public bool IsBusy => _opened.Any(x => x.IsBusy) || _inspectionEditor?.IsBusy == true;
 
     public async Task<bool> SaveForCloseAsync()
     {
         if (IsBusy) return false;
         foreach (var editor in _opened)
             if (!await editor.SaveForCloseAsync()) return false;
+        if (_inspectionEditor is not null && !await _inspectionEditor.SaveForCloseAsync())
+            return false;
         return !HasUnsavedDrafts;
     }
 
-    public bool ConfirmClose() => _opened.All(x => x.ConfirmClose());
+    public bool ConfirmClose() => _opened.All(x => x.ConfirmClose()) &&
+        (_inspectionEditor?.ConfirmClose() ?? true);
 }
