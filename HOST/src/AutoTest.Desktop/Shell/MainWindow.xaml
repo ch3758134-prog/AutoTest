@@ -142,7 +142,7 @@
      </MenuItem>
      <MenuItem Header="视图">
       <MenuItem Header="自动测试与调试" Command="{Binding ShowEngineerWorkspaceCommand}"/>
-      <MenuItem Header="生产检测工作区" Command="{Binding ShowProductionWorkspaceCommand}"/>
+      <MenuItem Header="自动测试首页" Command="{Binding ShowProductionWorkspaceCommand}"/>
       <Separator/>
       <MenuItem Header="显示／隐藏观察区" Click="ToggleBottom_Click"/>
       <MenuItem Header="显示／隐藏属性区" Click="ToggleInspector_Click"/>
@@ -163,7 +163,6 @@
       <Separator/>
       <MenuItem Header="UDS 工作台（尚未接入）" IsEnabled="False"/>
       <MenuItem Header="ECU 烧录工具" Command="{Binding OpenFlashWorkbenchCommand}" ToolTip="实测过的 CanTool 流程，独立专业窗口；切换 USB 所有权前先断开主工位连接"/>
-      <MenuItem Header="生产检测 · 执行监视" Command="{Binding ShowProductionWorkspaceCommand}"/>
      </MenuItem>
      <MenuItem Header="帮助" Command="{Binding HelpCommand}"/>
     </Menu>
