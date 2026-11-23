@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Globalization;
 using System.IO;
+using System.Threading;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
@@ -21,6 +22,7 @@ public partial class NativeFlashProfileWindow : Window
     private readonly string _root;
     private readonly string _expectedModel;
     private readonly DispatcherTimer _idleSave = new() { Interval = TimeSpan.FromSeconds(2) };
+    private readonly SemaphoreSlim _saveGate = new(1, 1);
     private NativeFlashProfileStore.Snapshot? _saved;
     private NativeFlashProfileDocument _draft;
     private bool _initializing = true;
@@ -49,7 +51,8 @@ public partial class NativeFlashProfileWindow : Window
         _initializing = true;
         try
         {
-            _saved = await NativeFlashProfileStore.LoadAsync(_root);
+            _saved = await NativeFlashProfileStore.EnsureHydEpbReferenceAsync(
+                _root, _expectedModel);
             if (_saved is not null)
                 _draft = _saved.Profile;
             if (!string.IsNullOrWhiteSpace(_expectedModel) &&
@@ -63,13 +66,16 @@ public partial class NativeFlashProfileWindow : Window
             BaudBox.SelectedIndex = _draft.EcuCanKbps == 250 ? 0 : 1;
             StartBox.Text = Format(_draft.FlashStart);
             EndBox.Text = Format(_draft.FlashEndInclusive);
-            BlockBox.Text = _draft.BlockLength.ToString(CultureInfo.InvariantCulture);
-            BinBaseBox.Text = _draft.BinBaseAddress ?? "";
+            VersionIdBox.Text = FormatOptional(_draft.ReferenceVersionCanId);
+            DiagnosticsIdBox.Text = FormatOptional(_draft.ReferenceDiagnosticsCanId);
+            BootFeatureBox.Text = _draft.ReferenceBootFeature ?? "";
+            AppFeatureBox.Text = _draft.ReferenceAppFeature ?? "";
             FirmwareLabel.Text = _draft.FirmwareRelativePath ?? "尚未导入固件";
             SecurityLabel.Text = _draft.SecurityRelativePath ?? "尚未导入安全算法";
             StatusLabel.Text = _saved is null
-                ? "新工程原生烧录草稿：填入参数后自动保存"
-                : "已读取工程内配置 · 修订 " + _saved.Profile.Revision;
+                ? "新工程配置尚未保存；选择 HEX 与安全文件"
+                : "工程内已保存烧录参数 · 修订 " + _saved.Profile.Revision +
+                  "；还须配置 HEX 和安全文件并校验发布。";
         }
         catch (Exception error) when (error is IOException or FormatException or InvalidDataException
                                      or UnauthorizedAccessException or NotSupportedException or JsonException)
@@ -86,6 +92,10 @@ public partial class NativeFlashProfileWindow : Window
 
     private static string Format(uint value) => value == 0
         ? "" : "0x" + value.ToString("X", CultureInfo.InvariantCulture);
+    private static string FormatOptional(uint? value) => value is null
+        ? "" : Format(value.Value);
+    private static uint? ParseOptionalHex(TextBox input) =>
+        string.IsNullOrWhiteSpace(input.Text) ? null : ParseHex(input);
 
     private static uint ParseHex(TextBox input) =>
         string.IsNullOrWhiteSpace(input.Text) ? 0u :
@@ -93,9 +103,6 @@ public partial class NativeFlashProfileWindow : Window
 
     private NativeFlashProfileDocument ReadFields()
     {
-        if (!int.TryParse(BlockBox.Text, NumberStyles.Integer,
-                CultureInfo.InvariantCulture, out var block))
-            throw new FormatException("块长请输入 64～4096 的整数字节数。");
         var chosenBaud = (BaudBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "";
         if (!int.TryParse(chosenBaud, NumberStyles.None, CultureInfo.InvariantCulture,
                 out var baud))
@@ -110,40 +117,13 @@ public partial class NativeFlashProfileWindow : Window
             EcuCanKbps = baud,
             FlashStart = ParseHex(StartBox),
             FlashEndInclusive = ParseHex(EndBox),
-            BlockLength = block,
-            BinBaseAddress = string.IsNullOrWhiteSpace(BinBaseBox.Text)
-                ? null : BinBaseBox.Text.Trim()
+            ReferenceVersionCanId = ParseOptionalHex(VersionIdBox),
+            ReferenceDiagnosticsCanId = ParseOptionalHex(DiagnosticsIdBox),
+            ReferenceBootFeature = string.IsNullOrWhiteSpace(BootFeatureBox.Text)
+                ? null : BootFeatureBox.Text.Trim(),
+            ReferenceAppFeature = string.IsNullOrWhiteSpace(AppFeatureBox.Text)
+                ? null : AppFeatureBox.Text.Trim()
         };
-    }
-
-    private void LoadHydEpbPreset_Click(object sender, RoutedEventArgs e)
-    {
-        if (_loadFailure || _saving || _closing) return;
-        // This is a read-only reference preset, not a live device
-        // identification or an authorization to write flash.
-        if (!string.Equals(_expectedModel, "HYDEPB", StringComparison.Ordinal) ||
-            !string.Equals(ModelBox.Text.Trim(), "HYDEPB", StringComparison.Ordinal))
-        {
-            StatusLabel.Text = "只允许在正式型号 HYDEPB 的工程中填入该已核对参数；其它型号不得复用。";
-            return;
-        }
-        if (MessageBox.Show(this,
-            "将用已核对的 HydEPB CanTool 参数覆盖当前表单中的 CAN ID、Flash 地址和块长。" +
-            "\n不会更改固件或安全算法资源，不会发布，也不会发送任何 CAN。" +
-            "\n\n确认填入？", "填入 HydEPB 参考参数",
-            MessageBoxButton.YesNo, MessageBoxImage.Question,
-            MessageBoxResult.No) != MessageBoxResult.Yes)
-            return;
-        AppTxBox.Text = "0x747";
-        AppRxBox.Text = "0x74F";
-        BootTxBox.Text = "0x18DA50F1";
-        BootRxBox.Text = "0x18DAF150";
-        BaudBox.SelectedIndex = 1; // 500 kbit/s
-        StartBox.Text = "0x10008000";
-        EndBox.Text = "0x1006FFFF";
-        BlockBox.Text = "512";
-        QueueAutoSave();
-        StatusLabel.Text = "已填入已核对的 HydEPB 参考参数；还需检查 HEX/S19、安全算法，校验 Job 后显式发布。";
     }
 
     private void EditorChanged(object sender, TextChangedEventArgs e) => QueueAutoSave();
@@ -158,7 +138,10 @@ public partial class NativeFlashProfileWindow : Window
 
     private async Task<bool> SaveAsync()
     {
-        if (_saving || _loadFailure) return false;
+        if (_loadFailure) return false;
+        // Wait for any in-flight auto-save. Do not mistake a concurrent save
+        // for a failure when the user closes the window.
+        await _saveGate.WaitAsync();
         _saving = true;
         _idleSave.Stop();
         try
@@ -187,7 +170,11 @@ public partial class NativeFlashProfileWindow : Window
             StatusLabel.Text = "配置未保存：" + error.Message;
             return false;
         }
-        finally { _saving = false; }
+        finally
+        {
+            _saving = false;
+            _saveGate.Release();
+        }
     }
 
     private async void Save_Click(object sender, RoutedEventArgs e) =>
@@ -198,8 +185,8 @@ public partial class NativeFlashProfileWindow : Window
         if (_loadFailure) return;
         var dialog = new OpenFileDialog
         {
-            Title = "选择 HEX / S19 / BIN 固件",
-            Filter = "ECU 固件|*.hex;*.h86;*.s19;*.s28;*.s37;*.sx;*.mot;*.bin"
+            Title = "选择当前 ECU 的 HEX 固件",
+            Filter = "Intel HEX 固件|*.hex;*.h86"
         };
         if (dialog.ShowDialog(this) != true) return;
         try
@@ -307,16 +294,24 @@ public partial class NativeFlashProfileWindow : Window
                 // an engineer in a window that can never close. This warning
                 // is displayed ONLY for exceptional invalid/failed saves.
                 var choice = MessageBox.Show(this,
-                    "当前原生烧录草稿没有成功保存。\\n" +
-                    StatusLabel.Text + "\\n\\n" +
-                    "选择“是”将放弃本次未保存的编辑并关闭窗口；磁盘上原文件和备份不受影响。\\n" +
+                    "当前原生烧录草稿没有成功保存。\n" +
+                    StatusLabel.Text + "\n\n" +
+                    "选择“是”将放弃本次未保存的编辑并关闭窗口；磁盘上原文件和备份不受影响。\n" +
                     "选择“否”返回编辑继续修正。",
                     "存在未保存的无效配置", MessageBoxButton.YesNo,
                     MessageBoxImage.Warning, MessageBoxResult.No);
                 if (choice != MessageBoxResult.Yes) return;
             }
-            _closeApproved = true;
-            Close();
+            // WPF forbids calling Close() while the first Closing event is
+            // still active. Its initial event is canceled; schedule a distinct
+            // dispatcher turn instead of re-entering Window.Close during async
+            // closing continuation (which previously raised UI errors).
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (!IsLoaded) return;
+                _closeApproved = true;
+                Close();
+            }), DispatcherPriority.Background);
         }
         finally { _closing = false; }
     }
