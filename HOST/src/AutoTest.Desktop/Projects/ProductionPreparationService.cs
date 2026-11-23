@@ -16,6 +16,18 @@ public sealed record FrozenStationProcedure(
     ImmutableArray<InspectionStationAction> BeforeStart,
     ImmutableArray<InspectionStationAction> AfterFinish);
 
+/// <summary>
+/// Accepted REAL scanner observation fixed to its exact interpretation-rule
+/// JSON and checksum. This is a pre-run observation, NOT a claimed formal
+/// RunRecord or DUT PASS. The future production RECORD adapter must link it
+/// to its verified RunId before claiming end-to-end traceability.
+/// </summary>
+public sealed record FrozenScanIdentity(
+    Guid ObservationId, DateTimeOffset CapturedAtUtc,
+    string ScannerPort, string RawBarcode, string RuleJson,
+    string RuleSha256, string ModelCode, string DutSerial,
+    string? HardwareCode, IReadOnlyDictionary<string, string> MappedFields);
+
 public sealed record FrozenProductionPreparation(
     string ModelCode, string DutSerial, Guid ProjectId, string ManifestPath,
     string ManifestSha256, Guid TestProjectAssetId, string TestProjectSha256,
@@ -27,6 +39,7 @@ public sealed record FrozenProductionPreparation(
     public Guid FixtureAssetId { get; init; }
     public string FixtureContentSha256 { get; init; } = "";
     public FrozenStationProcedure? Fixture { get; init; }
+    public FrozenScanIdentity? AcceptedScannerObservation { get; init; }
 };
 
 public sealed record ProductionPreparationDecision(
