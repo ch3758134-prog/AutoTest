@@ -43,7 +43,7 @@ public static class ProductionPreparationService
             return new("PRODUCTION_CONFIG_PREPARED",
                 await FreezeAsync(project, scannedModelCode, dutSerial, ct)
                     .ConfigureAwait(false),
-                "型号、工程资源、唯一当前原生烧录配置、固件和完整 Enabled TEST 树已离线核对。" +
+                "型号、工程资源、当前原生烧录配置、固件和正式自动测试用例顺序已离线核对。" +
                 "实体夹具状态、START、新设备会话及运行授权仍未取得，不允许执行。");
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
@@ -93,9 +93,10 @@ public static class ProductionPreparationService
                 testAsset.Sha256, StringComparison.OrdinalIgnoreCase))
             throw new IOException("TEST 项目文件在冻结期间发生变化，拒绝生产预检。");
         var testProject = TestProjectCodec.Decode(projectFileBytes);
-        var enabled = testProject.Packages.Where(x => x.Enabled).ToArray();
-        if (enabled.Length == 0)
-            throw new InvalidDataException("当前 TEST 项目没有已启用用例。");
+        var enabled = testProject.AutomaticRunEntries();
+        if (enabled.Count == 0)
+            throw new InvalidDataException("当前测试项目没有参与自动测试的用例；"
+                + "历史排除设置不能在真实硬件执行前被静默覆盖。");
         var frozenCases = new List<FrozenProductionCase>();
         foreach (var entry in enabled)
         {
