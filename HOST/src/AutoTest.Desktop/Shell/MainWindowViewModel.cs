@@ -866,6 +866,12 @@ public sealed partial class MainWindowViewModel : BindableBase
     public async Task<bool> PrepareToolWindowsForCloseAsync()
     {
         if (!await PrepareDbcWindowsForCloseAsync()) return false;
+        // Save and close the owned native FLASH editor explicitly before WPF
+        // closes the parent or switches the active ECU project. A child's async
+        // Closing event must not outlive the project and its source files.
+        if (_nativeFlashProfileWindow is { IsVisible: true } flashEditor &&
+            !await flashEditor.PrepareForParentShutdownAsync())
+            return false;
         if (_manualBenchWindow is { IsVisible: true } bench &&
             !await bench.PrepareForParentShutdownAsync())
             return false;
