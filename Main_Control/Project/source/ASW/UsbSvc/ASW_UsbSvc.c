@@ -78,6 +78,12 @@ static void HandleCommand(uint16_t seq, uint8_t cmd,
             ASW_BusProxy_HandleCanSendCmd(seq, payload, len);
             return;
 
+        /* 仅 ECU CAN 运行时码率设置/查询；KEY CAN 不变。 */
+        case CDD_USB_CMD_SET_ECU_CAN_BAUD:
+        case CDD_USB_CMD_GET_ECU_CAN_BAUD:
+            ASW_BusProxy_HandleEcuBaudCmd(seq, cmd, payload, len);
+            return;
+
         /* ECU 模拟(0x50~0x53) */
         case CDD_USB_CMD_SET_BROADCAST:
         case CDD_USB_CMD_BROADCAST_START:
