@@ -19,6 +19,7 @@ public sealed class AutomaticTestHomeViewModel : BindableBase, IDisposable
     private readonly HardwareConnectionService _hardware;
     private bool _busy;
     private string _status = "正在读取自动测试工程";
+    private string _startRequestStatus = "请完成工程与工位准备。软件 START 和实体 START 共享同一检测启动入口。";
 
     public AutomaticTestHomeViewModel(AutomaticTestPlanService plans,
         HardwareConnectionService hardware)
@@ -27,12 +28,54 @@ public sealed class AutomaticTestHomeViewModel : BindableBase, IDisposable
         _hardware = hardware;
         ChoosePlanCommand = new DelegateCommand(async () => await ChoosePlanAsync(),
             () => !IsBusy);
+        RequestSoftwareStartCommand = new DelegateCommand(RequestSoftwareStart);
         _plans.Changed += OnPlanChanged;
         _hardware.ConnectionChanged += OnConnectionChanged;
     }
 
     public ObservableCollection<AutomaticTestCase> Cases { get; } = new();
     public DelegateCommand ChoosePlanCommand { get; }
+    public DelegateCommand RequestSoftwareStartCommand { get; }
+
+    /// <summary>
+    /// This operator home does not yet own a verified production execution
+    /// adapter. START is visible, but must refuse until that adapter is wired;
+    /// it cannot present fake progress or bypass the production gate.
+    /// </summary>
+    public string StartRequestStatus
+    {
+        get => _startRequestStatus;
+        private set => SetProperty(ref _startRequestStatus, value);
+    }
+    public string PhysicalStartStatus => "实体 START：未接线／未验证（已保留统一启动入口）";
+    public string StartInputHint => "软件按钮或实体按键均可发起同一次检测；运行中与未复位时不会再次启动。";
+
+    private void RequestSoftwareStart()
+    {
+        if (IsBusy)
+        {
+            StartRequestStatus = "当前正在加载或核对工程，请完成后再启动。";
+            return;
+        }
+        if (!HasPlan)
+        {
+            StartRequestStatus = "无法启动：请先打开并确认正式 ECU 工程。";
+            return;
+        }
+        if (!_plans.Current!.ResourceReady)
+        {
+            StartRequestStatus = "无法启动：工程 TEST 或资源检查未通过：" +
+                string.Join("；", _plans.Current.ResourceIssues.Take(3));
+            return;
+        }
+        if (!_hardware.IsConnected)
+        {
+            StartRequestStatus = "无法启动：主控 USB 未连接，且本次 ECU 扫码、夹具与前置烧录尚未确认。";
+            return;
+        }
+        StartRequestStatus = "软件 START 请求被拒绝：正式检测的扫码身份、夹具、前置烧录及生产记录执行链尚未接通。" +
+            "当前仅有只读工程展示，不会借用开发执行器跳过生产工艺。";
+    }
     public bool IsBusy
     {
         get => _busy;
@@ -98,6 +141,7 @@ public sealed class AutomaticTestHomeViewModel : BindableBase, IDisposable
 
     private void OnPlanChanged(object? sender, EventArgs e)
     {
+        StartRequestStatus = "工程状态已更新；需完成本次扫码、工位预检并生成新的检测任务后方可启动。";
         Cases.Clear();
         if (_plans.Current is { } plan)
         {
