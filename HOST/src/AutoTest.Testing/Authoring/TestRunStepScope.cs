@@ -39,7 +39,7 @@ public static class TestRunStepScope
                 var name = node.Properties.GetValueOrDefault("target", "");
                 if (!string.IsNullOrWhiteSpace(name)) names.Add(name);
             }
-            if (node.Type == "WaveAnalyze")
+            if (node.Type is "WaveAnalyze" or "WaveCompare")
             {
                 var profile = node.Properties.GetValueOrDefault("profile", "");
                 if (!string.IsNullOrWhiteSpace(profile)) names.Add(profile);
