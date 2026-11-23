@@ -1973,22 +1973,40 @@ public sealed partial class MainWindowViewModel : BindableBase
         window.Closing += async (_, args) =>
         {
             if (closeApproved) return;
+            // If all draft edits have been saved (including the parent exit
+            // path), close synchronously. Cancel-and-reclose from inside a WPF
+            // Closing notification can violate Window's lifecycle contract.
+            if (!saving && !editor.IsBusy && !editor.IsDirty)
+            {
+                closeApproved = true;
+                timer.Stop();
+                return;
+            }
             args.Cancel = true;
             if (closing) return;
             closing = true;
+            timer.Stop();
             try
             {
                 if (saving || !await editor.SaveForCloseAsync())
                 {
                     StatusMessage = "DBC 仍在保存或参数尚未通过校验，窗口保持打开：" + name;
+                    timer.Start();
                     return;
                 }
                 closeApproved = true;
-                window.Close();
+                // Never synchronously call Close while WPF is still unwinding
+                // its original Closing event, or while Owner is shutting down.
+                window.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (window.IsLoaded && !window.Dispatcher.HasShutdownStarted)
+                        window.Close();
+                }), System.Windows.Threading.DispatcherPriority.Background);
             }
             catch (Exception error) when (error is not OutOfMemoryException)
             {
-                StatusMessage = "DBC 关闭时自动保存失败：" + error.Message;
+                StatusMessage = "DBC 关闭时保存失败：" + error.Message;
+                timer.Start();
                 _fileDialogs.ShowError(StatusMessage);
             }
             finally { closing = false; }
@@ -1999,6 +2017,8 @@ public sealed partial class MainWindowViewModel : BindableBase
             timer.Stop();
             _dbcToolWindows.Remove(id.Value);
         };
+        if (_closeGuardActive || global::System.Windows.Application.Current?.Dispatcher.HasShutdownStarted == true)
+            throw new InvalidOperationException("主程序正在关闭，DBC 编辑器不会重新显示。");
         _dbcToolWindows[id.Value] = (window, editor);
         window.Show();
     }
