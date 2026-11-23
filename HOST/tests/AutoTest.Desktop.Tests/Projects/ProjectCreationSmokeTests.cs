@@ -1,6 +1,7 @@
 using System.IO;
 using AutoTest.Desktop.Projects;
 using AutoTest.Projects.Project;
+using AutoTest.Testing.Authoring;
 using Xunit;
 
 namespace AutoTest.Desktop.Tests.Projects;
@@ -32,6 +33,40 @@ public sealed class ProjectCreationSmokeTests
         {
             Directory.Delete(parent, recursive: true);
         }
+    }
+
+    [Fact]
+    public async Task DesktopNewProject_CreatesOneBlankCaseAndValidatesAllResourceHashes()
+    {
+        var parent = Path.Combine(Path.GetTempPath(),
+            "at-ready-to-edit-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(parent);
+        try
+        {
+            var workspace = new ProjectWorkspaceService();
+            var created = await workspace.CreateReadyToEditAsync("HydEPB", parent);
+            var cases = Assert.Single(created.Definition.Assets.Where(x =>
+                x.Kind == ProjectWorkspaceService.TestProgramKind));
+            var plan = Assert.Single(created.Definition.Assets.Where(x =>
+                x.Kind == ProjectWorkspaceService.TestProjectKind));
+            var programPath = ProjectPathPolicy.Normalize(created.RootDirectory,
+                cases.RelativePath);
+            var planPath = ProjectPathPolicy.Normalize(created.RootDirectory,
+                plan.RelativePath);
+            Assert.True(cases.VerifyHash(await File.ReadAllBytesAsync(programPath)));
+            Assert.True(plan.VerifyHash(await File.ReadAllBytesAsync(planPath)));
+            var program = TestDocumentCodec.Deserialize(
+                await File.ReadAllTextAsync(programPath));
+            Assert.Empty(program.Walk());
+            var ordered = TestProjectCodec.Decode(await File.ReadAllBytesAsync(planPath));
+            var entry = Assert.Single(ordered.Packages);
+            Assert.Equal(cases.Id.Value, entry.PackageAssetId);
+            Assert.True(entry.Enabled);
+
+            var reopened = await workspace.OpenAsync(created.ManifestPath);
+            Assert.Equal(2, reopened.Definition.Assets.Length);
+        }
+        finally { Directory.Delete(parent, recursive: true); }
     }
 
     [Fact]
