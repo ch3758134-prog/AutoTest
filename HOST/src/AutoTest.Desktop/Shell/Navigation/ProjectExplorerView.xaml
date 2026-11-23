@@ -66,6 +66,12 @@
         <Setter TargetName="RowChrome" Property="BorderBrush" Value="#E0E8E3"/>
         <Setter TargetName="RowChrome" Property="Margin" Value="3,2,3,10"/>
        </DataTrigger>
+       <DataTrigger Binding="{Binding Role}" Value="Setup">
+        <Setter TargetName="RowChrome" Property="Height" Value="42"/>
+        <Setter TargetName="RowChrome" Property="Margin" Value="3,1,3,5"/>
+        <Setter TargetName="RowChrome" Property="Background" Value="#EAF3FC"/>
+        <Setter TargetName="RowChrome" Property="BorderBrush" Value="#DDEAF9"/>
+       </DataTrigger>
        <DataTrigger Binding="{Binding Role}" Value="Section">
         <Setter TargetName="RowChrome" Property="Height" Value="33"/>
         <Setter TargetName="RowChrome" Property="BorderBrush" Value="#E7ECE9"/>
@@ -113,7 +119,7 @@
      FontSize="13" Foreground="#3B4B5A" TextTrimming="CharacterEllipsis"
      VerticalAlignment="Center" Margin="5,0,3,0" Cursor="Hand"
      PreviewMouseLeftButtonDown="NodeText_PreviewMouseLeftButtonDown"
-     ToolTip="单击选择 · 双击打开 · F2 重命名 · 右键更多操作"/>
+     ToolTip="单击打开当前对象 · F2 重命名资源 · 右键更多操作"/>
     <TextBlock x:Name="NodeCount" Grid.Column="3" Text="{Binding CountLabel}"
      FontSize="10" FontWeight="SemiBold" Foreground="#627C9D" VerticalAlignment="Center"
      Margin="0,0,5,0"/>
@@ -148,6 +154,10 @@
      <Setter TargetName="NodeText" Property="Foreground" Value="#627C9D"/>
      <Setter TargetName="NodeIcon" Property="Visibility" Value="Collapsed"/>
     </DataTrigger>
+    <DataTrigger Binding="{Binding Role}" Value="Setup">
+     <Setter TargetName="NodeText" Property="FontWeight" Value="SemiBold"/>
+     <Setter TargetName="NodeText" Property="Foreground" Value="#265F9A"/>
+    </DataTrigger>
     <DataTrigger Binding="{Binding Role}" Value="Project">
      <Setter TargetName="NodeText" Property="FontWeight" Value="SemiBold"/>
      <Setter TargetName="NodeCount" Property="Foreground" Value="#3478D6"/>
@@ -169,10 +179,10 @@
     <TextBox x:Name="ResourceSearch" DockPanel.Dock="Right" Width="148" Height="31"
      VerticalContentAlignment="Center" Padding="6,3" FontSize="11"
      KeyDown="ResourceSearch_KeyDown"
-     ToolTip="输入真实资源名或路径并按 Enter 打开；不修改工程资源"/>
+     ToolTip="输入资源名称，按 Enter 打开；也可搜索检测准备"/>
     <TextBlock Text="工程导航" FontSize="14" FontWeight="SemiBold"
      VerticalAlignment="Center" Margin="0,0,8,0"
-     ToolTip="单击资源打开；双击名称或按 F2 重命名；右键查看操作"/>
+     ToolTip="检测准备、测试项目和测试用例均可单击进入编辑；F2 重命名资源"/>
    </DockPanel>
   </Border>
   <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
