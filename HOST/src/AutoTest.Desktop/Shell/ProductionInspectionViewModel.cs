@@ -147,6 +147,8 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
     public string ReportPath { get => _reportPath; private set => SetProperty(ref _reportPath, value); }
     public int ObservedStepCount { get => _observedStepCount; private set => SetProperty(ref _observedStepCount, value); }
     public int EnabledCaseCount => Cases.Count;
+    public bool HasCases => Cases.Count > 0;
+    public bool HasCaseListIssue => Cases.Count == 0;
     // The ordinary operator display never presents the project file's internal
     // name, revision, provenance, debug branch, or reference/trace identifiers.
     public string CurrentCaseName => string.IsNullOrWhiteSpace(_currentCaseName) ? "—" : _currentCaseName;
@@ -174,6 +176,8 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
     private void NotifyOperatorDisplay()
     {
         RaisePropertyChanged(nameof(EnabledCaseCount));
+        RaisePropertyChanged(nameof(HasCases));
+        RaisePropertyChanged(nameof(HasCaseListIssue));
         RaisePropertyChanged(nameof(CaseListHint));
         RaisePropertyChanged(nameof(StatusSummary));
         RaisePropertyChanged(nameof(OperatorNotice));
