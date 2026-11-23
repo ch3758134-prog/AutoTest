@@ -77,7 +77,7 @@ public partial class ProjectConfigurationOverviewView : UserControl
             ConfigTabs.SelectedIndex = 5;
             return;
         }
-        _inspectionEditor?.Dispose();
+        _inspectionEditor?.Close();
         _inspectionEditor = new InspectionStationProcedureEditorViewModel(_workspace, session);
         InspectionProcedureHost.Content = new InspectionStationProcedureEditorView(_inspectionEditor);
         ConfigTabs.SelectedIndex = 5;
