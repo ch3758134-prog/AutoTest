@@ -83,11 +83,11 @@
    <DockPanel LastChildFill="True">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center"
      chrome:WindowChrome.IsHitTestVisibleInChrome="True">
-     <Button Content="测试方案" Command="{Binding ConfigureAutomaticTestCommand}"
+     <Button Content="工程配置" Command="{Binding ConfigureAutomaticTestCommand}"
       Visibility="{Binding IsProductionWorkspace,Converter={StaticResource BoolToVisibility}}"
       Style="{StaticResource AtQuietButton}" FontSize="11" Foreground="#738397"
       MinHeight="26" Padding="9,3" Margin="0,0,4,0"
-      ToolTip="只在首次设置或更换自动测试方案时使用；与开发调试工程互不影响"/>
+      ToolTip="进入工程与调试，配置和验证唯一 ECU 工程后部署；自动测试不另选一套用例或配方"/>
      <Button Content="开发与调试" Command="{Binding ShowEngineerWorkspaceCommand}"
       Visibility="{Binding IsProductionWorkspace,Converter={StaticResource BoolToVisibility}}"
       Style="{StaticResource AtQuietButton}" FontSize="11" Foreground="#738397"
