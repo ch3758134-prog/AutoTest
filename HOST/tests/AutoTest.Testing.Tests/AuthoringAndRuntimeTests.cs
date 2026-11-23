@@ -165,14 +165,29 @@ public sealed class AuthoringAndRuntimeTests
     }
 
     [Fact]
-    public void ImportedUnverifiedSignalStep_CannotBeRunWithoutExplicitRebind()
+    public void ArbitrarySourceMetadataDoesNotCreateSpecialTestStepOrRunGate()
     {
-        var tx = new StepEditTransaction(TestDocument.Create("import review"));
-        var old = N("Read", ("target", "old"), ("legacy.importStatus", "BLOCKED_UNVERIFIED"),
-            ("canId", "0x702"), ("expectation", "=2"));
-        tx.Insert(TestPhase.Test, null, null, 0, old);
-        var errors = new PlanCompiler().Prepare(tx.Current, allowRealOperations: true).Diagnostics;
-        Assert.Contains(errors, item => item.Contains("尚未重新绑定"));
+        // A normal TEST step has one formal type and one set of operands.
+        // Extra editor/import annotations are not product execution status.
+        var tx = new StepEditTransaction(TestDocument.Create("ordinary project"));
+        tx.Insert(TestPhase.Test, null, null, 0,
+            Wait("250").WithProperty("legacy.importStatus", "BLOCKED_UNVERIFIED")
+                .WithProperty("external.note", "any text"));
+        var diagnostics = new PlanCompiler().Prepare(tx.Current,
+            allowRealOperations: true).Diagnostics;
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void RealSignalWithoutMappingStillFailsNormalExecutionPreflight()
+    {
+        var tx = new StepEditTransaction(TestDocument.Create("normal signal validation"));
+        tx.Insert(TestPhase.Test, null, null, 0,
+            N("Read", ("target", "missing"), ("mode", "Next"),
+                ("timeoutMs", "5000"), ("maxAgeMs", "1000")));
+        var errors = new PlanCompiler().Prepare(tx.Current,
+            allowRealOperations: true).Diagnostics;
+        Assert.Contains(errors, error => error.Contains("unmapped target"));
     }
 
     [Fact]
