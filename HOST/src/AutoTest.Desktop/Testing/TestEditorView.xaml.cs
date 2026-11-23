@@ -250,8 +250,8 @@ public partial class TestEditorView : UserControl
     {
         var category = PaletteCategories?.SelectedItem as string ?? "常用步骤";
         string[] favorites =
-            ["can", "read", "wait-signal", "assert-signal", "key", "ign",
-             "wait", "if", "wave-start", "wave-analyze"];
+            ["can", "stop-can", "key", "ign", "read", "assert-signal",
+             "wait", "if", "loop", "uds", "wave-start", "wave-analyze"];
         var filtered = _paletteActions
             .Where(x => query.Length > 0
                 ? (x.Title + " " + x.Group + " " + x.Category + " " + x.Description)
