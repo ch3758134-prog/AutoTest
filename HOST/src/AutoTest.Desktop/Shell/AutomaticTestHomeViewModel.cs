@@ -199,7 +199,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
             {
                 var item = draft.Cases[i];
                 Cases.Add(new AutomaticTestCase((i + 1).ToString("D2"),
-                    item.Name, new AutoTest.Core.TestDocumentId(Guid.Empty),
+                    item.Name, default,
                     !item.ReferenceCurrent ? "引用需修复" :
                     item.Included ? "未执行" : "未纳入正式检测"));
             }
