@@ -23,13 +23,15 @@ public sealed record TestProjectDocument(int SchemaVersion, Guid Id, string Name
     public static TestProjectDocument Create(string name) => new(1, Guid.NewGuid(), name, []);
 
     /// <summary>
-    /// The ONE ordered authoritative scope for complete automatic TEST.
-    /// Operator displays, production preparation and scan preparation must
-    /// project the same persisted entry list. Engineer RunSelected is separate.
-    /// Preserve legacy exclusions rather than silently energizing real hardware.
+    /// The ONE authoritative production scope is the COMPLETE ordered entry
+    /// list, never a persisted per-case enable/disable sub-selection.
+    /// Historical Enabled=false data remains readable so the production
+    /// resource contract can fail CLOSED and demand explicit repair; it may
+    /// never silently omit those entries from the proposed execution scope.
+    /// Engineer RunSelected is separate and only affects manual debugging.
     /// </summary>
     public IReadOnlyList<TestProjectEntry> AutomaticRunEntries() =>
-        Packages.Where(item => item.Enabled).ToArray();
+        Packages.ToArray();
 
     public void Validate()
     {
