@@ -126,7 +126,7 @@ public sealed class AutomaticTestPlanService
             throw new InvalidDataException("方案含多个测试项目，尚未确定唯一执行集合");
         var testBytes = await ReadAssetAsync(project, testAssets[0], ct);
         var testProject = TestProjectCodec.Decode(testBytes);
-        if (testProject.Packages.Length == 0)
+        if (testProject.Packages.Count == 0)
             throw new InvalidDataException("测试项目没有关联用例");
         var enabled = testProject.Packages.Where(p => p.Enabled).ToArray();
         if (enabled.Length == 0)
@@ -151,7 +151,7 @@ public sealed class AutomaticTestPlanService
     }
 
     private static async Task<byte[]> ReadAssetAsync(OpenProjectContext context,
-        AutoTest.Projects.Project.ProjectAsset asset, CancellationToken ct)
+        AutoTest.Projects.Resources.AssetEntry asset, CancellationToken ct)
     {
         var file = ProjectPathPolicy.Normalize(context.RootDirectory, asset.RelativePath);
         var content = await File.ReadAllBytesAsync(file, ct);
