@@ -17,7 +17,12 @@ public sealed record FrozenProductionPreparation(
     IReadOnlyList<FrozenProductionCase> OrderedEnabledCases,
     string NativeProfileSha256, string JobFingerprint, string FirmwareSha256,
     string SecuritySha256, int EcuCanKbps, string PreparationFingerprint,
-    CanToolFlashJob Job);
+    CanToolFlashJob Job)
+{
+    public Guid FixtureAssetId { get; init; }
+    public string FixtureContentSha256 { get; init; } = "";
+    public InspectionStationProcedureDocument? Fixture { get; init; }
+};
 
 public sealed record ProductionPreparationDecision(
     string Code, FrozenProductionPreparation? Preparation, string Explanation)
@@ -77,8 +82,8 @@ public static class ProductionPreparationService
             !manifestSha.Equals(opened.ManifestSha256, StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("工程已发生变更，必须重新打开工程及扫码。");
 
-        await ProjectBundleContractAudit.ValidateAsync(actual, opened.ManifestPath, ct)
-            .ConfigureAwait(false);
+        // Only required production resources may authorize execution;
+        // old inactive draft assets cannot widen its real dependency set.
         // The operator list and the physical preparation MUST resolve the
         // identical project entry IDs, TEST programs, DBC and waveform pins.
         // A failure never becomes a silent skipped case or a physical PASS.
@@ -89,6 +94,20 @@ public static class ProductionPreparationService
         var frozenCases = resolved.Cases.Select(item =>
             new FrozenProductionCase(item.Entry.ItemId, item.Asset.Id.Value,
                 item.Entry.DisplayName, item.Asset.Revision, item.ContentSha256)).ToList();
+        // Freeze this model's explicit station procedure, never an implicit
+        // clamp/IGN operation hidden in a UI or duplicated TEST script.
+        var fixtureAssets = actual.Assets.Where(x =>
+            x.Kind == ProjectWorkspaceService.InspectionKind).ToArray();
+        if (fixtureAssets.Length != 1)
+            throw new InvalidDataException(fixtureAssets.Length == 0
+                ? "当前型号尚未保存工位准备与收尾工艺。"
+                : "工程存在多个工位动作定义，不能猜选其一。");
+        var fixtureAsset = fixtureAssets[0];
+        var fixtureBytes = await AutomaticTestResourceContract.ReadPinnedAsync(
+            opened, fixtureAsset, ct).ConfigureAwait(false);
+        var fixture = (InspectionStationProcedureDocument)
+            ProjectConfigurationCodec.Decode(fixtureAsset.Kind, fixtureBytes);
+        fixture.Validate();
 
         // Never promote an autosaved engineering draft into production.
         var native = await NativeFlashPublicationStore.LoadPublishedAsync(
@@ -104,6 +123,8 @@ public static class ProductionPreparationService
             modelCode, dutSerial, actual.Id.Value.ToString("D"), manifestSha,
             testAsset.Id.Value.ToString("D"), testAsset.Sha256,
             native.ProfileSha256, frozenJob.Fingerprint,
+            "FIXTURE:" + fixtureAsset.Id.Value.ToString("D") + ":" +
+                fixtureAsset.Revision + ":" + fixtureAsset.Sha256,
             string.Join("\n", frozenCases.Select(c =>
                 c.EntryId.ToString("D") + ":" + c.TestAssetId.ToString("D") +
                 ":" + c.Revision + ":" + c.Sha256)));
@@ -118,6 +139,11 @@ public static class ProductionPreparationService
             opened.ManifestPath, manifestSha, testAsset.Id.Value, testAsset.Sha256,
             frozenCases.ToArray(), native.ProfileSha256, frozenJob.Fingerprint,
             frozenJob.FirmwareSha256, frozenJob.SecuritySha256,
-            native.Profile.EcuCanKbps, fingerprint, frozenJob);
+            native.Profile.EcuCanKbps, fingerprint, frozenJob)
+        {
+            FixtureAssetId = fixtureAsset.Id.Value,
+            FixtureContentSha256 = fixtureAsset.Sha256,
+            Fixture = fixture
+        };
     }
 }
