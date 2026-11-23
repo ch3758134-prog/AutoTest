@@ -65,4 +65,52 @@ public sealed class ProductionBarcodePreflightTests
         Assert.Throws<ProjectDataException>(() =>
             (ProjectDefinition.Create("工程") with { EcuModelCode = "epba" }).Validate());
     }
+    [Fact]
+    public void MappedBarcodeWithoutModelFieldUsesOnlyCurrentProjectIdentity()
+    {
+        var project = ProjectDefinition.Create("工程显示名可改") with
+        {
+            EcuModelCode = "HYDEPB"
+        };
+        var policy = new AutoTest.Specialists.Scan.ScanIdentityPolicy(1,
+            AutoTest.Specialists.Scan.ScanIdentityPolicy.Mapped, "-",
+            null, 1, 64,
+            AutoTest.Specialists.Scan.ScanIdentityPolicy.Delimited,
+            [
+                new(AutoTest.Specialists.Scan.ScanIdentityPolicy.SerialTarget, 1),
+                new("BatchCode", 2)
+            ]);
+        var matched = ProductionBarcodePreflight.Inspect(
+            "00001234-LOT05", project, policy);
+        Assert.True(matched.IdentityMatched);
+        Assert.Equal("HYDEPB", matched.ModelCode);
+        Assert.Equal("00001234", matched.DutSerial);
+        Assert.Equal("LOT05", matched.MappedFields!["BatchCode"]);
+        Assert.False(ProductionBarcodePreflight.Inspect(
+            "00001234-LOT05", null, policy).IdentityMatched);
+    }
+
+    [Fact]
+    public void MappedModelFieldCannotSilentlySwitchToOtherProject()
+    {
+        var project = ProjectDefinition.Create("HydEPB") with
+        {
+            EcuModelCode = "HYDEPB"
+        };
+        var policy = new AutoTest.Specialists.Scan.ScanIdentityPolicy(1,
+            AutoTest.Specialists.Scan.ScanIdentityPolicy.Mapped, "|",
+            null, 1, 64,
+            AutoTest.Specialists.Scan.ScanIdentityPolicy.Delimited,
+            [
+                new(AutoTest.Specialists.Scan.ScanIdentityPolicy.ModelTarget, 1),
+                new(AutoTest.Specialists.Scan.ScanIdentityPolicy.SerialTarget, 2)
+            ]);
+        var rejected = ProductionBarcodePreflight.Inspect(
+            "OTHER|00001234", project, policy);
+        Assert.False(rejected.IdentityMatched);
+        Assert.Equal("SCAN_OTHER_MODEL", rejected.Code);
+        Assert.Equal("00001234", rejected.MappedFields![
+            AutoTest.Specialists.Scan.ScanIdentityPolicy.SerialTarget]);
+    }
+
 }
