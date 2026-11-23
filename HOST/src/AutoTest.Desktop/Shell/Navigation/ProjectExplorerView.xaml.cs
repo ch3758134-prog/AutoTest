@@ -39,39 +39,12 @@ public partial class ProjectExplorerView : UserControl
         catch (Exception ex) { UiExceptionReporter.Record("Explorer / open asset", ex); }
     }
 
-    // Only navigates canonical AssetEntry references; never creates search copies.
-    private async void ResourceSearch_KeyDown(object sender, KeyEventArgs e)
+    // Incremental highlight only. The tree remains complete and no editor is
+    // opened by typing a partial match or pressing Enter.
+    private void ResourceSearch_TextChanged(object sender, TextChangedEventArgs e)
     {
-        if (e.Key is not (Key.Return or Key.Enter) ||
-            DataContext is not MainWindowViewModel vm) return;
-        e.Handled = true;
-        var query = ResourceSearch.Text.Trim();
-        if (query.Length == 0) return;
-        static IEnumerable<ResourceTreeNode> All(IEnumerable<ResourceTreeNode> roots)
-        {
-            foreach (var root in roots)
-            {
-                yield return root;
-                foreach (var child in All(root.Children)) yield return child;
-            }
-        }
-        if ("检测准备".Contains(query, StringComparison.CurrentCultureIgnoreCase))
-        {
-            vm.ShowProjectConfiguration();
-            return;
-        }
-        var found = All(vm.ResourceNodes).FirstOrDefault(n => n.Asset is not null &&
-            (n.Label.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
-             n.Description.Contains(query, StringComparison.CurrentCultureIgnoreCase)));
-        if (found is null)
-        {
-            ResourceSearch.ToolTip = "当前工程中没有匹配的正式资源：" + query;
-            return;
-        }
-        ResourceSearch.ToolTip = found.Label;
-        vm.SelectResource(found);
-        try { await vm.OpenSelectedResourceAsync(); }
-        catch (Exception error) { UiExceptionReporter.Record("Explorer / search resource", error); }
+        if (DataContext is MainWindowViewModel vm)
+            vm.HighlightResourceSearch(ResourceSearch.Text);
     }
 
     private async void AddResource_Click(object sender, RoutedEventArgs e)
@@ -80,18 +53,6 @@ public partial class ProjectExplorerView : UserControl
         if (sender is Button { DataContext: ResourceTreeNode node } &&
             DataContext is MainWindowViewModel vm)
             await vm.CreateFromCategoryAsync(node);
-    }
-
-    private async void NodeText_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        if (e.ChangedButton != MouseButton.Left || e.ClickCount != 2 ||
-            sender is not FrameworkElement { DataContext: ResourceTreeNode node } ||
-            node.Asset is null ||
-            DataContext is not MainWindowViewModel vm) return;
-        e.Handled = true;
-        vm.SelectResource(node);
-        try { await vm.OpenSelectedResourceAsync(); }
-        catch (Exception error) { UiExceptionReporter.Record("Explorer / double-click open", error); }
     }
 
     private void Navigator_PreviewKeyDown(object sender, KeyEventArgs e)
