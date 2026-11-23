@@ -48,7 +48,7 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
     private string _lastDecision = "";
     private string _connectedPort = "";
     private ScanIdentityPolicy? _activeIdentityPolicy;
-    private string _identityFormat = ScanIdentityPolicy.Ut1;
+    private string _identityFormat = ScanIdentityPolicy.ModelSerial;
     private string _identitySeparator = "-";
     private string _fixedModelCode = "";
     private string _minimumSerialLength = "8";
