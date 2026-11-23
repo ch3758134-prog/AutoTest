@@ -128,12 +128,17 @@ public sealed class AutomaticTestPlanService
         var testProject = TestProjectCodec.Decode(testBytes);
         if (testProject.Packages.Count == 0)
             throw new InvalidDataException("测试项目没有关联用例");
-        // "Enabled" belongs to the developer's current run selection. The
-        // automatic-test home loads every test case explicitly listed in the
-        // selected TEST project, in its recorded order. Never require the
-        // operator to visit the editor and toggle these flags.
-        var cases = new List<AutomaticTestCase>(testProject.Packages.Count);
-        foreach (var entry in testProject.Packages)
+        // The complete operator list and the real production execution plan
+        // MUST use the same entry projection. RunSelected is debug-only; the
+        // persisted legacy Enabled=false means explicitly excluded, not
+        // "missing another enable click" after adding a new case.
+        var included = testProject.AutomaticRunEntries();
+        if (included.Count == 0)
+            throw new InvalidDataException(
+                "工程已有测试用例，但全部被旧项目配置排除在自动测试外。"
+                + "需要一次性核对原有排除设置，不会自动恢复真实硬件操作。");
+        var cases = new List<AutomaticTestCase>(included.Count);
+        foreach (var entry in included)
         {
             var matches = definition.Assets.Where(a =>
                 a.Id.Value == entry.PackageAssetId &&
