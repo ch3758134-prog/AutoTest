@@ -34,6 +34,12 @@ public sealed class ProductionWorkflow
         var job = session.Job;
         try
         {
+            if (!job.IsMock && !job.Configuration.RequiresFlash)
+            {
+                session.Mark(ProductionState.Unknown, "PRODUCTION_FLASH_REQUIRED");
+                return new(job.Run, ProductionState.Unknown, Verdict.Inconclusive,
+                    false, false, "PRODUCTION_FLASH_REQUIRED");
+            }
             var request = await _records.AppendAsync(job, "PRODUCTION_STARTED:" + job.DutIdentity,
                 RunFactKind.Request, EvidenceQuality.HostObserved, ct).ConfigureAwait(false);
             if (request.Outcome != Outcome.Accepted)
