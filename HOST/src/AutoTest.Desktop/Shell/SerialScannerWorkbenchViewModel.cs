@@ -47,6 +47,15 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
     private string _lastSerial = "";
     private string _lastDecision = "";
     private string _connectedPort = "";
+    private ScanIdentityPolicy? _activeIdentityPolicy;
+    private string _identityFormat = ScanIdentityPolicy.Ut1;
+    private string _identitySeparator = "-";
+    private string _fixedModelCode = "";
+    private string _minimumSerialLength = "8";
+    private string _maximumSerialLength = "20";
+    private string _sampleRaw = "";
+    private string _sampleResult = "";
+    private string _identityPolicyStatus = "条码解析规则尚未保存；扫码数据不会获得身份匹配资格。";
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
     private static readonly string SettingsPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -79,6 +88,9 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
         SwitchProjectCommand = new DelegateCommand(async () => await SwitchProjectAsync(),
             () => CanSwitchProject);
         PrepareProductionCommand = new DelegateCommand(async () => await PrepareProductionAsync());
+        SaveIdentityPolicyCommand = new DelegateCommand(async () => await SaveIdentityPolicyAsync());
+        TestIdentitySampleCommand = new DelegateCommand(TestIdentitySample);
+        _ = LoadIdentityPolicyAsync();
         _workspace.CurrentChanged += OnProjectChanged;
         OnProjectChanged(this, EventArgs.Empty);
         try
@@ -99,6 +111,59 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
                                       UnauthorizedAccessException)
         { SetStatus("历史串口设置不可用，请重新选择：" + error.Message); }
         RefreshPorts();
+    }
+
+    public sealed record ScanFormatChoice(string Mode, string Label);
+    public IReadOnlyList<ScanFormatChoice> IdentityFormats { get; } = new[]
+    {
+        new ScanFormatChoice(ScanIdentityPolicy.Ut1, "UT1 · 型号/硬件版/SN/CRC"),
+        new ScanFormatChoice(ScanIdentityPolicy.ModelSerial, "型号 + 分隔符 + 编号"),
+        new ScanFormatChoice(ScanIdentityPolicy.SerialOnly, "纯编号 · 固定单型号工位")
+    };
+    public string IdentityFormat
+    {
+        get => _identityFormat;
+        set
+        {
+            if (SetProperty(ref _identityFormat, value))
+                RaisePropertyChanged(nameof(IsFixedModelMode));
+        }
+    }
+    public bool IsFixedModelMode => IdentityFormat == ScanIdentityPolicy.SerialOnly;
+    public string IdentitySeparator
+    {
+        get => _identitySeparator;
+        set => SetProperty(ref _identitySeparator, value);
+    }
+    public string FixedModelCode
+    {
+        get => _fixedModelCode;
+        set => SetProperty(ref _fixedModelCode, value);
+    }
+    public string MinimumSerialLength
+    {
+        get => _minimumSerialLength;
+        set => SetProperty(ref _minimumSerialLength, value);
+    }
+    public string MaximumSerialLength
+    {
+        get => _maximumSerialLength;
+        set => SetProperty(ref _maximumSerialLength, value);
+    }
+    public string SampleRaw
+    {
+        get => _sampleRaw;
+        set => SetProperty(ref _sampleRaw, value);
+    }
+    public string SampleResult
+    {
+        get => _sampleResult;
+        private set => SetProperty(ref _sampleResult, value);
+    }
+    public string IdentityPolicyStatus
+    {
+        get => _identityPolicyStatus;
+        private set => SetProperty(ref _identityPolicyStatus, value);
     }
 
     public ObservableCollection<string> AvailablePorts { get; } = new();
@@ -192,6 +257,105 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
     public DelegateCommand RegisterModelCommand { get; }
     public DelegateCommand SwitchProjectCommand { get; }
     public DelegateCommand PrepareProductionCommand { get; }
+    public DelegateCommand SaveIdentityPolicyCommand { get; }
+    public DelegateCommand TestIdentitySampleCommand { get; }
+
+    private ScanIdentityPolicy DraftIdentityPolicy()
+    {
+        if (!int.TryParse(MinimumSerialLength, out var minimum) ||
+            !int.TryParse(MaximumSerialLength, out var maximum))
+            throw new FormatException("请输入合法的最小/最大编号长度。");
+        var policy = new ScanIdentityPolicy(ScanIdentityPolicy.CurrentSchema,
+            IdentityFormat, IdentitySeparator, string.IsNullOrEmpty(FixedModelCode)
+                ? null : FixedModelCode, minimum, maximum);
+        policy.Validate();
+        return policy;
+    }
+
+    private async Task LoadIdentityPolicyAsync()
+    {
+        try
+        {
+            var loaded = await StationScanIdentityPolicyStore.LoadAsync();
+            if (loaded is null) return;
+            OnUi(() =>
+            {
+                _activeIdentityPolicy = loaded;
+                IdentityFormat = loaded.Format;
+                IdentitySeparator = loaded.Separator;
+                FixedModelCode = loaded.FixedModelCode ?? "";
+                MinimumSerialLength = loaded.MinimumSerialLength.ToString();
+                MaximumSerialLength = loaded.MaximumSerialLength.ToString();
+                IdentityPolicyStatus = "工位扫码格式已保存：" + loaded.Format +
+                    "。扫码只做身份识别，不执行夹具、START 或烧录。";
+            });
+        }
+        catch (Exception error) when (error is IOException or FormatException or
+                                       InvalidDataException or JsonException or UnauthorizedAccessException)
+        {
+            OnUi(() =>
+            {
+                _activeIdentityPolicy = null;
+                IdentityPolicyStatus = "原有扫码配置无法读取，拒绝沿用：" + error.Message;
+            });
+        }
+    }
+
+    private async Task SaveIdentityPolicyAsync()
+    {
+        if (!_mayAcceptScan() || Volatile.Read(ref _handling) != 0)
+        {
+            IdentityPolicyStatus = "工位仍在执行任务或处理扫码，禁止修改解码规则。";
+            return;
+        }
+        try
+        {
+            var candidate = DraftIdentityPolicy();
+            if (candidate.Format == ScanIdentityPolicy.SerialOnly)
+            {
+                var binding = await _catalog.ResolveAsync(candidate.FixedModelCode!);
+                if (!binding.Matched)
+                    throw new InvalidDataException(
+                        "纯编号模式绑定的型号尚未在工位登记唯一工程：" + binding.Explanation);
+            }
+            await StationScanIdentityPolicyStore.SaveAsync(candidate);
+            _activeIdentityPolicy = candidate;
+            IdentityPolicyStatus = "已保存工位扫码格式：" + candidate.Format +
+                "。配置变更后需重新扫码；旧识别结果已失效。";
+            InvalidateScanIdentity();
+        }
+        catch (Exception error) when (error is IOException or FormatException or
+                                       InvalidDataException or ArgumentException or
+                                       UnauthorizedAccessException or JsonException)
+        { IdentityPolicyStatus = "条码格式未保存：" + error.Message; }
+    }
+
+    private void TestIdentitySample()
+    {
+        try
+        {
+            var draft = DraftIdentityPolicy();
+            var outcome = draft.Decode(SampleRaw);
+            SampleResult = outcome.Parsed
+                ? "解析成功｜型号 " + outcome.ModelCode + "｜编号 " + outcome.Serial +
+                  (outcome.HardwareCode is null ? "" : "｜硬件版 " + outcome.HardwareCode) +
+                  "。这是离线样例检查，不是实物扫描、不能启动设备。"
+                : "拒绝 " + outcome.Code + "｜" + outcome.Explanation;
+        }
+        catch (FormatException error)
+        { SampleResult = "配置不合法：" + error.Message; }
+    }
+
+    private void InvalidateScanIdentity()
+    {
+        LastModel = "";
+        LastSerial = "";
+        LastDecision = "SCAN_CONFIG_CHANGED";
+        ProductionPreview = "";
+        _resolvedManifestPath = null;
+        MatchedProjectName = "";
+        SwitchProjectCommand.RaiseCanExecuteChanged();
+    }
 
     private void OnProjectChanged(object? sender, EventArgs e) => OnUi(() =>
     {
@@ -303,11 +467,12 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
             // Cross-project lookup is read-only, from an explicitly registered
             // model index. It does not switch the live project on scan arrival.
             StationModelCatalog.ResolveResult? station = null;
+            var policy = _activeIdentityPolicy;
+            ScanIdentityResult? identity = policy?.Decode(captured.Scan.Text);
             try
             {
-                if (Ut1BarcodeCodec.TryParse(captured.Scan.Text,
-                        out var parsed, out _) && parsed is not null)
-                    station = await _catalog.ResolveAsync(parsed.ProductCode, ct);
+                if (identity?.Parsed == true && identity.ModelCode is { } code)
+                    station = await _catalog.ResolveAsync(code, ct);
             }
             catch (Exception error) when (error is IOException or InvalidDataException or
                                           UnauthorizedAccessException or JsonException)
@@ -319,13 +484,18 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
                 {
                     LastRaw = captured.Scan.Text;
                     LastHex = capturedHex;
-                    var preview = ProductionBarcodePreflight.Inspect(
-                        captured.Scan.Text, _workspace.Current?.Definition);
+                    var preview = policy is null
+                        ? new ProductionBarcodePreflightResult(
+                            "SCAN_POLICY_NOT_CONFIGURED", null, null, null,
+                            "未保存工位条码格式；请先选择格式并用样例验证，扫码不会自动匹配工程。")
+                        : ProductionBarcodePreflight.Inspect(
+                            captured.Scan.Text, _workspace.Current?.Definition, policy);
                     LastModel = preview.ModelCode ?? "";
                     LastSerial = preview.DutSerial ?? "";
                     LastDecision = preview.Code;
                     ProductionPreview = "";
-                    _resolvedManifestPath = resolvedStation?.Matched == true
+                    _resolvedManifestPath = identity?.Parsed == true &&
+                        resolvedStation?.Matched == true
                         ? resolvedStation.Entry?.ManifestPath : null;
                     MatchedProjectName = resolvedStation?.Matched == true
                         ? resolvedStation.Definition?.Name ?? "" : "";
@@ -408,7 +578,8 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
     private async Task PrepareProductionAsync()
     {
         var current = _workspace.Current;
-        if (!_mayAcceptScan() || current is null || string.IsNullOrEmpty(LastSerial) ||
+        if (!_mayAcceptScan() || _activeIdentityPolicy is null ||
+            current is null || string.IsNullOrEmpty(LastSerial) ||
             !string.Equals(current.Definition.EcuModelCode, LastModel, StringComparison.Ordinal))
         {
             SetStatus("尚未打开扫码型号对应工程，或当前运行状态不允许预检。");
