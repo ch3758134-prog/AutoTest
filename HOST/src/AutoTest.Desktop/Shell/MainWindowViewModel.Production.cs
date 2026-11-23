@@ -1,11 +1,14 @@
+using System.IO;
+using AutoTest.Desktop.Projects;
+using AutoTest.Projects.Project;
 using Prism.Commands;
 
 namespace AutoTest.Desktop.Shell;
 
 /// <summary>
-/// Independent entry points: automatic-test plan is an operator-local selection,
-/// while the developer IDE owns its own recent/open project and editor tabs.
-/// Sharing domain codecs is not sharing the active user workflow.
+/// One ECU project owns the formal inspection definition. The operator sees
+/// only an explicitly deployed, pinned revision of that canonical project;
+/// the developer may continue editing a separate un-deployed draft.
 /// </summary>
 public sealed partial class MainWindowViewModel
 {
@@ -22,18 +25,50 @@ public sealed partial class MainWindowViewModel
     public DelegateCommand ShowProductionWorkspaceCommand { get; private set; } = null!;
     public DelegateCommand ShowEngineerWorkspaceCommand { get; private set; } = null!;
     public DelegateCommand ConfigureAutomaticTestCommand { get; private set; } = null!;
+    public DelegateCommand DeployCurrentProjectCommand { get; private set; } = null!;
 
     private void InitializeProductionWorkspace()
     {
         _automaticTestPlans = new AutomaticTestPlanService();
-        _automaticTestHome = new AutomaticTestHomeViewModel(_automaticTestPlans, _hardware);
+        _automaticTestHome = new AutomaticTestHomeViewModel(_automaticTestPlans, _hardware,
+            () => { _ = ShowDeveloperAsync(); });
         AutomaticTestView = new AutomaticTestHomeView { DataContext = _automaticTestHome };
         ConfigureAutomaticTestCommand = new DelegateCommand(
-            async () => await _automaticTestHome.ChoosePlanAsync());
+            async () => await ShowDeveloperAsync());
+        DeployCurrentProjectCommand = new DelegateCommand(
+            async () => await DeployCurrentProjectAsync());
         ShowEngineerWorkspaceCommand = new DelegateCommand(
             async () => await ShowDeveloperAsync());
         ShowProductionWorkspaceCommand = new DelegateCommand(
             async () => await ShowAutomaticTestAsync());
+    }
+
+    private async Task DeployCurrentProjectAsync()
+    {
+        if (_productionWorkspace || _realTest.IsRunning || _hardwareBusy)
+        {
+            StatusMessage = "请切换到工程与调试，并停止当前实体任务，再部署工程。";
+            return;
+        }
+        var project = _workspace.Current;
+        if (project is null)
+        {
+            StatusMessage = "请先打开 ECU 工程。";
+            return;
+        }
+        try
+        {
+            await _automaticTestPlans.DeployAsync(project);
+            StatusMessage = "当前 ECU 工程配置已部署到本工位（冻结资源指纹）。" +
+                "该操作不执行烧录，不代表实体夹具或整机验收通过。";
+            await RefreshEngineeringSetupAsync();
+        }
+        catch (Exception error) when (error is IOException or InvalidDataException or
+            UnauthorizedAccessException or ArgumentException or FormatException or
+            NotSupportedException or ProjectDataException or System.Text.Json.JsonException)
+        {
+            StatusMessage = "部署被拒绝（保留旧部署）： " + error.Message;
+        }
     }
 
     /// <summary>
@@ -69,9 +104,9 @@ public sealed partial class MainWindowViewModel
             return;
         }
         SetWorkspaceMode(true);
-        // The saved operator plan is reverified independently; IDE edits or
-        // file changes cannot silently swap the selected automatic-test plan.
-        await _automaticTestHome.RefreshPlanAsync();
+        // Never adopt an IDE draft. Revalidate the explicit deployment
+        // fingerprint and all referenced assets whenever entering production.
+        await _automaticTestHome.RestoreAsync();
     }
 
     private void SetWorkspaceMode(bool automaticTest)
@@ -82,7 +117,7 @@ public sealed partial class MainWindowViewModel
         RaisePropertyChanged(nameof(IsEngineerWorkspace));
         RaisePropertyChanged(nameof(WindowTitle));
         StatusMessage = automaticTest
-            ? "自动测试方案独立恢复；开发调试工程不会自动替换该方案。"
+            ? "自动测试使用本工位已部署且指纹核对的 ECU 工程；编辑草稿不能自动替换部署。"
             : "开发与调试工作区：可独立打开、编辑 ECU 工程。";
     }
 }
