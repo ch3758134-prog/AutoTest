@@ -25,6 +25,11 @@ public static class ProductionBarcodePreflight
     public static ProductionBarcodePreflightResult Inspect(
         string rawBarcode, ProjectDefinition? currentProject, ScanIdentityPolicy policy)
     {
+        // For serial-only labels, the deployed project's model is already
+        // authoritative. Do not require a second scanner-specific model.
+        if (policy.Format == ScanIdentityPolicy.SerialOnly &&
+            currentProject?.EcuModelCode is { Length: > 0 } model)
+            policy = policy with { FixedModelCode = model };
         var parsed = policy.Decode(rawBarcode);
         if (!parsed.Parsed)
             return new(parsed.Code, parsed.ModelCode, parsed.Serial,
