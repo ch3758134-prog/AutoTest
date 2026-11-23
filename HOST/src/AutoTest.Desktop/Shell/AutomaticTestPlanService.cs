@@ -36,8 +36,9 @@ public sealed class AutomaticTestPlanService
     {
         try
         {
-            var verified = await StationDeploymentStore.RestoreAsync(ct)
-                .ConfigureAwait(false);
+            // Changed is consumed by WPF ObservableCollection bindings.
+            // Preserve the UI SynchronizationContext at this presentation edge.
+            var verified = await StationDeploymentStore.RestoreAsync(ct);
             if (verified is null)
             {
                 Current = null;
