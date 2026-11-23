@@ -67,15 +67,8 @@ public sealed partial class AutomaticTestHomeViewModel
                 Reject("本次扫码身份未被接受：" + parsed.Explanation);
                 return;
             }
-            var registered = await new StationModelCatalog()
-                .ResolveAsync(parsed.ModelCode);
-            if (!registered.Matched ||
-                !string.Equals(registered.Entry?.ManifestPath,
-                    plan.Project.ManifestPath, StringComparison.OrdinalIgnoreCase))
-            {
-                Reject("当前扫码型号没有唯一匹配到本工位部署的 ECU 工程。");
-                return;
-            }
+            // The deployed ECU project is the only model-to-test mapping.
+            // A second station catalogue cannot override its TEST/FLASH scope.
             var deployment = await StationDeploymentStore.RestoreAsync();
             if (deployment is null ||
                 !string.Equals(deployment.Pin.ManifestSha256,
