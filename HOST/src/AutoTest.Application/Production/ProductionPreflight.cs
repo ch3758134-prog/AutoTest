@@ -46,6 +46,8 @@ public sealed class ProductionPreflight
         if (!station.IsMockEnvironment && station.Permission != AuthorizationScope.PhysicalCommand &&
             station.Permission != AuthorizationScope.Programming)
             issues.Add("PHYSICAL_AUTH_REQUIRED");
+        if (!config.RequiresFlash && !station.IsMockEnvironment)
+            issues.Add("PRODUCTION_FLASH_REQUIRED");
         if (config.RequiresFlash && !station.IsMockEnvironment &&
             station.Permission != AuthorizationScope.Programming)
             issues.Add("FLASH_AUTH_REQUIRED");
