@@ -48,7 +48,7 @@
    <StackPanel>
     <TextBlock Text="条码解析规则 · 工位设置" FontSize="14" FontWeight="SemiBold"
                Foreground="#1C2B39" Margin="0,0,0,5"/>
-    <TextBlock Text="设备连接只是接收字节；解析规则决定从标签提取型号和唯一编号。不要根据工程名称或号码前缀自动猜测。"
+    <TextBlock Text="扫码枪是固定工位设备，普通模式只读取 ECU 唯一编号，型号取自当前工程。仅当条码本身包含型号时才需要选择其他格式。"
                Foreground="#65798A" TextWrapping="Wrap" Margin="0,0,0,10"/>
     <WrapPanel VerticalAlignment="Center">
      <StackPanel Width="270" Margin="0,0,10,8">
@@ -62,12 +62,7 @@
       <TextBox Text="{Binding IdentitySeparator,UpdateSourceTrigger=PropertyChanged}"
                Margin="0,4,0,0" Padding="6,5" ToolTip="仅用于型号+编号模式，可选 -、|、:、/"/>
      </StackPanel>
-     <StackPanel Width="188" Margin="0,0,10,8">
-      <TextBlock Text="固定型号（纯编号模式）" Foreground="#617280"/>
-      <TextBox Text="{Binding FixedModelCode,UpdateSourceTrigger=PropertyChanged}"
-               Margin="0,4,0,0" Padding="6,5"
-               ToolTip="必须是已登记到本工位的唯一 ECU 型号"/>
-     </StackPanel>
+     
      <StackPanel Width="90" Margin="0,0,10,8">
       <TextBlock Text="编号最短" Foreground="#617280"/>
       <TextBox Text="{Binding MinimumSerialLength,UpdateSourceTrigger=PropertyChanged}"
@@ -91,7 +86,7 @@
     </DockPanel>
     <TextBlock Text="{Binding SampleResult}" Foreground="#396580" TextWrapping="Wrap" Margin="0,7,0,0"/>
     <TextBlock Text="{Binding IdentityPolicyStatus}" Foreground="#667987" TextWrapping="Wrap" Margin="0,6,0,0"/>
-    <TextBlock Text="UT1 校验 CRC；型号-编号模式按明确分隔符解析；纯编号模式必须先登记唯一型号工程。每次扫码仅生成身份候选，不能触发夹具、START、烧录或计数。"
+    <TextBlock Text="纯编号直接使用当前工程的型号，无需重复注册扫码配方。试扫仅验证编号，不启动夹具、烧录和测试。"
                Foreground="#70818E" FontSize="11" TextWrapping="Wrap" Margin="0,7,0,0"/>
    </StackPanel>
   </Border>
@@ -112,10 +107,9 @@
      <WrapPanel>
       <Button Content="保存工程型号" Command="{Binding SaveModelCodeCommand}"
               Padding="12,9" Margin="0,0,8,0"/>
-      <Button Content="登记到本工位" Command="{Binding RegisterModelCommand}"
-              Padding="12,9"/>
+      
      </WrapPanel>
-     <TextBlock Text="每个正式 ECU 型号在工位只允许登记一份工程；重复型号会拒绝登记。"
+     <TextBlock Text="ECU 型号只在工程中维护一次，正式检测以已发布工程为准。"
                 Foreground="#607381" TextWrapping="Wrap" Margin="0,12,0,0"/>
     </StackPanel>
    </Border>
