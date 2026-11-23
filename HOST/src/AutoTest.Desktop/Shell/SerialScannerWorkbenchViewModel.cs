@@ -239,6 +239,8 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
                 RaisePropertyChanged(nameof(IsDelimitedMapping));
                 RaisePropertyChanged(nameof(IsFixedMapping));
                 RaisePropertyChanged(nameof(UsesDelimiter));
+                if (value == ScanIdentityPolicy.Mapped && MappingRows.Count == 0)
+                    AddMapping();
             }
         }
     }
@@ -728,7 +730,11 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
             StationModelCatalog.ResolveResult? station = null;
             var policy = _activeIdentityPolicy;
             var activeProject = _workspace.Current?.Definition;
-            var effectivePolicy = policy is { Format: ScanIdentityPolicy.SerialOnly } &&
+            var fixedModelFromProject = policy?.Format == ScanIdentityPolicy.SerialOnly ||
+                (policy?.Format == ScanIdentityPolicy.Mapped &&
+                 policy.FieldMappings?.Any(x =>
+                     x.Target == ScanIdentityPolicy.ModelTarget) != true);
+            var effectivePolicy = fixedModelFromProject &&
                 activeProject?.EcuModelCode is { Length: > 0 } activeModel
                 ? policy with { FixedModelCode = activeModel } : policy;
             ScanIdentityResult? identity = effectivePolicy?.Decode(captured.Scan.Text);
@@ -737,7 +743,7 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
                 // Only explicit cross-model label formats may use the old
                 // optional catalogue. A serial-only scanner gets its model
                 // from the current ECU project and never needs registration.
-                if (policy?.Format != ScanIdentityPolicy.SerialOnly &&
+                if (!fixedModelFromProject &&
                     identity?.Parsed == true && identity.ModelCode is { } code)
                     station = await _catalog.ResolveAsync(code, ct);
             }
@@ -766,13 +772,14 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
                         string.Equals(LastSerial, preview.DutSerial, StringComparison.Ordinal);
                     LastModel = preview.ModelCode ?? "";
                     LastSerial = preview.DutSerial ?? "";
+                    LastMappedFields = DescribeFields(preview.MappedFields);
                     LastDecision = sameIdentityAsPrevious
                         ? "SCAN_REPEAT_IDENTITY" : preview.Code;
                     ProductionPreview = "";
                     _resolvedManifestPath = identity?.Parsed == true &&
                         resolvedStation?.Matched == true
                         ? resolvedStation.Entry?.ManifestPath : null;
-                    MatchedProjectName = policy?.Format == ScanIdentityPolicy.SerialOnly &&
+                    MatchedProjectName = fixedModelFromProject &&
                         preview.IdentityMatched
                         ? _workspace.Current?.Definition.Name ?? ""
                         : resolvedStation?.Matched == true
@@ -782,7 +789,7 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
                         ? "重复识别同一编号；仅更新本次扫码观察，不算新增 DUT，也不会启动复检。"
                         : "";
                     Status = repeatNote +
-                        (policy?.Format == ScanIdentityPolicy.SerialOnly
+                        (fixedModelFromProject
                             ? preview.Explanation +
                               (preview.IdentityMatched
                                   ? " · 当前工程：" + MatchedProjectName : "")
@@ -878,19 +885,24 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
         }
         var snapshotModel = LastModel;
         var snapshotSerial = LastSerial;
-        var resolved = await _catalog.ResolveAsync(snapshotModel);
-        if (!resolved.Matched || !string.Equals(resolved.Entry?.ManifestPath,
-            current.ManifestPath, StringComparison.OrdinalIgnoreCase))
+        // A deployed ECU project is the one authoritative formal test scope.
+        // Do not require another station model registration before preflight.
+        // Recheck the last physical scan with the current saved policy.
+        var matched = ProductionBarcodePreflight.Inspect(
+            LastRaw, current.Definition, _activeIdentityPolicy);
+        if (!matched.IdentityMatched ||
+            !string.Equals(matched.ModelCode, snapshotModel, StringComparison.Ordinal) ||
+            !string.Equals(matched.DutSerial, snapshotSerial, StringComparison.Ordinal))
         {
-            SetStatus("生产准备拒绝：扫码型号尚未匹配当前工位唯一登记的工程。");
-            ProductionPreview = "需在当前工程登记型号，并重新扫码。";
+            SetStatus("生产准备拒绝：上次真实扫码不再符合当前解析规则或工程身份。");
+            ProductionPreview = matched.Explanation;
             return;
         }
         var result = await ProductionPreparationService.PrepareAsync(
             current, snapshotModel, snapshotSerial);
         ProductionPreview = result.ConfigurationReady
             ? "本次配置预检完成｜生产前置必烧录｜" +
-              result.Preparation!.OrderedEnabledCases.Count + " 个 Enabled 用例｜" +
+              result.Preparation!.OrderedEnabledCases.Count + " 个有序测试用例｜" +
               result.Preparation.EcuCanKbps + " kbit/s｜" +
               "原生 Job " + result.Preparation.JobFingerprint[..12] +
               "…；等待真实夹具及实体 START，尚未执行"
