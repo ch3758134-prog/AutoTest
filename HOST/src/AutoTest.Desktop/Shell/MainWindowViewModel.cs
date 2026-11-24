@@ -939,9 +939,11 @@ public sealed partial class MainWindowViewModel : BindableBase
     /// <summary>Owned tool windows are closed as part of the IDE exit, not
     /// one-by-one by the operator. The bench must finish physical writes
     /// before the shared hardware service is disposed.</summary>
-    public async Task<bool> PrepareToolWindowsForCloseAsync()
+    public async Task<bool> PrepareToolWindowsForCloseAsync(bool exitingApplication = false)
     {
-        if (!await PrepareDbcWindowsForCloseAsync()) return false;
+        if (!await PrepareDbcWindowsForCloseAsync(exitingApplication)) return false;
+        if (exitingApplication && _udsWorkbenchWindow is { IsVisible: true } uds &&
+            !await uds.PrepareForParentShutdownAsync()) return false;
         // Save and close the owned native FLASH editor explicitly before WPF
         // closes the parent or switches the active ECU project. A child's async
         // Closing event must not outlive the project and its source files.
@@ -951,8 +953,9 @@ public sealed partial class MainWindowViewModel : BindableBase
         if (_manualBenchWindow is { IsVisible: true } bench &&
             !await bench.PrepareForParentShutdownAsync())
             return false;
-        if (_waveWorkbenchWindow is { IsVisible: true } wave)
-            wave.Close();
+        if (_waveWorkbenchWindow is { IsVisible: true } wave &&
+            !await wave.PrepareForParentShutdownAsync())
+            return false;
         CloseSerialScannerWindow();
         return true;
     }
@@ -2203,10 +2206,13 @@ public sealed partial class MainWindowViewModel : BindableBase
         window.Show();
     }
 
-    private async Task<bool> PrepareDbcWindowsForCloseAsync()
+    private async Task<bool> PrepareDbcWindowsForCloseAsync(bool exitingApplication)
     {
         foreach (var (window, editor) in _dbcToolWindows.Values.ToArray())
         {
+            // Standalone DBC belongs to its own file, not the open ECU
+            // project. Project switching must not throw away this workspace.
+            if (!exitingApplication && editor.IsIndependentFile) continue;
             if (editor.IsBusy || (window.Content is DbcWorkbenchView view && !view.TryFinishEditing()) ||
                 !await editor.SaveForCloseAsync())
             {
