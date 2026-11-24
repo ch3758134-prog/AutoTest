@@ -11,7 +11,8 @@ public static class ManualBenchCanDraftStore
 {
     public sealed record DbcPin(Guid AssetId, int Revision, string Sha256, uint MessageId);
     public sealed record Row(string Name, string IdHex, string DataHex,
-        bool Extended, bool IsPeriodic, string PeriodText, bool Included, DbcPin? Dbc);
+        bool Extended, bool IsPeriodic, string PeriodText, bool Included, DbcPin? Dbc,
+        bool ExplicitRawCan = false);
     public sealed record Document(int Schema, List<Row> Rows);
 
     private const int MaximumBytes = 262144;
