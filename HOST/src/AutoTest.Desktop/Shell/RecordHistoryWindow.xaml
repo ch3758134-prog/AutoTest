@@ -11,7 +11,9 @@
   </Grid.RowDefinitions>
   <DockPanel Grid.Row="0" Margin="0,0,0,14">
    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-    <Button Content="选择记录库…" Click="ChooseDatabase_Click" Padding="12,6"/>
+    <Button Content="清空来源" Click="ClearSources_Click" Padding="10,6" Margin="0,0,7,0"/>
+    <Button Content="添加记录库…" Click="ChooseDatabase_Click" Padding="12,6"
+     ToolTip="可一次选择多个 ECU 工程已有的 r1-records.sqlite，按 ECU 编号联合查询"/>
    </StackPanel>
    <StackPanel>
     <TextBlock Text="检测记录与报告" FontSize="21" FontWeight="SemiBold"/>
@@ -27,6 +29,7 @@
     <StackPanel Orientation="Horizontal">
      <TextBlock Text="ECU 编号" VerticalAlignment="Center" Margin="0,0,7,0"/>
      <TextBox x:Name="DutSearch" Width="230" MinHeight="30" VerticalContentAlignment="Center"
+      KeyDown="DutSearch_KeyDown"
       ToolTip="输入完整 ECU 编号；留空查询最近检测"/>
      <TextBlock Text="记录类别" VerticalAlignment="Center" Margin="18,0,7,0"/>
      <ComboBox x:Name="ModeFilter" Width="132" Height="30" SelectedIndex="0">
@@ -50,12 +53,13 @@
      HorizontalScrollBarVisibility="Auto">
      <DataGrid.Columns>
       <DataGridTextColumn Header="检测时间" Width="157" Binding="{Binding StartedLocal}"/>
-      <DataGridTextColumn Header="ECU 编号" Width="*" MinWidth="155" Binding="{Binding DutId}"/>
+      <DataGridTextColumn Header="ECU 编号" Width="*" MinWidth="150" Binding="{Binding DutId}"/>
+      <DataGridTextColumn Header="工程来源" Width="130" Binding="{Binding ProjectName}"/>
       <DataGridTextColumn Header="类别" Width="102" Binding="{Binding ModeLabel}"/>
       <DataGridTextColumn Header="结果" Width="92" Binding="{Binding VerdictLabel}"/>
       <DataGridTextColumn Header="归档状态" Width="105" Binding="{Binding PersistenceLabel}"/>
       <DataGridTextColumn Header="步骤事实" Width="93" Binding="{Binding StepFactCount}"/>
-      <DataGridTextColumn Header="失败原因" Width="210" Binding="{Binding FailureReason}"/>
+      <DataGridTextColumn Header="失败原因" Width="185" Binding="{Binding FailureReason}"/>
      </DataGrid.Columns>
     </DataGrid>
     <Border Grid.Row="1" BorderBrush="#E0E6EC" BorderThickness="0,1,0,0" Padding="12,10">
