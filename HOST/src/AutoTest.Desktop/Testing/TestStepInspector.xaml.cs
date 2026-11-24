@@ -183,6 +183,8 @@ public partial class TestStepInspector : UserControl
     private bool _filteringTargets;
     private bool IsCanSend => _selected?.Key == "can";
     private bool IsDbcSignal => _selected?.TargetCategory == "signal";
+    public double PreferredEditorWidth => IsCanSend ? 1120 : IsDbcSignal || _selected?.TargetCategory == "wave" ? 880 : 620;
+    public double PreferredEditorHeight => IsCanSend ? 680 : IsDbcSignal || _selected?.TargetCategory == "wave" ? 620 : 500;
     private ComboBox ActiveTargetPicker => IsCanSend ? CanTargetPicker : TargetPicker;
     private uint _selectedMask;
     private readonly CheckBox[] _rawKeys = new CheckBox[20];
@@ -214,7 +216,7 @@ public partial class TestStepInspector : UserControl
     }
 
     public void ShowPendingWarning() =>
-        ErrorText.Text = "本步骤有未应用的属性。请先点击“应用属性”或“取消编辑”，再切换步骤。";
+        ErrorText.Text = "请先应用或取消当前属性浮窗，再执行其他操作。";
 
     private void MarkDraftChanged()
     {
