@@ -6,6 +6,34 @@ namespace AutoTest.Desktop.Tests.Shell;
 public sealed class ManualBenchCanDraftStoreTests
 {
     [Fact]
+    public async Task ExplicitlyClearedAssistanceSurvivesDraftRoundTrip()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "autotest-can-clear-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var row = new ManualBenchViewModel.BenchCanRow("扩展帧")
+            {
+                IdHex = "18FFF327",
+                DataHex = "00 00 00 00 00 00 00 0C",
+                Extended = true, IsPeriodic = true, PeriodText = "65"
+            };
+            row.ClearDbcAssistance();
+            await ManualBenchCanDraftStore.SaveAsync(root, new(1,
+                [new(row.Name, row.IdHex, row.DataHex, row.Extended, row.IsPeriodic,
+                    row.PeriodText, row.Included, row.BoundDbcPin, row.ExplicitRawCan)]));
+            var saved = (await ManualBenchCanDraftStore.LoadAsync(root))!.Rows.Single();
+            Assert.True(saved.ExplicitRawCan);
+            Assert.Null(saved.Dbc);
+            Assert.Equal("18FFF327", saved.IdHex);
+            Assert.Equal("00 00 00 00 00 00 00 0C", saved.DataHex);
+            Assert.True(saved.Extended);
+            Assert.True(saved.IsPeriodic);
+            Assert.Equal("65", saved.PeriodText);
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
+    [Fact]
     public async Task EditingConfigurationPersistsAcrossWorkbenchOpenWithoutSendingAnything()
     {
         var root = Path.Combine(Path.GetTempPath(), "autotest-can-draft-" + Guid.NewGuid().ToString("N"));
