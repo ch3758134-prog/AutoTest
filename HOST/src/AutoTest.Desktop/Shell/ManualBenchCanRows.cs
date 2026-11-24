@@ -30,6 +30,7 @@ public sealed partial class ManualBenchViewModel
         private bool _synchronizingCanSignals;
         private string _signalEditError = "";
         private bool _explicitRawCan;
+        public bool ExplicitRawCan => _explicitRawCan;
         private ManualBenchCanDraftStore.DbcPin? _staleDbcPin;
         public ManualBenchCanDraftStore.DbcPin? BoundDbcPin =>
             UseDbc && DbcMessage is { } dbc
@@ -540,7 +541,7 @@ public sealed partial class ManualBenchViewModel
         var document = new ManualBenchCanDraftStore.Document(1, CanSendRows.Select(row =>
             new ManualBenchCanDraftStore.Row(row.Name, row.IdHex, row.DataHex,
                 row.Extended, row.IsPeriodic, row.PeriodText, row.Included,
-                row.BoundDbcPin)).ToList());
+                row.BoundDbcPin, row.ExplicitRawCan)).ToList());
         await _canDraftWriteGate.WaitAsync();
         try
         {
@@ -609,6 +610,7 @@ public sealed partial class ManualBenchViewModel
                         if (match is null) row.MarkUnresolvedDbc(pin);
                         else row.DbcMessage = match;
                     }
+                    else if (entry.ExplicitRawCan) row.ClearDbcAssistance();
                     row.Edited += OnCanRowEdited;
                     CanSendRows.Add(row);
                 }
