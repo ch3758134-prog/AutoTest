@@ -165,7 +165,8 @@
        <Button Content="启动勾选报文" Command="{Binding StartCanRowsCommand}"
         Style="{StaticResource AtPrimaryButton}" Padding="10,6" Margin="0,0,6,5"
         ToolTip="依次启动尚未运行的勾选报文；行内可单独启停和单发。"/>
-       <Button Content="停止" Command="{Binding StopCanRowsCommand}" Padding="9,6" Margin="0,0,5,5"/>
+       <Button Content="停止全部发送" Command="{Binding StopCanRowsCommand}" Padding="9,6" Margin="0,0,5,5"
+        ToolTip="停止本手动台架中正在发送的全部周期 CAN 报文，不触发 KEY 释放"/>
       </WrapPanel>
      </StackPanel>
      <DataGrid x:Name="CanSendGrid" Grid.Row="1"
