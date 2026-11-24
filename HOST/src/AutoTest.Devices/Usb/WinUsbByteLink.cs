@@ -83,7 +83,7 @@ public sealed class WinUsbByteLink : IUsbByteLink
     }
 
     public void AuthorizeManualCanBatch(string fingerprint, string confirmation,
-        IReadOnlyList<byte[]> exactPayloads, int maxWrites)
+        IReadOnlyList<byte[]> exactPayloads, int? maxWrites)
     {
         lock (_sync)
         {
