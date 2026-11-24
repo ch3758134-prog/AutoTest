@@ -68,6 +68,9 @@ public partial class ManualBenchWindow : Window
     {
         if (e.ClickCount < 2) return;
         CancelPendingKeyPadClick();
+        // Consume the second mouse-down so ButtonBase never dispatches the
+        // second click after the editing overlay appears.
+        e.Handled = true;
         _ignoreKeyPadClickUntilUtc = DateTime.UtcNow.AddMilliseconds(
             Math.Clamp((int)GetDoubleClickTime() + 50, 300, 1100));
         if (sender is Button { Tag: ManualBenchViewModel.KeyActionPadItem pad } &&
