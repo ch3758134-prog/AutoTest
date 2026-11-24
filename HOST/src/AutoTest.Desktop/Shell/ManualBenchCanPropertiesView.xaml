@@ -65,9 +65,10 @@
       <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
       <CheckBox Content="周期发送" IsChecked="{Binding IsPeriodic,Mode=TwoWay}"
        VerticalAlignment="Center" Margin="0,0,18,0"/>
-      <TextBox Grid.Column="1" Width="100" HorizontalAlignment="Left"
-       Text="{Binding PeriodText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-       Padding="7,6"/>
+      <StackPanel Grid.Column="1" Orientation="Horizontal">
+       <TextBox Width="72" Text="{Binding PeriodText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding IsPeriodic}" Padding="7,6"/>
+       <TextBlock Text="ms" VerticalAlignment="Center" Margin="6,0,0,0"/>
+      </StackPanel>
      </Grid>
      </StackPanel>
     </ScrollViewer>
@@ -87,9 +88,10 @@
      <TextBlock Text="选报文即可看到信号；直接改 DATA 也会同步解析信号。无需切换编辑模式。"
       FontSize="11" Foreground="#606F7F" TextWrapping="Wrap"
       Margin="0,0,0,9"/>
+     <TextBox x:Name="SignalSearch" TextChanged="SignalSearch_Changed" ToolTip="输入信号名称、别名或定义进行筛选；不改变 DATA" Padding="7,5" Margin="0,0,0,6" Visibility="{Binding UseDbc,Converter={StaticResource BoolToVisibility}}"/>
      </StackPanel>
      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Visibility="{Binding UseDbc,Converter={StaticResource BoolToVisibility}}">
-      <ItemsControl ItemsSource="{Binding SignalValues}">
+      <ItemsControl x:Name="SignalList" ItemsSource="{Binding SignalValues}">
        <ItemsControl.ItemTemplate>
         <DataTemplate>
          <Grid Margin="0,0,0,3" MinHeight="28" IsEnabled="{Binding IsEditable}">
