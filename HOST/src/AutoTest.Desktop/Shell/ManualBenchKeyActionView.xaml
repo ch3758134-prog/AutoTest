@@ -72,7 +72,7 @@
      <Button DockPanel.Dock="Right" Content="删除" Command="{Binding DeleteKeyStepCommand}" Padding="8,5" Margin="5,0,0,0"/>
      <Button DockPanel.Dock="Right" Content="↑" Command="{Binding MoveKeyStepUpCommand}" Padding="8,5" Margin="5,0,0,0"/>
      <Button DockPanel.Dock="Right" Content="↓" Command="{Binding MoveKeyStepDownCommand}" Padding="8,5" Margin="5,0,0,0"/>
-     <TextBlock Text="步骤 · KEY 组合 / 保持时间" Style="{StaticResource FieldCaption}" VerticalAlignment="Center"/>
+     <TextBlock Text="KEY 组合 / 下一段前等待时间" Style="{StaticResource FieldCaption}" VerticalAlignment="Center"/>
     </DockPanel>
     <ListBox ItemsSource="{Binding SelectedKeyAction.Steps}" MaxHeight="190" HorizontalContentAlignment="Stretch"
      SelectedItem="{Binding SelectedKeyStep,Mode=TwoWay}"

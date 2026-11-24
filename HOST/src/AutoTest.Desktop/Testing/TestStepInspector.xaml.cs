@@ -1433,11 +1433,11 @@ public partial class TestStepInspector : UserControl
         foreach (var item in KeyActionInput.Items.OfType<ComboBoxItem>())
             if ((string?)item.Tag == "Wait") item.IsEnabled = raw;
         KeyDurationPanel.Visibility =
-            (operation is "Pulse" or "Hold" or "Wait" && raw) ||
-            (operation == "Pulse")
+            ((operation is "Pulse" or "Hold" or "Wait") && raw) ||
+            operation == "Pulse"
                 ? Visibility.Visible : Visibility.Collapsed;
         RawKeyMaskPanel.Visibility = raw &&
-            operation is not ("Release" or "Wait")
+            (operation is not ("Release" or "Wait"))
                 ? Visibility.Visible : Visibility.Collapsed;
     }
 
@@ -1576,7 +1576,7 @@ public partial class TestStepInspector : UserControl
                 else if (mapping?.Kind is TestTargetKind.Button or TestTargetKind.RawKey)
                 {
                     var operation = (KeyActionInput.SelectedItem as ComboBoxItem)?.Tag as string
-                        ?? throw new ArgumentException("请选择短按、保持或释放。");
+                        ?? throw new ArgumentException("请选择保持、释放、纯等待或短按。");
                     if (mapping.Kind == TestTargetKind.RawKey)
                     {
                         // Empty 20-switch combination is the explicit all-off
