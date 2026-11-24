@@ -21,6 +21,7 @@ public partial class ManualBenchWindow : Window
     private bool _keyAutosaveBusy;
     private bool _propertyOverlayClosing;
     private bool _benchClosePending;
+    private bool _benchCloseScheduled;
 
     public ManualBenchWindow(ManualBenchViewModel model)
     {
@@ -38,7 +39,7 @@ public partial class ManualBenchWindow : Window
 
     private async void OnKeyAutosaveTick(object? sender, EventArgs e)
     {
-        if (_keyAutosaveBusy || !IsActive || !IsEnabled || _closeAfterCanStopped ||
+        if (_keyAutosaveBusy || !IsActive || !IsEnabled || _benchClosePending || _closeAfterCanStopped ||
             DateTime.UtcNow - _lastInteractionUtc < TimeSpan.FromSeconds(4)) return;
         if (!_model.CanRowsDirty && !_model.CanSaveKeyActions) return;
         _keyAutosaveBusy = true;
@@ -92,6 +93,7 @@ public partial class ManualBenchWindow : Window
         }
         catch (Exception error) when (error is not OutOfMemoryException)
         {
+            _closeAfterCanStopped = false;
             System.Diagnostics.Trace.TraceError("Manual bench safe shutdown failed: " + error);
             MessageBox.Show(this, "手动台架无法安全退出：\n" + error.Message +
                 "\n请核对主控真实输出，状态未确认时视为 UNKNOWN。",
@@ -108,13 +110,20 @@ public partial class ManualBenchWindow : Window
         }
     }
 
-    private async void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+    private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         if (_closeAfterCanStopped) return;
-        // Always await the same close/save gate, even when the UI looks clean:
-        // a background save may still be writing to disk.
         e.Cancel = true;
-        if (!_benchClosePending) await PrepareForParentShutdownAsync();
+        if (_benchClosePending || _benchCloseScheduled) return;
+        _benchCloseScheduled = true;
+        // Even if every cleanup Task completes synchronously (USB disconnected),
+        // the second Close must run AFTER the original Closing event unwinds.
+        Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(async () =>
+        {
+            _benchCloseScheduled = false;
+            if (!_benchClosePending && !_closeAfterCanStopped)
+                await PrepareForParentShutdownAsync();
+        }));
     }
 
     private void ExportLog_Click(object sender, RoutedEventArgs e)
