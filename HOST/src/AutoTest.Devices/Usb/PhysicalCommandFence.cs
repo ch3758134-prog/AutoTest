@@ -281,6 +281,22 @@ public sealed class PhysicalCommandFence
         }
     }
 
+    /// <summary>Extend only the existing operator-approved test scope.
+    /// No CAN IDs or output permissions can be added by a renewal.</summary>
+    public void RefreshPhysicalRun(string fingerprint, long generation, int maxWrites)
+    {
+        if (maxWrites is < 1 or > 10000)
+            throw new ArgumentOutOfRangeException(nameof(maxWrites));
+        lock (_sync)
+        {
+            if (_runCan is null || _runFingerprint != fingerprint ||
+                _runGeneration != generation || DateTimeOffset.UtcNow >= _runExpiry)
+                throw new UnauthorizedAccessException("当前真实测试运行许可已失效，禁止续期。");
+            _remainingWrites = maxWrites;
+            _runExpiry = DateTimeOffset.UtcNow.AddMinutes(10);
+        }
+    }
+
     public void RevokePhysicalRun()
     {
         lock (_sync)
