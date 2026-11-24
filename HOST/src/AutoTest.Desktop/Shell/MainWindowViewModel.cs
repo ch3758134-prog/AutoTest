@@ -1254,6 +1254,8 @@ public sealed partial class MainWindowViewModel : BindableBase
                 else if (SelectedResourceIsTestProject) await OpenSelectedTestProjectAsync();
                 else if (SelectedResourceIsPublicFlow) await OpenSelectedPublicFlowAsync();
                 else if (SelectedResourceIsDbc) await OpenSelectedDbcAsync();
+                else if (_selectedResource?.Asset?.Kind == ProjectWorkspaceService.KeyActionsKind)
+                    OpenManualBench();
                 else if (SelectedResourceIsConfiguration) await OpenSelectedConfigurationAsync();
                 if (_selectedResource?.Asset?.Id != assetId)
                     _selectedResourceChangedDuringOpen = true;
@@ -1528,60 +1530,30 @@ public sealed partial class MainWindowViewModel : BindableBase
             (ProjectWorkspaceService.FirmwareKind, "固件资源"),
             (ProjectWorkspaceService.InspectionKind, "检测前后工位动作")
         };
-        // Keep useful resources visible and avoid presenting obsolete
-        // system/bench descriptions as new configuration obligations.
-        var advanced = new ResourceTreeNode("更多工程资源", "", "其他可创建的正式工程资源",
-            role: "Advanced");
+        // Show meaningful resource categories rather than empty placeholder
+        // folders. Station procedure is edited only in Detection Setup;
+        // the KEY library belongs to the real manual bench tool.
         foreach (var (kind, label) in categories)
         {
+            if (kind == ProjectWorkspaceService.InspectionKind) continue;
             var entries = assets.Where(x => x.Kind.Equals(kind, StringComparison.OrdinalIgnoreCase))
                 .OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase).ToArray();
+            if (entries.Length == 0 && kind != ProjectWorkspaceService.DbcKind &&
+                kind != ProjectWorkspaceService.WaveKind) continue;
             var group = new ResourceTreeNode(label, "", "实际工程资产", kind,
                 role: "Folder", count: entries.Length == 0 ? "" : entries.Length.ToString());
-            foreach (var entry in entries)
-                group.Children.Add(ToAssetNode(entry));
-            if (entries.Length > 0 || kind is ProjectWorkspaceService.DbcKind or
-                ProjectWorkspaceService.WaveKind)
-                ResourceNodes.Add(group);
-            else
-                advanced.Children.Add(group);
-        }
-        if (advanced.Children.Count > 0) ResourceNodes.Add(advanced);
-        // Keep archived configuration files discoverable without making them
-        // part of the supported new-project setup. Nothing is deleted from disk.
-        var obsoleteKinds = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            ProjectWorkspaceService.TestConfigurationKind,
-            ProjectWorkspaceService.BenchConfigurationKind,
-            ProjectWorkspaceService.ScanSettingsKind,
-            ProjectWorkspaceService.FlashSettingsKind,
-            ProjectWorkspaceService.ControllerKind
-        };
-        var existingLegacy = assets.Where(a => obsoleteKinds.Contains(a.Kind))
-            .OrderBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase).ToArray();
-        if (existingLegacy.Length > 0)
-        {
-            var archive = new ResourceTreeNode("兼容保留的旧配置", "",
-                "仅为已有工程保留，不用于新建检测配置",
-                role: "Folder", count: existingLegacy.Length.ToString());
-            foreach (var entry in existingLegacy)
-                archive.Children.Add(ToAssetNode(entry));
-            ResourceNodes.Add(archive);
-        }
-        var defined = categories.Select(x => x.Item1)
-            .Append(ProjectWorkspaceService.TestProjectKind)
-            .Append(ProjectWorkspaceService.TestProgramKind)
-            .Append(ProjectWorkspaceService.PublicFlowKind)
-            .Concat(obsoleteKinds)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var extras = assets.Where(x => !defined.Contains(x.Kind)).ToArray();
-        if (extras.Length > 0)
-        {
-            var group = new ResourceTreeNode("其他资源", "", "未归类工程资产",
-                role: "Folder", count: extras.Length.ToString());
-            foreach (var entry in extras) group.Children.Add(ToAssetNode(entry));
+            foreach (var entry in entries) group.Children.Add(ToAssetNode(entry));
             ResourceNodes.Add(group);
         }
+        var keyCatalogs = assets.Where(a => a.Kind == ProjectWorkspaceService.KeyActionsKind)
+            .OrderBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase).ToArray();
+        foreach (var entry in keyCatalogs)
+            ResourceNodes.Add(new ResourceTreeNode("按键动作库", "", "在手动台架中编辑、保存和运行 KEY 动作",
+                entry.Kind, entry, role: "Asset"));
+        // Preserve legacy/unknown files in the manifest and on disk, without
+        // offering misleading empty or generic categories in the workbench.
+        // Unsupported assets are reported by the resource audit, not treated
+        // as new engineering configuration obligations.
 
         if (selectedId is { } id)
             _selectedResource = AllNodes(ResourceNodes).FirstOrDefault(x => x.Asset?.Id == id);
