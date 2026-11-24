@@ -1,7 +1,7 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
  <Color x:Key="BackgroundColor">#F7F8FB</Color><Color x:Key="PanelColor">#FFFFFF</Color>
- <Color x:Key="InkColor">#26313E</Color><Color x:Key="SubtleColor">#68747F</Color>
- <Color x:Key="LineColor">#E3E8EF</Color><Color x:Key="AccentColor">#3478D6</Color>
+ <Color x:Key="InkColor">#26313E</Color><Color x:Key="SubtleColor">#4C5E70</Color>
+ <Color x:Key="LineColor">#D1DAE4</Color><Color x:Key="AccentColor">#3478D6</Color>
  <Color x:Key="SelectedSurfaceColor">#EAF2FF</Color><Color x:Key="InactiveSelectionColor">#F6F8FB</Color>
  <SolidColorBrush x:Key="Canvas" Color="{StaticResource BackgroundColor}"/>
  <SolidColorBrush x:Key="Panel" Color="{StaticResource PanelColor}"/>
@@ -13,9 +13,9 @@
  <SolidColorBrush x:Key="HoverSurface" Color="#F6F8FB"/>
  <SolidColorBrush x:Key="ToolbarSurface" Color="#FAFBFB"/>
  <SolidColorBrush x:Key="MutedSurface" Color="#F7F8FA"/>
- <SolidColorBrush x:Key="Ok" Color="#477DAA"/>
- <SolidColorBrush x:Key="Warning" Color="#9B6A22"/>
- <SolidColorBrush x:Key="Danger" Color="#C04A57"/>
+ <SolidColorBrush x:Key="Ok" Color="#17633B"/>
+ <SolidColorBrush x:Key="Warning" Color="#8A4B00"/>
+ <SolidColorBrush x:Key="Danger" Color="#B42318"/>
  <SolidColorBrush x:Key="White" Color="#FFFFFF"/>
  <SolidColorBrush x:Key="DisabledSurface" Color="#F2F4F5"/>
 </ResourceDictionary>

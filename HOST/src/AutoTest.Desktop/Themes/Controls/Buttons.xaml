@@ -3,7 +3,7 @@
  <!-- One compact border/button chrome for the approved G3 12px IDE. -->
  <Style x:Key="AtButton" TargetType="{x:Type Button}">
   <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
-  <Setter Property="FontSize" Value="12"/>
+  <Setter Property="FontSize" Value="13"/>
   <Setter Property="FontWeight" Value="Normal"/>
   <Setter Property="Foreground" Value="{StaticResource Ink}"/>
   <Setter Property="Background" Value="White"/>
@@ -41,7 +41,7 @@
        <Setter TargetName="Surface" Property="Opacity" Value="0.45"/>
       </Trigger>
       <Trigger Property="IsKeyboardFocused" Value="True">
-       <Setter TargetName="Surface" Property="BorderBrush" Value="#3478D6"/>
+       <Setter TargetName="Surface" Property="BorderBrush" Value="#2568B7"/>
       </Trigger>
      </ControlTemplate.Triggers>
     </ControlTemplate>
@@ -58,7 +58,7 @@
   <Setter Property="ContentTemplate">
    <Setter.Value>
     <DataTemplate>
-     <TextBlock Text="{Binding}" Foreground="#FFFFFF" FontWeight="SemiBold"
+     <TextBlock Text="{Binding}" Foreground="#FFFFFF" FontWeight="SemiBold" FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}"
       VerticalAlignment="Center" TextAlignment="Center"/>
     </DataTemplate>
    </Setter.Value>

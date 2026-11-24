@@ -413,8 +413,8 @@
   <Setter Property="Height" Value="44"/>
   <Setter Property="Margin" Value="11,11,11,5"/>
   <Setter Property="CornerRadius" Value="6"/>
-  <Setter Property="Background" Value="#F5F9F6"/>
-  <Setter Property="BorderBrush" Value="#DCEADF"/>
+  <Setter Property="Background" Value="#E8EFF8"/>
+  <Setter Property="BorderBrush" Value="#CBD9EB"/>
   <Setter Property="BorderThickness" Value="1"/>
   <Setter Property="SnapsToDevicePixels" Value="True"/>
   <Style.Triggers>
@@ -422,12 +422,12 @@
     <Setter Property="Height" Value="68"/>
    </DataTrigger>
    <DataTrigger Binding="{Binding PhaseKind}" Value="Test">
-    <Setter Property="Background" Value="#F0F9F6"/>
-    <Setter Property="BorderBrush" Value="#E3EEFD"/>
+    <Setter Property="Background" Value="#E1F2EC"/>
+    <Setter Property="BorderBrush" Value="#C2DFD3"/>
    </DataTrigger>
    <DataTrigger Binding="{Binding PhaseKind}" Value="Cleanup">
-    <Setter Property="Background" Value="#FFFAF2"/>
-    <Setter Property="BorderBrush" Value="#F1DFBF"/>
+    <Setter Property="Background" Value="#FFF1DC"/>
+    <Setter Property="BorderBrush" Value="#E6CEA8"/>
    </DataTrigger>
   </Style.Triggers>
  </Style>

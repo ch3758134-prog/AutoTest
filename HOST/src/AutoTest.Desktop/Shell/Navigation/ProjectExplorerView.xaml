@@ -93,7 +93,7 @@
   </Style>
   <HierarchicalDataTemplate x:Key="ExplorerNodeTemplate" ItemsSource="{Binding Children}"
    ItemContainerStyle="{StaticResource ExplorerTreeItem}">
-   <Grid Height="35" HorizontalAlignment="Stretch" ToolTip="{Binding Description}">
+   <Grid Height="38" HorizontalAlignment="Stretch" ToolTip="{Binding Description}">
     <Grid.ColumnDefinitions>
      <ColumnDefinition Width="Auto"/><ColumnDefinition Width="18"/>
      <ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/>
@@ -111,16 +111,16 @@
     <Viewbox x:Name="NodeIcon" Grid.Column="1" Width="16" Height="16"
      VerticalAlignment="Center" Stretch="Uniform" Margin="0,0,4,0">
      <Canvas Width="24" Height="24">
-      <Path Data="{Binding IconPath}" Stroke="#97B6DE" StrokeThickness="1.65"
+      <Path Data="{Binding IconPath}" Stroke="#5279A5" StrokeThickness="1.65"
        StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Fill="Transparent"/>
      </Canvas>
     </Viewbox>
     <TextBlock x:Name="NodeText" Grid.Column="2" Text="{Binding Label}"
-     FontSize="13" Foreground="#3B4B5A" TextTrimming="CharacterEllipsis"
+     FontSize="14" Foreground="#25394D" TextTrimming="CharacterEllipsis"
      VerticalAlignment="Center" Margin="5,0,3,0" Cursor="Hand"
      ToolTip="单击打开当前对象 · F2 重命名资源 · 右键更多操作"/>
     <TextBlock x:Name="NodeCount" Grid.Column="3" Text="{Binding CountLabel}"
-     FontSize="10" FontWeight="SemiBold" Foreground="#627C9D" VerticalAlignment="Center"
+     FontSize="12" FontWeight="SemiBold" Foreground="#435B74" VerticalAlignment="Center"
      Margin="0,0,5,0"/>
     <Button x:Name="AddResource" Grid.Column="4" Content="＋"
      Click="AddResource_Click" Focusable="False" Height="24" Width="24"
@@ -148,9 +148,9 @@
      <Setter TargetName="NodeIcon" Property="Height" Value="19"/>
     </DataTrigger>
     <DataTrigger Binding="{Binding Role}" Value="Section">
-     <Setter TargetName="NodeText" Property="FontSize" Value="12"/>
+     <Setter TargetName="NodeText" Property="FontSize" Value="14"/>
      <Setter TargetName="NodeText" Property="FontWeight" Value="Bold"/>
-     <Setter TargetName="NodeText" Property="Foreground" Value="#627C9D"/>
+     <Setter TargetName="NodeText" Property="Foreground" Value="#425A73"/>
      <Setter TargetName="NodeIcon" Property="Visibility" Value="Collapsed"/>
     </DataTrigger>
     <DataTrigger Binding="{Binding Role}" Value="Setup">
@@ -162,7 +162,7 @@
      <Setter TargetName="NodeCount" Property="Foreground" Value="#3478D6"/>
     </DataTrigger>
     <DataTrigger Binding="{Binding Role}" Value="Case">
-     <Setter TargetName="NodeText" Property="FontSize" Value="12"/>
+     <Setter TargetName="NodeText" Property="FontSize" Value="14"/>
     </DataTrigger>
     <DataTrigger Binding="{Binding Role}" Value="Placeholder">
      <Setter TargetName="NodeText" Property="Foreground" Value="#97B6DE"/>
@@ -177,11 +177,11 @@
   </HierarchicalDataTemplate>
  </UserControl.Resources>
  <DockPanel LastChildFill="True">
-  <Border DockPanel.Dock="Top" Height="35" BorderBrush="#ECF2EF" BorderThickness="0,0,0,1"
+  <Border DockPanel.Dock="Top" Height="43" BorderBrush="#ECF2EF" BorderThickness="0,0,0,1"
    Padding="11,0" Background="#FAFBFB">
    <DockPanel LastChildFill="True">
-    <TextBox x:Name="ResourceSearch" DockPanel.Dock="Right" Width="148" Height="31"
-     VerticalContentAlignment="Center" Padding="6,3" FontSize="11"
+    <TextBox x:Name="ResourceSearch" DockPanel.Dock="Right" Width="132" Height="33"
+     VerticalContentAlignment="Center" Padding="6,3" FontSize="13"
      TextChanged="ResourceSearch_TextChanged"
      ToolTip="输入名称，仅高亮工程树匹配对象；清空后恢复，单击再打开编辑"/>
     <TextBlock Text="工程导航" FontSize="14" FontWeight="SemiBold"

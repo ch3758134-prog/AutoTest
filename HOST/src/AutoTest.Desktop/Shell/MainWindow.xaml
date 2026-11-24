@@ -7,7 +7,7 @@
  WindowStartupLocation="CenterScreen" WindowState="Maximized" WindowStyle="None"
  PreviewKeyDown="Window_PreviewKeyDown"
  ResizeMode="CanResize" Background="#F6F7F8" Foreground="#252C34"
- FontFamily="{StaticResource UiFont}" FontSize="13"
+ FontFamily="{StaticResource UiFont}" FontSize="14"
  UseLayoutRounding="True" SnapsToDevicePixels="True">
  <chrome:WindowChrome.WindowChrome>
   <chrome:WindowChrome CaptionHeight="38" ResizeBorderThickness="6" GlassFrameThickness="0"
@@ -85,15 +85,15 @@
      chrome:WindowChrome.IsHitTestVisibleInChrome="True">
      <Button Content="开发与调试" Command="{Binding ShowEngineerWorkspaceCommand}"
       Visibility="{Binding IsProductionWorkspace,Converter={StaticResource BoolToVisibility}}"
-      Style="{StaticResource AtQuietButton}" FontSize="11" Foreground="#738397"
+      Style="{StaticResource AtQuietButton}" FontSize="13" Foreground="#334D69"
       MinHeight="26" Padding="10,3" Margin="0,0,8,0"
       ToolTip="打开工程、编辑测试程序和使用专业工具"/>
      <Button Content="返回自动测试" Command="{Binding ShowProductionWorkspaceCommand}"
       Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}"
-      Style="{StaticResource AtQuietButton}" FontSize="11" Foreground="#446B97"
+      Style="{StaticResource AtQuietButton}" FontSize="13" Foreground="#245A94"
       MinHeight="26" Padding="10,3" Margin="0,0,8,0"/>
-     <TextBlock Text="{Binding HardwareStatus}" FontSize="10" Foreground="#9B6A22"
-      VerticalAlignment="Center" MaxWidth="165" TextTrimming="CharacterEllipsis"
+     <TextBlock Text="{Binding HardwareStatus}" FontSize="13" FontWeight="SemiBold" Foreground="#805000"
+      VerticalAlignment="Center" MaxWidth="230" TextTrimming="CharacterEllipsis"
       Margin="0,0,10,0"/>
      <Button Content="─" Style="{StaticResource ChromeButton}" ToolTip="最小化"
       chrome:WindowChrome.IsHitTestVisibleInChrome="True" Click="Minimize_Click"/>
@@ -109,7 +109,7 @@
       <TextBlock Text="AT" Foreground="White" FontSize="11" FontWeight="Bold"
        VerticalAlignment="Center" HorizontalAlignment="Center"/>
      </Border>
-     <TextBlock Text="AutoTest" Margin="7,0,0,0" FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
+     <TextBlock Text="AutoTest" Margin="7,0,0,0" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
      <Border Margin="6,0,0,0" Background="#EAF4F0" BorderBrush="#E7EFFB"
       BorderThickness="1" CornerRadius="3" Padding="4,1" VerticalAlignment="Center"
       Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}">
@@ -170,7 +170,7 @@
    </DockPanel>
   </Border>
 
-  <Border Grid.Row="1" Height="44" Background="#FAFBFB" BorderBrush="#E1E5E9" BorderThickness="0,0,0,1"
+  <Border Grid.Row="1" Height="49" Background="#F4F7FA" BorderBrush="#E1E5E9" BorderThickness="0,0,0,1"
    Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}">
    <DockPanel Margin="10,0" LastChildFill="False">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
@@ -220,7 +220,7 @@
   <Grid Grid.Row="2" Background="#FFFFFF"
    Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}">
    <Grid.ColumnDefinitions>
-    <ColumnDefinition x:Name="TreeColumn" Width="296" MinWidth="230" MaxWidth="420"/>
+    <ColumnDefinition x:Name="TreeColumn" Width="320" MinWidth="255" MaxWidth="480"/>
     <ColumnDefinition Width="4"/>
     <ColumnDefinition Width="*" MinWidth="460"/>
    </Grid.ColumnDefinitions>
@@ -229,7 +229,7 @@
     HorizontalAlignment="Stretch" ShowsPreview="True"/>
    <Grid Grid.Column="2">
     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-    <Border Grid.Row="0" Height="35" Background="#F3F5F5"
+    <Border Grid.Row="0" Height="39" Background="#EDF2F7"
      BorderBrush="#E1E5E9" BorderThickness="0,0,0,1"
      Visibility="{Binding HasActiveEditor,Converter={StaticResource BoolToVisibility}}">
      <DockPanel LastChildFill="True">
@@ -249,7 +249,7 @@
         <DataTemplate>
          <StackPanel Orientation="Horizontal">
           <TextBlock Text="{Binding Title}" MaxWidth="190" TextTrimming="CharacterEllipsis"
-           VerticalAlignment="Center" Foreground="#475668" FontSize="11"/>
+           VerticalAlignment="Center" Foreground="#334A62" FontSize="13"/>
           <Button Content="×" Tag="{Binding}" Click="CloseEditorTab_Click"
            Width="19" Height="19" MinWidth="0" MinHeight="0"
            Padding="0" Margin="4,0,0,0" Focusable="False"
@@ -391,7 +391,7 @@
    HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
    Visibility="{Binding IsProductionWorkspace,Converter={StaticResource BoolToVisibility}}"/>
 
-  <Border Grid.Row="3" Height="35" Background="#F8FAFA" BorderBrush="#E1E6E8" BorderThickness="0,1,0,0"
+  <Border Grid.Row="3" Height="38" Background="#F8FAFA" BorderBrush="#E1E6E8" BorderThickness="0,1,0,0"
    Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}">
    <DockPanel Margin="11,0">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
@@ -400,7 +400,7 @@
      <Button Content="扫码枪" Command="{Binding OpenSerialScannerCommand}"
       ToolTip="连接 USB 虚拟串口扫描枪，识别型号及唯一编号"
       MinHeight="26" Height="26" Padding="8,0" Margin="0,0,6,0"/>
-     <TextBlock Text="{Binding ScanStatus}" Width="175" FontSize="11"
+     <TextBlock Text="{Binding ScanStatus}" Width="175" FontSize="13"
       TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
       Foreground="#64758C" Margin="0,0,8,0"/>
      <Button Content="观察" Click="ToggleBottom_Click"
@@ -410,7 +410,7 @@
       Foreground="{StaticResource Ink}" Background="Transparent" BorderThickness="0"
       MinWidth="44" MinHeight="26" Height="26" Padding="2,0" FontSize="12" Margin="0"/>
     </StackPanel>
-    <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource Ink}" FontSize="12"
+    <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource Ink}" FontSize="13"
      TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
    </DockPanel>
   </Border>
