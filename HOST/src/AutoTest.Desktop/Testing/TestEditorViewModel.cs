@@ -99,7 +99,6 @@ public sealed class TestEditorViewModel : BindableBase
         PasteStepCommand = new DelegateCommand(PasteFromClipboard,
             () => !IsBusy && SelectedItem is not null && _clipboardStepId is not null);
         AddMappingCommand = new DelegateCommand(async () => await AddMappingAsync(), () => !IsBusy);
-        RefreshDbcReferencesCommand = new DelegateCommand(async () => await RefreshDbcReferencesAsync(), () => !IsBusy);
         RemoveMappingCommand = new DelegateCommand(RemoveMapping, () => SelectedMapping is not null && !IsBusy);
         PrepareRunApprovalCommand = new DelegateCommand(PrepareRealRunApproval,
             () => !IsBusy && !IsDirty && !HasNewStepDraft);
@@ -736,72 +735,6 @@ public sealed class TestEditorViewModel : BindableBase
         };
         return Mappings.FirstOrDefault(x => x.Name == SelectedMapping?.Name && Suitable(x))?.Name
             ?? Mappings.FirstOrDefault(Suitable)?.Name ?? "";
-    }
-
-    public DelegateCommand RefreshDbcReferencesCommand { get; }
-
-    private async Task RefreshDbcReferencesAsync()
-    {
-        if (IsBusy || HasNewStepDraft || !CanProceed()) return;
-        var context = _workspace.Current;
-        if (context is null) return;
-        var original = _transaction.Current;
-        var updated = original.Mappings.ToBuilder();
-        var changes = new List<string>();
-        var unresolved = new List<string>();
-        IsBusy = true;
-        try
-        {
-            var choices = await TestTargetCatalog.LoadAsync(_workspace);
-            for (var i = 0; i < updated.Count; i++)
-            {
-                var old = updated[i];
-                if (old.Kind is not (TestTargetKind.CanMessage or TestTargetKind.Signal)) continue;
-                var asset = context.Definition.Assets.SingleOrDefault(a => a.Id == old.Asset);
-                if (asset is null) { unresolved.Add(old.Name + "：DBC 资源不存在"); continue; }
-                if (asset.Revision == old.AssetRevision &&
-                    string.Equals(asset.Sha256, old.AssetSha256, StringComparison.OrdinalIgnoreCase)) continue;
-                var matches = choices.Where(c => c.Mapping.Kind == old.Kind &&
-                    c.Mapping.Asset == old.Asset && c.Mapping.Role == old.Role &&
-                    c.Mapping.CanId == old.CanId && c.Mapping.Extended == old.Extended &&
-                    c.Mapping.SignalName == old.SignalName && c.Mapping.Unit == old.Unit &&
-                    c.Mapping.AssetRevision == asset.Revision &&
-                    string.Equals(c.Mapping.AssetSha256, asset.Sha256, StringComparison.OrdinalIgnoreCase)).ToArray();
-                if (matches.Length != 1)
-                {
-                    unresolved.Add(old.Name + "：报文/信号身份或单位变化，须重新选择");
-                    continue;
-                }
-                updated[i] = old with { AssetRevision = asset.Revision, AssetSha256 = asset.Sha256 };
-                changes.Add("0x" + old.CanId.ToString("X") +
-                    (old.Kind == TestTargetKind.Signal ? " / " + old.SignalName : "") +
-                    "：r" + old.AssetRevision + " → r" + asset.Revision);
-            }
-            if (changes.Count == 0)
-            {
-                StatusMessage = unresolved.Count == 0 ? "当前用例没有过期的 DBC 引用。" :
-                    "无法自动定位：" + string.Join("；", unresolved);
-                return;
-            }
-            var detail = string.Join("\n", changes.Take(20));
-            if (changes.Count > 20) detail += "\n…另有 " + (changes.Count - 20) + " 项";
-            if (!_dialogs.Confirm("更新当前用例 " + changes.Count + " 项 DBC 引用？\n\n" + detail +
-                "\n\n仅更新资源版本/指纹，保持原步骤、原始 DATA、目标身份和判据。" +
-                "\nDBC 编码参数或枚举可能已经改变，请核对后再运行。" +
-                (unresolved.Count > 0 ? "\n另有 " + unresolved.Count + " 项无法匹配，仍需手动修复。" : ""))) return;
-            if (!ReferenceEquals(context, _workspace.Current) || !ReferenceEquals(original, _transaction.Current))
-                throw new InvalidOperationException("工程或用例已变化，请重新检查。");
-            var selected = _selectedItem?.Step?.Id;
-            _transaction.ReplaceMappings(updated.ToImmutable());
-            RefreshMappings();
-            RefreshTree(selected);
-            StatusMessage = "已更新 " + changes.Count + " 项 DBC 引用，请保存用例。" +
-                (unresolved.Count > 0 ? " 未解决：" + string.Join("；", unresolved) : "") +
-                " 保存后在测试项目中确认采用最新用例修订。";
-        }
-        catch (Exception error) when (IsEditorError(error) || error is IOException or UnauthorizedAccessException)
-        { StatusMessage = "DBC 引用更新失败：" + error.Message; }
-        finally { IsBusy = false; }
     }
 
     private async Task<IReadOnlyList<MappingChoice>> AvailableObjectsAsync()
@@ -1520,7 +1453,6 @@ public sealed class TestEditorViewModel : BindableBase
         CopyStepCommand?.RaiseCanExecuteChanged();
         PasteStepCommand?.RaiseCanExecuteChanged();
         AddMappingCommand?.RaiseCanExecuteChanged();
-        RefreshDbcReferencesCommand?.RaiseCanExecuteChanged();
         RemoveMappingCommand?.RaiseCanExecuteChanged();
         PrepareRunApprovalCommand?.RaiseCanExecuteChanged();
         RunCommand?.RaiseCanExecuteChanged();
