@@ -51,6 +51,22 @@ public sealed class DbcDisplayNames
     private readonly Dictionary<(uint Id, string Signal), string> _editedSignalComments = new();
     private readonly Dictionary<(uint Id, string Signal), string> _signalDescriptions = new();
 
+    internal DbcDisplayNames Copy()
+    {
+        var copy = new DbcDisplayNames();
+        foreach (var pair in _explicitMessages) copy._explicitMessages.Add(pair.Key, pair.Value);
+        foreach (var pair in _explicitSignals) copy._explicitSignals.Add(pair.Key, pair.Value);
+        foreach (var pair in _commentMessages) copy._commentMessages.Add(pair.Key, pair.Value);
+        foreach (var pair in _commentSignals) copy._commentSignals.Add(pair.Key, pair.Value);
+        foreach (var pair in _explicitMessageSummaries) copy._explicitMessageSummaries.Add(pair.Key, pair.Value);
+        foreach (var pair in _explicitSignalSummaries) copy._explicitSignalSummaries.Add(pair.Key, pair.Value);
+        foreach (var pair in _messageDescriptions) copy._messageDescriptions.Add(pair.Key, pair.Value);
+        foreach (var pair in _editedMessageComments) copy._editedMessageComments.Add(pair.Key, pair.Value);
+        foreach (var pair in _editedSignalComments) copy._editedSignalComments.Add(pair.Key, pair.Value);
+        foreach (var pair in _signalDescriptions) copy._signalDescriptions.Add(pair.Key, pair.Value);
+        return copy;
+    }
+
     public static DbcDisplayNames Parse(string text)
     {
         var names = new DbcDisplayNames();
