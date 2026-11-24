@@ -545,6 +545,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     /// </summary>
     public void RefreshReferences()
     {
+        _ = SynchronizeSavedRevisionAsync();
         var project = _workspace.Current;
         foreach (var row in Packages)
         {
@@ -751,6 +752,20 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         }
         finally { IsBusy = false; }
     }
+    public async Task SynchronizeSavedRevisionAsync()
+    {
+        var current = _workspace.Current;
+        var asset = current?.Definition.Assets.FirstOrDefault(a => a.Id == _session.AssetId);
+        if (IsBusy || asset is null || current!.Definition.Id != _session.ProjectId ||
+            asset.Revision == _session.AssetRevision) return;
+        if (IsDirty)
+        {
+            StatusMessage = "测试项目修订已随用例更新；未保存的顺序草稿仍保留，请核对后重新加载。";
+            return;
+        }
+        await ReloadAsync();
+    }
+
     private async Task ReloadAsync()
     {
         ResetFrozenSelection();
