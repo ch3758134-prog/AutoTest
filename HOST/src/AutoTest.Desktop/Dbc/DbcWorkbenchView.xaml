@@ -161,7 +161,7 @@
    <Border x:Name="PropertyCard" Background="White" BorderBrush="#D5E0EB" BorderThickness="1" CornerRadius="9" Width="610" MaxHeight="610" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="16" Padding="16">
     <Grid>
      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-     <DockPanel Margin="0,0,0,12"><Button DockPanel.Dock="Right" Content="关闭" Click="FinishOverlay_Click"/><TextBlock x:Name="OverlayTitle" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center"/></DockPanel>
+     <DockPanel Margin="0,0,0,12"><Button DockPanel.Dock="Right" Content="✕" Click="CancelOverlay_Click" ToolTip="取消当前浮窗修改" MinWidth="32"/><TextBlock x:Name="OverlayTitle" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center"/></DockPanel>
      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel>
       <StackPanel x:Name="NotesPanel">
        <TextBlock x:Name="OriginalName" Foreground="#526B84" TextWrapping="Wrap" Margin="0,0,0,12"/>
