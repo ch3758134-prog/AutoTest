@@ -130,6 +130,11 @@ public sealed partial class WaveWorkbenchViewModel
                 return;
             }
             var track = new WaveSignalTrack(choice, TraceColors[Tracks.Count % TraceColors.Length]);
+            track.PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName is nameof(WaveSignalTrack.Visible) or
+                    nameof(WaveSignalTrack.StepStyle)) NotifyChartChanged();
+            };
             Tracks.Add(track);
             SelectedTrack = track;
             Status = "已加入观察列表：" + choice.Mapping.SignalName;
@@ -320,7 +325,8 @@ public sealed partial class WaveWorkbenchViewModel
             }
             track.Add((observation.Time.Utc - _observedFromUtc).TotalSeconds,
                 value, observation.Time.Utc,
-                observation.HasGap || item.Result.Status != TestSignalStatus.Valid);
+                observation.HasGap || item.Result.Status != TestSignalStatus.Valid,
+                observation.Time.Quality);
         }
         if (!IsPreviewPaused)
         {
