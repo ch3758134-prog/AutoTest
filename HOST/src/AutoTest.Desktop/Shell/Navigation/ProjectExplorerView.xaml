@@ -199,8 +199,8 @@
     PreviewMouseRightButtonDown="Navigator_RightClick">
     <TreeView.ContextMenu>
      <ContextMenu DataContext="{Binding PlacementTarget.DataContext,RelativeSource={RelativeSource Self}}">
-      <MenuItem Header="新建测试项目" Command="{Binding NewTestProjectCommand}"/>
-      <MenuItem Header="新建测试用例" Command="{Binding NewTestProgramCommand}"/>
+      <MenuItem Header="打开测试项目" Command="{Binding OpenFirstTestProjectCommand}"/>
+      <MenuItem Header="新建测试用例并加入项目" Command="{Binding NewTestProgramCommand}"/>
       <MenuItem Header="导入 DBC 数据库" Command="{Binding ImportDbcCommand}"/>
       <Separator/>
       <MenuItem Header="重命名所选资源" Command="{Binding RenameResourceCommand}"/>
