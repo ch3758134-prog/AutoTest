@@ -10,13 +10,16 @@ public partial class DbcMessageEditDialog : Window
     private readonly DbcMessage _existing;
     public DbcMessage? Result { get; private set; }
 
-    public DbcMessageEditDialog(DbcMessage existing)
+    public DbcMessageEditDialog(DbcMessage existing, bool allowIdChange = false)
     {
         InitializeComponent();
         _existing = existing;
-        IdBox.Text = "0x" + existing.ArbitrationId.ToString("X") +
-            (existing.IsExtended ? "（29 位扩展帧）" : "（11 位标准帧）");
-        IdBox.IsReadOnly = true;
+        IdBox.Text = "0x" + existing.ArbitrationId.ToString("X");
+        IdBox.IsReadOnly = !allowIdChange;
+        ExtendedBox.IsChecked = existing.IsExtended;
+        ExtendedBox.IsEnabled = allowIdChange;
+        IdBox.ToolTip = allowIdChange ? "输入实际仲裁 ID；扩展帧标记由 DBC 编码处理。"
+            : "当前文件或值表引用保护 CAN ID。";
         NameBox.Text = existing.Name;
         DlcBox.Text = existing.Dlc.ToString(CultureInfo.InvariantCulture);
         TransmitterBox.Text = existing.Transmitter;
@@ -38,7 +41,15 @@ public partial class DbcMessageEditDialog : Window
             ErrorText.Text = "报文名称和发送节点必须是非空、无空格的 DBC 标识符。";
             return;
         }
-        Result = _existing with { Name = name, Dlc = dlc, Transmitter = senderName };
+        var idText = IdBox.Text.Trim();
+        if (idText.StartsWith("0x", StringComparison.OrdinalIgnoreCase)) idText = idText[2..];
+        var extended = ExtendedBox.IsChecked == true;
+        if (!uint.TryParse(idText, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var id) ||
+            id > (extended ? 0x1FFFFFFFu : 0x7FFu))
+        { ErrorText.Text = "CAN ID 超出标准帧或扩展帧范围。"; return; }
+        var encoded = id == _existing.ArbitrationId && extended == _existing.IsExtended
+            ? _existing.Id : extended ? id | 0x80000000u : id;
+        Result = _existing with { Id = encoded, Name = name, Dlc = dlc, Transmitter = senderName };
         DialogResult = true;
     }
 }
