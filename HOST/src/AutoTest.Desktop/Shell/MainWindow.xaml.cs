@@ -43,6 +43,7 @@ public partial class MainWindow : Window
         Loaded += async (_, _) =>
         {
             await _viewModel.RestoreAutomaticTestAtStartupAsync();
+            _viewModel.StartAutomaticUsbConnection();
             _autosaveTimer.Start();
         };
         _autosaveTimer.Tick += OnAutosaveTick;

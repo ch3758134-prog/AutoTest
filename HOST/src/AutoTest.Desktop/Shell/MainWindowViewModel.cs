@@ -187,8 +187,8 @@ public sealed partial class MainWindowViewModel : BindableBase
             ProjectWorkspaceService.WaveSettingsKind));
         OpenScanConfigCommand = new DelegateCommand(ShowProjectConfiguration);
         OpenFlashConfigCommand = new DelegateCommand(OpenNativeFlashProfile);
-        OpenWaveWorkbenchCommand = new DelegateCommand(OpenWaveWorkbench);
-        OpenManualBenchCommand = new DelegateCommand(OpenManualBench);
+        OpenWaveWorkbenchCommand = new DelegateCommand(async () => await OpenWaveWorkbenchAsync());
+        OpenManualBenchCommand = new DelegateCommand(async () => await OpenManualBenchAsync());
         OpenFlashWorkbenchCommand = new DelegateCommand(async () => await OpenFlashWorkbenchAsync(),
             () => !_openingFlashLab && !_hardwareBusy);
         OpenNativeFlashProfileCommand = new DelegateCommand(OpenNativeFlashProfile);
@@ -423,7 +423,7 @@ public sealed partial class MainWindowViewModel : BindableBase
     private ManualBenchWindow? _manualBenchWindow;
     private WaveWorkbenchWindow? _waveWorkbenchWindow;
 
-    private void OpenWaveWorkbench()
+    private async Task OpenWaveWorkbenchAsync()
     {
         if (_workspace.Current is null)
         {
@@ -435,27 +435,34 @@ public sealed partial class MainWindowViewModel : BindableBase
             _waveWorkbenchWindow.Activate();
             return;
         }
+        if (!await TakeUsbForToolAsync("波形工作台")) return;
         var view = new WaveWorkbenchWindow(new WaveWorkbenchViewModel(_workspace, _liveSignals, _hardware, _realTest),
             () => OpenWaveConfigCommand.Execute());
         _waveWorkbenchWindow = view;
         view.Owner = global::System.Windows.Application.Current.MainWindow;
-        view.Closed += (_, _) => _waveWorkbenchWindow = null;
+        view.Closed += async (_, _) =>
+        {
+            _waveWorkbenchWindow = null;
+            await ReturnUsbFromToolAsync("波形工作台");
+        };
         view.Show();
     }
 
-    private void OpenManualBench()
+    private async Task OpenManualBenchAsync()
     {
         if (_manualBenchWindow is { IsVisible: true })
         {
             _manualBenchWindow.Activate();
             return;
         }
+        if (!await TakeUsbForToolAsync("手动台架")) return;
         var view = new ManualBenchWindow(new ManualBenchViewModel(_workspace, _hardware));
         _manualBenchWindow = view;
-        view.Closed += (_, _) =>
+        view.Closed += async (_, _) =>
         {
             _manualBenchWindow = null;
-            _ = RefreshEngineeringSetupAsync();
+            await ReturnUsbFromToolAsync("手动台架");
+            await RefreshEngineeringSetupAsync();
         };
         view.Owner = global::System.Windows.Application.Current.MainWindow;
         view.Show();
@@ -523,11 +530,7 @@ public sealed partial class MainWindowViewModel : BindableBase
                 "先关闭手动台架", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-        if (_hardware.HasSession &&
-            MessageBox.Show("烧录工具将独占主控板 USB。当前主界面的连接会先断开，烧录窗口退出后须手动重新连接。继续？",
-                "切换到 ECU 烧录工具", MessageBoxButton.YesNo,
-                MessageBoxImage.Warning) != MessageBoxResult.Yes)
-            return;
+        if (!await TakeUsbForToolAsync("FLASH")) return;
         _openingFlashLab = true;
         _hardwareBusy = true;
         OpenFlashWorkbenchCommand.RaiseCanExecuteChanged();
@@ -548,8 +551,8 @@ public sealed partial class MainWindowViewModel : BindableBase
                 WindowStartupLocation = WindowStartupLocation.CenterOwner
             };
             window.ShowDialog();
-            HardwareStatus = "USB 未连接";
-            StatusMessage = "烧录工具已关闭；请根据现场状态主动重新连接主控板。";
+            HardwareStatus = "烧录工具已关闭，主工位将自动重新连接";
+            StatusMessage = HardwareStatus;
         }
         catch (Exception error)
         {
@@ -562,6 +565,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         {
             _hardwareBusy = false;
             _openingFlashLab = false;
+            await ReturnUsbFromToolAsync("FLASH");
             OpenFlashWorkbenchCommand.RaiseCanExecuteChanged();
             ConnectHardwareCommand.RaiseCanExecuteChanged();
             RaisePropertyChanged(nameof(ConnectionButtonText));
@@ -891,6 +895,7 @@ public sealed partial class MainWindowViewModel : BindableBase
 
     public async Task ShutdownAsync()
     {
+        StopAutomaticUsbConnection();
         _hardware.EcuCanBitrateSelectionChanged -= OnSelectedEcuCanRateChanged;
         _automaticTestHome.Dispose();
         await _scannerWorkbench.DisposeAsync();
@@ -1272,7 +1277,7 @@ public sealed partial class MainWindowViewModel : BindableBase
                 else if (SelectedResourceIsPublicFlow) await OpenSelectedPublicFlowAsync();
                 else if (SelectedResourceIsDbc) await OpenSelectedDbcAsync();
                 else if (_selectedResource?.Asset?.Kind == ProjectWorkspaceService.KeyActionsKind)
-                    OpenManualBench();
+                    await OpenManualBenchAsync();
                 else if (SelectedResourceIsConfiguration) await OpenSelectedConfigurationAsync();
                 if (_selectedResource?.Asset?.Id != assetId)
                     _selectedResourceChangedDuringOpen = true;
