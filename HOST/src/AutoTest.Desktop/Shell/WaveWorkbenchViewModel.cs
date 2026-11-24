@@ -39,6 +39,7 @@ public sealed partial class WaveWorkbenchViewModel : BindableBase
         _project.Current?.ManifestPath;
     public bool IsIndependentArchive => _independentWaveRoot is not null;
     public bool CanEditProjectWaveSettings => !IsIndependentArchive && _project.Current is not null;
+    public bool HasEcuProject => _project.Current is not null;
     public string SourceDescription => IsIndependentArchive
         ? "独立波形目录 · " + _independentWaveRoot
         : _project.Current is { } p
@@ -142,6 +143,7 @@ public sealed partial class WaveWorkbenchViewModel : BindableBase
             if (IsIndependentArchive) return;
             RaisePropertyChanged(nameof(SourceDescription));
             RaisePropertyChanged(nameof(CanEditProjectWaveSettings));
+            RaisePropertyChanged(nameof(HasEcuProject));
             // Project autosave emits CurrentChanged: do not clear the plot on
             // a manifest update in the same opened project.
             var nextPath = _project.Current?.ManifestPath;
