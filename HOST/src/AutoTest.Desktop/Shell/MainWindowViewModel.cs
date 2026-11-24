@@ -1680,7 +1680,9 @@ public sealed partial class MainWindowViewModel : BindableBase
 
     private async Task CreateCaseInsideProjectAsync(TestProjectWorkbenchViewModel projectEditor)
     {
-        if (!HasProject || projectEditor.IsBusy) return;
+        // Resolve/validate pending inspector edits *before* creating a disk
+        // asset. If navigation is blocked, no detached case is created.
+        if (!HasProject || projectEditor.IsBusy || !CanLeaveActiveDocument(ActiveEditorTab)) return;
         var name = _fileDialogs.AskResourceName("在测试项目中新建空白用例", "新建测试用例");
         if (name is null) return;
         await RunOperationAsync(async () =>
