@@ -207,6 +207,9 @@ public sealed class HardwareConnectionService : IAsyncDisposable
     public event Action<long>? ConnectionChanged;
     private volatile bool _testRunApproved;
     private string? _approvedPlan;
+    private int _testRunGrantBudget;
+    private int _testRunGrantUsed;
+    private DateTimeOffset _testRunRefreshAt;
     private volatile bool _manualCanBatchApproved;
     private string? _manualBatchFingerprint;
     private readonly Dictionary<Guid, string> _manualCanRows = new();
@@ -744,6 +747,19 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         finally { _lifecycle.Release(); }
     }
 
+    // Refresh the same operator-approved TEST scope under the device lifecycle
+    // lock. Never add CAN IDs or any new output privileges.
+    private void RefreshTestRunGrantIfNeeded(string fingerprint)
+    {
+        if (_link is null || _testRunGrantBudget <= 0) return;
+        if (_testRunGrantUsed < _testRunGrantBudget * 3 / 4 &&
+            DateTimeOffset.UtcNow < _testRunRefreshAt) return;
+        _link.RefreshPhysicalTestRun(fingerprint, _testRunGrantBudget);
+        _testRunGrantUsed = 0;
+        _testRunRefreshAt = DateTimeOffset.UtcNow.AddMinutes(5);
+        Record("TEST 运行许可已续期；授权 CAN ID 与运行范围未改变。");
+    }
+
     /// <summary>Explicit operator approval for a pinned run; never issued on USB connect.</summary>
     public async Task AuthorizeTestRunAsync(string fingerprint, string confirmation,
         IReadOnlyCollection<(byte Port, bool Extended, uint Id)> allowedCan, bool allowIgn,
@@ -759,6 +775,9 @@ public sealed class HardwareConnectionService : IAsyncDisposable
                 maxWrites);
             _testRunApproved = true;
             _approvedPlan = fingerprint;
+            _testRunGrantBudget = maxWrites;
+            _testRunGrantUsed = 0;
+            _testRunRefreshAt = DateTimeOffset.UtcNow.AddMinutes(5);
             PublishTestRunAuthorization(true);
             Record("已人工批准物理测试运行 SHA=" + fingerprint +
                 "；最多 " + maxWrites + " 次授权写入 / 10 分钟 / 当前 USB 会话。");
@@ -774,6 +793,8 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             _link?.RevokePhysicalTestRun();
             _testRunApproved = false;
             _approvedPlan = null;
+            _testRunGrantBudget = 0;
+            _testRunGrantUsed = 0;
             PublishTestRunAuthorization(false);
             Record("物理测试运行授权已撤销。");
         }
@@ -793,8 +814,10 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             if (frame.Role == BusRole.DutCan) RequireConfiguredEcuCanBitrate();
             var payload = CanFrameCodec.ToUsbPayload(frame,
                 StationCanWiring.Current);
+            RefreshTestRunGrantIfNeeded(fingerprint);
             await _usb.RequestAsync(MainControllerCodec.CanSend, payload,
                 TimeSpan.FromSeconds(3), ct);
+            _testRunGrantUsed++;
             Record("测试 CAN 写入设备 ACK：CAN" + payload[0] + " 0x" +
                 frame.Id.ToString("X") + "；尚不能证明 DUT 已响应。");
         }
@@ -812,9 +835,11 @@ public sealed class HardwareConnectionService : IAsyncDisposable
                 throw new UnauthorizedAccessException("No live approved test plan.");
             // Real TEST IGN uses the established 0x12 path; the clamp-only
             // firmware identity check must not reject it.
+            RefreshTestRunGrantIfNeeded(fingerprint);
             await _usb.RequestAsync(MainControllerCodec.SetIgn,
                 new byte[] { on ? (byte)1 : (byte)0 },
                 TimeSpan.FromSeconds(3), ct);
+            _testRunGrantUsed++;
             Record("测试 IGN " + (on ? "ON" : "OFF") +
                 " 设备 ACK；实际 ECU 电气状态须另行观测。");
         }
@@ -934,6 +959,8 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             AnnounceManualBatch(false);
             _testRunApproved = false;
             _approvedPlan = null;
+            _testRunGrantBudget = 0;
+            _testRunGrantUsed = 0;
             PublishTestRunAuthorization(false);
             _monitorStop?.Cancel();
             if (_bridge is not null) await _bridge.DisposeAsync();
