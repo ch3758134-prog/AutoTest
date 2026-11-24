@@ -152,12 +152,14 @@ public sealed class DbcWorkbenchDocument
             var index = Array.FindIndex(e.Draft.Messages.ToArray(), m => m.Id == previousId);
             e.Apply(e.Draft with { Messages = e.Draft.Messages.SetItem(index, replacement with { Signals = old.Signals }) });
         });
+        if (previousId != replacement.Id) _displayNames.RemapMessage(previousId, replacement.Id);
     }
     public void DeleteMessage(uint id)
     {
         RejectShapeEdits();
         Mutate(e => e.RemoveMessage(id));
         _tables = _tables.RemoveAll(v => v.MessageId == id);
+        _displayNames.RemoveMessage(id);
     }
     public void AddSignal(uint messageId, DbcSignal signal) { RejectShapeEdits(); Mutate(e => e.AddSignal(messageId, signal)); }
     public void UpdateSignal(uint messageId, string previousName, DbcSignal updated)
@@ -167,12 +169,14 @@ public sealed class DbcWorkbenchDocument
         if (_tables.Any(t => t.MessageId == messageId && t.SignalName == previousName) && updated.Name != previousName)
             throw new ProjectDataException("DBC_VAL_REFERENCE", "Remove value description before renaming the signal.");
         Mutate(e => e.EditSignal(messageId, previousName, updated));
+        if (previousName != updated.Name) _displayNames.RemapSignal(messageId, previousName, updated.Name);
     }
     public void DeleteSignal(uint messageId, string name)
     {
         RejectShapeEdits();
         Mutate(e => e.RemoveSignal(messageId, name));
         _tables = _tables.RemoveAll(v => v.MessageId == messageId && v.SignalName == name);
+        _displayNames.RemoveSignal(messageId, name);
     }
     public void SetValueDescription(uint messageId, string name, long raw, string label)
     {
