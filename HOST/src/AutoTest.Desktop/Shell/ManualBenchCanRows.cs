@@ -815,12 +815,4 @@ public sealed partial class ManualBenchViewModel
     /// <summary>Window closing waits for all ECU CAN writers to stop and for the fence to revoke.</summary>
     public Task StopCanBatchForCloseAsync() => StopCanRowsAsync();
 
-    private async Task StopCanRowsAsync()
-    {
-        var stop = _canBatchStop;
-        if (stop is null) return;
-        stop.Cancel();
-        if (_canBatchTask is not null) await _canBatchTask;
-        Status = "ECU CAN 多报文任务已停止。";
-    }
 }
