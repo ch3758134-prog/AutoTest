@@ -436,9 +436,28 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     private void ProjectChanged(object? sender, EventArgs e) =>
         global::System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(async () =>
         {
-            _canBatchStop?.Cancel();
-            _keyActionStop?.Cancel();
-            if (!_disposed) await ReloadResourcesAsync();
+            if (_disposed) return;
+            // Manifest revisions also change during ordinary autosave.
+            // Do not stop a live exact-frame batch for unrelated edits.
+            if (IsCanBatchRunning && !ActiveCanProjectStillValid())
+            {
+                await StopCanRowsAsync();
+                Status = "ECU CAN 已停止：工程或发送所用 DBC 已变化。";
+            }
+            if (IsKeyActionRunning)
+            {
+                var current = _projects.Current;
+                var session = _keyCatalogSession;
+                if (current is null || session is null ||
+                    current.Definition.Id != session.ProjectId ||
+                    !string.Equals(current.ManifestPath, session.ManifestPath, StringComparison.OrdinalIgnoreCase) ||
+                    !current.Definition.Assets.Any(asset => asset.Id == session.AssetId &&
+                        asset.Revision == session.AssetRevision &&
+                        string.Equals(asset.Sha256, session.FileSha256, StringComparison.OrdinalIgnoreCase)))
+                    await StopKeyActionAsync();
+            }
+            if (!_disposed && !IsCanBatchRunning && !IsKeyActionRunning)
+                await ReloadResourcesAsync();
         }));
 
     private void FrameObserved(CanObservation observation)
