@@ -938,8 +938,8 @@ public sealed partial class MainWindowViewModel : BindableBase
     private static bool CanLeaveActiveDocument(EditorTabModel? from) =>
         from?.View switch
         {
-            TestEditorView test => test.TryLeaveInspector(),
-            PublicFlowEditorView flow => !flow.IsPropertyEditorOpen,
+            TestEditorView test => test.TryDismissPropertyEditor() && test.TryLeaveInspector(),
+            PublicFlowEditorView flow => flow.TryDismissPropertyEditor(),
             _ => true
         };
 
