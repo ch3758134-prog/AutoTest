@@ -136,4 +136,56 @@ public sealed class ManualCanBatchFenceTests
             fence.AuthorizeManualCanBatch(hash, "AUTHORIZE BENCH CAN " + hash,
                 Array.Empty<byte[]>(), 1));
     }
+    [Fact]
+    public void IndependentRowsCanStartStopAndRejectModifiedPayloads()
+    {
+        var fence = new PhysicalCommandFence();
+        var tokenA = Guid.NewGuid();
+        var tokenB = Guid.NewGuid();
+        var a = RawCan(StationCanWiring.DutPort, 0x701, 0x11);
+        var b = RawCan(StationCanWiring.DutPort, 0x702, 0x22);
+        var changed = RawCan(StationCanWiring.DutPort, 0x701, 0x12);
+
+        fence.AuthorizeManualCanRow(tokenA, a, 13);
+        fence.AuthorizeManualCanRow(tokenB, b, 13);
+        var aRequest = UsbWireCodec.EncodeRequest(1, MainControllerCodec.CanSend, a);
+        var bRequest = UsbWireCodec.EncodeRequest(2, MainControllerCodec.CanSend, b);
+        fence.AssertAllowedAndConsume(aRequest, 13);
+        fence.AssertAllowedAndConsume(bRequest, 13);
+        Assert.Throws<UnauthorizedAccessException>(() =>
+            fence.AssertAllowedAndConsume(UsbWireCodec.EncodeRequest(
+                3, MainControllerCodec.CanSend, changed), 13));
+        Assert.Throws<UnauthorizedAccessException>(() =>
+            fence.AssertAllowedAndConsume(aRequest, 14));
+
+        fence.RevokeManualCanRow(tokenA);
+        Assert.Throws<UnauthorizedAccessException>(() =>
+            fence.AssertAllowedAndConsume(aRequest, 13));
+        fence.AssertAllowedAndConsume(bRequest, 13);
+        fence.RevokeManualCanRow(tokenB);
+        Assert.Throws<UnauthorizedAccessException>(() =>
+            fence.AssertAllowedAndConsume(bRequest, 13));
+    }
+
+    [Fact]
+    public void IndependentManualCanCannotBypassPhysicalTestOrReconnect()
+    {
+        var fence = new PhysicalCommandFence();
+        var token = Guid.NewGuid();
+        var data = RawCan(StationCanWiring.DutPort, 0x701, 0x33);
+        var hash = new string('a', 64);
+        fence.AuthorizeManualCanRow(token, data, 9);
+        Assert.Throws<InvalidOperationException>(() =>
+            fence.AuthorizePhysicalRun(hash, "AUTHORIZE TEST RUN " + hash,
+                [(StationCanWiring.DutPort, false, 0x701)], false, 9));
+        fence.Reset();
+        Assert.Throws<UnauthorizedAccessException>(() =>
+            fence.AssertAllowedAndConsume(UsbWireCodec.EncodeRequest(
+                1, MainControllerCodec.CanSend, data), 9));
+        fence.AuthorizePhysicalRun(hash, "AUTHORIZE TEST RUN " + hash,
+            [(StationCanWiring.DutPort, false, 0x701)], false, 9);
+        Assert.Throws<InvalidOperationException>(() =>
+            fence.AuthorizeManualCanRow(Guid.NewGuid(), data, 9));
+    }
+
 }
