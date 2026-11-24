@@ -283,6 +283,20 @@ public sealed class DbcWorkbenchDocument
     }
 
     public EditCheckpoint CaptureCheckpoint() => new(this);
+
+    /// <summary>Undo in the same workspace may span an autosave. Restore
+    /// the exact historical source basis and draft, while the workspace
+    /// retains the CURRENT file receipt and revision conflict checks.</summary>
+    public static DbcWorkbenchDocument RecreateHistoricalDraft(EditCheckpoint checkpoint)
+    {
+        var owner = checkpoint.Owner;
+        var document = new DbcWorkbenchDocument(owner._name, owner._original,
+            checkpoint.Model, checkpoint.Tables, owner.UnsupportedDirectives);
+        document._displayNames = checkpoint.Names.Copy();
+        document._dirty = true;
+        document._dataDirty = checkpoint.DataDirty;
+        return document;
+    }
     public void RestoreCheckpoint(EditCheckpoint checkpoint)
     {
         if (!ReferenceEquals(checkpoint.Owner, this))
