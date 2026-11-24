@@ -14,6 +14,7 @@
         <ResourceDictionary Source="Themes/Controls/Panels.xaml"/>
         <ResourceDictionary Source="Themes/Controls/Tables.xaml"/>
         <ResourceDictionary Source="Themes/Controls/PreviewEditor.xaml"/>
+        <ResourceDictionary Source="Themes/Controls/CanSignalEditor.xaml"/>
       </ResourceDictionary.MergedDictionaries>
       <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
     </ResourceDictionary>
