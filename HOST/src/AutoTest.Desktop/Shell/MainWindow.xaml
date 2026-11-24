@@ -164,8 +164,6 @@
       <MenuItem Header="打开独立 DBC 文件…" Command="{Binding OpenIndependentDbcCommand}"/>
 
       <MenuItem Header="波形分析" Command="{Binding OpenWaveWorkbenchCommand}"/>
-      <MenuItem Header="波形配置" Command="{Binding OpenWaveConfigCommand}"/>
-       <MenuItem Header="CAN 监视" Command="{Binding OpenCanMonitorCommand}"/>
       <Separator/>
 
 
