@@ -122,9 +122,9 @@
        <Button Content="删除" Command="{Binding DeleteCanRowCommand}" Padding="9,6" Margin="0,0,5,5"/>
        <Button Content="↑" Command="{Binding MoveCanRowUpCommand}" Padding="8,6" Margin="0,0,4,5"/>
        <Button Content="↓" Command="{Binding MoveCanRowDownCommand}" Padding="8,6" Margin="0,0,9,5"/>
-       <Button Content="启动勾选发送" Command="{Binding StartCanRowsCommand}"
+       <Button Content="启动勾选报文" Command="{Binding StartCanRowsCommand}"
         Style="{StaticResource AtPrimaryButton}" Padding="10,6" Margin="0,0,6,5"
-        ToolTip="勾选报文单发一次或按各自周期循环发送；停止按钮中断；行内单发保持独立。"/>
+        ToolTip="依次启动尚未运行的勾选报文；行内可单独启停和单发。"/>
        <Button Content="停止" Command="{Binding StopCanRowsCommand}" Padding="9,6" Margin="0,0,5,5"/>
       </WrapPanel>
      </StackPanel>
@@ -177,14 +177,18 @@
           </StackPanel>
          </DataTemplate></DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
-       <DataGridTemplateColumn Header="操作" Width="88">
+       <DataGridTemplateColumn Header="操作" Width="154">
         <DataGridTemplateColumn.CellTemplate><DataTemplate>
          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+          <Button Content="{Binding RunLabel}" Padding="5,5" Margin="0,0,3,0"
+           Command="{Binding DataContext.ToggleCanRowCommand,RelativeSource={RelativeSource AncestorType=Window}}"
+           CommandParameter="{Binding}" ToolTip="独立启动或停止此报文；周期发送持续到主动停止"/>
           <Button Content="单发" Padding="4,5" Margin="0,0,3,0"
            Command="{Binding DataContext.SendCanRowOnceCommand,RelativeSource={RelativeSource AncestorType=Window}}"
-           CommandParameter="{Binding}" ToolTip="发送该行当前完整帧，USB ACK 写入操作日志"/>
+           CommandParameter="{Binding}" ToolTip="独立单发一次，不停止其他周期报文"/>
           <Button Content="编辑" Padding="4,5" Tag="{Binding}" Click="OpenCanQuickEdit_Click"
-           ToolTip="打开完整 CAN 报文属性；支持 DATA 与 DBC 信号辅助"/>
+           IsEnabled="{Binding CanEditFields}"
+           ToolTip="编辑未运行的报文；运行中的报文请先独立停止"/>
          </StackPanel>
         </DataTemplate></DataGridTemplateColumn.CellTemplate>
        </DataGridTemplateColumn>

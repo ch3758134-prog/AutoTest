@@ -290,7 +290,7 @@ public partial class ManualBenchWindow : Window
 
     private void ShowCanProperties(ManualBenchViewModel.BenchCanRow row)
     {
-        if (!_model.CanEditCanRows)
+        if (!_model.CanEditCanRows || !row.CanEditFields)
         {
             MessageBox.Show(this, "当前 CAN 发送任务尚未结束，不能修改配置。",
                 "CAN 编辑已锁定", MessageBoxButton.OK, MessageBoxImage.Information);

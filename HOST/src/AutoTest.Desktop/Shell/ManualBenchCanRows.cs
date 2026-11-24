@@ -87,7 +87,7 @@ public sealed partial class ManualBenchViewModel
         }
         public string PeriodText { get => _periodText; set { if (SetProperty(ref _periodText, value ?? "")) Notify(); } }
         public bool Included { get => _included; set { if (SetProperty(ref _included, value)) Notify(); } }
-        public bool CanToggleIncluded => !_batchInProgress || _lockedToAuthorizedBatch;
+        public bool CanToggleIncluded => !_batchInProgress;
         public bool CanEditFields => !_batchInProgress;
         public bool IsTransmitting => _batchInProgress;
         public string RunLabel => _batchInProgress ? "停止" : "启动";
