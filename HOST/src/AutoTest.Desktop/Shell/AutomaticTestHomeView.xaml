@@ -72,7 +72,12 @@
    <DockPanel LastChildFill="True">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
      <Button Content="打开工程与调试" Command="{Binding ChoosePlanCommand}" MinHeight="40" FontSize="14" Padding="13,7" Margin="12,0,8,0"/>
-     <Button Content="检查工位准备" Command="{Binding RequestSoftwareStartCommand}" Style="{StaticResource AtPrimaryButton}" MinHeight="40" MinWidth="145" FontSize="15" Padding="14,7"/>
+     <Button Content="停止实测" Command="{Binding StopOperatorVerificationCommand}" MinHeight="40" FontSize="14" Padding="12,7"
+      Foreground="#AD261A" Margin="0,0,8,0"
+      ToolTip="请求停止真实 TEST/FLASH；如正在擦写 ECU，停止后必须核实实体状态"/>
+     <Button Content="整组真实实测" Command="{Binding StartOperatorVerificationCommand}" Style="{StaticResource AtPrimaryButton}" MinHeight="40" MinWidth="132" FontSize="15" Padding="14,7"
+      ToolTip="软件 START：工位动作→真实前置烧录→全部测试用例。记录为工程实测，不会冒充生产放行"/>
+     <Button Content="检查准备" Command="{Binding RequestSoftwareStartCommand}" MinHeight="40" FontSize="14" Padding="12,7" Margin="8,0,0,0"/>
     </StackPanel>
     <StackPanel>
      <TextBlock Text="{Binding StationReadiness}" FontSize="19" FontWeight="Bold" Foreground="#914500"/>
@@ -155,7 +160,25 @@
        <TextBlock Text="{Binding InspectedNode}" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,7,0,5"/>
        <TextBlock Text="{Binding InspectedStatus}" FontSize="14" TextWrapping="Wrap" Foreground="#506276"/>
        <Border Height="1" Background="#D5DFE9" Margin="0,12"/>
-       <TextBlock Text="运行详情" FontSize="16" FontWeight="Bold"/>
+       <TextBlock Text="真实整组实测（非生产放行）" FontSize="16" FontWeight="Bold"/>
+       <TextBlock Text="{Binding OperatorRunState}" FontSize="17" FontWeight="SemiBold"
+        Margin="0,6,0,3" TextWrapping="Wrap" Foreground="#164C86"/>
+       <TextBlock Text="{Binding OperatorCurrentCase}" FontSize="14"
+        Foreground="#334A62" TextWrapping="Wrap" Margin="0,0,0,3"/>
+       <TextBlock Text="{Binding OperatorCurrentStep}" FontSize="14"
+        Foreground="#526477" TextWrapping="Wrap" Margin="0,0,0,6"/>
+       <TextBlock Text="{Binding OperatorRunEvidence}" FontSize="12"
+        Foreground="#526477" TextWrapping="Wrap" Margin="0,0,0,6"/>
+       <ItemsControl ItemsSource="{Binding OperatorEvents}">
+        <ItemsControl.ItemTemplate>
+         <DataTemplate>
+          <TextBlock Text="{Binding}" FontSize="12" Foreground="#42566C"
+           TextWrapping="Wrap" Margin="0,2,0,2"/>
+         </DataTemplate>
+        </ItemsControl.ItemTemplate>
+       </ItemsControl>
+       <Border Height="1" Background="#D5DFE9" Margin="0,12"/>
+       <TextBlock Text="正式生产运行条件" FontSize="16" FontWeight="Bold"/>
        <TextBlock Text="{Binding ExecutionNotice}" FontSize="14" TextWrapping="Wrap" Margin="0,7,0,0" Foreground="#526477"/>
       </StackPanel>
      </ScrollViewer>

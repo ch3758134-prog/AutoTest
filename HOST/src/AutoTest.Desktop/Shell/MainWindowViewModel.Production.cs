@@ -28,7 +28,8 @@ public sealed partial class MainWindowViewModel
     {
         _automaticTestPlans = new AutomaticTestPlanService();
         _automaticTestHome = new AutomaticTestHomeViewModel(_automaticTestPlans, _hardware,
-            _scannerWorkbench, _workspace, () => { _ = ShowDeveloperAsync(); },
+            _scannerWorkbench, _workspace, _realTest,
+            () => { _ = ShowDeveloperAsync(); },
             OpenSerialScannerWindow, () => IsProductionWorkspace);
         AutomaticTestView = new AutomaticTestHomeView { DataContext = _automaticTestHome };
         ConfigureAutomaticTestCommand = new DelegateCommand(
@@ -68,7 +69,7 @@ public sealed partial class MainWindowViewModel
 
     private async Task ShowDeveloperAsync()
     {
-        if (_realTest.IsRunning)
+        if (_realTest.IsRunning || _automaticTestHome.IsOperatorRunning)
         {
             StatusMessage = "开发测试正在执行，请先结束当前测试再切换工作区。";
             return;
@@ -87,7 +88,7 @@ public sealed partial class MainWindowViewModel
 
     private async Task ShowAutomaticTestAsync()
     {
-        if (_realTest.IsRunning)
+        if (_realTest.IsRunning || _automaticTestHome.IsOperatorRunning)
         {
             StatusMessage = "开发测试正在运行；请先停止，避免自动测试与调试争用工位。";
             return;

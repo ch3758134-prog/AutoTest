@@ -35,7 +35,7 @@ public sealed partial class AutomaticTestHomeViewModel
     }
 
     private void OnCompleteBarcodeReceived(string raw) =>
-        OnUi(() => { if (_isProductionWorkspace()) _ = InspectRealBarcodeAsync(raw); });
+        OnUi(() => { if (_isProductionWorkspace() && !IsOperatorRunning) _ = InspectRealBarcodeAsync(raw); });
 
     private static void OnUi(Action action)
     {

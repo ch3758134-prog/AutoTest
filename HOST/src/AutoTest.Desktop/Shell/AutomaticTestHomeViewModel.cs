@@ -4,6 +4,7 @@ using System.IO;
 using System.Windows;
 using Microsoft.Win32;
 using AutoTest.Desktop.Hardware;
+using AutoTest.Desktop.Testing;
 using Prism.Commands;
 using Prism.Mvvm;
 
@@ -67,7 +68,8 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     public AutomaticTestHomeViewModel(AutomaticTestPlanService plans,
         HardwareConnectionService hardware,
         SerialScannerWorkbenchViewModel scanner,
-        ProjectWorkspaceService engineering, Action openEngineer,
+        ProjectWorkspaceService engineering, RealTestWorkbenchService realTest,
+        Action openEngineer,
         Action openScannerSettings, Func<bool>? isProductionWorkspace = null)
     {
         _plans = plans;
@@ -80,6 +82,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         ChoosePlanCommand = new DelegateCommand(() => _openEngineer());
         OpenScannerSettingsCommand = new DelegateCommand(() => _openScannerSettings());
         RefreshStationCommand = new DelegateCommand(() => UpdateConnection());
+        InitializeOperatorExecution(realTest);
         RequestSoftwareStartCommand = new DelegateCommand(RequestSoftwareStart);
         _plans.Changed += OnPlanChanged;
         _hardware.ConnectionChanged += OnConnectionChanged;
@@ -336,10 +339,12 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         RaisePropertyChanged(nameof(ExpectedValue));
         RaisePropertyChanged(nameof(FailureReason));
         RaisePropertyChanged(nameof(ExecutionNotice));
+        RefreshOperatorCommands();
     }
 
     public void Dispose()
     {
+        DisposeOperatorExecution();
         _plans.Changed -= OnPlanChanged;
         _hardware.ConnectionChanged -= OnConnectionChanged;
         _scanner.PropertyChanged -= OnScannerPropertyChanged;

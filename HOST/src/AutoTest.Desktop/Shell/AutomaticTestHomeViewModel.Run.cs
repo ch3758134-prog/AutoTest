@@ -1,0 +1,386 @@
+using System.Collections.ObjectModel;
+using System.IO;
+using System.Text.Json;
+using System.Windows;
+using AutoTest.Core;
+using AutoTest.Desktop.Projects;
+using AutoTest.Desktop.Testing;
+using AutoTest.Testing.Authoring;
+using AutoTest.Testing.Runtime;
+using Prism.Commands;
+
+namespace AutoTest.Desktop.Shell;
+
+/// <summary>
+/// Real operator-initiated full-project engineering verification. It runs
+/// FLASH once, then every configured test case using the existing physical
+/// executor and RECORD engine. This is NOT a production release: there is no
+/// physical START input and the individual REAL TEST records remain
+/// Development mode. We never publish a production PASS from this path.
+/// </summary>
+public sealed partial class AutomaticTestHomeViewModel
+{
+    private RealTestWorkbenchService _operatorEngine = null!;
+    private CancellationTokenSource? _operatorStop;
+    private bool _operatorRunning;
+    private string _operatorRunState = "未运行真实整组实测";
+    private string _operatorCurrentCase = "—";
+    private string _operatorCurrentStep = "—";
+    private string _operatorRunEvidence = "";
+    private Guid _operatorRunId;
+    private bool _lastOperatorRunSucceeded;
+
+    public DelegateCommand StartOperatorVerificationCommand { get; private set; } = null!;
+    public DelegateCommand StopOperatorVerificationCommand { get; private set; } = null!;
+    public ObservableCollection<string> OperatorEvents { get; } = new();
+    public bool IsOperatorRunning
+    {
+        get => _operatorRunning;
+        private set
+        {
+            if (!SetProperty(ref _operatorRunning, value)) return;
+            RefreshOperatorCommands();
+        }
+    }
+    public string OperatorRunState
+    {
+        get => _operatorRunState;
+        private set => SetProperty(ref _operatorRunState, value);
+    }
+    public string OperatorCurrentCase
+    {
+        get => _operatorCurrentCase;
+        private set => SetProperty(ref _operatorCurrentCase, value);
+    }
+    public string OperatorCurrentStep
+    {
+        get => _operatorCurrentStep;
+        private set => SetProperty(ref _operatorCurrentStep, value);
+    }
+    public string OperatorRunEvidence
+    {
+        get => _operatorRunEvidence;
+        private set => SetProperty(ref _operatorRunEvidence, value);
+    }
+    public bool CanStartOperatorVerification =>
+        !_operatorRunning && !_busy &&
+        _isProductionWorkspace() &&
+        _plans.Current is { ResourceReady: true } &&
+        _prepared?.AcceptedScannerObservation is { } scan &&
+        !string.IsNullOrWhiteSpace(scan.DutSerial) &&
+        _scanner.IsConnected &&
+        _hardware.IsConnected && _hardware.IsEcuCanBitrateApplied &&
+        _engineering.Current?.ManifestPath == _plans.Current.Project.ManifestPath &&
+        !_operatorEngine.IsRunning;
+
+    private void InitializeOperatorExecution(RealTestWorkbenchService engine)
+    {
+        _operatorEngine = engine;
+        StartOperatorVerificationCommand = new DelegateCommand(
+            async () => await StartOperatorVerificationAsync(),
+            () => CanStartOperatorVerification);
+        StopOperatorVerificationCommand = new DelegateCommand(() =>
+        {
+            if (_operatorStop is null) return;
+            AddOperatorEvent("操作员要求停止；FLASH 中断后 ECU 状态可能未知，禁止自动重试");
+            OperatorRunState = "正在停止并执行工位收尾…";
+            _operatorStop.Cancel();
+            _operatorEngine.RequestStop();
+        }, () => _operatorRunning);
+        _operatorEngine.StepBegan += OnOperatorStepBegan;
+        _operatorEngine.StepReported += OnOperatorStepCompleted;
+    }
+
+    private void RefreshOperatorCommands()
+    {
+        StartOperatorVerificationCommand?.RaiseCanExecuteChanged();
+        StopOperatorVerificationCommand?.RaiseCanExecuteChanged();
+        RaisePropertyChanged(nameof(CanStartOperatorVerification));
+    }
+
+    private void OnOperatorStepBegan(StepId id, string name, TestPhase phase) =>
+        OnUi(() =>
+        {
+            if (!IsOperatorRunning) return;
+            OperatorCurrentStep = name;
+            if (OperatorEvents.Count < 1000)
+                AddOperatorEvent("步骤开始 · " + phase + " · " + name);
+        });
+
+    private void OnOperatorStepCompleted(RealStepFact fact) =>
+        OnUi(() =>
+        {
+            if (!IsOperatorRunning) return;
+            if (fact.Status is not RealStepStatus.Completed && OperatorEvents.Count < 1000)
+                AddOperatorEvent("步骤 · " + fact.Status + " · " + fact.Name);
+        });
+
+    private void AddOperatorEvent(string line)
+    {
+        OperatorEvents.Add(DateTime.Now.ToString("HH:mm:ss.fff") + "  " + line);
+        while (OperatorEvents.Count > 250) OperatorEvents.RemoveAt(0);
+    }
+
+    private void ChangeCaseState(int index, string status)
+    {
+        if (index < 0 || index >= Cases.Count) return;
+        Cases[index] = Cases[index] with { State = status };
+    }
+
+    private static async Task ApplyStationActionsAsync(
+        IReadOnlyList<InspectionStationAction> actions,
+        Hardware.HardwareConnectionService hardware, CancellationToken ct)
+    {
+        foreach (var action in actions)
+        {
+            ct.ThrowIfCancellationRequested();
+            switch (action.Kind)
+            {
+                case "Wait": break;
+                case "Clamp1Press":
+                    await hardware.SendManualClampAsync(1, true, "AUTHORIZE CLAMP 1 PRESS", ct);
+                    break;
+                case "Clamp1Release":
+                    await hardware.SendManualClampAsync(1, false, "AUTHORIZE CLAMP 1 RELEASE", ct);
+                    break;
+                case "Clamp2Press":
+                    await hardware.SendManualClampAsync(2, true, "AUTHORIZE CLAMP 2 PRESS", ct);
+                    break;
+                case "Clamp2Release":
+                    await hardware.SendManualClampAsync(2, false, "AUTHORIZE CLAMP 2 RELEASE", ct);
+                    break;
+                case "IgnOn":
+                    await hardware.SendManualIgnAsync(true, "AUTHORIZE IGN ON", ct);
+                    break;
+                case "IgnOff":
+                    await hardware.SendManualIgnAsync(false, "AUTHORIZE IGN OFF", ct);
+                    break;
+                default:
+                    throw new InvalidDataException("未识别的工位动作：" + action.Kind);
+            }
+            if (action.WaitAfterMilliseconds > 0)
+                await Task.Delay(action.WaitAfterMilliseconds, ct);
+        }
+    }
+
+    private sealed record RealOperatorCaseEvidence(string Name, Guid RunId,
+        string Verdict, string ReportFile);
+    private sealed record RealOperatorRunReceipt(Guid VerificationId, string Mode,
+        DateTimeOffset StartedUtc, DateTimeOffset? EndedUtc,
+        string DutSerial, string ProjectPath, string PreparationFingerprint,
+        string FirmwareSha256, string UsbIdentity, long UsbEpoch,
+        string FlashState, IReadOnlyList<RealOperatorCaseEvidence> Cases,
+        string Outcome, string? Error);
+
+    private static void SaveOperatorReceipt(string root, RealOperatorRunReceipt receipt)
+    {
+        var folder = Path.Combine(root, "test-records", "operator-verifications");
+        Directory.CreateDirectory(folder);
+        var file = Path.Combine(folder, receipt.VerificationId.ToString("N") + ".json");
+        var temp = file + ".tmp";
+        try
+        {
+            File.WriteAllBytes(temp, JsonSerializer.SerializeToUtf8Bytes(receipt,
+                new JsonSerializerOptions { WriteIndented = true }));
+            File.Move(temp, file, true);
+        }
+        finally { if (File.Exists(temp)) File.Delete(temp); }
+    }
+
+    private async Task StartOperatorVerificationAsync()
+    {
+        if (!CanStartOperatorVerification || _prepared?.AcceptedScannerObservation is not { } scan ||
+            _plans.Current is not { } plan || _engineering.Current is not { } opened)
+        {
+            StartRequestStatus = "未满足真实整组实测准备条件；请检查工程、主控、CAN 码率及扫码身份。";
+            return;
+        }
+        if (MessageBox.Show(
+                "本次真实整组实测将执行工程工位动作、擦写 ECU 固件，并依次运行全部 " +
+                plan.Cases.Count + " 个测试用例。\n\n" +
+                "ECU 编号：" + scan.DutSerial + "\n固件 SHA256：" +
+                _prepared.FirmwareSha256[..Math.Min(16, _prepared.FirmwareSha256.Length)] +
+                "…\n\n当前主控尚无正式实体 START 输入，本功能是软件确认的工程实测，" +
+                "不会写入正式生产 PASS 或生产统计。是否明确开始真实物理操作？",
+                "确认真实工位与 ECU 烧录操作", MessageBoxButton.YesNo,
+                MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            return;
+
+        var frozen = _prepared;
+        var sessionEpoch = _hardware.CurrentStationEpoch;
+        var started = DateTimeOffset.UtcNow;
+        var results = new List<RealOperatorCaseEvidence>();
+        var flashState = "未执行";
+        var outcome = "未完成";
+        string? failure = null;
+        _operatorRunId = Guid.NewGuid();
+        _lastOperatorRunSucceeded = false;
+        _operatorStop = new CancellationTokenSource();
+        var ct = _operatorStop.Token;
+        OperatorEvents.Clear();
+        OperatorRunEvidence = "记录号 " + _operatorRunId.ToString("N");
+        OperatorCurrentStep = "—";
+        IsOperatorRunning = true;
+        for (var i = 0; i < Cases.Count; i++) ChangeCaseState(i, "未执行");
+        var postActionsAttempted = false;
+
+        void Snapshot()
+        {
+            SaveOperatorReceipt(opened.RootDirectory, new RealOperatorRunReceipt(
+                _operatorRunId, "ENGINEERING_VERIFICATION_NOT_PRODUCTION_RELEASE",
+                started, outcome == "执行中" ? null : DateTimeOffset.UtcNow,
+                scan.DutSerial, opened.ManifestPath, frozen.PreparationFingerprint,
+                frozen.FirmwareSha256, _hardware.ConnectedDeviceIdentity ?? "UNKNOWN",
+                sessionEpoch, flashState, results.ToArray(), outcome, failure));
+        }
+
+        try
+        {
+            outcome = "执行中";
+            Snapshot();
+            AddOperatorEvent("软件 START 已明确确认；本次结果不会作为生产放行");
+            var validated = await ProductionPreparationService.PrepareAsync(
+                plan.Project, scan.ModelCode, scan.DutSerial, ct);
+            if (!validated.ConfigurationReady ||
+                validated.Preparation?.PreparationFingerprint != frozen.PreparationFingerprint)
+                throw new InvalidDataException(
+                    "真实运行前工程或烧录资源已变化：" + validated.Explanation);
+            if (!_scanner.IsConnected ||
+                _scanner.ConnectedPort != scan.ScannerPort ||
+                !_hardware.IsConnected || _hardware.CurrentStationEpoch != sessionEpoch ||
+                _hardware.ConfirmedEcuCanBitrateKbps != frozen.EcuCanKbps)
+                throw new InvalidOperationException(
+                    "扫描设备、主控连接或 ECU CAN 波特率在预检后发生变化。");
+
+            var programs = await AutomaticTestResourceContract.ResolveAsync(plan.Project, ct);
+            programs.RequireExecutable();
+            if (programs.Cases.Count != frozen.OrderedEnabledCases.Count ||
+                programs.Cases.Where((x, i) =>
+                    x.Entry.ItemId != frozen.OrderedEnabledCases[i].EntryId ||
+                    x.Asset.Id.Value != frozen.OrderedEnabledCases[i].TestAssetId)
+                    .Any())
+                throw new InvalidDataException("本次正式工程用例顺序已改变。");
+            if (_hardware.IsManualCanBatchApproved || _hardware.IsManualKeyActionApproved)
+                throw new InvalidOperationException("手动任务仍占用工位；请先停止。");
+
+            OperatorRunState = "准备工位 · 执行工程已保存的夹具/IGN 动作";
+            await ApplyStationActionsAsync(
+                frozen.Fixture?.BeforeStart ?? [], _hardware, ct);
+            AddOperatorEvent("工位前置动作 USB ACK；夹具实际到位仍需真实传感器验证");
+
+            OperatorRunState = "前置烧录 · 正在擦写 ECU";
+            flashState = "烧录已启动 · 后续若中断 ECU 状态可能未知";
+            Snapshot();
+            AddOperatorEvent("FLASH 开始 · HEX/S19=" + frozen.FirmwareSha256[..12]);
+            var flash = await _hardware.ProgramTestFlashAsync(frozen.Job,
+                frozen.Job.Consent, ct);
+            if (!flash.ResetAcknowledged || !flash.AppSessionObserved ||
+                flash.TransferAcknowledged != frozen.Job.PlannedBytes ||
+                flash.VerifiedBytes != frozen.Job.PlannedBytes)
+                throw new InvalidDataException("FLASH 未完成 APP 复位与传输验证：" +
+                    flash.Outcome);
+            flashState = "烧录完成 · APP 诊断会话已确认（非固件版本验收）";
+            Snapshot();
+            AddOperatorEvent(flashState);
+
+            for (var i = 0; i < programs.Cases.Count; i++)
+            {
+                ct.ThrowIfCancellationRequested();
+                if (_hardware.CurrentStationEpoch != sessionEpoch || !_hardware.IsConnected)
+                    throw new IOException("主控 USB 会话切换，不能继续使用本次烧录结果。");
+                var item = programs.Cases[i];
+                OperatorCurrentCase = (i + 1) + "/" + programs.Cases.Count +
+                    " · " + item.Entry.DisplayName;
+                OperatorCurrentStep = "正在准备...";
+                OperatorRunState = "真实测试 · " + OperatorCurrentCase;
+                ChangeCaseState(i, "执行中");
+                AddOperatorEvent("用例开始 · " + item.Entry.DisplayName);
+                var prepared = _operatorEngine.Prepare(item.Program);
+                if (!prepared.Diagnostics.IsEmpty)
+                    throw new InvalidDataException("用例编译诊断：" +
+                        string.Join("；", prepared.Diagnostics));
+                // This scoped confirmation belongs to the explicit operator
+                // software START recorded above, not a hidden startup action.
+                var confirmation = RealTestWorkbenchService.ExpectedApproval(prepared);
+                var run = await _operatorEngine.ExecuteAsync(
+                    item.Program, confirmation, "", scan.DutSerial, ct);
+                results.Add(new RealOperatorCaseEvidence(item.Entry.DisplayName,
+                    run.Run.Value, run.Verdict.ToString(), run.EvidencePath ?? ""));
+                ChangeCaseState(i, run.Verdict == RealTestVerdict.Passed ? "实测通过" :
+                    "实测" + run.Verdict);
+                Snapshot();
+                AddOperatorEvent("用例完成 · " + item.Entry.DisplayName +
+                    " · " + run.Verdict + " · Record " + run.Run.Value.ToString("N")[..8]);
+                if (run.Verdict != RealTestVerdict.Passed)
+                    throw new InvalidDataException("真实 TEST 未通过：" +
+                        item.Entry.DisplayName + " · " + run.Verdict +
+                        "，不会执行后续用例或发布生产结果。");
+            }
+            outcome = "工程整组真实实测完成（不构成生产放行）";
+            _lastOperatorRunSucceeded = true;
+            OperatorRunState = outcome;
+            AddOperatorEvent(outcome);
+        }
+        catch (OperationCanceledException)
+        {
+            outcome = "操作员停止；实体状态待核查";
+            failure = "真实执行已取消；如曾进入烧录，须重新核实 ECU 状态。";
+            OperatorRunState = outcome;
+            AddOperatorEvent(failure);
+        }
+        catch (Exception error)
+        {
+            outcome = "真实执行中断";
+            failure = error.Message;
+            OperatorRunState = outcome;
+            AddOperatorEvent("执行失败 · " + error.Message);
+        }
+        finally
+        {
+            try
+            {
+                postActionsAttempted = true;
+                OperatorRunState += " · 工位收尾";
+                using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(12));
+                await ApplyStationActionsAsync(
+                    frozen.Fixture?.AfterFinish ?? [], _hardware, cleanup.Token);
+                AddOperatorEvent("工程配置的后置工位动作已发送；现场实际状态仍需确认");
+            }
+            catch (Exception error)
+            {
+                _lastOperatorRunSucceeded = false;
+                outcome = "收尾异常 · 不可作为合格结果";
+                failure = (failure is null ? "" : failure + "；") +
+                    "收尾动作失败：" + error.Message;
+                OperatorRunState = outcome;
+                AddOperatorEvent(failure);
+            }
+            try
+            {
+                Snapshot();
+                OperatorRunEvidence = "真实运行记录：" +
+                    Path.Combine(opened.RootDirectory, "test-records",
+                        "operator-verifications", _operatorRunId.ToString("N") + ".json");
+            }
+            catch (Exception error)
+            {
+                _lastOperatorRunSucceeded = false;
+                OperatorRunState = "记录保存失败；结果不可放行";
+                AddOperatorEvent("本次真实运行汇总未能归档：" + error.Message);
+            }
+            _operatorStop?.Dispose();
+            _operatorStop = null;
+            IsOperatorRunning = false;
+            RefreshOperatorCommands();
+            StartRequestStatus = OperatorRunState + "；正式生产放行仍需实体 START 与生产 RECORD 集成。";
+        }
+    }
+
+    private void DisposeOperatorExecution()
+    {
+        _operatorStop?.Cancel();
+        _operatorEngine.RequestStop();
+        _operatorEngine.StepBegan -= OnOperatorStepBegan;
+        _operatorEngine.StepReported -= OnOperatorStepCompleted;
+    }
+}

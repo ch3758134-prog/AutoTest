@@ -41,6 +41,7 @@ public sealed partial class MainWindowViewModel
     {
         if (!_automaticUsbEnabled || _applicationClosing || _exclusiveUsbTool is not null ||
             _hardwareBusy || _openingFlashLab || _realTest.IsRunning ||
+            _automaticTestHome.IsOperatorRunning ||
             (_hardware.IsConnected && _hardware.IsEcuCanBitrateApplied) ||
             DateTimeOffset.UtcNow < _nextAutoUsbAttempt)
             return;
@@ -113,7 +114,8 @@ public sealed partial class MainWindowViewModel
             }
             if (_realTest.IsRunning || _hardware.IsTestRunApproved ||
                 _hardware.IsManualCanBatchApproved || _hardware.IsManualKeyActionApproved ||
-                _hardware.IsFlashSecuritySensitive)
+                _hardware.IsFlashSecuritySensitive ||
+                _automaticTestHome.IsOperatorRunning)
             {
                 StatusMessage = "测试或实体操作正在运行；不能切换主控连接所有权。";
                 return false;
