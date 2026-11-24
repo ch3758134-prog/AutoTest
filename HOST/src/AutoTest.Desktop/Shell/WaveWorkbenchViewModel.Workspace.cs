@@ -3,6 +3,7 @@ using System.Globalization;
 using System.IO;
 using System.Text.Json;
 using AutoTest.Core;
+using AutoTest.Contracts;
 using AutoTest.Desktop.Testing;
 using AutoTest.Specialists.Wave;
 using Prism.Commands;
@@ -137,6 +138,7 @@ public sealed partial class WaveWorkbenchViewModel
 
     public ObservableCollection<WaveSignalTrack> Tracks { get; } = new();
     public ObservableCollection<WaveSessionItem> Sessions { get; } = new();
+    public ObservableCollection<WaveItem> Comparisons { get; } = new();
     public ObservableCollection<WaveItem> Captures { get; } = new();
     public ObservableCollection<WaveReferenceEntry> References { get; } = new();
     public IReadOnlyList<WaveTimeChoice> WindowChoices { get; } =
@@ -404,26 +406,51 @@ public sealed partial class WaveWorkbenchViewModel
         Status = "正在核对参考身份与时间质量并进行分析…";
         try
         {
-            var referenceSeries = await Task.Run(() =>
-                new WaveReferenceCatalog(Path.Combine(project.RootDirectory,
-                    "wave-records", "references")).Load(reference.Reference).Series);
+            var completed = await Task.Run(async () =>
+            {
+                var root = Path.Combine(project.RootDirectory, "wave-records");
+                var evidenceStore = new WaveEvidenceStore(Path.Combine(root, "evidence"));
+                var referenceStore = new WaveReferenceRepository(Path.Combine(
+                    root, "references", "assets"));
+                var referenceSeries = referenceStore.LoadReference(reference.Reference).Series;
+                var source = evidenceStore.Read(new EvidenceRef(selected!.Id));
+                if (source.Kind != "Capture")
+                    throw new InvalidDataException("只能对真实采集记录进行新的参考比较。");
+                var settings = new WaveComparisonConfig(tolerance, 0, coverage,
+                    1, 0.05, 1.6, 0, 0);
+                var engine = new WaveCaptureService(_liveSignals, evidenceStore, referenceStore);
+                var handle = new WaveEvidenceRef(source.Id,
+                    source.Actual.SourceRevision, source.Actual.Signal.Unit,
+                    source.Actual.Origin.Quality);
+                var result = await engine.CompareWithConfigForRunAsync(
+                    handle, reference.Reference, settings);
+                var comparisonId = result.Evidence.Length > 1
+                    ? result.Evidence[^1] : (EvidenceRef?)null;
+                var details = comparisonId.HasValue
+                    ? engine.ReadEvidence(comparisonId.Value).Result
+                    : WaveComparator.Compare(source.Actual, referenceSeries, settings);
+                return (Reference: referenceSeries, Details: details,
+                    Id: comparisonId, Result: result);
+            });
             if (_closed || _project.Current?.ManifestPath != project.ManifestPath ||
                 !ReferenceEquals(actual, _series) || Selected != selected) return;
-            var settings = new WaveComparisonConfig(tolerance, 0, coverage,
-                1, 0.05, 1.6, 0, 0);
-            var details = await Task.Run(() => WaveComparator.Compare(actual, referenceSeries, settings));
-            if (_closed || !ReferenceEquals(actual, _series) || Selected != selected) return;
+            var details = completed.Details;
+            if (details is null) throw new InvalidDataException("比较结果没有可校验的算法数据。");
             _comparison = details;
             RaisePropertyChanged(nameof(ComparisonTone));
-            _referenceOverlay = details.Code == "SIGNAL_REVISION_MISMATCH" ? null : referenceSeries;
-            ComparisonSummary = "分析预览 " + details.Verdict +
+            _referenceOverlay = details.Code == "SIGNAL_REVISION_MISMATCH" ? null :
+                completed.Reference;
+            ComparisonSummary = "分析结果 " + details.Verdict +
                 " · 覆盖率 " + details.Coverage.ToString("P1") +
                 " · RMSE " + details.Rmse.ToString("G4") +
                 " · 最大偏差 " + details.MaximumAbsoluteError.ToString("G4") +
                 " · 超差 " + details.OutsideToleranceSeconds.ToString("F4") + " s" +
-                " · " + details.Code;
+                " · " + details.Code +
+                (completed.Id.HasValue
+                    ? " · 已归档比较证据 " + completed.Id.Value.Value.ToString("N")[..8]
+                    : " · 未生成比较证据");
             IsLiveView = false;
-            Status = "这是独立分析结果，不会自动改变 TEST 判定或参考数据。";
+            Status = "已使用真实采集与参考证据执行比较；不会自动改变 TEST 判定。";
             NotifyChartChanged();
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or ArgumentException)
