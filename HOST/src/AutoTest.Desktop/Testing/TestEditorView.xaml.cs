@@ -46,7 +46,7 @@ public partial class TestEditorView : UserControl
     }
 
     public bool HasPendingInspectorDraft =>
-        _inspector?.HasPendingEdits == true || _viewModel.HasNewStepDraft;
+        IsPropertyEditorOpen || _inspector?.HasPendingEdits == true || _viewModel.HasNewStepDraft;
 
     /// <summary>
     /// Every navigation/command leaves this inspector only after its input is
