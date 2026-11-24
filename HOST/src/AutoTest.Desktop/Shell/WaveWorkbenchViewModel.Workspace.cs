@@ -76,6 +76,8 @@ public sealed record WavePlotLane(string Name, string Unit, string Color,
     IReadOnlyList<WaveChartPoint> Actual, IReadOnlyList<WaveChartPoint>? Reference,
     double? Tolerance, bool StepStyle, string Detail);
 
+public sealed record WaveTimeChoice(int Seconds, string Label);
+
 public sealed record WaveSessionItem(Guid Id, DateTimeOffset Started, Guid[] EvidenceIds,
     string[] Names)
 {
@@ -94,6 +96,7 @@ public sealed partial class WaveWorkbenchViewModel
     private bool _isLiveView = true;
     private bool _pausedDisplay;
     private int _windowSeconds = 10;
+    private double _viewOffsetSeconds;
     private WaveSignalTrack? _selectedTrack;
     private WaveSessionItem? _selectedSession;
     private readonly List<WaveSeries> _sessionSeries = new();
@@ -109,13 +112,23 @@ public sealed partial class WaveWorkbenchViewModel
     public ObservableCollection<WaveSessionItem> Sessions { get; } = new();
     public ObservableCollection<WaveItem> Captures { get; } = new();
     public ObservableCollection<WaveReferenceEntry> References { get; } = new();
-    public IReadOnlyList<int> TimeWindows { get; } = [0, 5, 10, 30, 60, 120];
+    public IReadOnlyList<WaveTimeChoice> WindowChoices { get; } =
+    [new(0, "全范围"), new(5, "5 秒"), new(10, "10 秒"),
+     new(30, "30 秒"), new(60, "60 秒"), new(120, "120 秒")];
+    public WaveTimeChoice SelectedWindow
+    {
+        get => WindowChoices.First(x => x.Seconds == TimeWindowSeconds);
+        set { if (value is not null) TimeWindowSeconds = value.Seconds; }
+    }
 
     public DelegateCommand<WaveSignalTrack> RemoveTrackCommand { get; private set; } = null!;
     public DelegateCommand ShowLiveCommand { get; private set; } = null!;
     public DelegateCommand ShowArchiveCommand { get; private set; } = null!;
     public DelegateCommand CompareCommand { get; private set; } = null!;
     public DelegateCommand ClearComparisonCommand { get; private set; } = null!;
+    public DelegateCommand EarlierWindowCommand { get; private set; } = null!;
+    public DelegateCommand LaterWindowCommand { get; private set; } = null!;
+    public DelegateCommand LatestWindowCommand { get; private set; } = null!;
 
     public WaveSignalTrack? SelectedTrack
     {
@@ -125,12 +138,25 @@ public sealed partial class WaveWorkbenchViewModel
     public bool IsLiveView
     {
         get => _isLiveView;
-        private set { if (SetProperty(ref _isLiveView, value)) NotifyChartChanged(); }
+        private set
+        {
+            if (!SetProperty(ref _isLiveView, value)) return;
+            _viewOffsetSeconds = 0;
+            RaisePropertyChanged(nameof(DisplayMode));
+            NotifyChartChanged();
+        }
     }
     public int TimeWindowSeconds
     {
         get => _windowSeconds;
-        set { if (TimeWindows.Contains(value) && SetProperty(ref _windowSeconds, value)) NotifyChartChanged(); }
+        set
+        {
+            if (!WindowChoices.Any(x => x.Seconds == value) ||
+                !SetProperty(ref _windowSeconds, value)) return;
+            _viewOffsetSeconds = 0;
+            RaisePropertyChanged(nameof(SelectedWindow));
+            NotifyChartChanged();
+        }
     }
     public WaveSessionItem? SelectedSession
     {
@@ -188,6 +214,23 @@ public sealed partial class WaveWorkbenchViewModel
 
     private void InitializeWorkspace()
     {
+        EarlierWindowCommand = new DelegateCommand(() =>
+        {
+            if (TimeWindowSeconds <= 0) return;
+            _viewOffsetSeconds += Math.Max(1, TimeWindowSeconds / 2d);
+            NotifyChartChanged();
+        });
+        LaterWindowCommand = new DelegateCommand(() =>
+        {
+            _viewOffsetSeconds = Math.Max(0,
+                _viewOffsetSeconds - Math.Max(1, TimeWindowSeconds / 2d));
+            NotifyChartChanged();
+        });
+        LatestWindowCommand = new DelegateCommand(() =>
+        {
+            _viewOffsetSeconds = 0;
+            NotifyChartChanged();
+        });
         RemoveTrackCommand = new DelegateCommand<WaveSignalTrack>(track =>
         {
             if (track is null || IsObserving || IsCapturing) return;
@@ -255,10 +298,12 @@ public sealed partial class WaveWorkbenchViewModel
         var points = lanes.SelectMany(x => x.Actual.Concat(
             x.Reference ?? Array.Empty<WaveChartPoint>())).ToArray();
         if (points.Length == 0) return null;
-        var end = points.Max(x => x.Seconds);
-        var start = points.Min(x => x.Seconds);
-        if (TimeWindowSeconds > 0)
-            start = Math.Max(start, end - TimeWindowSeconds);
+        var last = points.Max(x => x.Seconds);
+        var earliest = points.Min(x => x.Seconds);
+        var end = TimeWindowSeconds == 0 ? last :
+            Math.Max(earliest, last - _viewOffsetSeconds);
+        var start = TimeWindowSeconds == 0 ? earliest :
+            Math.Max(earliest, end - TimeWindowSeconds);
         if (end - start < 0.001) end = start + 1;
         return (start, end);
     }
