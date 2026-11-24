@@ -10,6 +10,38 @@ using AutoTest.Records.Storage;
 
 namespace AutoTest.Desktop.Shell;
 
+/// <summary>Only a localized visual projection of existing immutable RECORD facts.</summary>
+public sealed record RecordHistoryDisplayRow(RecordHistoryToolRow Source)
+{
+    public string StartedLocal => Source.StartedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss");
+    public string DutId => Source.DutId;
+    public string ModeLabel => Source.Mode switch
+    {
+        "Production" => "正式检测",
+        "Development" => "开发调试",
+        "Diagnostic" => "独立诊断",
+        _ => Source.Mode
+    };
+    public string VerdictLabel => Source.Verdict switch
+    {
+        "Pass" => "通过",
+        "Fail" => "失败",
+        "Error" => "错误",
+        "Inconclusive" => "待确认",
+        "Skipped" => "未执行",
+        _ => "未知"
+    };
+    public string PersistenceLabel => Source.PersistenceState switch
+    {
+        "Committed" => "已归档",
+        "Interrupted" => "执行中断",
+        "Writing" => "尚未结案",
+        _ => "状态未知"
+    };
+    public long StepFactCount => Source.StepFactCount;
+    public string? FailureReason => Source.FailureReason;
+}
+
 /// <summary>
 /// Read-only browser over the existing append-only RECORD database. No second
 /// record model, fake history, production state changes or implicit commits.
@@ -86,7 +118,7 @@ public partial class RecordHistoryWindow : Window
             StatusText.Text = "正在读取真实检测记录…";
             var mode = (ModeFilter.SelectedItem as ComboBoxItem)?.Tag as string ?? "All";
             var rows = await _source.QueryAsync(DutSearch.Text, mode, 500);
-            HistoryGrid.ItemsSource = rows;
+            HistoryGrid.ItemsSource = rows.Select(row => new RecordHistoryDisplayRow(row)).ToArray();
             SelectionSummary.Text = rows.Count == 0
                 ? "未找到符合条件的归档记录" : "选择一条记录查看详情";
             FailureDetail.Text = "";
@@ -109,7 +141,7 @@ public partial class RecordHistoryWindow : Window
 
     private void HistoryGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        var row = HistoryGrid.SelectedItem as RecordHistoryToolRow;
+        var row = (HistoryGrid.SelectedItem as RecordHistoryDisplayRow)?.Source;
         ViewReport.IsEnabled = ExportReport.IsEnabled = row is not null && !_busy;
         if (row is null)
         {
@@ -117,16 +149,17 @@ public partial class RecordHistoryWindow : Window
             FailureDetail.Text = "";
             return;
         }
-        SelectionSummary.Text = row.DutId + " · " +
-            row.StartedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") +
-            " · " + row.Verdict + " · " + row.PersistenceState +
+        var display = new RecordHistoryDisplayRow(row);
+        SelectionSummary.Text = row.DutId + " · " + display.StartedLocal +
+            " · " + display.VerdictLabel + " · " + display.PersistenceLabel +
             " · 步骤事实 " + row.StepFactCount;
         FailureDetail.Text = row.FailureReason ?? "";
     }
 
     private async void OpenReport_Click(object sender, RoutedEventArgs e)
     {
-        if (_busy || _source is null || HistoryGrid.SelectedItem is not RecordHistoryToolRow row) return;
+        if (_busy || _source is null || HistoryGrid.SelectedItem is not RecordHistoryDisplayRow selection) return;
+        var row = selection.Source;
         _busy = true;
         try
         {
@@ -151,6 +184,7 @@ public partial class RecordHistoryWindow : Window
     private async void ExportReport_Click(object sender, RoutedEventArgs e)
     {
         if (_busy || _source is null || HistoryGrid.SelectedItem is not RecordHistoryToolRow row) return;
+        var row = selection.Source;
         var picker = new SaveFileDialog
         {
             Title = "导出所选 ECU 检测报告",
