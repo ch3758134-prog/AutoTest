@@ -142,6 +142,7 @@ public partial class MainWindow : Window
         {
             if (_shutdownTask is null)
             {
+                _viewModel.BeginUsbShutdownPreparation();
                 if (!await _viewModel.PrepareEditorsForCloseAsync()) return;
                 if (!await _viewModel.PrepareToolWindowsForCloseAsync()) return;
                 _shutdownStarted = true;
@@ -182,7 +183,12 @@ public partial class MainWindow : Window
             MessageBox.Show(this, "退出检查发生异常，窗口未关闭：\n" + error.Message,
                 "退出失败", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
-        finally { _closeAttemptPending = false; }
+        finally
+        {
+            if (_shutdownTask is null && !_shutdownStarted)
+                _viewModel.CancelUsbShutdownPreparation();
+            _closeAttemptPending = false;
+        }
     }
 
     private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;

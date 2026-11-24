@@ -18,10 +18,19 @@ public sealed partial class MainWindowViewModel
     private int _autoUsbFailures;
     private DateTimeOffset _nextAutoUsbAttempt;
     private bool _applicationClosing;
+    private bool _usbClosingPreparation;
 
     public string UsbConnectionOwner => _exclusiveUsbTool is null
         ? "AutoTest 主工位（自动连接）"
         : _exclusiveUsbTool + "（工具手动连接）";
+
+    public void BeginUsbShutdownPreparation() => _usbClosingPreparation = true;
+
+    public void CancelUsbShutdownPreparation()
+    {
+        _usbClosingPreparation = false;
+        if (!_applicationClosing) _ = MaintainAutomaticUsbAsync();
+    }
 
     public void StartAutomaticUsbConnection()
     {
@@ -39,7 +48,8 @@ public sealed partial class MainWindowViewModel
 
     private async Task MaintainAutomaticUsbAsync()
     {
-        if (!_automaticUsbEnabled || _applicationClosing || _exclusiveUsbTool is not null ||
+        if (!_automaticUsbEnabled || _applicationClosing || _usbClosingPreparation ||
+            _exclusiveUsbTool is not null ||
             _hardwareBusy || _openingFlashLab || _realTest.IsRunning ||
             _automaticTestHome.IsOperatorRunning ||
             (_hardware.IsConnected && _hardware.IsEcuCanBitrateApplied) ||
@@ -49,6 +59,7 @@ public sealed partial class MainWindowViewModel
         try
         {
             if (_exclusiveUsbTool is not null || _hardwareBusy || _applicationClosing ||
+                _usbClosingPreparation ||
                 (_hardware.IsConnected && _hardware.IsEcuCanBitrateApplied)) return;
             if (_hardware.HasSession && !_hardware.IsConnected)
                 await _hardware.DisconnectAsync();
@@ -165,7 +176,8 @@ public sealed partial class MainWindowViewModel
             }
         }
         finally { _usbOwnershipGate.Release(); }
-        if (!_applicationClosing) _ = MaintainAutomaticUsbAsync();
+        if (!_applicationClosing && !_usbClosingPreparation)
+            _ = MaintainAutomaticUsbAsync();
     }
 
     private void StopAutomaticUsbConnection()

@@ -18,7 +18,9 @@ public sealed partial class MainWindowViewModel
         _scannerWorkbench = new SerialScannerWorkbenchViewModel(
             _workspace,
             status => ScanStatus = status,
-            () => !_realTest.IsRunning && !_hardwareBusy && !IsBusy,
+            () => !_realTest.IsRunning &&
+                !(_automaticTestHome?.IsOperatorRunning ?? false) &&
+                !_hardwareBusy && !IsBusy,
             OpenRegisteredProjectFromScanAsync);
         OpenSerialScannerCommand = new DelegateCommand(OpenSerialScannerWindow);
     }
