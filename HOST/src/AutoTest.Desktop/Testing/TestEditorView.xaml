@@ -447,7 +447,7 @@
        ScrollViewer.VerticalScrollBarVisibility="Auto"
        Background="#FFFFFF" BorderBrush="#E1E7E5" BorderThickness="1" FontSize="12">
        <ListBox.ItemsPanel>
-        <ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate>
+        <ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate>
        </ListBox.ItemsPanel>
        <ListBox.ItemContainerStyle>
         <Style TargetType="{x:Type ListBoxItem}">
@@ -490,7 +490,7 @@
    <Border x:Name="StepPropertyCard" MaxWidth="1120" MaxHeight="760" Margin="18" Background="#FAFBFC" BorderBrush="#DDE6ED" BorderThickness="1" CornerRadius="9" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
     <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
      <DockPanel Margin="14,10,14,6">
-      <Button DockPanel.Dock="Right" Content="关闭" Click="FinishPropertyOverlay_Click" Padding="10,4" ToolTip="应用有效修改并关闭，也可直接点击浮窗外部"/>
+      <Button DockPanel.Dock="Right" Content="应用并关闭" Click="FinishPropertyOverlay_Click" Padding="10,4" ToolTip="确认并保存有效的步骤修改；取消请使用属性编辑器的取消操作"/>
       <TextBlock Text="步骤属性" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="#34475C"/>
      </DockPanel>
      <ContentControl x:Name="StepPropertyHost" Grid.Row="1" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
