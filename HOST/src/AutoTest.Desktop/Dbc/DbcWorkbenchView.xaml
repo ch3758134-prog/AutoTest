@@ -109,7 +109,14 @@
       </DockPanel>
       <TextBlock Text="{Binding SelectedMessageDefinition}" MaxHeight="36" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" Foreground="#62778D" FontSize="11" Margin="0,6,0,6" ToolTip="{Binding SelectedMessageDefinition}"/>
       <DockPanel>
-       <WrapPanel DockPanel.Dock="Right"><Button Content="信号说明" Click="SignalNotes_Click" Margin="0,0,4,0"/><Button Content="枚举值" Click="Enums_Click" Margin="0,0,4,0"/><Button Content="完整参数" Click="EditSignal_Click" IsEnabled="{Binding CanEdit}"/></WrapPanel>
+       <WrapPanel DockPanel.Dock="Right">
+         <Button x:Name="AdvancedColumnsButton" Content="高级列" Click="ToggleAdvancedColumns_Click"
+          ToolTip="显示最小值、最大值、接收节点、复用、枚举和说明；普通批量编辑默认只显示常用字段"
+          Margin="0,0,4,0"/>
+         <Button Content="信号说明" Click="SignalNotes_Click" Margin="0,0,4,0"/>
+         <Button Content="枚举值" Click="Enums_Click" Margin="0,0,4,0"/>
+         <Button Content="完整参数" Click="EditSignal_Click" IsEnabled="{Binding CanEdit}"/>
+        </WrapPanel>
        <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Text="信号定义" FontWeight="SemiBold" Margin="0,0,8,0"/><TextBlock Text="{Binding SignalCount,StringFormat='{}{0} 个'}" Foreground="#62778D"/></StackPanel>
       </DockPanel>
      </StackPanel>
@@ -119,8 +126,9 @@
        <MenuItem Header="名称与注释" Click="SignalNotes_Click"/><MenuItem Header="完整参数" Click="EditSignal_Click"/><MenuItem Header="枚举值" Click="Enums_Click"/><MenuItem Header="删除信号" Click="DeleteSignal_Click"/>
       </ContextMenu></DataGrid.ContextMenu>
       <DataGrid.Columns>
-       <DataGridTextColumn Header="信号名称" Binding="{Binding Name}" IsReadOnly="True" Width="168"/>
-       <DataGridTextColumn Header="中文别名" Binding="{Binding Alias}" IsReadOnly="True" Width="108"/>
+       <DataGridTextColumn Header="信号名称" Binding="{Binding Name}" IsReadOnly="True" Width="142"/>
+       <DataGridTextColumn Header="中文别名" Binding="{Binding Alias,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+         Width="128" SortMemberPath="Alias"/>
        <DataGridTextColumn Header="起始位" Width="65" Binding="{Binding Draft.StartBit,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" SortMemberPath="StartBit"/>
 <DataGridTextColumn Header="位长" Width="54" Binding="{Binding Draft.BitLength,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" SortMemberPath="BitLength"/>
        <DataGridTemplateColumn Header="字节序" Width="98" SortMemberPath="ByteOrder">
@@ -133,13 +141,13 @@
  </DataGridTemplateColumn>
        <DataGridTextColumn Header="因子" Width="83" Binding="{Binding Draft.Factor,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" SortMemberPath="Factor"/>
 <DataGridTextColumn Header="偏移" Width="83" Binding="{Binding Draft.Offset,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" SortMemberPath="Offset"/>
-<DataGridTextColumn Header="最小值" Width="90" Binding="{Binding Draft.Minimum,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" SortMemberPath="Minimum"/>
-<DataGridTextColumn Header="最大值" Width="90" Binding="{Binding Draft.Maximum,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" SortMemberPath="Maximum"/>
+<DataGridTextColumn x:Name="DbcMinimumColumn" Visibility="Collapsed" Header="最小值" Width="90" Binding="{Binding Draft.Minimum,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" SortMemberPath="Minimum"/>
+<DataGridTextColumn x:Name="DbcMaximumColumn" Visibility="Collapsed" Header="最大值" Width="90" Binding="{Binding Draft.Maximum,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" SortMemberPath="Maximum"/>
 <DataGridTextColumn Header="单位" Width="70" Binding="{Binding Draft.Unit,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" SortMemberPath="Unit"/>
-<DataGridTextColumn Header="接收节点" Width="90" Binding="{Binding Draft.Receiver,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" SortMemberPath="Receiver"/>
-<DataGridTextColumn Header="复用" Width="66" Binding="{Binding Draft.Multiplexer,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" SortMemberPath="Multiplexer"/>
-       <DataGridTextColumn Header="枚举" Binding="{Binding EnumCount}" IsReadOnly="True" Width="55"/>
-       <DataGridTextColumn Header="说明" Binding="{Binding Summary}" IsReadOnly="True" Width="170"/>
+<DataGridTextColumn x:Name="DbcReceiverColumn" Visibility="Collapsed" Header="接收节点" Width="90" Binding="{Binding Draft.Receiver,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" SortMemberPath="Receiver"/>
+<DataGridTextColumn x:Name="DbcMultiplexerColumn" Visibility="Collapsed" Header="复用" Width="66" Binding="{Binding Draft.Multiplexer,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" SortMemberPath="Multiplexer"/>
+       <DataGridTextColumn x:Name="DbcEnumColumn" Visibility="Collapsed" Header="枚举" Binding="{Binding EnumCount}" IsReadOnly="True" Width="55"/>
+       <DataGridTextColumn x:Name="DbcDescriptionColumn" Visibility="Collapsed" Header="说明" Binding="{Binding Summary}" IsReadOnly="True" Width="170"/>
       </DataGrid.Columns>
      </DataGrid>
      <Expander Grid.Row="2" Header="位布局 · 选中信号联动" IsExpanded="True" Margin="8,4,8,8" Padding="2">
@@ -156,7 +164,7 @@
    </Border>
   </Grid>
   <Border Grid.Row="3" Background="White" BorderBrush="#DFE6EE" BorderThickness="0,1,0,0" Padding="10,6">
-   <DockPanel><TextBlock DockPanel.Dock="Right" Text="双击单元格编辑 · Tab 连续修改 · Ctrl+S 保存" Foreground="#62778D" FontSize="11" Margin="10,0,0,0"/><TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Foreground="#405870" FontSize="12"/></DockPanel>
+   <DockPanel><TextBlock DockPanel.Dock="Right" Text="常用字段直接编辑（含中文别名） · Tab 连续修改 · Ctrl+S 保存" Foreground="#62778D" FontSize="11" Margin="10,0,0,0"/><TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Foreground="#405870" FontSize="12"/></DockPanel>
   </Border>
   <Grid x:Name="PropertyOverlay" Grid.RowSpan="4" Panel.ZIndex="100" Background="#40F1F5F9" Visibility="Collapsed" MouseLeftButtonDown="Overlay_Backdrop">
    <Border x:Name="PropertyCard" Background="White" BorderBrush="#D5E0EB" BorderThickness="1" CornerRadius="9" Width="610" MaxHeight="610" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="16" Padding="16">
