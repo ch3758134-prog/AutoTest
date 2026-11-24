@@ -21,7 +21,7 @@
    <Setter Property="BorderBrush" Value="#E0E5E5"/>
    <Setter Property="BorderThickness" Value="1"/>
    <Setter Property="CornerRadius" Value="8"/>
-   <Setter Property="Padding" Value="13"/>
+   <Setter Property="Padding" Value="11"/>
   </Style>
   <Style x:Key="BenchKey" TargetType="CheckBox">
    <Setter Property="Padding" Value="9,8"/>
@@ -94,16 +94,16 @@
 
   <Grid Grid.Row="1" Margin="12,12,12,10">
    <Grid.ColumnDefinitions>
-    <ColumnDefinition Width="46*" MinWidth="400"/>
+    <ColumnDefinition Width="34*" MinWidth="400"/>
     <ColumnDefinition Width="6"/>
-    <ColumnDefinition Width="20*" MinWidth="235"/>
+    <ColumnDefinition Width="23*" MinWidth="270"/>
     <ColumnDefinition Width="6"/>
-    <ColumnDefinition Width="34*" MinWidth="330"/>
+    <ColumnDefinition Width="43*" MinWidth="330"/>
    </Grid.ColumnDefinitions>
 
    <!-- LEFT: SEND list is the one permanent complete raw-frame view;
         editing appears in a short-lived floating popup, not below the list. -->
-   <Border Grid.Column="0" Style="{StaticResource BenchCard}" Margin="0,0,9,0">
+   <Border Grid.Column="0" Style="{StaticResource BenchCard}" Margin="0,0,4,0">
     <Grid>
      <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
@@ -133,7 +133,7 @@
       AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
       IsReadOnly="True" HeadersVisibility="Column" SelectionMode="Single"
       GridLinesVisibility="Horizontal" BorderBrush="#E2E7E7"
-      RowHeight="46" ColumnHeaderHeight="37" FontSize="13"
+      RowHeight="39" ColumnHeaderHeight="35" FontSize="12"
       EnableRowVirtualization="True" EnableColumnVirtualization="True"
       Background="White" AlternatingRowBackground="#F8FAFA"
       MouseDoubleClick="CanSendGrid_MouseDoubleClick"
@@ -150,25 +150,25 @@
        </ContextMenu>
       </DataGrid.ContextMenu>
       <DataGrid.Columns>
-       <DataGridTemplateColumn Header="勾选" Width="42">
+       <DataGridTemplateColumn Header="勾选" Width="40">
         <DataGridTemplateColumn.CellTemplate><DataTemplate>
          <CheckBox IsChecked="{Binding Included,Mode=TwoWay}" IsEnabled="{Binding CanToggleIncluded}"
           ToolTip="参与启动勾选发送；周期发送时可取消勾选暂停；行内单发独立"
           HorizontalAlignment="Center" VerticalAlignment="Center"/>
         </DataTemplate></DataGridTemplateColumn.CellTemplate>
        </DataGridTemplateColumn>
-       <DataGridTextColumn Header="报文" Binding="{Binding Name}" Width="79" MinWidth="72"/>
-       <DataGridTextColumn Header="CAN ID" Binding="{Binding PreviewId}" Width="82"/>
+       <DataGridTextColumn Header="报文" Binding="{Binding Name}" Width="72" MinWidth="60"/>
+       <DataGridTextColumn Header="CAN ID" Binding="{Binding PreviewId}" Width="86"/>
        <DataGridTextColumn Header="DLC" Binding="{Binding PreviewDlc}" Width="35"/>
        <DataGridTemplateColumn Header="完整 Data (HEX)" Width="*" MinWidth="198">
         <DataGridTemplateColumn.CellTemplate><DataTemplate>
          <TextBlock Text="{Binding PreviewData}" FontFamily="Consolas"
-          FontSize="13" TextTrimming="None" VerticalAlignment="Center"
+          FontSize="12" TextTrimming="None" VerticalAlignment="Center"
           ToolTip="{Binding PreviewFull}"/>
         </DataTemplate></DataGridTemplateColumn.CellTemplate>
        </DataGridTemplateColumn>
-       <DataGridTextColumn Header="方式" Binding="{Binding ModeLabel}" Width="90"/>
-       <DataGridTemplateColumn Header="操作" Width="96">
+       <DataGridTextColumn Header="方式" Binding="{Binding ModeLabel}" Width="84"/>
+       <DataGridTemplateColumn Header="操作" Width="92">
         <DataGridTemplateColumn.CellTemplate><DataTemplate>
          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
           <Button Content="单发" Padding="6,5" Margin="0,0,4,0"
@@ -186,7 +186,7 @@
 
    <!-- CENTER: priority order is real station IO then reusable KEY actions. -->
    <GridSplitter Grid.Column="1" Width="6" Background="#DEE5EB" ResizeDirection="Columns" HorizontalAlignment="Stretch"/>
-    <Border Grid.Column="2" Style="{StaticResource BenchCard}" Margin="0,0,9,0">
+    <Border Grid.Column="2" Style="{StaticResource BenchCard}" Margin="0,0,4,0">
     <DockPanel LastChildFill="True">
      <StackPanel DockPanel.Dock="Top">
       <TextBlock Text="工位控制" Style="{StaticResource BenchHeader}"/>
@@ -324,7 +324,7 @@
       ItemsSource="{Binding MonitorDisplay}" AutoGenerateColumns="False"
       CanUserAddRows="False" CanUserDeleteRows="False" IsReadOnly="True"
       HeadersVisibility="Column" SelectionMode="Single"
-      ColumnHeaderHeight="37" RowHeight="38" FontSize="13"
+      ColumnHeaderHeight="35" RowHeight="35" FontSize="12"
       GridLinesVisibility="Horizontal" BorderBrush="#E6EDF5"
       EnableRowVirtualization="True"
       ScrollViewer.HorizontalScrollBarVisibility="Auto"
