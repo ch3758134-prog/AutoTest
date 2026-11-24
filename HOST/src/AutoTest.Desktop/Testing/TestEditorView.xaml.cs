@@ -8,7 +8,7 @@ using System.Windows.Threading;
 
 namespace AutoTest.Desktop.Testing;
 
-/// <summary>Native high-density TEST rows; inspector is hosted in the ONE Shell right rail.</summary>
+/// <summary>Native high-density TEST rows with explicit transactional property overlay.</summary>
 public partial class TestEditorView : UserControl
 {
     private readonly TestEditorViewModel _viewModel;
@@ -23,11 +23,7 @@ public partial class TestEditorView : UserControl
     private StepRowProjection? _activeQuickRow;
     private Point _dragStart;
     private StepRowProjection? _dragSource;
-    public ContentControl InspectorHost { get; } = new()
-    {
-        HorizontalContentAlignment = HorizontalAlignment.Stretch,
-        VerticalContentAlignment = VerticalAlignment.Stretch
-    };
+    public bool IsPropertyEditorOpen => StepPropertyOverlay.Visibility == Visibility.Visible;
 
     public TestEditorView(TestEditorViewModel viewModel)
     {
@@ -65,8 +61,12 @@ public partial class TestEditorView : UserControl
         if (!_committingQuickValue && _activeQuickRow is { IsInlineEditing: true } row &&
             !CommitInlineQuickValue(row))
             return false;
-        if (_viewModel.HasNewStepDraft || _inspector?.HasPendingEdits == true)
-            return _inspector?.TryApplyChanges() == true;
+        if (IsPropertyEditorOpen)
+        {
+            _inspector?.ShowPendingWarning();
+            return false;
+        }
+        if (_viewModel.HasNewStepDraft) return false;
         return true;
     }
 
@@ -81,9 +81,13 @@ public partial class TestEditorView : UserControl
             if (_activeQuickRow is { IsInlineEditing: true } row &&
                 !CommitInlineQuickValue(row))
                 return false;
-            if ((_inspector?.HasPendingEdits == true || _viewModel.HasNewStepDraft) &&
-                _inspector?.TryApplyChanges() != true)
+            // Explicit Apply/Cancel owns the floating property transaction.
+            // Saving/closing the document must not silently apply its contents.
+            if (IsPropertyEditorOpen || _viewModel.HasNewStepDraft)
+            {
+                _inspector?.ShowPendingWarning();
                 return false;
+            }
             return await _viewModel.SaveForCloseAsync();
         }
         catch (Exception error) when (error is not OutOfMemoryException)
@@ -100,106 +104,72 @@ public partial class TestEditorView : UserControl
     private void ShowInspectorLoading(string selectedStepName)
     {
         _inspector = null;
-        InspectorHost.Content = new TextBlock
+        StepPropertyCard.MaxWidth = 680;
+        StepPropertyCard.MaxHeight = 350;
+        StepPropertyHost.Content = new TextBlock
         {
-            Text = selectedStepName + "\n\n正在载入这条步骤的工程参数…",
+            Text = selectedStepName + "\n\n正在载入工程资源…",
             TextWrapping = TextWrapping.Wrap,
-            FontSize = 12,
-            Foreground = new SolidColorBrush(Color.FromRgb(91, 112, 138)),
-            Margin = new Thickness(14, 20, 14, 0)
+            FontSize = 13, Margin = new Thickness(18)
         };
+        StepPropertyOverlay.Visibility = Visibility.Visible;
+        StepPropertyOverlay.Focus();
     }
 
     private void ShowInspector(StepInspectorContext context)
     {
-        if (_inspector?.HasPendingEdits == true && !_viewModel.IsApplyingInspector)
-            return; // stale async completion may not overwrite an active draft
-        if (context.Original is null)
-        {
-            _inspector = null;
-            InspectorHost.Content = BuildPhaseInspector();
-            return;
-        }
+        if (context.Original is null) return;
+        if (_inspector?.HasPendingEdits == true && !_viewModel.IsApplyingInspector) return;
         var editor = new TestStepInspector(context.Choices, context.ExistingMappings,
-            context.Original, context.InitialActionKey, context.CaseOnly,
-            context.PublicFlows);
+            context.Original, context.InitialActionKey, context.CaseOnly, context.PublicFlows);
         editor.ApplyRequested = _viewModel.ApplyInspector;
-        editor.StepActionRequested = action =>
+        editor.Cancelled += () =>
         {
-            if (action == "breakpoint")
-            {
-                _viewModel.ToggleBreakpoint();
-                return;
-            }
-            System.Windows.Input.ICommand? command = action switch
-            {
-                "after" => _viewModel.AddAfterCommand,
-                "duplicate" => _viewModel.DuplicateCommand,
-                "up" => _viewModel.MoveUpCommand,
-                "down" => _viewModel.MoveDownCommand,
-                "delete" => _viewModel.DeleteCommand,
-                _ => null
-            };
-            if (command?.CanExecute(null) == true) command.Execute(null);
+            if (!ReferenceEquals(_inspector, editor)) return;
+            ClosePropertyOverlay();
+            _viewModel.CancelInspectorEdit();
         };
-        editor.Cancelled += _viewModel.CancelInspectorEdit;
         editor.AppliedSuccessfully += () =>
         {
-            // The VM may have rebuilt the STEP tree during Apply. Its early
-            // request was correctly rejected while HasPendingEdits was true.
-            // Issue a fresh request NOW that the draft was accepted, ensuring
-            // the selected StepId and visible Inspector always agree.
-            if (ReferenceEquals(_inspector, editor))
-                _viewModel.ResetInspector();
+            if (!ReferenceEquals(_inspector, editor)) return;
+            ClosePropertyOverlay();
         };
         _inspector = editor;
-        InspectorHost.Content = editor;
+        StepPropertyCard.MaxWidth = editor.PreferredEditorWidth;
+        StepPropertyCard.MaxHeight = editor.PreferredEditorHeight;
+        StepPropertyHost.Content = editor;
+        StepPropertyOverlay.Visibility = Visibility.Visible;
         if (_focusNameOnNextInspector)
         {
             _focusNameOnNextInspector = false;
-            editor.Loaded += (_, _) => editor.FocusName();
+            Dispatcher.BeginInvoke(new Action(editor.FocusName), DispatcherPriority.Input);
         }
+        else StepPropertyOverlay.Focus();
     }
 
-    private UIElement BuildPhaseInspector()
+    private void ClosePropertyOverlay()
     {
-        if (_viewModel.SelectedItem is null)
-        {
-            return new TextBlock
-            {
-                Text = "选中步骤后，在这里编辑参数。",
-                FontSize = 12,
-                Foreground = new SolidColorBrush(Color.FromRgb(106, 126, 151)),
-                Margin = new Thickness(16, 18, 12, 0)
-            };
-        }
-        var phaseOrSlot = _viewModel.SelectedItem.Kind == StepTreeItemKind.Slot;
-        var name = _viewModel.SelectedItem.Label;
-        var panel = new StackPanel { Margin = new Thickness(14, 16, 14, 12) };
-        panel.Children.Add(new TextBlock
-        {
-            Text = phaseOrSlot ? "流程分支" : "测试阶段",
-            Foreground = new SolidColorBrush(Color.FromRgb(76, 98, 127)),
-            FontSize = 11
-        });
-        panel.Children.Add(new TextBlock
-        {
-            Text = name,
-            FontSize = 15,
-            FontWeight = FontWeights.SemiBold,
-            Margin = new Thickness(0, 7, 0, 12),
-            TextWrapping = TextWrapping.Wrap
-        });
-        var add = new Button
-        {
-            Content = "＋ 在此处添加步骤",
-            Command = _viewModel.AddStepCommand,
-            Padding = new Thickness(10, 7, 10, 7),
-            HorizontalAlignment = HorizontalAlignment.Left,
-            MinWidth = 110
-        };
-        panel.Children.Add(add);
-        return new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = panel };
+        StepPropertyOverlay.Visibility = Visibility.Collapsed;
+        StepPropertyHost.Content = null;
+        _inspector = null;
+        _focusNameOnNextInspector = false;
+        StepsList.Focus();
+    }
+
+    private void CancelPropertyOverlay_Click(object sender, RoutedEventArgs e)
+    {
+        ClosePropertyOverlay();
+        _viewModel.CancelInspectorEdit();
+    }
+
+    private void EditStepRow_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: StepRowProjection row }) return;
+        _viewModel.SelectItem(row.Item);
+        if (_viewModel.SelectedItem?.Step?.Id != row.Item.Step?.Id) return;
+        if (_viewModel.EditParametersCommand.CanExecute())
+            _viewModel.EditParametersCommand.Execute();
+        e.Handled = true;
     }
 
     private void OpenActionPalette(bool caseOnly)
@@ -218,7 +188,7 @@ public partial class TestEditorView : UserControl
             ? "插入位置：SWITCH / CASE 分支 · 仅允许插入 CASE"
             : "插入位置：" + (target is null ? "未选择，需先选中阶段或分支" :
                   StepUiCatalog.PhaseLabel(target.Phase) + " / " + target.Label) +
-              " · 单击即插入可撤销草稿，右侧立即编辑";
+              " · 单击即插入可撤销草稿，打开属性浮窗";
         PaletteSearch.Text = "";
         RefreshPaletteItems("");
         PaletteList.SelectedItem = _paletteActions.FirstOrDefault();
@@ -556,10 +526,21 @@ public partial class TestEditorView : UserControl
     private async void Editor_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Handled) return;
+        if (IsPropertyEditorOpen)
+        {
+            if (e.Key == Key.Escape)
+            {
+                CancelPropertyOverlay_Click(this, new RoutedEventArgs());
+                e.Handled = true;
+            }
+            // Do not let step-list Delete, Ctrl+Z, F2 etc. affect the underlying
+            // TEST document while a property transaction is active.
+            return;
+        }
         if (e.Key == Key.S && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
         {
             e.Handled = true;
-            await SaveForCloseAsync(); // Ctrl+S applies the right-side Inspector first.
+            await SaveForCloseAsync(); // Ctrl+S saves only applied properties.
             return;
         }
         var focused = Keyboard.FocusedElement;
