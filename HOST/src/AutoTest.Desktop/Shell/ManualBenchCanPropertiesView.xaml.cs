@@ -26,13 +26,25 @@ public partial class ManualBenchCanPropertiesView : UserControl
         object? sender, BenchDbcReferenceChosenEventArgs e)
     {
         if (_model.SelectedCanRow is not { } row || !row.CanEditFields) return;
+        SignalSearch.Clear();
         row.DbcMessage = e.Choice;
         BenchDbcPicker.SetBenchChoices(_model.DbcMessages, row.DbcMessage);
+    }
+
+    private void SignalSearch_Changed(object sender, TextChangedEventArgs e)
+    {
+        if (SignalList is null) return;
+        var query = SignalSearch.Text.Trim();
+        SignalList.Items.Filter = item => query.Length == 0 ||
+            item is ManualBenchViewModel.DbcSignalValue signal &&
+            (signal.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+             (signal.Definition?.ToString() ?? "").Contains(query, StringComparison.OrdinalIgnoreCase));
     }
 
     private void ClearDbc_Click(object sender, RoutedEventArgs e)
     {
         if (_model.SelectedCanRow is not { } row || !row.CanEditFields) return;
+        SignalSearch.Clear();
         row.ClearDbcAssistance();
         BenchDbcPicker.SetBenchChoices(_model.DbcMessages, null);
     }
