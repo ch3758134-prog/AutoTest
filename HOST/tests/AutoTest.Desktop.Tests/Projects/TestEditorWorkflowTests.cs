@@ -17,6 +17,58 @@ public sealed class TestEditorWorkflowTests
     }
 
     [Fact]
+    public async Task StaleDbcPin_AllowsEngineeringReopen_ButStrictAuditRejectsUntilRebound()
+    {
+        var parent = Fresh();
+        try
+        {
+            var source = Path.Combine(parent, "matrix.dbc");
+            await File.WriteAllTextAsync(source, """
+                VERSION ""
+                NS_ :
+                BS_:
+                BU_: ECU Tester
+                BO_ 291 Status: 8 ECU
+                 SG_ Speed : 0|16@1+ (0.1,0) [0|6553.5] "km/h" Tester
+                """);
+            var workspace = new ProjectWorkspaceService();
+            var project = await workspace.CreateAsync("ECU", parent);
+            var dbc = await workspace.ImportDbcAsync(source);
+            var test = await workspace.CreateTestProgramAsync("Case");
+            var editor = await workspace.OpenTestEditorAsync(test.Id);
+            var tx = new StepEditTransaction(editor.Document);
+            tx.UpsertMapping(new TestTargetMapping("Speed", TestTargetKind.Signal, dbc.Id,
+                dbc.Revision, dbc.Sha256, CanId: 291, SignalName: "Speed", Unit: "km/h"));
+            await workspace.SaveTestEditorAsync(editor, tx.Current);
+            var dbcEditor = await workspace.OpenDbcEditorAsync(dbc.Id);
+            dbcEditor.Document.SetSignalAlias(291, "Speed", "车速");
+            var changed = await workspace.SaveDbcEditorAsync(dbcEditor);
+            var reopenedWorkspace = new ProjectWorkspaceService();
+            var opened = await reopenedWorkspace.OpenAsync(project.ManifestPath);
+            await Assert.ThrowsAsync<InvalidDataException>(() =>
+                ProjectBundleContractAudit.ValidateAsync(opened.Definition, opened.ManifestPath));
+            var reopened = await reopenedWorkspace.OpenTestEditorAsync(test.Id);
+            var old = Assert.Single(reopened.Document.Mappings);
+            Assert.Equal(dbc.Revision, old.AssetRevision);
+            var repair = new StepEditTransaction(reopened.Document);
+            repair.ReplaceMappings([old with { AssetRevision = changed.AssetRevision,
+                AssetSha256 = changed.FileReceipt.Sha256 }]);
+            repair.Undo();
+            Assert.Equal(old, Assert.Single(repair.Current.Mappings));
+            repair.Redo();
+            await reopenedWorkspace.SaveTestEditorAsync(reopened, repair.Current);
+            var current = reopenedWorkspace.Current!;
+            await ProjectBundleContractAudit.ValidateAsync(current.Definition, current.ManifestPath);
+
+            // Permitting stale pins does not permit damaged asset files.
+            await File.AppendAllTextAsync(changed.FileReceipt.Path, "\n");
+            await Assert.ThrowsAsync<InvalidDataException>(() =>
+                new ProjectWorkspaceService().OpenAsync(project.ManifestPath));
+        }
+        finally { Directory.Delete(parent, recursive: true); }
+    }
+
+    [Fact]
     public async Task AuthorIfElseLoopWait_SaveCloseAndReopen_UsesCanonicalStepTree()
     {
         var parent = Fresh();
