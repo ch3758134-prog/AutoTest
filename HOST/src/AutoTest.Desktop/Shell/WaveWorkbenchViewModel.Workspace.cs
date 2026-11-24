@@ -370,18 +370,19 @@ public sealed partial class WaveWorkbenchViewModel
     private async Task LoadSessionAsync(WaveSessionItem session)
     {
         var version = ++_sessionLoadGeneration;
-        var project = _project.Current;
-        if (project is null) return;
+        var root = WaveSourceRoot;
+        var sourceIdentity = WaveSourceIdentity;
+        if (root is null || sourceIdentity is null) return;
         Status = "正在读取同次采集的真实信号…";
         try
         {
             var actual = await Task.Run(() =>
             {
-                var store = new WaveEvidenceStore(Path.Combine(project.RootDirectory, "wave-records", "evidence"));
+                var store = new WaveEvidenceStore(Path.Combine(root, "evidence"));
                 return session.EvidenceIds.Select(id => store.Read(new EvidenceRef(id)).Actual).ToArray();
             });
             if (_closed || version != _sessionLoadGeneration || SelectedSession != session ||
-                _project.Current?.ManifestPath != project.ManifestPath) return;
+                WaveSourceIdentity != sourceIdentity) return;
             _sessionSeries.Clear();
             _sessionSeries.AddRange(actual);
             IsLiveView = false;
@@ -401,7 +402,7 @@ public sealed partial class WaveWorkbenchViewModel
     private async Task CompareSelectedAsync()
     {
         if (_series is null || Selected is not { IsReference: false, Kind: "Capture" } ||
-            SelectedReference is not { } reference || _project.Current is not { } project)
+            SelectedReference is not { } reference || WaveSourceRoot is null)
             return;
         if (!double.TryParse(AbsoluteToleranceText, NumberStyles.Float,
                 CultureInfo.InvariantCulture, out var tolerance) ||
@@ -415,12 +416,13 @@ public sealed partial class WaveWorkbenchViewModel
         }
         var actual = _series;
         var selected = Selected;
+        var root = WaveSourceRoot!;
+        var sourceIdentity = WaveSourceIdentity;
         Status = "正在核对参考身份与时间质量并进行分析…";
         try
         {
             var completed = await Task.Run(async () =>
             {
-                var root = Path.Combine(project.RootDirectory, "wave-records");
                 var evidenceStore = new WaveEvidenceStore(Path.Combine(root, "evidence"));
                 var referenceStore = new WaveReferenceRepository(Path.Combine(
                     root, "references", "assets"));
@@ -444,7 +446,7 @@ public sealed partial class WaveWorkbenchViewModel
                 return (Reference: referenceSeries, Details: details,
                     Id: comparisonId, Result: result);
             });
-            if (_closed || _project.Current?.ManifestPath != project.ManifestPath ||
+            if (_closed || WaveSourceIdentity != sourceIdentity ||
                 !ReferenceEquals(actual, _series) || Selected != selected) return;
             var details = completed.Details;
             if (details is null) throw new InvalidDataException("比较结果没有可校验的算法数据。");
