@@ -427,11 +427,8 @@ public sealed partial class MainWindowViewModel : BindableBase
 
     private async Task OpenWaveWorkbenchAsync()
     {
-        if (_workspace.Current is null)
-        {
-            StatusMessage = "请先打开 ECU 工程并导入 DBC，波形工具将从主控真实 CAN 采集信号并保存证据。";
-            return;
-        }
+        // Wave archives can be opened without an ECU project. Live CAN capture
+        // still requires a revision-checked project DBC and is not fabricated.
         if (_waveWorkbenchWindow is { IsVisible: true })
         {
             _waveWorkbenchWindow.Activate();
