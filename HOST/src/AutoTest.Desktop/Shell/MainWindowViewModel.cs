@@ -33,8 +33,8 @@ public sealed class EditorTabModel(string key, string title, UserControl view, F
     /// <summary>Right rail is the editor's only inspector, never a second copy.</summary>
     public ContentControl? Inspector => View switch
     {
-        TestEditorView test => test.InspectorHost,
-        PublicFlowEditorView flow => flow.InspectorHost,
+        TestEditorView => null,
+        PublicFlowEditorView => null,
         TestProjectWorkbenchView project => project.InspectorHost,
         ProjectOverviewView home => home.InspectorHost,
         ProjectConfigurationOverviewView config => config.InspectorHost,
@@ -686,6 +686,8 @@ public sealed partial class MainWindowViewModel : BindableBase
             foreach (var tab in OpenEditors.ToArray())
             {
                 if (!OpenEditors.Contains(tab)) continue;
+                if (tab.View is TestEditorView { IsPropertyEditorOpen: true } ||
+                    tab.View is PublicFlowEditorView { IsPropertyEditorOpen: true }) continue;
                 var draft = tab.CloseDraft;
                 if (draft.IsBusy() || !draft.IsDirty()) continue;
                 var success = await draft.SaveAsync();
@@ -934,7 +936,12 @@ public sealed partial class MainWindowViewModel : BindableBase
     }
 
     private static bool CanLeaveActiveDocument(EditorTabModel? from) =>
-        from?.View is not TestEditorView test || test.TryLeaveInspector();
+        from?.View switch
+        {
+            TestEditorView test => test.TryLeaveInspector(),
+            PublicFlowEditorView flow => !flow.IsPropertyEditorOpen,
+            _ => true
+        };
 
     private void RaiseActiveEditorChanged()
     {
