@@ -41,6 +41,7 @@ public sealed partial class AutomaticTestHomeViewModel
         private set
         {
             if (!SetProperty(ref _operatorRunning, value)) return;
+            RaisePropertyChanged(nameof(StationReadiness));
             RefreshOperatorCommands();
         }
     }
@@ -214,7 +215,7 @@ public sealed partial class AutomaticTestHomeViewModel
                 MessageBoxImage.Warning) != MessageBoxResult.Yes)
             return;
 
-        var frozen = _prepared;
+        var frozen = _prepared!;
         var sessionEpoch = _hardware.CurrentStationEpoch;
         var started = DateTimeOffset.UtcNow;
         var results = new List<RealOperatorCaseEvidence>();

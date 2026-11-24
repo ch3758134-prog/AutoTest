@@ -39,7 +39,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     private EngineeringTestProjectPreview? _draftPreview;
     private string _draftIssue = "";
     private long _previewVersion;
-    private string _startRequestStatus = "正式生产执行器尚未接通；可检查工程、扫码和工位的具体准备问题。";
+    private string _startRequestStatus = "自动连接和真实工程整组实测可用；正式生产放行仍需实体 START 与统一生产记录。";
     private string _inspectedNode = "点击左侧用例或展开步骤，查看本工程的完整检测结构。";
     private string _inspectedStatus = "只读结构预览，未执行任何实体检测。";
     public string InspectedNode { get => _inspectedNode; private set => SetProperty(ref _inspectedNode, value); }
@@ -107,9 +107,9 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         get => _startRequestStatus;
         private set => SetProperty(ref _startRequestStatus, value);
     }
-    public string PhysicalStartStatus => "正式检测尚不可启动";
+    public string PhysicalStartStatus => "正式生产放行待接线";
     public string StartInputHint =>
-        "实体 START 输入及完整生产执行链尚未接通；当前仅支持配置检查和扫码核对。";
+        "正式生产放行仍缺实体 START 和统一生产 RECORD；可从本页执行实际工位动作、前置烧录及全部 TEST 的工程整组实测，不计生产统计。";
 
     private void RequestSoftwareStart()
     {
@@ -179,7 +179,8 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         _plans.Current is null ? "检测准备 · 无正式检测工程" :
         !_plans.Current.ResourceReady ? "检测准备 · 工程资源未就绪" :
         _prepared is null ? "等待本次 ECU 扫码" :
-        "扫码与设备预检完成 · 正式生产执行链尚未接通";
+        IsOperatorRunning ? "真实工程整组实测执行中" :
+        "工位已就绪 · 可进行真实整组实测（未获正式生产放行）";
     public string IdentityLabel => IdentityAccepted ? "编号已核对" : "编号待核对";
     public string DutSerial => _dutSerial;
     public string ScanStatus => _scanStatus;
