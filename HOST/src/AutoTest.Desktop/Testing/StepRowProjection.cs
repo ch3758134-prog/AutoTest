@@ -295,21 +295,19 @@ public sealed class StepRowProjection : BindableBase
         {
             var parts = value.Split(':', StringSplitOptions.TrimEntries);
             if (parts.Length > 0 && parts[0].Equals("Wait", StringComparison.OrdinalIgnoreCase))
-                return "纯等待 " + (parts.Length > 1 ? parts[1] : "?") +
-                    " ms · 不发送 KEY、不改变最后保持的组合";
+                return "纯等待 · " + (parts.Length > 1 ? parts[1] : "?") + " ms";
             if (value.Equals("Release", StringComparison.OrdinalIgnoreCase))
-                return "明确全部断开 KEY";
+                return "KEY · 全部断开";
             if (parts.Length > 0 && parts[0] is "Hold" or "Pulse" && parts.Length > 1)
             {
                 var combination = kind == TestTargetKind.RawKey
                     ? FriendlyKeyMask(parts[1]) : target;
                 var duration = parts.Length > 2 ? parts[2] + " ms" : "持续";
                 if (parts[0] == "Pulse")
-                    return "短按 " + combination + " · " + duration + " 后自动释放";
+                    return combination + " · 短按 " + duration;
                 return combination == "全部断开"
-                    ? "全部断开 KEY · 等待 " + duration + "，继续保持全断开请求"
-                    : "请求保持 " + combination + " · 等待 " + duration +
-                        "，时间结束不自动释放";
+                    ? "KEY 全部断开 · " + duration
+                    : combination + " · 保持 · " + duration;
             }
             return "按键 " + target + " · " +
                 (value.Length > 0 ? value : "待配置");

@@ -49,14 +49,13 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         {
             var mask = AcknowledgedKeyRequestMask;
             if (!mask.HasValue)
-                return "KEY 状态未知（未收到本会话有效 ACK / 发送异常 / USB 重连）；请明确下发组合或全部断开";
+                return "KEY 状态未知 · 请重新设置组合";
             if (mask.Value == 0)
-                return "最后 KEY 请求：全部断开（主控 ACK，未测量实际电压）";
+                return "KEY：全部断开（主控已确认）";
             var keys = string.Join(" + ", Enumerable.Range(1, 20)
                 .Where(n => (mask.Value & (1u << (n - 1))) != 0)
                 .Select(n => "K" + n.ToString("00")));
-            return "最后 KEY 请求：" + keys +
-                " · 保持至下一次明确操作（主控 ACK，非实际电压测量）";
+            return "KEY 保持：" + keys + "（主控已确认）";
         }
     }
 
