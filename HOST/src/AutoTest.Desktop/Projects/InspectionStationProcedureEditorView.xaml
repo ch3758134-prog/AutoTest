@@ -33,7 +33,7 @@
   <StackPanel Margin="0,5,0,5">
    <TextBlock Text="本 ECU 的工位动作（工程草稿）" FontSize="14" FontWeight="SemiBold"
     Foreground="#223B54" Margin="0,0,0,7"/>
-   <TextBlock Text="仅编辑 START 前准备和检测后收尾的固定夹具、IGN、等待动作，不建立第二套 TEST 脚本。每个动作可以独立使用上方真实工位按钮实测；保存文件本身不构成安全授权。"
+   <TextBlock Text="配置检测前准备和检测后收尾动作。"
     Foreground="#65798B" TextWrapping="Wrap" Margin="0,0,0,12"/>
    <DockPanel LastChildFill="True" Margin="0,0,0,7">
     <Button DockPanel.Dock="Right" Content="＋ 添加准备动作" Command="{Binding AddBeforeCommand}"
@@ -61,7 +61,7 @@
     <TextBlock Text="{Binding SaveStatus}" Foreground="#526F8C" TextWrapping="Wrap"
      VerticalAlignment="Center"/>
    </DockPanel>
-   <TextBlock Text="注意：机械到位、电气响应和实体 START 输入尚无可靠现场证明；这些动作当前只作为工程内受版本保护的配置草稿，生产执行不会自动触发它们。"
+   <TextBlock Text="夹具实际到位及 START 输入须经现场验证。"
     Foreground="#9A6C29" TextWrapping="Wrap" Margin="0,12,0,0"/>
   </StackPanel>
  </ScrollViewer>

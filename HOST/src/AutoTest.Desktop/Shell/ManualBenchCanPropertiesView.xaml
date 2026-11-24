@@ -12,7 +12,7 @@
   </Grid.RowDefinitions>
   <StackPanel Grid.Row="0" Margin="0,0,0,12">
    <TextBlock Text="CAN 报文 · 完整属性" FontSize="19" FontWeight="SemiBold"/>
-   <TextBlock Text="编辑的是待发送配置，不会自动向 ECU 发送。点击旁边空白处关闭属性浮层，报文配置保持在列表中。"
+   <TextBlock Text="编辑 CAN 报文，保存后才会更新发送配置。"
     Foreground="#627C9D" FontSize="12" Margin="0,5,0,0"/>
   </StackPanel>
   <Grid Grid.Row="1" DataContext="{Binding SelectedCanRow}" IsEnabled="{Binding CanEditFields}">
@@ -59,7 +59,7 @@
       TextWrapping="Wrap" FontSize="11" Margin="0,0,0,11"/>
       <Border Height="1" Background="#E4E8ED" Margin="0,6,0,12"/>
      <TextBlock Text="发送方式" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-     <TextBlock Text="周期发送持续到主动停止、连接中断或真实通信失败。行内单发始终只发一次。"
+     <TextBlock Text="周期发送将持续运行，直到主动停止。"
       TextWrapping="Wrap" Foreground="#627C9D" Margin="0,0,0,10"/>
      <Grid IsEnabled="{Binding CanEditFields}">
       <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>

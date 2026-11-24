@@ -50,7 +50,7 @@
     </StackPanel>
     <StackPanel>
      <TextBlock Text="ECU 信号波形工作台" FontWeight="Bold" FontSize="21" Foreground="#173A59"/>
-     <TextBlock Text="同一 CAN 时间轴 · 多信号观察与采集 · 真实证据 · 参考比较"
+     <TextBlock Text="多信号观察 · 采集记录 · 参考比较"
       FontSize="13" Foreground="#52677D" Margin="0,3,0,0"/>
     </StackPanel>
    </DockPanel>

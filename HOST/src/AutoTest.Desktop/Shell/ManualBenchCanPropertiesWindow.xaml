@@ -14,7 +14,7 @@
   </Grid.RowDefinitions>
   <StackPanel Grid.Row="0" Margin="0,0,0,12">
    <TextBlock Text="CAN 报文 · 完整属性" FontSize="19" FontWeight="SemiBold"/>
-   <TextBlock Text="编辑的是待发送配置，不会自动向 ECU 发送。关闭窗口保留修改。"
+   <TextBlock Text="编辑 CAN 发送配置。"
     Foreground="#627C9D" FontSize="12" Margin="0,5,0,0"/>
   </StackPanel>
   <Border Grid.Row="1" Background="White" BorderBrush="#E0E5E5" BorderThickness="1"
@@ -115,7 +115,7 @@
      </StackPanel>
      <Border Height="1" Background="#E5EBE7" Margin="0,7,0,14"/>
      <TextBlock Text="发送方式" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-     <TextBlock Text="单发仅发送一次；周期由上位机使用 ECU CAN USB 0x40 定时发送，不调用 KEY CAN 固件广播。实际周期抖动需现场测量。"
+     <TextBlock Text="单发一次；周期发送直到手动停止。"
       TextWrapping="Wrap" Foreground="#627C9D" Margin="0,0,0,10"/>
      <Grid IsEnabled="{Binding CanEditFields}">
       <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
