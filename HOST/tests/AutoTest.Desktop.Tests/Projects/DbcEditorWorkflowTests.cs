@@ -1,6 +1,7 @@
 using System.IO;
 using AutoTest.Desktop.Projects;
 using AutoTest.Projects.Project;
+using AutoTest.Testing.Authoring;
 using Xunit;
 
 namespace AutoTest.Desktop.Tests.Projects;
@@ -21,6 +22,66 @@ public sealed class DbcEditorWorkflowTests
          SG_ Speed : 0|16@1+ (0.1,0) [0|6553.5] "km/h" Tester
          SG_ Temp : 23|16@0- (0.5,-40) [-16424|16343.5] "degC" Tester
         """;
+
+    [Fact]
+    public async Task DbcAliasEditUpdatesTestAndOrderedPlanInOneStrictSave()
+    {
+        var parent = NewParent();
+        try
+        {
+            var source = Path.Combine(parent, "matrix.dbc");
+            await File.WriteAllTextAsync(source, Basic);
+            var workspace = new ProjectWorkspaceService();
+            var root = await workspace.CreateAsync("ECU", parent);
+            var dbc = await workspace.ImportDbcAsync(source);
+            var test = await workspace.CreateTestProgramAsync("Case");
+            var session = await workspace.OpenTestEditorAsync(test.Id);
+            var tx = new StepEditTransaction(session.Document);
+            var mapping = new TestTargetMapping("Status", TestTargetKind.CanMessage,
+                dbc.Id, dbc.Revision, dbc.Sha256, CanId: 291);
+            var node = StepNode.Create("Write", "发送")
+                .WithProperty("target", mapping.Name).WithProperty("value", "HEX:0020003200000000");
+            tx.InsertWithMapping(TestPhase.Test, null, null, 0, node, mapping);
+            var saved = await workspace.SaveTestEditorAsync(session, tx.Current);
+            var plan = await workspace.CreateTestProjectAsync("Plan");
+            var planEditor = await workspace.OpenTestProjectEditorAsync(plan.Id);
+            var entry = new TestProjectEntry(Guid.NewGuid(), test.Id.Value, saved.AssetRevision,
+                saved.FileHash, "Case", true);
+            await workspace.SaveTestProjectEditorAsync(planEditor,
+                planEditor.Document with { Packages = [entry] });
+            var dbcEditor = await workspace.OpenDbcEditorAsync(dbc.Id);
+            dbcEditor.Document.SetSignalAlias(291, "Speed", "车速");
+            var edited = await workspace.SaveDbcEditorAsync(dbcEditor);
+            var reopened = new ProjectWorkspaceService();
+            await reopened.OpenAsync(root.ManifestPath);
+            var reloadedCase = await reopened.OpenTestEditorAsync(test.Id);
+            var actual = Assert.Single(reloadedCase.Document.Mappings);
+            Assert.Equal(edited.AssetRevision, actual.AssetRevision);
+            Assert.Equal(edited.FileReceipt.Sha256, actual.AssetSha256, ignoreCase: true);
+            var actualStep = Assert.Single(reloadedCase.Document.Get(TestPhase.Test));
+            Assert.Equal(node.Id, actualStep.Id);
+            Assert.Equal(node.Properties["value"], actualStep.Properties["value"]);
+            var reloadedPlan = await reopened.OpenTestProjectEditorAsync(plan.Id);
+            var actualEntry = Assert.Single(reloadedPlan.Document.Packages);
+            Assert.Equal(entry.ItemId, actualEntry.ItemId);
+            Assert.Equal(reloadedCase.AssetRevision, actualEntry.PackageRevision);
+            Assert.Equal(reloadedCase.FileHash, actualEntry.PackageSha256, ignoreCase: true);
+            Assert.Equal(saved.AssetRevision + 1, reloadedCase.AssetRevision);
+
+            // A referenced frame cannot disappear or change DLC while the case
+            // still contains a payload for the old frame geometry.
+            var bad = await reopened.OpenDbcEditorAsync(dbc.Id);
+            var message = bad.Document.Model.FindMessage(291);
+            bad.Document.UpdateMessage(291, message with { Dlc = 7 });
+            var oldManifest = await File.ReadAllBytesAsync(root.ManifestPath);
+            var oldFile = await File.ReadAllBytesAsync(bad.FileReceipt.Path);
+            var error = await Assert.ThrowsAsync<ProjectDataException>(() => reopened.SaveDbcEditorAsync(bad));
+            Assert.Equal("DBC_REFERENCED_OBJECT_CHANGED", error.Code);
+            Assert.Equal(oldManifest, await File.ReadAllBytesAsync(root.ManifestPath));
+            Assert.Equal(oldFile, await File.ReadAllBytesAsync(bad.FileReceipt.Path));
+        }
+        finally { Directory.Delete(parent, recursive: true); }
+    }
 
     [Fact]
     public async Task InvalidDbc_RejectsImportWithoutCreatingFakeAsset()
