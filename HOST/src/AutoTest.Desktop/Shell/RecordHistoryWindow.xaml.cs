@@ -101,7 +101,7 @@ public partial class RecordHistoryWindow : Window
             await RefreshAsync();
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or
-                                       InvalidDataException or ArgumentException)
+                                       InvalidDataException or ArgumentException or Microsoft.Data.Sqlite.SqliteException or System.Text.Json.JsonException)
         {
             StatusText.Text = "记录库无法打开：" + error.Message;
         }
@@ -129,7 +129,8 @@ public partial class RecordHistoryWindow : Window
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or
                                        InvalidDataException or ArgumentException or
-                                       InvalidOperationException)
+                                       InvalidOperationException or Microsoft.Data.Sqlite.SqliteException or
+                                       System.Text.Json.JsonException)
         {
             StatusText.Text = "查询失败，未修改原始记录：" + error.Message;
             HistoryGrid.ItemsSource = null;
@@ -174,7 +175,8 @@ public partial class RecordHistoryWindow : Window
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or
                                        InvalidDataException or ArgumentException or
-                                       InvalidOperationException or System.ComponentModel.Win32Exception)
+                                       InvalidOperationException or Microsoft.Data.Sqlite.SqliteException or
+                                       System.Text.Json.JsonException or System.ComponentModel.Win32Exception)
         {
             StatusText.Text = "报告无法打开：" + error.Message;
         }
@@ -209,7 +211,8 @@ public partial class RecordHistoryWindow : Window
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or
                                        InvalidDataException or ArgumentException or
-                                       InvalidOperationException)
+                                       InvalidOperationException or Microsoft.Data.Sqlite.SqliteException or
+                                       System.Text.Json.JsonException)
         {
             StatusText.Text = "报告导出失败，原始记录未改动：" + error.Message;
         }
