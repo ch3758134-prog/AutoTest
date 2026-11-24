@@ -64,7 +64,8 @@
      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
      <StackPanel Margin="10,9">
       <DockPanel><TextBlock DockPanel.Dock="Right" Text="{Binding MessageCount}" Foreground="#62778D"/><TextBlock Text="报文" FontSize="15" FontWeight="SemiBold"/></DockPanel>
-      <TextBox x:Name="MessageSearch" Text="{Binding MessageSearchText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" ToolTip="搜索报文名称、中文别名、CAN ID 或信号" Margin="0,9,0,4" MinHeight="30"/>
+      <TextBlock Text="搜索 ID、名称或信号" FontSize="11" Foreground="#62778D" Margin="0,8,0,0"/>
+      <TextBox x:Name="MessageSearch" Text="{Binding MessageSearchText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" ToolTip="搜索报文名称、中文别名、CAN ID 或信号" Margin="0,4,0,4" MinHeight="30"/>
      </StackPanel>
      <DataGrid x:Name="MessageGrid" Grid.Row="1" Style="{StaticResource Matrix}" ItemsSource="{Binding Messages}" SelectedItem="{Binding SelectedMessage,Mode=TwoWay}" IsReadOnly="True" SelectionUnit="FullRow" MouseDoubleClick="Message_DoubleClick" RowHeight="42">
       <DataGrid.ContextMenu><ContextMenu>
@@ -95,7 +96,8 @@
         <Button Content="名称与注释" Click="MessageNotes_Click"/>
        </WrapPanel>
        <StackPanel>
-        <TextBlock Text="{Binding SelectedMessage.DisplayName}" FontSize="17" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+        <TextBlock Text="{Binding SelectedMessage.Name}" FontSize="17" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+        <TextBlock Text="{Binding SelectedMessage.Alias}" Foreground="#62778D" FontSize="12" TextTrimming="CharacterEllipsis"/>
         <WrapPanel Margin="0,5,0,0">
          <TextBlock Text="{Binding SelectedMessage.HexId}" Margin="0,0,12,0"/>
          <TextBlock Text="{Binding SelectedMessage.FrameType}" Foreground="#526B84" Margin="0,0,12,0"/>
