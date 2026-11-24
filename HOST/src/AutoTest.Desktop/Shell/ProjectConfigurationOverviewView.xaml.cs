@@ -16,6 +16,7 @@ public partial class ProjectConfigurationOverviewView : UserControl
     private readonly MainWindowViewModel _shell;
     private readonly ProjectWorkspaceService _workspace;
     private InspectionStationProcedureEditorViewModel? _inspectionEditor;
+    private readonly ProjectBarcodeExpectationView _barcodeEditor;
 
     public ContentControl InspectorHost { get; } = new()
     {
@@ -29,10 +30,8 @@ public partial class ProjectConfigurationOverviewView : UserControl
         InitializeComponent();
         DataContext = shell;
         _shell = shell;
-        ScannerSetupHost.Content = new SerialScannerSetupView
-        {
-            DataContext = shell.ScannerSetupModel
-        };
+        _barcodeEditor = new ProjectBarcodeExpectationView(shell, workspace);
+        ScannerSetupHost.Content = _barcodeEditor;
         _workspace = workspace;
         InspectorHost.Content = new ProjectConfigurationOverviewInspector(shell);
         Loaded += OnLoaded;
@@ -124,12 +123,12 @@ public partial class ProjectConfigurationOverviewView : UserControl
         await LoadInspectionAsync();
     }
 
-    public bool HasUnsavedDrafts => _inspectionEditor?.IsDirty == true;
-    public bool IsBusy => _inspectionEditor?.IsBusy == true;
+    public bool HasUnsavedDrafts => _barcodeEditor.IsDirty || _inspectionEditor?.IsDirty == true;
+    public bool IsBusy => _barcodeEditor.IsBusy || _inspectionEditor?.IsBusy == true;
 
     public async Task<bool> SaveForCloseAsync()
     {
-        if (IsBusy) return false;
+        if (IsBusy || !await _barcodeEditor.SaveForCloseAsync()) return false;
         if (_inspectionEditor is not null && !await _inspectionEditor.SaveForCloseAsync())
             return false;
         return !HasUnsavedDrafts;
