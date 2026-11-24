@@ -277,15 +277,18 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
                 }
                 var frame = CanFrame.Create(BusRole.DutCan, target.Extended,
                     target.CanId, payload);
-                // First frame must receive a real device ACK before the step succeeds.
-                await _hardware.SendTestCanAsync(frame, _fingerprint, ct);
+                // Replace the previous same-ID sender BEFORE writing the new
+                // data. Otherwise the old periodic worker could retransmit
+                // stale bytes after the new first frame was acknowledged.
                 var key = (target.Role, target.Extended, target.CanId);
                 if (_periodic.Remove(key, out var previous))
                 {
                     previous.Stop.Cancel();
-                    await previous.Worker;
-                    previous.Stop.Dispose();
+                    try { await previous.Worker; }
+                    finally { previous.Stop.Dispose(); }
                 }
+                // The replacement is committed only after a real device ACK.
+                await _hardware.SendTestCanAsync(frame, _fingerprint, ct);
                 var stop = new CancellationTokenSource();
                 var worker = SendPeriodicAsync(frame, period, duration, _fingerprint, stop.Token);
                 _periodic[key] = (stop, worker);
