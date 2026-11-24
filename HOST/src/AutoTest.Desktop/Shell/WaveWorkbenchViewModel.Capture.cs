@@ -1,4 +1,6 @@
+using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.IO;
 using AutoTest.Contracts;
 using AutoTest.Core;
@@ -6,73 +8,90 @@ using AutoTest.Desktop.Hardware;
 using AutoTest.Desktop.Testing;
 using AutoTest.Specialists.Wave;
 using AutoTest.Testing.Authoring;
+using AutoTest.Testing.Runtime;
 using Prism.Commands;
 
 namespace AutoTest.Desktop.Shell;
 
-/// <summary>
-/// Actual USB/CAN -> shared decoded DBC signal -> immutable wave evidence.
-/// No synthetic points, no separate CAN driver, and no automatic reference approval.
-/// Capture is a wave TOOL operation, not a production or test verdict.
-/// </summary>
+/// <summary>Independent, real USB/CAN observation and grouped wave capture.
+/// Monitoring is not a TEST judgement. Actual records use the existing
+/// loss-aware, immutable WaveCaptureService evidence format.</summary>
 public sealed partial class WaveWorkbenchViewModel
 {
     private LiveDbcSignalService _liveSignals = null!;
     private HardwareConnectionService _hardware = null!;
     private RealTestWorkbenchService _realTest = null!;
     private readonly SemaphoreSlim _captureGate = new(1, 1);
+    private readonly ConcurrentQueue<(string Name, TestSignalResult Result)> _observations = new();
+    private int _queuedObservations;
+    private long _discardedPreviewUpdates;
+    private bool _isObserving;
+    private bool _isCapturing;
+    private bool _previewPaused;
+    private DateTimeOffset _observedFromUtc;
+    private MappingChoice? _selectedSignal;
+    private int _durationSeconds = 0;
+    private string _referenceName = "";
+    private int _signalRefreshVersion;
     private WaveCaptureService? _captureService;
-    private WaveCaptureId? _activeCapture;
+    private readonly Dictionary<WaveCaptureId, string> _captureIds = new();
     private CancellationTokenSource? _captureTimer;
     private string? _captureManifest;
-    private MappingChoice? _selectedSignal;
-    private int _durationSeconds = 5;
-    private string _referenceName = "";
-    private bool _isCapturing;
-    private int _signalRefreshVersion;
+    private string? _captureRoot;
+    private DateTimeOffset _captureStarted;
 
     public ObservableCollection<MappingChoice> AvailableSignals { get; } = new();
-    public IReadOnlyList<int> CaptureDurations { get; } = new[] { 2, 5, 10, 20, 30, 60 };
+    public IReadOnlyList<int> CaptureDurations { get; } = [0, 2, 5, 10, 20, 30, 60, 120, 300];
+    public DelegateCommand ReloadSignalsCommand { get; private set; } = null!;
+    public DelegateCommand AddSignalCommand { get; private set; } = null!;
+    public DelegateCommand StartObserveCommand { get; private set; } = null!;
+    public DelegateCommand StopObserveCommand { get; private set; } = null!;
+    public DelegateCommand PausePreviewCommand { get; private set; } = null!;
     public DelegateCommand StartCaptureCommand { get; private set; } = null!;
     public DelegateCommand StopCaptureCommand { get; private set; } = null!;
-    public DelegateCommand ReloadSignalsCommand { get; private set; } = null!;
     public DelegateCommand SaveReferenceCommand { get; private set; } = null!;
 
     public MappingChoice? SelectedSignal
     {
         get => _selectedSignal;
-        set
-        {
-            if (SetProperty(ref _selectedSignal, value)) RefreshCaptureCommands();
-        }
+        set { if (SetProperty(ref _selectedSignal, value)) RefreshCaptureCommands(); }
     }
     public int CaptureDurationSeconds
     {
         get => _durationSeconds;
-        set
-        {
-            if (CaptureDurations.Contains(value)) SetProperty(ref _durationSeconds, value);
-        }
+        set { if (CaptureDurations.Contains(value)) SetProperty(ref _durationSeconds, value); }
     }
+    public string CaptureDurationLabel => CaptureDurationSeconds == 0
+        ? "手动停止（最长 60 分钟）" : CaptureDurationSeconds + " 秒";
     public string ReferenceName
     {
         get => _referenceName;
-        set
-        {
-            if (SetProperty(ref _referenceName, value)) RefreshCaptureCommands();
-        }
+        set { if (SetProperty(ref _referenceName, value)) RefreshCaptureCommands(); }
+    }
+    public bool IsObserving
+    {
+        get => _isObserving;
+        private set { if (SetProperty(ref _isObserving, value)) RefreshCaptureCommands(); }
     }
     public bool IsCapturing
     {
         get => _isCapturing;
-        private set
-        {
-            if (SetProperty(ref _isCapturing, value)) RefreshCaptureCommands();
-        }
+        private set { if (SetProperty(ref _isCapturing, value)) RefreshCaptureCommands(); }
     }
+    public bool IsPreviewPaused
+    {
+        get => _previewPaused;
+        private set { if (SetProperty(ref _previewPaused, value)) RefreshCaptureCommands(); }
+    }
+    public string PauseLabel => IsPreviewPaused ? "继续画面" : "暂停画面";
     public string CaptureState => IsCapturing
-        ? "真实 CAN/DBC 正在采样；尚未形成判定"
-        : "等待真实设备采集 · 不模拟数据";
+        ? "正在记录真实数据 · " + _captureIds.Count + " 信号"
+        : IsObserving
+            ? IsPreviewPaused ? "画面已暂停 · 不影响后台原始记录" :
+                "正在观察 · " + Tracks.Count + " 信号"
+            : "未开始观察 · 不使用模拟数据";
+    public string LiveSourceStatus => !_hardware.IsConnected
+        ? "USB 未连接" : IsObserving ? "共享 CAN / DBC 真实接收" : "USB 已连接 · 待开始观察";
 
     private void InitializeCapture(LiveDbcSignalService signals,
         HardwareConnectionService hardware, RealTestWorkbenchService realTest)
@@ -81,40 +100,89 @@ public sealed partial class WaveWorkbenchViewModel
         _hardware = hardware;
         _realTest = realTest;
         _hardware.ConnectionChanged += CaptureStationChanged;
-        StartCaptureCommand = new DelegateCommand(
-            async () => await StartCaptureAsync(),
-            () => !_closed && !IsCapturing && SelectedSignal is not null &&
-                  !_realTest.IsRunning);
-        StopCaptureCommand = new DelegateCommand(
-            async () => await StopCaptureAsync(),
-            () => !_closed && IsCapturing && _activeCapture.HasValue);
-        ReloadSignalsCommand = new DelegateCommand(ReloadAvailableSignals);
-        SaveReferenceCommand = new DelegateCommand(
-            SaveReference, () => !_closed && !IsCapturing && _series is not null &&
-                !string.IsNullOrWhiteSpace(ReferenceName) && Selected is { IsReference: false });
+        ReloadSignalsCommand = new DelegateCommand(ReloadAvailableSignals,
+            () => !_closed && !IsObserving && !IsCapturing);
+        AddSignalCommand = new DelegateCommand(() =>
+        {
+            if (SelectedSignal is not { } choice || IsObserving || IsCapturing) return;
+            if (Tracks.Any(t => t.Key == choice.Mapping.Name))
+            {
+                Status = "该信号已经在观察列表中。";
+                return;
+            }
+            if (Tracks.Count >= 12)
+            {
+                Status = "当前工作台最多同时观察 12 路 DBC 信号。";
+                return;
+            }
+            var track = new WaveSignalTrack(choice, TraceColors[Tracks.Count % TraceColors.Length]);
+            Tracks.Add(track);
+            SelectedTrack = track;
+            Status = "已加入观察列表：" + choice.Mapping.SignalName;
+            RefreshCaptureCommands();
+            NotifyChartChanged();
+        }, () => !_closed && !IsObserving && !IsCapturing && SelectedSignal is not null);
+        StartObserveCommand = new DelegateCommand(async () => await StartObservationAsync(),
+            () => !_closed && !IsObserving && !_realTest.IsRunning &&
+                _hardware.IsConnected && Tracks.Count > 0);
+        StopObserveCommand = new DelegateCommand(() => StopObservation(),
+            () => !_closed && IsObserving && !IsCapturing);
+        PausePreviewCommand = new DelegateCommand(() =>
+        {
+            IsPreviewPaused = !IsPreviewPaused;
+            if (!IsPreviewPaused) NotifyChartChanged();
+        }, () => !_closed && IsObserving);
+        StartCaptureCommand = new DelegateCommand(async () => await StartCaptureAsync(),
+            () => !_closed && !IsCapturing && !_realTest.IsRunning &&
+                _hardware.IsConnected && Tracks.Count > 0);
+        StopCaptureCommand = new DelegateCommand(async () => await StopCaptureAsync(),
+            () => !_closed && IsCapturing);
+        SaveReferenceCommand = new DelegateCommand(SaveReference,
+            () => !_closed && !IsCapturing && _series is not null &&
+                Selected?.IsReference == false &&
+                !string.IsNullOrWhiteSpace(ReferenceName));
         ReloadAvailableSignals();
-    }
-
-    private void CaptureStationChanged(long _)
-    {
-        var dispatcher = global::System.Windows.Application.Current?.Dispatcher;
-        if (dispatcher is null || dispatcher.CheckAccess()) RefreshCaptureCommands();
-        else dispatcher.BeginInvoke(new Action(RefreshCaptureCommands));
     }
 
     private void RefreshCaptureCommands()
     {
         RaisePropertyChanged(nameof(CaptureState));
+        RaisePropertyChanged(nameof(LiveSourceStatus));
+        RaisePropertyChanged(nameof(PauseLabel));
+        RaisePropertyChanged(nameof(CaptureDurationLabel));
+        ReloadSignalsCommand?.RaiseCanExecuteChanged();
+        AddSignalCommand?.RaiseCanExecuteChanged();
+        RemoveTrackCommand?.RaiseCanExecuteChanged();
+        StartObserveCommand?.RaiseCanExecuteChanged();
+        StopObserveCommand?.RaiseCanExecuteChanged();
+        PausePreviewCommand?.RaiseCanExecuteChanged();
         StartCaptureCommand?.RaiseCanExecuteChanged();
         StopCaptureCommand?.RaiseCanExecuteChanged();
         SaveReferenceCommand?.RaiseCanExecuteChanged();
+    }
+
+    private void CaptureStationChanged(long _)
+    {
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher is null) return;
+        dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (_closed) return;
+            if (!_hardware.IsConnected)
+            {
+                if (IsCapturing) _ = StopCaptureAsync();
+                StopObservation();
+                Status = "USB 已断开；实时观察停止，记录将保存已有的真实样本。";
+            }
+            RefreshCaptureCommands();
+        }));
     }
 
     private void ReloadAvailableSignals() => _ = LoadSignalsAsync();
 
     private async Task LoadSignalsAsync()
     {
-        if (_closed) return;
+        if (_closed || IsObserving || IsCapturing) return;
         var version = Interlocked.Increment(ref _signalRefreshVersion);
         var project = _project.Current;
         if (project is null)
@@ -128,72 +196,181 @@ public sealed partial class WaveWorkbenchViewModel
             var choices = await TestTargetCatalog.LoadAsync(_project);
             if (_closed || version != _signalRefreshVersion ||
                 _project.Current?.ManifestPath != project.ManifestPath) return;
-            var previousName = SelectedSignal?.Mapping.Name;
+            var previous = SelectedSignal?.Mapping.Name;
             AvailableSignals.Clear();
             foreach (var item in choices.Where(x => x.Mapping.Kind == TestTargetKind.Signal)
                          .GroupBy(x => x.Mapping.Name, StringComparer.OrdinalIgnoreCase)
                          .Select(x => x.First()))
                 AvailableSignals.Add(item);
             SelectedSignal = AvailableSignals.FirstOrDefault(x =>
-                string.Equals(x.Mapping.Name, previousName, StringComparison.OrdinalIgnoreCase));
+                string.Equals(x.Mapping.Name, previous, StringComparison.OrdinalIgnoreCase))
+                ?? AvailableSignals.FirstOrDefault();
             if (AvailableSignals.Count == 0)
-                Status = "当前工程没有可供采集的 DBC 信号，请先导入并核对 ECU DBC。";
+                Status = "当前工程没有可采集的 DBC 信号；请先配置工程 DBC。";
         }
-        catch (Exception error) when (error is IOException or InvalidOperationException or
-                                     InvalidDataException or ArgumentException or
-                                     UnauthorizedAccessException)
+        catch (Exception error)
         {
             if (!_closed && version == _signalRefreshVersion)
-                Status = "DBC 采集信号加载失败：" + error.Message;
+                Status = "加载工程 DBC 信号失败：" + error.Message;
         }
+    }
+
+    private void OnLiveSignal(string name, TestSignalResult result)
+    {
+        if (!IsObserving || _closed) return;
+        _observations.Enqueue((name, result));
+        if (Interlocked.Increment(ref _queuedObservations) > 15000 &&
+            _observations.TryDequeue(out _))
+        {
+            Interlocked.Decrement(ref _queuedObservations);
+            Interlocked.Increment(ref _discardedPreviewUpdates);
+        }
+    }
+
+    private async Task<bool> StartObservationAsync()
+    {
+        if (_closed || IsObserving) return IsObserving;
+        if (_realTest.IsRunning || !_hardware.IsConnected ||
+            _project.Current is null || Tracks.Count == 0)
+        {
+            Status = "请打开工程、连接主控并选择 DBC 信号；自动 TEST 运行时不能重置信号流。";
+            return false;
+        }
+        try
+        {
+            await _liveSignals.BindAsync(Tracks.Select(t => t.Choice.Mapping).ToArray());
+            if (!_hardware.IsConnected || _realTest.IsRunning)
+                throw new InvalidOperationException("准备期间 USB 连接或 TEST 执行状态发生变化。");
+            while (_observations.TryDequeue(out _)) { }
+            Interlocked.Exchange(ref _queuedObservations, 0);
+            Interlocked.Exchange(ref _discardedPreviewUpdates, 0);
+            _observedFromUtc = DateTimeOffset.UtcNow;
+            foreach (var track in Tracks) track.Reset();
+            _liveSignals.SignalReceived += OnLiveSignal;
+            IsPreviewPaused = false;
+            IsObserving = true;
+            IsLiveView = true;
+            RaisePropertyChanged(nameof(DisplayMode));
+            Status = "开始观察真实 ECU CAN 信号；可以在观察期间开始记录。";
+            NotifyChartChanged();
+            return true;
+        }
+        catch (Exception error)
+        {
+            Status = "不能启动真实观察：" + error.Message;
+            return false;
+        }
+    }
+
+    private void StopObservation()
+    {
+        _liveSignals.SignalReceived -= OnLiveSignal;
+        if (!IsObserving) return;
+        IsObserving = false;
+        IsPreviewPaused = false;
+        while (_observations.TryDequeue(out _)) { }
+        Interlocked.Exchange(ref _queuedObservations, 0);
+        Status = "实时观察已停止。已保存的采集记录不受影响。";
+        RefreshCaptureCommands();
+    }
+
+    /// <summary>Called by the window's 250ms UI timer. Does no USB I/O and
+    /// never generates artificial samples between observed CAN frames.</summary>
+    public void PollCapturePreview()
+    {
+        if (_closed || !IsObserving) return;
+        if (_realTest.IsRunning)
+        {
+            if (IsCapturing) _ = StopCaptureAsync();
+            StopObservation();
+            Status = "真实 TEST 已开始；观察器停止，不重置信号流。";
+            return;
+        }
+        if (!_hardware.IsConnected)
+        {
+            if (IsCapturing) _ = StopCaptureAsync();
+            StopObservation();
+            return;
+        }
+        var byName = Tracks.ToDictionary(t => t.Key, StringComparer.OrdinalIgnoreCase);
+        var consumed = 0;
+        while (consumed++ < 3000 && _observations.TryDequeue(out var item))
+        {
+            Interlocked.Decrement(ref _queuedObservations);
+            if (IsPreviewPaused || !byName.TryGetValue(item.Name, out var track)) continue;
+            var observation = item.Result.Observation;
+            if (observation?.Value is not { } value)
+            {
+                track.Mark(item.Result.Status.ToString());
+                continue;
+            }
+            track.Add((observation.Time.Utc - _observedFromUtc).TotalSeconds,
+                value, observation.Time.Utc,
+                observation.HasGap || item.Result.Status != TestSignalStatus.Valid);
+        }
+        if (!IsPreviewPaused)
+        {
+            var now = DateTimeOffset.UtcNow;
+            foreach (var track in Tracks)
+                if (track.LastSampleUtc.HasValue &&
+                    now - track.LastSampleUtc.Value > TimeSpan.FromSeconds(5))
+                    track.Mark("超过 5 秒无更新");
+            if (consumed > 1) NotifyChartChanged();
+        }
+        if (Interlocked.Read(ref _discardedPreviewUpdates) > 0)
+            Status = "实时绘图队列曾溢出，预览可能不完整；请查看归档的采集数据质量。";
     }
 
     private async Task StartCaptureAsync()
     {
-        var choice = SelectedSignal;
-        var project = _project.Current;
-        if (_closed || IsCapturing || choice is null || project is null) return;
-        if (!_hardware.IsConnected || _realTest.IsRunning)
-        {
-            Status = "开始采集需要连接真实主控 USB，且不能与自动 TEST 执行争用信号映射。";
-            return;
-        }
-        IsCapturing = true;
-        var projectPath = project.ManifestPath;
+        if (_closed || IsCapturing || Tracks.Count == 0) return;
+        if (!IsObserving && !await StartObservationAsync()) return;
+        if (_project.Current is not { } project || !_hardware.IsConnected) return;
         try
         {
-            // Bind all current DBC signals so live CAN monitoring also continues.
-            // Never rebind a running TEST's shared signal source.
-            var definitions = AvailableSignals.Select(x => x.Mapping).ToArray();
-            await _liveSignals.BindAsync(definitions);
-            if (_closed || _realTest.IsRunning || !_hardware.IsConnected ||
-                _project.Current?.ManifestPath != projectPath)
-                throw new InvalidOperationException("采集准备期间工位或工程已变化。");
             var root = Path.Combine(project.RootDirectory, "wave-records");
-            var capture = new WaveCaptureService(
-                _liveSignals,
+            var service = new WaveCaptureService(_liveSignals,
                 new WaveEvidenceStore(Path.Combine(root, "evidence")),
                 new WaveReferenceRepository(Path.Combine(root, "references", "assets")));
-            var signal = _liveSignals.ResolveSignal(choice.Mapping);
-            var id = await capture.StartAsync(signal, new WaveCaptureConfig(
-                TimeSpan.FromSeconds(CaptureDurationSeconds), 100000), CancellationToken.None);
-            _captureService = capture;
-            _activeCapture = id;
-            _captureManifest = projectPath;
+            var duration = CaptureDurationSeconds == 0 ? 3600 : CaptureDurationSeconds;
+            var ids = new Dictionary<WaveCaptureId, string>();
+            try
+            {
+                foreach (var track in Tracks)
+                {
+                    var signal = _liveSignals.ResolveSignal(track.Choice.Mapping);
+                    var id = await service.StartAsync(signal,
+                        new WaveCaptureConfig(TimeSpan.FromSeconds(duration), 200000),
+                        CancellationToken.None);
+                    ids.Add(id, track.Name);
+                }
+            }
+            catch
+            {
+                foreach (var id in ids.Keys)
+                {
+                    try { await service.StopAsync(id, CancellationToken.None); }
+                    catch (Exception) { }
+                }
+                throw;
+            }
+            _captureService = service;
+            _captureIds.Clear();
+            foreach (var entry in ids) _captureIds.Add(entry.Key, entry.Value);
+            _captureRoot = root;
+            _captureManifest = project.ManifestPath;
+            _captureStarted = DateTimeOffset.UtcNow;
             _captureTimer = new CancellationTokenSource();
-            Status = "真实采集开始：" + choice.Label + " · " +
-                CaptureDurationSeconds + " 秒；结束前不产生 PASS/FAIL。";
-            RefreshCaptureCommands();
-            _ = AutoStopAsync(_captureTimer, CaptureDurationSeconds);
+            IsCapturing = true;
+            Status = "正在记录 " + ids.Count + " 路真实信号；不产生模拟数据或自动 PASS。";
+            _ = AutoStopAsync(_captureTimer, duration);
         }
-        catch (Exception error) when (error is IOException or InvalidOperationException or
-                                      ArgumentException or UnauthorizedAccessException)
+        catch (Exception error)
         {
-            Status = "无法采集真实波形：" + error.Message;
             _captureService = null;
-            _activeCapture = null;
-            _captureManifest = null;
+            _captureIds.Clear();
             IsCapturing = false;
+            Status = "启动记录失败：" + error.Message;
         }
     }
 
@@ -202,32 +379,9 @@ public sealed partial class WaveWorkbenchViewModel
         try
         {
             await Task.Delay(TimeSpan.FromSeconds(seconds), timer.Token);
-            if (!_closed && ReferenceEquals(timer, _captureTimer))
-                await StopCaptureAsync();
+            if (!_closed && ReferenceEquals(_captureTimer, timer)) await StopCaptureAsync();
         }
-        catch (OperationCanceledException) when (timer.IsCancellationRequested) { }
-    }
-
-    /// <summary>Refresh only an ephemeral plot projection. Evidence becomes durable on StopAsync.</summary>
-    public void PollCapturePreview()
-    {
-        if (_closed || !_activeCapture.HasValue || _captureService is null) return;
-        try
-        {
-            var series = _captureService.Observe(_activeCapture.Value);
-            _series = series;
-            _points = series.Samples.Length == 0
-                ? Array.Empty<WaveChartPoint>()
-                : WaveChartAnalysis.FromSeries(series);
-            Info = series.Signal.SignalName + " · 正在真实采样 · " +
-                series.Samples.Length + " 点 · 结束后才归档";
-            NotifyChartChanged();
-        }
-        catch (Exception error) when (error is IOException or InvalidOperationException or
-                                      ArgumentException or KeyNotFoundException)
-        {
-            Status = "实时波形预览暂不可用：" + error.Message;
-        }
+        catch (OperationCanceledException) { }
     }
 
     private async Task StopCaptureAsync()
@@ -235,38 +389,49 @@ public sealed partial class WaveWorkbenchViewModel
         if (!await _captureGate.WaitAsync(0)) return;
         try
         {
-            var id = _activeCapture;
             var service = _captureService;
-            if (id is null || service is null) return;
-            var originalProject = _captureManifest;
-            _activeCapture = null;
+            if (service is null) return;
             _captureService = null;
+            var ids = _captureIds.ToArray();
+            _captureIds.Clear();
+            var root = _captureRoot;
+            var manifest = _captureManifest;
             _captureManifest = null;
+            _captureRoot = null;
             var timer = _captureTimer;
             _captureTimer = null;
             timer?.Cancel();
             timer?.Dispose();
-            RefreshCaptureCommands();
-            try
+            var completed = new List<Guid>();
+            var names = new List<string>();
+            var failures = new List<string>();
+            foreach (var (id, name) in ids)
             {
-                var evidence = await service.StopAsync(id.Value, CancellationToken.None);
-                if (!_closed && _project.Current?.ManifestPath == originalProject)
+                try
                 {
-                    Status = "采集已归档真实证据：" + evidence.Evidence +
-                        "；可查看曲线并选择是否建立参考波形。";
-                    Refresh();
+                    var evidence = await service.StopAsync(id, CancellationToken.None);
+                    completed.Add(evidence.Evidence.Value);
+                    names.Add(name);
+                }
+                catch (Exception error)
+                {
+                    failures.Add(name + "：" + error.Message);
                 }
             }
-            catch (WaveCaptureException error)
+            if (completed.Count > 0 && root is not null)
             {
-                if (!_closed)
-                    Status = "采集结束但未产生有效证据 [" + error.Code + "]：" +
-                        error.Message + "。请核查 CAN 接收、DBC 绑定及采样时间。";
+                try { SaveSessionIndex(root, _captureStarted, completed, names); }
+                catch (Exception error)
+                {
+                    failures.Add("成组记录索引：" + error.Message);
+                }
             }
-            catch (Exception error) when (error is IOException or InvalidOperationException or
-                                          ArgumentException or UnauthorizedAccessException)
+            IsCapturing = false;
+            if (!_closed)
             {
-                if (!_closed) Status = "无法归档真实波形：" + error.Message;
+                Status = "本次采集已保存 " + completed.Count + " 路真实证据" +
+                    (failures.Count > 0 ? "；" + string.Join("；", failures.Take(3)) : "。");
+                if (_project.Current?.ManifestPath == manifest) Refresh();
             }
         }
         finally
@@ -278,31 +443,39 @@ public sealed partial class WaveWorkbenchViewModel
 
     private void SaveReference()
     {
-        if (_closed || IsCapturing || _series is null || Selected?.IsReference != false ||
-            string.IsNullOrWhiteSpace(ReferenceName) || _project.Current is not { } project)
+        if (_closed || IsCapturing || _series is null ||
+            Selected?.IsReference != false || string.IsNullOrWhiteSpace(ReferenceName) ||
+            _project.Current is not { } project)
             return;
         try
         {
-            var catalog = new WaveReferenceCatalog(
-                Path.Combine(project.RootDirectory, "wave-records", "references"));
-            // Catalog verifies time quality, completeness and exact DBC signal identity.
+            var catalog = new WaveReferenceCatalog(Path.Combine(
+                project.RootDirectory, "wave-records", "references"));
             var saved = catalog.Save(ReferenceName.Trim(), _series);
-            Status = "已保存经质量检查的参考波形：" + saved.Name +
-                "；不会自动作为生产判定标准。";
+            Status = "已保存真实参考波形：" + saved.Name +
+                "。仅供明确选择，不自动成为生产测试标准。";
             ReferenceName = "";
             Refresh();
         }
-        catch (Exception error) when (error is IOException or InvalidDataException or
-                                      ArgumentException or InvalidOperationException)
-        {
-            Status = "参考波形未保存：" + error.Message;
-        }
+        catch (Exception error) { Status = "保存参考失败：" + error.Message; }
     }
 
-    private void AbortCaptureForProjectChange() => _ = StopCaptureAsync();
+    private void AbortCaptureForProjectChange()
+    {
+        if (IsCapturing) _ = StopCaptureAsync();
+        StopObservation();
+        Tracks.Clear();
+        SelectedTrack = null;
+        _sessionSeries.Clear();
+        Sessions.Clear();
+        SelectedSession = null;
+        SelectedReference = null;
+    }
+
     private void AbortCaptureForWindowClose()
     {
         _hardware.ConnectionChanged -= CaptureStationChanged;
-        _ = StopCaptureAsync();
+        StopObservation();
+        if (IsCapturing) _ = StopCaptureAsync();
     }
 }

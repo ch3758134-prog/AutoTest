@@ -1,0 +1,389 @@
+using System.Collections.ObjectModel;
+using System.Globalization;
+using System.IO;
+using System.Text.Json;
+using AutoTest.Core;
+using AutoTest.Desktop.Testing;
+using AutoTest.Specialists.Wave;
+using Prism.Commands;
+using Prism.Mvvm;
+
+namespace AutoTest.Desktop.Shell;
+
+/// <summary>A single real DBC signal chosen by the operator. The displayed samples
+/// are bounded previews only; immutable evidence is captured independently.</summary>
+public sealed class WaveSignalTrack : BindableBase
+{
+    private readonly Queue<WaveChartPoint> _recent = new();
+    private string _latest = "—";
+    private string _state = "等待数据";
+    private long _received;
+    private bool _visible = true;
+    public MappingChoice Choice { get; }
+    public string Key => Choice.Mapping.Name;
+    public string Name => Choice.Mapping.SignalName;
+    public string Unit => Choice.Mapping.Unit;
+    public string Subtitle => "0x" + Choice.Mapping.CanId.ToString("X") +
+        (string.IsNullOrWhiteSpace(Unit) ? "" : " · " + Unit);
+    public string Color { get; }
+    public string Latest { get => _latest; private set => SetProperty(ref _latest, value); }
+    public string State { get => _state; private set => SetProperty(ref _state, value); }
+    public long Received { get => _received; private set => SetProperty(ref _received, value); }
+    public bool Visible { get => _visible; set => SetProperty(ref _visible, value); }
+    public DateTimeOffset? LastSampleUtc { get; private set; }
+    public IReadOnlyList<WaveChartPoint> Points => _recent.ToArray();
+    public bool StepStyle => Choice.ValueLabels is { Count: > 0 };
+
+    public WaveSignalTrack(MappingChoice choice, string color)
+    {
+        Choice = choice;
+        Color = color;
+    }
+
+    public void Reset()
+    {
+        _recent.Clear();
+        LastSampleUtc = null;
+        Latest = "—";
+        State = "等待 CAN 帧";
+        Received = 0;
+    }
+
+    public void Add(double seconds, double value, DateTimeOffset utc, bool gap)
+    {
+        if (!double.IsFinite(seconds) || !double.IsFinite(value)) { State = "无效数据"; return; }
+        if (_recent.TryPeek(out _) && _recent.Count > 0 &&
+            _recent.Last().Seconds >= seconds)
+        {
+            State = "时间戳未递增";
+            return;
+        }
+        _recent.Enqueue(new WaveChartPoint(seconds, value));
+        while (_recent.Count > 6000) _recent.Dequeue();
+        Latest = value.ToString("G6", CultureInfo.InvariantCulture) +
+            (string.IsNullOrWhiteSpace(Unit) ? "" : " " + Unit);
+        LastSampleUtc = utc;
+        Received++;
+        State = gap ? "存在数据缺口" : "接收正常";
+    }
+
+    public void Mark(string message) => State = message;
+}
+
+/// <summary>One displayed lane uses a shared horizontal time axis. Reference
+/// overlay is only allowed for the same physical signal and unit.</summary>
+public sealed record WavePlotLane(string Name, string Unit, string Color,
+    IReadOnlyList<WaveChartPoint> Actual, IReadOnlyList<WaveChartPoint>? Reference,
+    double? Tolerance, bool StepStyle, string Detail);
+
+public sealed record WaveSessionItem(Guid Id, DateTimeOffset Started, Guid[] EvidenceIds,
+    string[] Names)
+{
+    public string Title => Started.ToLocalTime().ToString("MM-dd HH:mm:ss") +
+        " · " + EvidenceIds.Length + " 信号";
+    public string Detail => string.Join("、", Names.Take(4)) +
+        (Names.Length > 4 ? " …" : "");
+}
+
+public sealed partial class WaveWorkbenchViewModel
+{
+    private static readonly string[] TraceColors =
+    ["#2872BC", "#D08322", "#14816A", "#805FB5", "#B45C51",
+     "#218DAD", "#746A54", "#A94D85", "#337F4D", "#BC9533",
+     "#4977A8", "#A35C34"];
+    private bool _isLiveView = true;
+    private bool _pausedDisplay;
+    private int _windowSeconds = 10;
+    private WaveSignalTrack? _selectedTrack;
+    private WaveSessionItem? _selectedSession;
+    private readonly List<WaveSeries> _sessionSeries = new();
+    private int _sessionLoadGeneration;
+    private WaveReferenceEntry? _selectedReference;
+    private WaveSeries? _referenceOverlay;
+    private WaveComparisonDetails? _comparison;
+    private string _comparisonSummary = "选择一条已保存的实际波形和对应参考，然后执行比较。";
+    private string _absoluteToleranceText = "";
+    private string _minimumCoverageText = "0.95";
+
+    public ObservableCollection<WaveSignalTrack> Tracks { get; } = new();
+    public ObservableCollection<WaveSessionItem> Sessions { get; } = new();
+    public ObservableCollection<WaveItem> Captures { get; } = new();
+    public ObservableCollection<WaveReferenceEntry> References { get; } = new();
+    public IReadOnlyList<int> TimeWindows { get; } = [0, 5, 10, 30, 60, 120];
+
+    public DelegateCommand<WaveSignalTrack> RemoveTrackCommand { get; private set; } = null!;
+    public DelegateCommand ShowLiveCommand { get; private set; } = null!;
+    public DelegateCommand ShowArchiveCommand { get; private set; } = null!;
+    public DelegateCommand CompareCommand { get; private set; } = null!;
+    public DelegateCommand ClearComparisonCommand { get; private set; } = null!;
+
+    public WaveSignalTrack? SelectedTrack
+    {
+        get => _selectedTrack;
+        set { if (SetProperty(ref _selectedTrack, value)) NotifyChartChanged(); }
+    }
+    public bool IsLiveView
+    {
+        get => _isLiveView;
+        private set { if (SetProperty(ref _isLiveView, value)) NotifyChartChanged(); }
+    }
+    public int TimeWindowSeconds
+    {
+        get => _windowSeconds;
+        set { if (TimeWindows.Contains(value) && SetProperty(ref _windowSeconds, value)) NotifyChartChanged(); }
+    }
+    public WaveSessionItem? SelectedSession
+    {
+        get => _selectedSession;
+        set
+        {
+            if (SetProperty(ref _selectedSession, value) && value is not null)
+            {
+                Selected = null;
+                IsLiveView = false;
+                _ = LoadSessionAsync(value);
+            }
+        }
+    }
+    public WaveReferenceEntry? SelectedReference
+    {
+        get => _selectedReference;
+        set
+        {
+            if (SetProperty(ref _selectedReference, value))
+            {
+                _referenceOverlay = null;
+                _comparison = null;
+                ComparisonSummary = "已选择参考；点击“比较”计算质量、覆盖率与偏差。";
+                CompareCommand?.RaiseCanExecuteChanged();
+                NotifyChartChanged();
+            }
+        }
+    }
+    public string AbsoluteToleranceText
+    {
+        get => _absoluteToleranceText;
+        set { if (SetProperty(ref _absoluteToleranceText, value)) CompareCommand?.RaiseCanExecuteChanged(); }
+    }
+    public string MinimumCoverageText
+    {
+        get => _minimumCoverageText;
+        set { if (SetProperty(ref _minimumCoverageText, value)) CompareCommand?.RaiseCanExecuteChanged(); }
+    }
+    public string ComparisonSummary
+    {
+        get => _comparisonSummary;
+        private set => SetProperty(ref _comparisonSummary, value);
+    }
+    public string DisplayMode => IsLiveView ? "实时观察" : "历史分析";
+    public string DataQuality => _series is null ? "暂无已打开的历史记录" :
+        DescribeQuality(_series);
+    private static string DescribeQuality(WaveSeries series)
+    {
+        var q = WaveTimeQuality.Describe(series);
+        return (q.CanJudge ? "数据质量合格" : "数据质量待处理：" + q.Code) +
+            " · " + series.Samples.Length + " 样本 · 时间源：" + q.Source +
+            " · 时间质量：" + q.Quality;
+    }
+
+    private void InitializeWorkspace()
+    {
+        RemoveTrackCommand = new DelegateCommand<WaveSignalTrack>(track =>
+        {
+            if (track is null || IsObserving || IsCapturing) return;
+            Tracks.Remove(track);
+            if (ReferenceEquals(SelectedTrack, track)) SelectedTrack = Tracks.FirstOrDefault();
+            RefreshCaptureCommands();
+            NotifyChartChanged();
+        }, track => track is not null && !IsObserving && !IsCapturing);
+        ShowLiveCommand = new DelegateCommand(() =>
+        {
+            IsLiveView = true;
+            RaisePropertyChanged(nameof(DisplayMode));
+        });
+        ShowArchiveCommand = new DelegateCommand(() =>
+        {
+            IsLiveView = false;
+            RaisePropertyChanged(nameof(DisplayMode));
+        });
+        CompareCommand = new DelegateCommand(async () => await CompareSelectedAsync(),
+            () => !_closed && !IsCapturing && _series is not null &&
+                Selected?.IsReference == false && SelectedReference is not null &&
+                !string.IsNullOrWhiteSpace(AbsoluteToleranceText));
+        ClearComparisonCommand = new DelegateCommand(() =>
+        {
+            _referenceOverlay = null;
+            _comparison = null;
+            ComparisonSummary = "比较已清除；不会修改原始采集与参考文件。";
+            NotifyChartChanged();
+        });
+    }
+
+    public IReadOnlyList<WavePlotLane> GetPlotLanes()
+    {
+        if (IsLiveView)
+            return Tracks.Where(t => t.Visible).Select(t =>
+                new WavePlotLane(t.Name, t.Unit, t.Color, t.Points, null, null,
+                    t.StepStyle, t.State)).ToArray();
+        if (_sessionSeries.Count > 0)
+        {
+            var start = _sessionSeries.Min(s => s.Origin.Utc);
+            return _sessionSeries.Select((s, i) =>
+            {
+                var offset = (s.Origin.Utc - start).TotalSeconds;
+                var points = WaveChartAnalysis.FromSeries(s).Select(p =>
+                    new WaveChartPoint(p.Seconds + offset, p.Value)).ToArray();
+                return new WavePlotLane(s.Signal.SignalName, s.Signal.Unit,
+                    TraceColors[i % TraceColors.Length], points, null, null, false,
+                    DescribeQuality(s));
+            }).ToArray();
+        }
+        if (_series is null) return Array.Empty<WavePlotLane>();
+        var refPoints = _referenceOverlay is null ? null :
+            WaveChartAnalysis.FromSeries(_referenceOverlay).Select(p =>
+                new WaveChartPoint(p.Seconds + (_comparison?.ShiftSeconds ?? 0), p.Value)).ToArray();
+        return [new WavePlotLane(_series.Signal.SignalName, _series.Signal.Unit,
+            TraceColors[0], _points, refPoints,
+            _comparison is null ? null :
+                double.TryParse(AbsoluteToleranceText, NumberStyles.Float,
+                    CultureInfo.InvariantCulture, out var tol) ? tol : null,
+            false, DataQuality)];
+    }
+
+    public (double Min, double Max)? VisibleTimeBounds(IReadOnlyList<WavePlotLane> lanes)
+    {
+        var points = lanes.SelectMany(x => x.Actual.Concat(
+            x.Reference ?? Array.Empty<WaveChartPoint>())).ToArray();
+        if (points.Length == 0) return null;
+        var end = points.Max(x => x.Seconds);
+        var start = points.Min(x => x.Seconds);
+        if (TimeWindowSeconds > 0)
+            start = Math.Max(start, end - TimeWindowSeconds);
+        if (end - start < 0.001) end = start + 1;
+        return (start, end);
+    }
+
+    private async Task LoadSessionAsync(WaveSessionItem session)
+    {
+        var version = ++_sessionLoadGeneration;
+        var project = _project.Current;
+        if (project is null) return;
+        Status = "正在读取同次采集的真实信号…";
+        try
+        {
+            var actual = await Task.Run(() =>
+            {
+                var store = new WaveEvidenceStore(Path.Combine(project.RootDirectory, "wave-records", "evidence"));
+                return session.EvidenceIds.Select(id => store.Read(new EvidenceRef(id)).Actual).ToArray();
+            });
+            if (_closed || version != _sessionLoadGeneration || SelectedSession != session ||
+                _project.Current?.ManifestPath != project.ManifestPath) return;
+            _sessionSeries.Clear();
+            _sessionSeries.AddRange(actual);
+            IsLiveView = false;
+            _series = null;
+            _points = Array.Empty<WaveChartPoint>();
+            Info = session.Title + " · 共享真实时间轴 · " + actual.Length + " 条信号";
+            Status = "已打开多信号历史记录。参考建立请在左侧选择其中一条原始证据。";
+            NotifyChartChanged();
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or ArgumentException)
+        {
+            if (!_closed && version == _sessionLoadGeneration)
+                Status = "读取成组波形失败：" + ex.Message;
+        }
+    }
+
+    private async Task CompareSelectedAsync()
+    {
+        if (_series is null || Selected?.IsReference != false ||
+            SelectedReference is not { } reference || _project.Current is not { } project)
+            return;
+        if (!double.TryParse(AbsoluteToleranceText, NumberStyles.Float,
+                CultureInfo.InvariantCulture, out var tolerance) ||
+            !double.TryParse(MinimumCoverageText, NumberStyles.Float,
+                CultureInfo.InvariantCulture, out var coverage) ||
+            !double.IsFinite(tolerance) || tolerance < 0 ||
+            !double.IsFinite(coverage) || coverage <= 0 || coverage > 1)
+        {
+            ComparisonSummary = "请填写合法的非负绝对容差与 0～1 的最小覆盖率（使用小数点）。";
+            return;
+        }
+        var actual = _series;
+        var selected = Selected;
+        Status = "正在核对参考身份与时间质量并进行分析…";
+        try
+        {
+            var referenceSeries = await Task.Run(() =>
+                new WaveReferenceCatalog(Path.Combine(project.RootDirectory,
+                    "wave-records", "references")).Load(reference.Reference).Series);
+            if (_closed || _project.Current?.ManifestPath != project.ManifestPath ||
+                !ReferenceEquals(actual, _series) || Selected != selected) return;
+            var settings = new WaveComparisonConfig(tolerance, 0, coverage,
+                1, 0.05, 1.6, 0, 0);
+            var details = await Task.Run(() => WaveComparator.Compare(actual, referenceSeries, settings));
+            if (_closed || !ReferenceEquals(actual, _series) || Selected != selected) return;
+            _comparison = details;
+            _referenceOverlay = details.Code == "SIGNAL_REVISION_MISMATCH" ? null : referenceSeries;
+            ComparisonSummary = "分析预览 " + details.Verdict +
+                " · 覆盖率 " + details.Coverage.ToString("P1") +
+                " · RMSE " + details.Rmse.ToString("G4") +
+                " · 最大偏差 " + details.MaximumAbsoluteError.ToString("G4") +
+                " · 超差 " + details.OutsideToleranceSeconds.ToString("F4") + " s" +
+                " · " + details.Code;
+            IsLiveView = false;
+            Status = "这是独立分析结果，不会自动改变 TEST 判定或参考数据。";
+            NotifyChartChanged();
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or ArgumentException)
+        {
+            ComparisonSummary = "无法比较：" + ex.Message;
+        }
+    }
+
+    private sealed record SessionWire(int Schema, Guid Id, DateTimeOffset StartedUtc,
+        Guid[] EvidenceIds, string[] Names);
+
+    private static void SaveSessionIndex(string root, DateTimeOffset started,
+        IReadOnlyList<Guid> evidence, IReadOnlyList<string> names)
+    {
+        if (evidence.Count == 0) return;
+        var folder = Path.Combine(root, "sessions");
+        Directory.CreateDirectory(folder);
+        var id = Guid.NewGuid();
+        var path = Path.Combine(folder, id.ToString("N") + ".json");
+        var temp = path + ".tmp";
+        try
+        {
+            File.WriteAllBytes(temp, JsonSerializer.SerializeToUtf8Bytes(
+                new SessionWire(1, id, started, evidence.ToArray(), names.ToArray())));
+            File.Move(temp, path);
+        }
+        finally { if (File.Exists(temp)) File.Delete(temp); }
+    }
+
+    private static WaveSessionItem[] ReadSessionIndex(string root)
+    {
+        var folder = Path.Combine(root, "sessions");
+        if (!Directory.Exists(folder)) return [];
+        var result = new List<WaveSessionItem>();
+        foreach (var path in Directory.EnumerateFiles(folder, "*.json")
+                     .OrderByDescending(File.GetLastWriteTimeUtc).Take(200))
+        {
+            try
+            {
+                if (new FileInfo(path).Length is <= 0 or > 1_048_576) continue;
+                var item = JsonSerializer.Deserialize<SessionWire>(File.ReadAllBytes(path));
+                if (item is null || item.Schema != 1 || item.Id == Guid.Empty ||
+                    item.EvidenceIds is null || item.Names is null ||
+                    item.EvidenceIds.Length is < 1 or > 16 ||
+                    item.Names.Length != item.EvidenceIds.Length ||
+                    item.EvidenceIds.Any(id => id == Guid.Empty)) continue;
+                result.Add(new WaveSessionItem(item.Id, item.StartedUtc,
+                    item.EvidenceIds, item.Names));
+            }
+            catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException) { }
+        }
+        return result.ToArray();
+    }
+}

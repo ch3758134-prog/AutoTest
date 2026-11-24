@@ -44,6 +44,7 @@ public sealed partial class WaveWorkbenchViewModel : BindableBase
         _project = project;
         RefreshCommand = new DelegateCommand(Refresh);
         InitializeCapture(signals, hardware, realTest);
+        InitializeWorkspace();
         _project.CurrentChanged += ProjectChanged;
         Refresh();
     }
@@ -51,15 +52,34 @@ public sealed partial class WaveWorkbenchViewModel : BindableBase
     public WaveItem? Selected
     {
         get => _selected;
-        set { if (SetProperty(ref _selected, value)) LoadSelected(); }
+        set
+        {
+            if (!SetProperty(ref _selected, value)) return;
+            if (value is not null)
+            {
+                _selectedSession = null;
+                RaisePropertyChanged(nameof(SelectedSession));
+                ++_sessionLoadGeneration;
+                _sessionSeries.Clear();
+                IsLiveView = false;
+                RaisePropertyChanged(nameof(DisplayMode));
+            }
+            _comparison = null;
+            _referenceOverlay = null;
+            ComparisonSummary = "选择一条真实采集记录和对应参考后进行比较。";
+            CompareCommand?.RaiseCanExecuteChanged();
+            LoadSelected();
+        }
     }
     public string Status { get => _status; private set => SetProperty(ref _status, value); }
     public string Info { get => _info; private set => SetProperty(ref _info, value); }
     public string CursorInfo { get => _cursorInfo; set => SetProperty(ref _cursorInfo, value); }
     public IReadOnlyList<WaveChartPoint> Points => _points;
     public WaveSeries? Series => _series;
-    public string EmptyWaveMessage => _points.Count > 0 ? "" :
-        "暂无可绘制的真实波形。\n\n连接主控 USB，选择工程 DBC 信号，\n点击“开始采集”获取真实数据。";
+    public string EmptyWaveMessage => GetPlotLanes().Any(lane => lane.Actual.Count > 0)
+        ? "" : IsLiveView
+            ? "尚无真实曲线。\\n先在左侧添加 DBC 信号，再点击“开始观察”。"
+            : "尚无历史证据。\\n从左下方选择一条记录或一次成组采集。";
     public string EmptyListMessage { get => _emptyListMessage; private set => SetProperty(ref _emptyListMessage, value); }
     private void NotifyChartChanged()
     {
@@ -92,6 +112,16 @@ public sealed partial class WaveWorkbenchViewModel : BindableBase
         _refreshStop = stop;
         _selectionGeneration++; // invalidate any pending selection projection
         Items.Clear();
+        Captures.Clear();
+        References.Clear();
+        Sessions.Clear();
+        _sessionSeries.Clear();
+        _selectedSession = null;
+        _selectedReference = null;
+        _referenceOverlay = null;
+        _comparison = null;
+        RaisePropertyChanged(nameof(SelectedSession));
+        RaisePropertyChanged(nameof(SelectedReference));
         _selected = null;
         _series = null;
         _points = Array.Empty<WaveChartPoint>();
@@ -150,17 +180,23 @@ public sealed partial class WaveWorkbenchViewModel : BindableBase
                         reference.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm"),
                         reference.Reference.Asset.Id.Value, true, reference));
                 }
-                return items;
+                return (Items: items, Sessions: ReadSessionIndex(root));
             }, stop.Token);
             if (_closed || stop.IsCancellationRequested || !ReferenceEquals(_refreshStop, stop) ||
                 _project.Current?.ManifestPath != manifest) return;
-            foreach (var item in collected) Items.Add(item);
+            foreach (var item in collected.Items)
+            {
+                Items.Add(item);
+                if (item.IsReference && item.Reference is not null) References.Add(item.Reference);
+                else if (!item.IsReference) Captures.Add(item);
+            }
+            foreach (var group in collected.Sessions) Sessions.Add(group);
             EmptyListMessage = Items.Count == 0
-                ? "此工程尚无已归档波形。\n使用上方真实采集入口获取数据。" : "";
+                ? "尚无真实采集记录。\\n添加信号并开始记录后在这里查看。" : "";
             Status = Items.Count == 0
                 ? "本工程暂无真实波形证据；连接设备并采集后可在此查看。"
                 : "已载入 " + Items.Count + " 条已验证的波形记录；请选择一条查看。";
-            if (Items.Count > 0) Selected = Items[0];
+            if (Items.Count > 0 && !IsLiveView) Selected = Captures.FirstOrDefault() ?? Items[0];
         }
         catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
         catch (Exception error)
@@ -212,7 +248,9 @@ public sealed partial class WaveWorkbenchViewModel : BindableBase
                 " · " + _series.Samples.Length + " 个样本" +
                 " · 最小 " + min + " · 最大 " + max +
                 " · 丢失标记 " + (_series.HasGap || _series.Overflow ? "存在" : "未标记");
-            CursorInfo = "点击曲线两次，查看区间时间差、幅值差与极值。";
+            RaisePropertyChanged(nameof(DataQuality));
+            CompareCommand?.RaiseCanExecuteChanged();
+            CursorInfo = "点击同一信号轨道两次，测量时间差、幅值差与区间极值。";
             Status = "显示真实样本；降采样仅用于绘图，不用于判定。";
         }
         catch (Exception error)
@@ -234,13 +272,14 @@ public sealed partial class WaveWorkbenchViewModel : BindableBase
     {
         try
         {
-            var measurement = WaveChartAnalysis.Measure(_points, first, second);
-            CursorInfo = measurement is null ? "选定范围没有可用样本。" :
-                "Δt=" + measurement.DeltaSeconds.ToString("F4") + " s   " +
-                "Δy=" + measurement.DeltaValue.ToString("G6") + " " +
-                (_series?.Signal.Unit ?? "") + "   区间最小=" +
-                measurement.Minimum.ToString("G6") + "   最大=" +
-                measurement.Maximum.ToString("G6");
+            var lane = GetPlotLanes().FirstOrDefault(x => x.Actual.Count > 0);
+            var measurement = lane is null ? null :
+                WaveChartAnalysis.Measure(lane.Actual, first, second);
+            CursorInfo = measurement is null ? "当前没有可测量的真实样本。" :
+                lane!.Name + " · Δt=" + measurement.DeltaSeconds.ToString("F4") + " s" +
+                " · Δy=" + measurement.DeltaValue.ToString("G6") + " " + lane.Unit +
+                " · 最小=" + measurement.Minimum.ToString("G6") +
+                " · 最大=" + measurement.Maximum.ToString("G6");
         }
         catch (Exception ex) { CursorInfo = "无法计算游标：" + ex.Message; }
     }
