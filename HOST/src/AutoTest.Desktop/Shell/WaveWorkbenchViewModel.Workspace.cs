@@ -355,7 +355,9 @@ public sealed partial class WaveWorkbenchViewModel
     {
         var points = lanes.SelectMany(x => x.Actual.Concat(
             x.Reference ?? Array.Empty<WaveChartPoint>())).ToArray();
-        if (points.Length == 0) return null;
+        if (points.Length == 0)
+            return lanes.Count == 0 ? null :
+                (0d, (double)(TimeWindowSeconds == 0 ? 10 : TimeWindowSeconds));
         var last = points.Max(x => x.Seconds);
         var earliest = points.Min(x => x.Seconds);
         var end = TimeWindowSeconds == 0 ? last :
