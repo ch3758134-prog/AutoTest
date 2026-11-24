@@ -419,7 +419,7 @@ public sealed class TestEditorViewModel : BindableBase
         if (string.IsNullOrWhiteSpace(actionKey))
         {
             ActionPaletteRequested?.Invoke(_pendingInsertion.RequiresCase);
-            StatusMessage = "选择操作类型后将立即加入可撤销草稿；右侧直接配置。";
+            StatusMessage = "选择要添加的步骤类型。";
             return;
         }
         ChooseNewStepAction(actionKey);
@@ -452,7 +452,7 @@ public sealed class TestEditorViewModel : BindableBase
             _inspectorAdding = false;
             _pendingInsertion = null;
             RefreshTree(node.Id);
-            StatusMessage = "已插入可撤销草稿步骤。请在属性浮窗填写必要参数并应用；未完成前不得保存资源或执行。";
+            StatusMessage = "步骤已添加，请编辑属性。";
             return true;
         }
         catch (Exception error) when (IsEditorError(error))
@@ -484,7 +484,7 @@ public sealed class TestEditorViewModel : BindableBase
                 _newDraftId = null;
                 _newDraftActionKey = null;
                 RefreshTree(null);
-                StatusMessage = "已取消新步骤；Ctrl+Y 可恢复该未完成草稿。";
+                StatusMessage = "已取消新增步骤。";
                 return;
             }
             catch (Exception error) when (IsEditorError(error))
@@ -578,7 +578,7 @@ public sealed class TestEditorViewModel : BindableBase
                 }
                 RefreshMappings();
                 RefreshTree(original.Id);
-                StatusMessage = "步骤属性已应用到测试程序草稿；Ctrl+S 保存。";
+                StatusMessage = "步骤属性已更新。";
             }
             else
             {
@@ -589,7 +589,7 @@ public sealed class TestEditorViewModel : BindableBase
                     insertion.Slot, insertion.Index, result.Step, result.Mapping);
                 RefreshMappings();
                 RefreshTree(result.Step.Id);
-                StatusMessage = "新步骤已插入测试序列；Ctrl+S 保存。";
+                StatusMessage = "已添加步骤。";
             }
             return true;
         }
@@ -622,7 +622,7 @@ public sealed class TestEditorViewModel : BindableBase
     {
         if (_selectedItem?.Step is not { } step) return;
         _clipboardStepId = step.Id;
-        StatusMessage = "已复制所选步骤（当前测试用例内）；选择目标阶段、分支或步骤后 Ctrl+V 粘贴。";
+        StatusMessage = "已复制步骤，选择位置后粘贴。";
         PasteStepCommand.RaiseCanExecuteChanged();
     }
     private void PasteFromClipboard()
@@ -644,7 +644,7 @@ public sealed class TestEditorViewModel : BindableBase
             _transaction.Copy(source, selected.Phase, coords.ParentId, coords.Slot, coords.Index);
             var clone = _transaction.Current.Walk().First(x => !before.Contains(x.Id));
             RefreshTree(clone.Id);
-            StatusMessage = "步骤及子分支已复制到目标位置，所有 StepId 已更新；Ctrl+S 保存。";
+            StatusMessage = "已粘贴步骤。";
         }
         catch (Exception error) when (IsEditorError(error))
         {
@@ -780,7 +780,7 @@ public sealed class TestEditorViewModel : BindableBase
             _transaction.Copy(node.Id, selected.Phase, location.ParentId, location.Slot, location.Index);
             var clonedId = _transaction.Current.Walk().First(x => !before.Contains(x.Id)).Id;
             RefreshTree(clonedId);
-            StatusMessage = "步骤已复制，新节点分配独立 StepId。";
+            StatusMessage = "已复制步骤。";
         }
         catch (Exception e) when (IsEditorError(e)) { _dialogs.ShowError(e.Message); }
     }
@@ -862,7 +862,7 @@ public sealed class TestEditorViewModel : BindableBase
 
     private Task AddMappingAsync()
     {
-        StatusMessage = "在右侧步骤属性中选择当前工程的 DBC / Controller 对象；应用属性会原子建立修订绑定。";
+        StatusMessage = "请选择要操作的工程资源。";
         return Task.CompletedTask;
     }
 
@@ -883,7 +883,7 @@ public sealed class TestEditorViewModel : BindableBase
     {
         if (HasNewStepDraft)
         {
-            StatusMessage = "步骤草稿尚未完善，不能预检或运行。";
+            StatusMessage = "请先完成步骤编辑。";
             return;
         }
         if (IsBusy) return;
@@ -896,7 +896,7 @@ public sealed class TestEditorViewModel : BindableBase
                     " 项问题；首项：" + plan.Diagnostics[0];
                 return;
             }
-            StatusMessage = "当前用例步骤与静态计划检查通过。请先保存，连接 USB 主控，然后点击“确认当前用例”与“运行当前用例”。检查通过不代表 ECU 测试通过。";
+            StatusMessage = "运行前检查通过；保存后可确认并运行此用例。";
         }
         catch (Exception error)
         {
@@ -918,7 +918,7 @@ public sealed class TestEditorViewModel : BindableBase
         FlashApproval = "";
         if (!_realTest.IsHardwareConnected || _realTest.ConnectedStationEpoch <= 0)
         {
-            StatusMessage = "USB 主控未连接：连接真实工位后，才能确认当前用例进行真实运行。";
+            StatusMessage = "主控未连接。";
             RefreshCommands();
             return;
         }
@@ -1008,7 +1008,7 @@ public sealed class TestEditorViewModel : BindableBase
         if (SelectedItem?.Step is not { } step) return;
         if (!_realTest.IsHardwareConnected || _realTest.ConnectedStationEpoch <= 0)
         {
-            StatusMessage = "运行此步骤要求 USB 主控已连接；不能模拟发送。";
+            StatusMessage = "主控未连接，无法运行步骤。";
             return;
         }
         if (!_dialogs.Confirm("将对真实 ECU 执行选中步骤及其子步骤：\n" +
@@ -1054,7 +1054,7 @@ public sealed class TestEditorViewModel : BindableBase
         }
         catch (Exception error) when (IsEditorError(error))
         {
-            StatusMessage = "当前步骤/用例已改变，请重新确认：" + error.Message;
+            StatusMessage = "用例已更改，请重新确认：" + error.Message;
             RunApproval = "";
             return;
         }
@@ -1072,7 +1072,7 @@ public sealed class TestEditorViewModel : BindableBase
         if (string.IsNullOrWhiteSpace(RunApproval) ||
             !string.Equals(RunApproval, ExpectedApproval, StringComparison.Ordinal))
         {
-            StatusMessage = "请先点击“确认当前用例”，再运行真实测试。";
+            StatusMessage = "请先确认当前用例。";
             return;
         }
         if (DutIdentity.Length > 0 &&
@@ -1080,7 +1080,7 @@ public sealed class TestEditorViewModel : BindableBase
              DutIdentity != DutIdentity.Trim() || DutIdentity.Length > 256 ||
              DutIdentity.Any(char.IsControl)))
         {
-            StatusMessage = "ECU 编号格式不合法；开发联调时可以留空，记录为未绑定 DUT 诊断。";
+            StatusMessage = "ECU 编号格式不正确；开发调试可留空。";
             return;
         }
         if (ExpectedFlashApproval.Length > 0 &&
@@ -1234,7 +1234,7 @@ public sealed class TestEditorViewModel : BindableBase
         {
             _transaction.SetProperty(step.Id, key, value.ToString());
             RefreshTree(step.Id);
-            StatusMessage = "已在当前 TEST 草稿中修改参数；步骤摘要已同步。";
+            StatusMessage = "步骤参数已更新。";
             return true;
         }
         catch (Exception error) when (IsEditorError(error))
@@ -1387,7 +1387,7 @@ public sealed class TestEditorViewModel : BindableBase
         if (IsBusy) return false;
         if (HasNewStepDraft)
         {
-            StatusMessage = "新步骤尚未完成配置。请在浮窗应用属性，或点击取消新增后再保存。";
+            StatusMessage = "请完成新步骤的属性编辑或取消新增。";
             return false;
         }
         if (!IsDirty) return true;
@@ -1401,7 +1401,7 @@ public sealed class TestEditorViewModel : BindableBase
     {
         if (HasNewStepDraft)
         {
-            StatusMessage = "仍有未完成的新步骤；先在浮窗应用属性，或取消该新增。";
+            StatusMessage = "仍有未完成的步骤，请应用属性或取消。";
             return;
         }
         if (!IsDirty || IsBusy || !CanProceed()) return;
@@ -1413,7 +1413,7 @@ public sealed class TestEditorViewModel : BindableBase
             RefreshMappings();
             RefreshTree(_selectedItem?.Step?.Id);
             RaisePropertyChanged(nameof(AssetRevision));
-            StatusMessage = "测试程序已保存并重新读取；工程资源修订 " + AssetRevision;
+            StatusMessage = "测试程序已保存 · 版本 " + AssetRevision;
         }
         catch (Exception e) when (IsEditorError(e)) { StatusMessage = "保存失败：" + e.Message; _dialogs.ShowError(StatusMessage); }
         finally { IsBusy = false; }
@@ -1428,7 +1428,7 @@ public sealed class TestEditorViewModel : BindableBase
             asset.Revision == _session.AssetRevision) return;
         if (IsDirty)
         {
-            StatusMessage = "当前用例磁盘修订已变化，草稿仍保留；请先核对后重新加载，禁止覆盖新版本。";
+            StatusMessage = "文件已被其他操作修改；请核对后重新加载。";
             return;
         }
         await ReloadAsync();
