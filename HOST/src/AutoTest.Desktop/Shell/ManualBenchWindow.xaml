@@ -264,9 +264,15 @@
       
       <Border BorderBrush="#E3EAE5" BorderThickness="0,1,0,0" Margin="0,12,0,10"/>
       <DockPanel Margin="0,0,0,8">
-       <TextBlock DockPanel.Dock="Left" Text="KEY CAN · 按键动作" Style="{StaticResource BenchHeader}" FontSize="14"/>
-       
+       <Button DockPanel.Dock="Right" Content="实际全部断开 KEY"
+        Command="{Binding ReleaseAllKeysCommand}" Margin="8,0,0,0"
+        Padding="9,5" ToolTip="向真实 KEY CAN 发送 0x730 全断开指令，不等同于仅清空勾选"/>
+       <TextBlock DockPanel.Dock="Left" Text="KEY CAN · 按键动作"
+        Style="{StaticResource BenchHeader}" FontSize="14" VerticalAlignment="Center"/>
       </DockPanel>
+      <TextBlock Text="{Binding KeyRequestStatus}" FontSize="12" Foreground="#995400"
+       TextWrapping="Wrap" Margin="0,0,0,8"
+       ToolTip="只反映主控 ACK 的最后请求，不代表五路电压实测"/>
      </StackPanel>
      <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
   <StackPanel>
