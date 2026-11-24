@@ -19,6 +19,4 @@ public partial class ManualBenchKeyActionView : UserControl
     private void SaveAndClose_Click(object sender, RoutedEventArgs e) =>
         CloseRequested?.Invoke(this, EventArgs.Empty);
 
-    private void CloseKeyEditor_Click(object sender, RoutedEventArgs e) =>
-        CloseRequested?.Invoke(this, EventArgs.Empty);
 }

@@ -6,7 +6,7 @@
  <UserControl.Resources>
   <Style x:Key="BenchKey" TargetType="ToggleButton">
    <Setter Property="Margin" Value="2"/>
-   <Setter Property="Height" Value="29"/>
+   <Setter Property="Height" Value="34"/>
    <Setter Property="Foreground" Value="#355579"/>
    <Setter Property="Template"><Setter.Value>
     <ControlTemplate TargetType="ToggleButton">
@@ -22,7 +22,7 @@
   </Style>
   <Style x:Key="FieldCaption" TargetType="TextBlock">
    <Setter Property="Foreground" Value="#627C9D"/>
-   <Setter Property="FontSize" Value="11"/>
+   <Setter Property="FontSize" Value="13"/>
    <Setter Property="Margin" Value="0,9,0,4"/>
   </Style>
   <Style x:Key="BenchHint" TargetType="TextBlock">
@@ -48,15 +48,7 @@
     <StackPanel>
    <StackPanel x:Name="KeyEditorSection"
     Visibility="{Binding IsKeyEditorExpanded,Converter={StaticResource BoolToVisibility}}">
-   <DockPanel Margin="0,0,0,8">
-    
-    <Button DockPanel.Dock="Right" Content="复制动作" Command="{Binding CopyKeyActionCommand}"
-     Padding="8,5" Margin="4,0,0,0"/>
-    <Button DockPanel.Dock="Right" Content="删除动作" Command="{Binding DeleteKeyActionCommand}"
-     Padding="8,5" Margin="4,0,0,0"/>
-    <TextBlock Text="动作编辑" Foreground="#475668" FontSize="13" FontWeight="SemiBold"
-     VerticalAlignment="Center"/>
-   </DockPanel>
+
    <StackPanel Visibility="{Binding HasSelectedKeyAction,Converter={StaticResource BoolToVisibility}}">
     <TextBlock Text="动作名称" Style="{StaticResource FieldCaption}"/>
     <TextBox Text="{Binding SelectedKeyAction.Name,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
@@ -82,7 +74,7 @@
          <ColumnDefinition Width="*"/><ColumnDefinition Width="75"/><ColumnDefinition Width="23"/>
         </Grid.ColumnDefinitions>
         <TextBlock Text="{Binding Summary}" VerticalAlignment="Center" TextWrapping="Wrap"
-         ToolTip="{Binding Summary}" Foreground="#355579" FontSize="11"/>
+         ToolTip="{Binding Summary}" Foreground="#355579" FontSize="13"/>
         <TextBox Grid.Column="1" Text="{Binding HoldMsText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
          ToolTip="本段等待时间（毫秒）" Padding="5,3" VerticalAlignment="Center" MinHeight="28"
          IsEnabled="{Binding DataContext.CanEditKeyActions,RelativeSource={RelativeSource AncestorType=ListBox}}"/>
@@ -124,11 +116,10 @@
    </ScrollViewer>
   </Border>
   <DockPanel Grid.Row="2" Margin="0,12,0,0">
-   <Button DockPanel.Dock="Right" Content="保存并关闭" Click="SaveAndClose_Click"
-    Padding="14,7" MinWidth="110" Style="{StaticResource AtPrimaryButton}"/>
-   <Button DockPanel.Dock="Right" Content="关闭" Click="CloseKeyEditor_Click"
-    Padding="14,7" MinWidth="76" Margin="0,0,10,0"/>
-   <TextBlock Text="{Binding KeyLibraryState}" Foreground="#627C9D" VerticalAlignment="Center"/>
+   <Button DockPanel.Dock="Right" Content="完成" Click="SaveAndClose_Click"
+    Padding="16,8" MinWidth="110" Style="{StaticResource AtPrimaryButton}"/>
+   <TextBlock Text="{Binding KeyLibraryState}" Foreground="#627C9D"
+    VerticalAlignment="Center" ToolTip="编辑更改将在关闭时自动保存"/>
   </DockPanel>
  </Grid>
 </UserControl>
