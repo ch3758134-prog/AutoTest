@@ -170,12 +170,12 @@
      </StackPanel>
     </ScrollViewer>
    </TabItem>
-   <TabItem Header="扫码与编号">
+   <TabItem Header="扫码匹配">
     <Grid>
      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
      <Border Grid.Row="0" Background="#F3F7FC" BorderBrush="#DBE5F0"
       BorderThickness="0,0,0,1" Padding="14,8">
-      <TextBlock Text="同一工位扫码服务 · 原始数据 → 身份解析 → 唯一型号工程；在这里直接试扫，不用切换窗口。扫码不会触发烧录。"
+      <TextBlock Text="工程提前声明扫码期望 · 一次扫码解析多个字段并核对期望；串口设备独立设置，试扫不是保存前提。"
        Foreground="#506986" TextWrapping="Wrap"/>
      </Border>
      <ContentControl x:Name="ScannerSetupHost" Grid.Row="1"
