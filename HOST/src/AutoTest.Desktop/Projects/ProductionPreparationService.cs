@@ -100,6 +100,9 @@ public static class ProductionPreparationService
             !manifestSha.Equals(opened.ManifestSha256, StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("工程已发生变更，必须重新打开工程及扫码。");
 
+        actual = await ProjectWorkspaceService.ReadCurrentResourceMetadataAsync(actual, opened.RootDirectory, ct).ConfigureAwait(false);
+        opened = opened with { Definition = actual };
+
         // Only required production resources may authorize execution;
         // old inactive draft assets cannot widen its real dependency set.
         // The operator list and the physical preparation MUST resolve the
@@ -129,14 +132,14 @@ public static class ProductionPreparationService
             fixture.Validate();
         }
 
-        // Never promote an autosaved engineering draft into production.
-        var native = await NativeFlashPublicationStore.LoadPublishedAsync(
+        // The saved engineering profile is the only programming configuration.
+        var native = await NativeFlashProfileStore.LoadAsync(
             opened.RootDirectory, ct).ConfigureAwait(false)
-            ?? throw new InvalidDataException("该型号工程尚未发布当前有效烧录配置。");
+            ?? throw new InvalidDataException("该型号工程尚未保存烧录配置。");
         if (native.Profile.EcuModelCode != modelCode)
-            throw new InvalidDataException("已发布 Flash Profile 与扫描型号不一致。");
+            throw new InvalidDataException("烧录配置与扫描型号不一致。");
         var frozenJob = await Task.Run(() =>
-            NativeFlashPublicationStore.FreezePublished(opened.RootDirectory, native),
+            NativeFlashJobBuilder.Freeze(native.Profile, opened.RootDirectory),
             ct).ConfigureAwait(false);
         var pinned = string.Join("\n",
             "AUTOTEST-PRODUCTION-PREPARE-V1",

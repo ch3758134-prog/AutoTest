@@ -6,9 +6,7 @@ using Prism.Commands;
 namespace AutoTest.Desktop.Shell;
 
 /// <summary>
-/// One ECU project owns the formal inspection definition. The operator sees
-/// only an explicitly deployed, pinned revision of that canonical project;
-/// the developer may continue editing a separate un-deployed draft.
+/// One saved ECU project supplies both engineering and automatic inspection.
 /// </summary>
 public sealed partial class MainWindowViewModel
 {
@@ -25,7 +23,6 @@ public sealed partial class MainWindowViewModel
     public DelegateCommand ShowProductionWorkspaceCommand { get; private set; } = null!;
     public DelegateCommand ShowEngineerWorkspaceCommand { get; private set; } = null!;
     public DelegateCommand ConfigureAutomaticTestCommand { get; private set; } = null!;
-    public DelegateCommand DeployCurrentProjectCommand { get; private set; } = null!;
 
     private void InitializeProductionWorkspace()
     {
@@ -36,41 +33,10 @@ public sealed partial class MainWindowViewModel
         AutomaticTestView = new AutomaticTestHomeView { DataContext = _automaticTestHome };
         ConfigureAutomaticTestCommand = new DelegateCommand(
             async () => await ShowDeveloperAsync());
-        DeployCurrentProjectCommand = new DelegateCommand(
-            async () => await DeployCurrentProjectAsync());
         ShowEngineerWorkspaceCommand = new DelegateCommand(
             async () => await ShowDeveloperAsync());
         ShowProductionWorkspaceCommand = new DelegateCommand(
             async () => await ShowAutomaticTestAsync());
-    }
-
-    private async Task DeployCurrentProjectAsync()
-    {
-        if (_productionWorkspace || _realTest.IsRunning || _hardwareBusy)
-        {
-            StatusMessage = "请切换到工程与调试，并停止当前实体任务，再部署工程。";
-            return;
-        }
-        if (!await PrepareEditorsForCloseAsync()) return;
-        var project = _workspace.Current;
-        if (project is null)
-        {
-            StatusMessage = "请先打开 ECU 工程。";
-            return;
-        }
-        try
-        {
-            await _automaticTestPlans.DeployAsync(project);
-            StatusMessage = "当前 ECU 工程配置已部署到本工位（冻结资源指纹）。" +
-                "该操作不执行烧录，不代表实体夹具或整机验收通过。";
-            await RefreshEngineeringSetupAsync();
-        }
-        catch (Exception error) when (error is IOException or InvalidDataException or
-            UnauthorizedAccessException or ArgumentException or FormatException or
-            NotSupportedException or ProjectDataException or System.Text.Json.JsonException)
-        {
-            StatusMessage = "部署被拒绝（保留旧部署）： " + error.Message;
-        }
     }
 
     /// <summary>
@@ -105,9 +71,9 @@ public sealed partial class MainWindowViewModel
             StatusMessage = "开发测试正在运行；请先停止，避免自动测试与调试争用工位。";
             return;
         }
+        if (!await PrepareEditorsForCloseAsync()) return;
         SetWorkspaceMode(true);
-        // Never adopt an IDE draft. Revalidate the explicit deployment
-        // fingerprint and all referenced assets whenever entering production.
+        // Use the same saved ECU project as the engineering workspace.
         await _automaticTestHome.RestoreAsync();
     }
 
@@ -119,7 +85,7 @@ public sealed partial class MainWindowViewModel
         RaisePropertyChanged(nameof(IsEngineerWorkspace));
         RaisePropertyChanged(nameof(WindowTitle));
         StatusMessage = automaticTest
-            ? "自动测试使用本工位已部署且指纹核对的 ECU 工程；编辑草稿不能自动替换部署。"
+            ? "自动测试使用当前保存的 ECU 工程。"
             : "开发与调试工作区：可独立打开、编辑 ECU 工程。";
     }
 }

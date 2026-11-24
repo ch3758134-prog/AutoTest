@@ -64,14 +64,14 @@ public sealed partial class AutomaticTestHomeViewModel
         _prepared = null;
         _scanMappedFields = new Dictionary<string, string>(StringComparer.Ordinal);
         _dutSerial = "正在核对";
-        _scanStatus = "正在匹配已部署工程的扫码期望与资源。";
+        _scanStatus = "正在匹配当前工程的扫码期望与资源。";
         Notify();
         try
         {
             var expectation = plan.Project.Definition.BarcodeExpectation;
             if (expectation is null)
             {
-                Reject("已部署工程缺少扫码期望；请先在检测准备编辑并重新部署。");
+                Reject("当前工程缺少扫码期望；请先在检测准备编辑并保存。");
                 return;
             }
             var ruleJson = System.Text.Json.JsonSerializer.Serialize(expectation);
@@ -84,16 +84,6 @@ public sealed partial class AutomaticTestHomeViewModel
                 string.IsNullOrWhiteSpace(parsed.DutSerial))
             {
                 Reject("本次扫码身份未被接受：" + parsed.Explanation);
-                return;
-            }
-            // The deployed ECU project is the only model-to-test mapping.
-            // A second station catalogue cannot override its TEST/FLASH scope.
-            var deployment = await StationDeploymentStore.RestoreAsync();
-            if (deployment is null ||
-                !string.Equals(deployment.Pin.ManifestSha256,
-                    plan.DeploymentFingerprint, StringComparison.OrdinalIgnoreCase))
-            {
-                Reject("工位部署已变化，不能复用旧工程或旧扫码；需核对部署。");
                 return;
             }
             var decision = await ProductionPreparationService.PrepareAsync(

@@ -161,7 +161,7 @@
         <Button DockPanel.Dock="Right" Content="查看检测准备情况" Tag="check" Click="NavigateToStage_Click"
          Padding="11,7" VerticalAlignment="Center" Margin="12,0,0,0"/>
         <StackPanel>
-         <TextBlock Text="06  完整检测检查与发布" FontWeight="SemiBold" FontSize="13"/>
+         <TextBlock Text="06  完整检测检查" FontWeight="SemiBold" FontSize="13"/>
          <TextBlock Text="统一检查身份、夹具、START、必烧录、全部 TEST 与记录。缺少真机证据时不得宣告生产就绪。"
           Foreground="{StaticResource Subtle}" Margin="0,5,0,0" TextWrapping="Wrap"/>
         </StackPanel>
@@ -189,23 +189,23 @@
        Foreground="{StaticResource Ink}"/>
       <TextBlock Text="{Binding SetupFlashStatus}" Foreground="#516B83"
        TextWrapping="Wrap" Margin="0,10,0,14"/>
-      <TextBlock Text="当前工程内受控管理烧录参数、固件、算法以及发布版本。配置编辑器使用当前工程，不需要 CanTool XML，也不创建第二份扫码配方。"
+      <TextBlock Text="当前工程内保存烧录参数、固件和算法。配置编辑器使用当前工程，不需要 CanTool XML，也不创建第二份扫码配方。"
        Foreground="{StaticResource Subtle}" TextWrapping="Wrap"/>
       <WrapPanel Margin="0,16,0,0">
        <Button Content="编辑当前工程烧录工艺" Command="{Binding OpenNativeFlashProfileCommand}"
         Padding="15,9" Margin="0,0,10,8" Style="{StaticResource AtPrimaryButton}"/>
        <Button Content="真实烧录调试（查看 UDS/CAN）" Command="{Binding OpenFlashWorkbenchCommand}"
         Padding="15,9" Margin="0,0,10,8"/>
-       <Button Content="核对发布配置" Command="{Binding RefreshEngineeringSetupCommand}"
+       <Button Content="检查当前配置" Command="{Binding RefreshEngineeringSetupCommand}"
         Padding="15,9" Margin="0,0,10,8"/>
       </WrapPanel>
       <Border Background="#F2F6FA" BorderBrush="#E0E8EF" BorderThickness="1"
        CornerRadius="6" Padding="12" Margin="0,10,0,0">
        <StackPanel>
         <TextBlock Text="正确的工程操作顺序" FontWeight="SemiBold" Margin="0,0,0,8"/>
-        <TextBlock Text="编辑参数与受控固件 → 校验冻结 Job → 使用独立烧录工具进行实体调试 → 审查证据 → 显式发布当前工程烧录版本。正式生产每次都使用发布快照前置烧录。"
+        <TextBlock Text="编辑并保存参数、固件和算法 → 按需预检和实体调试。正式检测使用当前保存的配置前置烧录。"
          Foreground="{StaticResource Subtle}" TextWrapping="Wrap"/>
-        <TextBlock Text="当前版本的真实烧录工具独占主控 USB；编辑工艺不意味着已成功烧录，发布记录也不能代替 ECU 后验。"
+        <TextBlock Text="当前版本的真实烧录工具独占主控 USB；保存配置不意味着已成功烧录，实际 ECU 后验仍需真实执行。"
          Margin="0,9,0,0" TextWrapping="Wrap" Foreground="#9A6A2C"/>
        </StackPanel>
       </Border>
@@ -355,11 +355,7 @@
         </StackPanel>
        </DockPanel>
       </Border>
-      <Button Content="检查并发布当前 ECU 检测工程"
-       Command="{Binding DeployCurrentProjectCommand}"
-       Style="{StaticResource AtPrimaryButton}" HorizontalAlignment="Left"
-       Padding="15,10" Margin="0,3,0,12"/>
-      <TextBlock Text="发布只固定当前 TEST、原生烧录和实际存在的工位动作，不会执行 ECU 烧录或夹具动作。正式生产的 START、FLASH、TEST、RECORD 整机接线尚未完成验收，不能据此宣告 ECU 合格。"
+      <TextBlock Text="当前工程保存后即为检测配置，不需要发布。检查配置不会执行 ECU 烧录或夹具动作。正式生产的 START、FLASH、TEST、RECORD 整机接线尚未完成验收，不能据此宣告 ECU 合格。"
        TextWrapping="Wrap" Foreground="#8B6845"/>
      </StackPanel>
     </ScrollViewer>

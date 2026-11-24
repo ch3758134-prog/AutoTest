@@ -212,7 +212,7 @@ public sealed partial class MainWindowViewModel
             : "当前工程型号：" + project.Definition.EcuModelCode;
         var test = "正在核对 TEST 资源…";
         var scan = "正在核对工位扫码设置…";
-        var flash = "正在核对烧录发布版本…";
+        var flash = "正在读取烧录配置…";
         var station = _hardware.IsConnected
             ? "主控 USB 已连接；夹具机械状态和 START 尚未现场验证"
             : "主控未连接；可先编辑配置与测试用例";
@@ -227,8 +227,8 @@ public sealed partial class MainWindowViewModel
                 test = snapshot.CanExecute
                     ? snapshot.Cases.Count + " 个正式用例的静态资源检查通过（仍需实体运行）"
                     : snapshot.Cases.Count + " 个有效引用 · " +
-                      snapshot.Issues.Count + " 项资源阻断；打开 TEST 项目修订引用与步骤。" +
-                      "工程资源未齐备前不能部署正式测试。";
+                      snapshot.Issues.Count + " 项资源阻断；打开 TEST 项目检查引用与步骤。" +
+                      "所需资源未齐备前不能执行完整测试。";
             }
             catch (Exception error) when (error is IOException or InvalidDataException or
                 ProjectDataException or ArgumentException or FormatException or
@@ -256,30 +256,16 @@ public sealed partial class MainWindowViewModel
 
             try
             {
-                var published = await NativeFlashPublicationStore.LoadPublishedAsync(
-                    project.RootDirectory);
-                if (published is null)
-                {
-                    flash = File.Exists(NativeFlashProfileStore.FullProfilePath(project.RootDirectory))
-                        ? "原生工艺只有工程草稿；尚未发布当前生产版"
-                        : "尚未配置该工程的原生烧录工艺";
-                }
+                var saved = await NativeFlashProfileStore.LoadAsync(project.RootDirectory);
+                if (saved is null)
+                    flash = "尚未配置该工程的原生烧录工艺";
+                else if (!string.Equals(saved.Profile.EcuModelCode,
+                    project.Definition.EcuModelCode, StringComparison.Ordinal))
+                    flash = "烧录型号与工程不符，不能正式运行";
                 else
                 {
-                    if (!string.Equals(published.Profile.EcuModelCode,
-                        project.Definition.EcuModelCode, StringComparison.Ordinal))
-                        flash = "已发布烧录型号与工程不符，禁止正式运行";
-                    else
-                    {
-                        // A valid pointer is not enough: ensure the live firmware,
-                        // verified algorithm and immutable job still match SHA.
-                        var frozenJob = await Task.Run(() =>
-                            NativeFlashPublicationStore.FreezePublished(
-                                project.RootDirectory, published));
-                        flash = "原生烧录已发布，固件/算法/Job 指纹可重建（" +
-                            frozenJob.Fingerprint[..12] +
-                            "…）；真实 ECU 烧录与 APP 后验仍待实测";
-                    }
+                    _ = await Task.Run(() => NativeFlashJobBuilder.Freeze(saved.Profile, project.RootDirectory));
+                    flash = "当前烧录配置预检通过；真实 ECU 烧录与 APP 后验仍待实测";
                 }
             }
             catch (Exception error) when (error is IOException or InvalidDataException or

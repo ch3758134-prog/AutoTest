@@ -75,7 +75,7 @@ public partial class NativeFlashProfileWindow : Window
             StatusLabel.Text = _saved is null
                 ? "新工程配置尚未保存；选择 HEX 与安全文件"
                 : "工程内已保存烧录参数 · 修订 " + _saved.Profile.Revision +
-                  "；还须配置 HEX 和安全文件并校验发布。";
+                  "；还须配置 HEX 和安全文件。";
         }
         catch (Exception error) when (error is IOException or FormatException or InvalidDataException
                                      or UnauthorizedAccessException or NotSupportedException or JsonException)
@@ -280,37 +280,6 @@ public partial class NativeFlashProfileWindow : Window
             JobDetailsLabel.Text = "未获得有效的冻结 Job：" + error.Message;
             StatusLabel.Text = "原生烧录预检拒绝：" + error.Message;
         }
-    }
-
-    private async void Publish_Click(object sender, RoutedEventArgs e)
-    {
-        if (!await SaveAsync()) return;
-        try
-        {
-            var draft = (await NativeFlashProfileStore.LoadAsync(_root))!;
-            var preview = await Task.Run(() =>
-                NativeFlashJobBuilder.Freeze(draft.Profile, _root));
-            JobDetailsLabel.Text = FormatFrozenJob(preview);
-            var confirm = MessageBox.Show(this,
-                "工程型号：" + draft.Profile.EcuModelCode + "\n\n" +
-                FormatFrozenJob(preview) + "\n\n" +
-                "发布后生产预检将冻结此版本；草稿修改不会影响已发布版本。" +
-                "\n本操作不连接设备，也不代表已授权对 ECU 擦写。" +
-                "\n\n我已核查固件、算法及上述实际下载镜像行为，确认发布？",
-                "核对完整实际烧录计划后发布",
-                MessageBoxButton.YesNo, MessageBoxImage.Warning,
-                MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
-            var published = await NativeFlashPublicationStore.PublishAsync(_root,
-                draft.ProfileSha256);
-            StatusLabel.Text = "已发布当前生产配置 · " +
-                published.PublishedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") +
-                " · Job " + published.JobFingerprint[..12] + "…";
-        }
-        catch (Exception error) when (error is IOException or FormatException or
-                                      InvalidDataException or NotSupportedException or
-                                      UnauthorizedAccessException or JsonException)
-        { StatusLabel.Text = "生产配置未发布：" + error.Message; }
     }
 
     /// <summary>

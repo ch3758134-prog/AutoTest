@@ -61,23 +61,17 @@ public static class EngineeringTestProjectPreviewReader
             // This is a diagnosis of a draft, never a physical run admission.
             if (string.IsNullOrWhiteSpace(project.Definition.EcuModelCode))
                 blockers.Add("工程尚未设置用于烧录匹配的 ECU 型号");
-            var scannerPolicy = await StationScanIdentityPolicyStore.LoadAsync(ct)
+            if (project.Definition.BarcodeExpectation is null)
+                blockers.Add("工程扫码期望尚未保存");
+            var flash = await NativeFlashProfileStore.LoadAsync(project.RootDirectory, ct)
                 .ConfigureAwait(false);
-            if (scannerPolicy is null)
-                blockers.Add("固定扫码枪的唯一编号解析规则尚未保存");
-            var flash = await NativeFlashPublicationStore.LoadPublishedAsync(
-                project.RootDirectory, ct).ConfigureAwait(false);
             if (flash is null)
-                blockers.Add("当前工程的前置烧录工艺尚未发布");
+                blockers.Add("当前工程的前置烧录尚未配置");
+            else if (!string.Equals(flash.Profile.EcuModelCode,
+                    project.Definition.EcuModelCode, StringComparison.Ordinal))
+                blockers.Add("烧录工艺型号与当前工程不一致");
             else
-            {
-                if (!string.Equals(flash.Profile.EcuModelCode,
-                        project.Definition.EcuModelCode, StringComparison.Ordinal))
-                    blockers.Add("烧录工艺型号与当前工程不一致");
-                else
-                    _ = NativeFlashPublicationStore.FreezePublished(
-                        project.RootDirectory, flash);
-            }
+                _ = NativeFlashJobBuilder.Freeze(flash.Profile, project.RootDirectory);
             var fixtures = project.Definition.Assets.Where(x =>
                 x.Kind == ProjectWorkspaceService.InspectionKind).ToArray();
             if (fixtures.Length > 1)

@@ -98,9 +98,9 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         // adapter and durable RunId record are wired, NEVER issue CAN/FLASH,
         // claim a START edge, fabricate progress or return PASS.
         if (_plans.Current is not { } plan)
-            StartRequestStatus = "不能启动：尚未部署并核对正式 ECU 工程。请进入开发与调试完成配置并部署。";
+            StartRequestStatus = "不能启动：尚未打开 ECU 工程。请进入开发与调试完成配置并保存。";
         else if (!plan.ResourceReady)
-            StartRequestStatus = "不能启动：已部署工程存在资源或有序用例问题，请先修复部署。";
+            StartRequestStatus = "不能启动：当前工程存在资源或有序用例问题，请先修复相关配置。";
         else if (!_scanner.IsConnected)
             StartRequestStatus = "不能启动：工位扫码枪尚未建立真实串口会话。";
         else if (_prepared is null || string.IsNullOrWhiteSpace(_lastIdentity))
@@ -128,7 +128,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     public bool NeedsSetup => Cases.Count == 0;
     public string SetupIssue => _plans.Current is not null ? _plans.Issue :
         _draftPreview is not null
-            ? "工程可编辑，但尚未发布供正式自动检测：" + _draftPreview.Description
+            ? "工程可编辑，检测配置待完善：" + _draftPreview.Description
             : string.IsNullOrWhiteSpace(_draftIssue)
                 ? "尚未打开检测工程。进入开发与调试创建或打开 ECU 工程。"
                 : _draftIssue;
@@ -141,9 +141,8 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     public string DeploymentStatus => _plans.Current is null
         ? _draftPreview is null
             ? "当前没有可用工程，请进入开发与调试"
-            : "当前展示的是工程草稿 · 尚未用于正式检测"
-        : "正式工程版本已核对 " + _plans.Current.DeploymentFingerprint[..12] +
-          "…；实体工位与完整执行还需验证";
+            : "当前工程 · 检测配置待完善"
+        : "使用当前工程 · 实体工位与完整执行待接线";
     public int CaseCount => Cases.Count;
     public string DeviceStatus => (_hardware.IsConnected ? "主控已连接" : "主控未连接") +
         " · " + (_scanner.IsConnected ? "扫码枪已连接" : "扫码枪未连接");
@@ -170,7 +169,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         IsBusy = true;
         try
         {
-            await _plans.RestoreAsync();
+            await _plans.RestoreAsync(_engineering.Current);
             await RefreshDraftPreviewAsync();
         }
         finally { IsBusy = false; }
@@ -179,13 +178,12 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     public async Task RefreshPlanAsync()
     {
         if (!HasPlan || IsBusy) return;
-        await RestoreAsync(); // Reverify the operator plan, NOT the IDE's project.
+        await RestoreAsync(); // Reload the current saved ECU project.
     }
 
     public Task ChoosePlanAsync()
     {
-        // The operator cannot create a second TEST plan or select a mutable
-        // developer file. Deployment is explicitly controlled in the IDE.
+        // The operator uses the ECU project edited in the engineering workspace.
         _openEngineer();
         return Task.CompletedTask;
     }
@@ -193,7 +191,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     private void OnPlanChanged(object? sender, EventArgs e)
     {
         InvalidateScan("正式工程加载或更新后，需要重新核对本次 ECU 的真实扫码身份。");
-        StartRequestStatus = "本次部署已变化：请重新完成扫码与工位核对；正式执行器尚未接通。";
+        StartRequestStatus = "当前工程已更新：请重新完成扫码与工位核对；正式执行器尚未接通。";
         RebuildCases();
         UpdateConnection();
     }
@@ -260,7 +258,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     private void UpdateConnection()
     {
         _status = _plans.Current is null
-            ? _draftPreview is null ? "请先打开工程" : "工程草稿 · 尚未发布"
+            ? _draftPreview is null ? "请先打开工程" : "当前工程配置待完善"
             : !_plans.Current.ResourceReady ? "测试资源未就绪"
             : !_hardware.IsConnected ? "主控未连接"
             : "整机执行待接线";

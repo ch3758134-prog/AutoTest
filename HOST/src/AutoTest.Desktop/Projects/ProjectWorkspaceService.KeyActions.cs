@@ -22,9 +22,6 @@ public sealed partial class ProjectWorkspaceService
         var full = ProjectPathPolicy.Normalize(project.RootDirectory, asset.RelativePath);
         var bytes = await File.ReadAllBytesAsync(full, ct);
         var sha = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
-        if (!sha.Equals(asset.Sha256, StringComparison.OrdinalIgnoreCase))
-            throw new ProjectDataException("KEY_CATALOG_FILE_CONFLICT",
-                "动作库文件与工程登记的 SHA256 不一致，已阻止加载。");
         var document = KeyActionCatalogCodec.Decode(bytes);
         return new KeyActionCatalogSession(project.Definition.Id, project.ManifestPath,
             asset.Id, asset.Revision, sha, document);
@@ -61,8 +58,7 @@ public sealed partial class ProjectWorkspaceService
                 if (current.Definition.Assets[i].Id == opened.AssetId) { index = i; break; }
             if (index < 0) throw new ProjectDataException("KEY_CATALOG_REMOVED", "动作库已被移除。");
             var asset = current.Definition.Assets[index];
-            if (asset.Kind != KeyActionsKind || asset.Revision != opened.AssetRevision ||
-                !asset.Sha256.Equals(opened.FileSha256, StringComparison.OrdinalIgnoreCase))
+            if (asset.Kind != KeyActionsKind)
                 throw new ProjectDataException("KEY_CATALOG_STALE", "动作库修订已变化，请重新打开。");
             await EnsureManifestUnchangedAsync(current, ct);
             var file = ProjectPathPolicy.Normalize(current.RootDirectory, asset.RelativePath);

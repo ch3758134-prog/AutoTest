@@ -1,4 +1,5 @@
 using System.IO;
+using System.Security.Cryptography;
 using AutoTest.Core;
 using AutoTest.Desktop.Projects;
 using AutoTest.Projects.Project;
@@ -30,42 +31,45 @@ public sealed record AutomaticTestPlan(OpenProjectContext Project,
     IReadOnlyList<AutomaticTestCase> Cases)
 {
     public IReadOnlyList<string> ResourceIssues { get; init; } = [];
-    public string DeploymentFingerprint { get; init; } = "";
-    public bool ResourceReady => Cases.Count > 0 && ResourceIssues.Count == 0 &&
-        DeploymentFingerprint.Length == 64;
+    public bool ResourceReady => Cases.Count > 0 && ResourceIssues.Count == 0;
 }
 
-/// <summary>
-/// One station deployment of the engineer's canonical ECU project. No separate
-/// operator recipe, test-scope selection or silent adoption of editor drafts.
-/// A station deployment pins the exact manifest, TEST, FLASH and fixture
-/// procedure. It is configuration deployment, NOT physical readiness or PASS.
-/// </summary>
+/// <summary>Read the currently saved ECU project; no separate station deployment.</summary>
 public sealed class AutomaticTestPlanService
 {
     public AutomaticTestPlan? Current { get; private set; }
-    public string Issue { get; private set; } = "本工位尚未部署 ECU 检测工程";
+    public string Issue { get; private set; } = "请先打开 ECU 检测工程";
     public string? ConfiguredPath { get; private set; }
     public event EventHandler? Changed;
 
-    public async Task RestoreAsync(CancellationToken ct = default)
+    public Task RestoreAsync(CancellationToken ct = default) => RestoreAsync(null, ct);
+
+    public async Task RestoreAsync(OpenProjectContext? opened, CancellationToken ct = default)
     {
+        Current = null;
+        ConfiguredPath = null;
         try
         {
-            // Changed is consumed by WPF ObservableCollection bindings.
-            // Preserve the UI SynchronizationContext at this presentation edge.
-            var verified = await StationDeploymentStore.RestoreAsync(ct);
-            if (verified is null)
+            var path = opened?.ManifestPath ?? new RecentProjectStore().GetLastProjectManifest();
+            if (string.IsNullOrWhiteSpace(path))
             {
-                Current = null;
-                ConfiguredPath = null;
-                Issue = "尚未部署正式 ECU 工程。请在开发与调试中核对并部署当前工程。";
+                Issue = "请在开发与调试中打开或创建 ECU 工程。";
             }
             else
             {
-                Current = Map(verified);
-                ConfiguredPath = verified.Project.ManifestPath;
-                Issue = "";
+                var full = Path.GetFullPath(path);
+                var before = await File.ReadAllBytesAsync(full, ct);
+                var definition = await ProjectRepository.OpenDefinitionAsync(full, ct);
+                definition = await ProjectWorkspaceService.ReadCurrentResourceMetadataAsync(
+                    definition, Path.GetDirectoryName(full)!, ct);
+                var after = await File.ReadAllBytesAsync(full, ct);
+                if (!before.SequenceEqual(after))
+                    throw new IOException("读取期间工程文件发生改变，请重新打开。");
+                var project = new OpenProjectContext(definition, full, Convert.ToHexString(SHA256.HashData(after)));
+                var test = await AutomaticTestResourceContract.ResolveAsync(project, ct);
+                Current = Map(project, test);
+                ConfiguredPath = full;
+                Issue = string.Join("；", test.Issues.Take(4));
             }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
@@ -73,38 +77,20 @@ public sealed class AutomaticTestPlanService
             InvalidDataException or ArgumentException or NotSupportedException or
             System.Text.Json.JsonException or FormatException or ProjectDataException)
         {
-            // A former deployment remains on disk for explicit repair; never
-            // fall back to the old operator-selected plan or an IDE draft.
-            Current = null;
-            Issue = "已部署工程不可执行：" + error.Message;
+            Issue = "当前工程读取或检测配置有问题：" + error.Message;
         }
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
-    public async Task DeployAsync(OpenProjectContext engineerProject,
-        CancellationToken ct = default)
+    private static AutomaticTestPlan Map(OpenProjectContext project, AutomaticTestResourceSnapshot test)
     {
-        // A failed validation must leave the previous valid deployment intact.
-        var verified = await StationDeploymentStore.DeployAsync(engineerProject, ct);
-        Current = Map(verified);
-        ConfiguredPath = verified.Project.ManifestPath;
-        Issue = "";
-        Changed?.Invoke(this, EventArgs.Empty);
-    }
-
-    private static AutomaticTestPlan Map(StationDeploymentStore.Verified verified)
-    {
-        var cases = verified.Test.Cases.Select((item, i) =>
+        var cases = test.Cases.Select((item, i) =>
             new AutomaticTestCase((i + 1).ToString("D2"),
                 item.Entry.DisplayName, item.Program.Id)
             {
                 Children = BuildCaseSteps(item.Program)
             }).ToArray();
-        return new(verified.Project, cases)
-        {
-            DeploymentFingerprint = verified.Pin.ManifestSha256,
-            ResourceIssues = verified.Test.Issues
-        };
+        return new(project, cases) { ResourceIssues = test.Issues };
     }
 
     private static IReadOnlyList<AutomaticTestStep> BuildCaseSteps(TestDocument document)

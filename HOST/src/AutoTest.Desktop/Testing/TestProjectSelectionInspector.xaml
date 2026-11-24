@@ -13,7 +13,7 @@
     <StackPanel>
      <TextBlock Text="{Binding SelectionSummary}" Foreground="#2368BD"
       FontSize="15" FontWeight="Bold" Margin="0,0,0,7"/>
-     <TextBlock Text="仅影响本次实际运行范围，不修改工程默认 Enabled 或生产计数。"
+     <TextBlock Text="仅影响本次调试范围，不修改正式检测的用例顺序或生产计数。"
       Foreground="#64758C" TextWrapping="Wrap" FontSize="11"/>
     </StackPanel>
    </Border>

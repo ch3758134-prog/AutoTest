@@ -37,7 +37,7 @@
         <TextBlock x:Name="FirmwareLabel" Text="尚未导入固件"
                    TextTrimming="CharacterEllipsis" Foreground="#325574"
                    ToolTip="{Binding Text,RelativeSource={RelativeSource Self}}"/>
-        <TextBlock Text="导入后复制到工程内部并校验 SHA256；更换固件后需要重新校验和发布"
+        <TextBlock Text="导入后复制到工程内部；更换固件后请检查实际烧录计划"
                    Foreground="#75889B" FontSize="11" Margin="0,5,0,0"/>
        </StackPanel>
       </DockPanel>
@@ -135,7 +135,7 @@
        <StackPanel>
         <TextBlock Text="烧录镜像提醒 · 已验证的 HydEPB 特殊工艺"
                    FontWeight="SemiBold" Foreground="#8B5817"/>
-        <TextBlock Text="当 APP/Boot ID、地址范围及 512 字节块长符合已实测 HydEPB 工艺时，烧录计划会在 0x1006FFFC～0x1006FFFF 强制写入 12 34 56 78，必要时增加末尾 512 字节块；可能覆盖 HEX 原字节。此行为不属于导入 XML 的字段。发布前请先查看下方真实 Job 预览。"
+        <TextBlock Text="当 APP/Boot ID、地址范围及 512 字节块长符合已实测 HydEPB 工艺时，烧录计划会在 0x1006FFFC～0x1006FFFF 强制写入 12 34 56 78，必要时增加末尾 512 字节块；可能覆盖 HEX 原字节。此行为不属于导入 XML 的字段。请先查看下方真实烧录计划。"
                    Foreground="#765722" TextWrapping="Wrap" FontSize="11" Margin="0,5,0,0"/>
        </StackPanel>
       </Border>
@@ -153,7 +153,6 @@
   <DockPanel Grid.Row="2" Margin="0,12,0,0">
    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
     <Button Content="校验配置" Click="Preview_Click" Padding="12,8" Margin="0,0,8,0"/>
-    <Button Content="发布为生产版本" Click="Publish_Click" Padding="12,8" Margin="0,0,8,0"/>
     <Button Content="保存" Click="Save_Click" Padding="15,8" Margin="0,0,8,0"/>
     <Button Content="关闭" Click="Close_Click" Padding="15,8"/>
    </StackPanel>
