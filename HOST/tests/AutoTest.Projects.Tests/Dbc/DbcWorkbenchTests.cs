@@ -23,6 +23,66 @@ public sealed class DbcWorkbenchTests
 
         VAL_ 291 Speed 0 "Stopped" 100 "Moving" ;
         """;
+    [Fact]
+    public void HistoricalDraftCanUndoAndRedoAcrossAnExportedRevisionWithoutDroppingOriginalComments()
+    {
+        var original = Basic + "\nCM_ SG_ 291 Speed \"原定义\";\n";
+        var doc = DbcWorkbenchDocument.Import("history", original);
+        var before = doc.CaptureCheckpoint();
+        doc.UpdateSignal(291, "Speed", doc.Model.FindSignal(291, "Speed") with { Factor = 0.25 });
+        doc.SetSignalComment(291, "Speed", "修改后的定义");
+        var saved = DbcWorkbenchDocument.Import("history", doc.ExportText());
+        var after = saved.CaptureCheckpoint();
+        var undone = DbcWorkbenchDocument.RecreateHistoricalDraft(before);
+        Assert.True(undone.IsDirty);
+        var undoRoundTrip = DbcWorkbenchDocument.Import("history", undone.ExportText());
+        Assert.Equal(0.1, undoRoundTrip.Model.FindSignal(291, "Speed").Factor);
+        Assert.Equal("原定义", undoRoundTrip.DisplayNames.SignalDescription(291, "Speed"));
+        var redone = DbcWorkbenchDocument.RecreateHistoricalDraft(after);
+        var redoRoundTrip = DbcWorkbenchDocument.Import("history", redone.ExportText());
+        Assert.Equal(0.25, redoRoundTrip.Model.FindSignal(291, "Speed").Factor);
+        Assert.Equal("修改后的定义", redoRoundTrip.DisplayNames.SignalDescription(291, "Speed"));
+    }
+
+    [Fact]
+    public void EnumReplacementIsAtomicAndChecksRawRange()
+    {
+        var doc = DbcWorkbenchDocument.Import("enum", Basic);
+        Assert.Throws<ProjectDataException>(() => doc.ReplaceValueDescriptions(291, "Speed",
+            new Dictionary<long, string> { [0] = "Stop", [65536] = "Invalid" }));
+        Assert.Equal(2, doc.ValueTables.Single().Labels.Count);
+        doc.ReplaceValueDescriptions(291, "Speed", new Dictionary<long, string> { [0] = "静止", [1] = "移动" });
+        var loaded = DbcWorkbenchDocument.Import("enum", doc.ExportText());
+        Assert.Equal("移动", loaded.ValueTables.Single().Labels[1]);
+        Assert.False(loaded.ValueTables.Single().Labels.ContainsKey(100));
+        loaded.ReplaceValueDescriptions(291, "Speed", new Dictionary<long, string>());
+        Assert.Empty(DbcWorkbenchDocument.Import("enum", loaded.ExportText()).ValueTables);
+    }
+
+    [Fact]
+    public void SourceProtectedEnumReplacementDoesNotModifySource()
+    {
+        var source = Basic + "\nCM_ SG_ 291 Speed \"保留\";\n";
+        var doc = DbcWorkbenchDocument.Import("protected", source);
+        Assert.Throws<ProjectDataException>(() => doc.ReplaceValueDescriptions(291, "Speed",
+            new Dictionary<long, string> { [0] = "New" }));
+        Assert.Equal(source, doc.ExportText());
+    }
+
+    [Fact]
+    public void RenamingAndDeletingSupportedSignalKeepsOwnedMetadataInSync()
+    {
+        var doc = DbcWorkbenchDocument.Import("rename", Basic);
+        doc.SetSignalAlias(291, "Temp", "温度");
+        doc.UpdateSignal(291, "Temp", doc.Model.FindSignal(291, "Temp") with { Name = "Temperature" });
+        Assert.Equal("温度", doc.DisplayNames.SignalAlias(291, "Temperature"));
+        Assert.Equal("", doc.DisplayNames.SignalAlias(291, "Temp"));
+        doc.DeleteSignal(291, "Temperature");
+        var loaded = DbcWorkbenchDocument.Import("rename", doc.ExportText());
+        Assert.Single(loaded.Model.FindMessage(291).Signals);
+        Assert.Equal("", loaded.DisplayNames.SignalAlias(291, "Temperature"));
+    }
+
     [Fact] public void NoEdit_PreservesEveryOriginalByteOfText()
     {
         var source = Basic + "\nCM_ SG_ 291 Speed \"comment\";\n";
