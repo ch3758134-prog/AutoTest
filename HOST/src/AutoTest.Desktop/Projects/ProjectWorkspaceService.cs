@@ -436,48 +436,18 @@ public sealed partial class ProjectWorkspaceService
                     throw new ProjectDataException("PROJECT_PACKAGE_STALE",
                         "测试用例资源或修订发生变化，请重新确认：" + reference.DisplayName);
             }
-            await EnsureManifestUnchangedAsync(current, ct);
-            var path = ProjectPathPolicy.Normalize(current.RootDirectory, asset.RelativePath);
-            if (!string.Equals(await HashFileAsync(path, ct), opened.FileSha256,
-                StringComparison.OrdinalIgnoreCase))
-                throw new ProjectDataException("PROJECT_PLAN_FILE_CHANGED", "测试项目文件已被外部修改。");
-            var temp = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
-            var backup = path + ".bak";
-            var manifestAttempted = false;
-            try
+            var result = await Task.Run(async () =>
             {
-                await File.WriteAllBytesAsync(temp, bytes, ct);
-                _ = TestProjectCodec.Decode(await File.ReadAllBytesAsync(temp, ct));
-                if (!string.Equals(await HashFileAsync(path, ct), opened.FileSha256,
-                    StringComparison.OrdinalIgnoreCase))
-                    throw new ProjectDataException("PROJECT_PLAN_FILE_CHANGED", "写入前测试项目文件变化。");
-                File.Replace(temp, path, backup);
-                var hash = await HashFileAsync(path, ct);
-                var verifiedDocument = TestProjectCodec.Decode(await File.ReadAllBytesAsync(path, ct));
-                var updatedAsset = asset with { Revision = checked(asset.Revision + 1), Sha256 = hash };
-                var next = (current.Definition with
-                {
-                    Assets = current.Definition.Assets.SetItem(index, updatedAsset)
-                }).WithRevision().Validate();
-                await EnsureManifestUnchangedAsync(current, ct);
-                manifestAttempted = true;
-                await ProjectRepository.SaveDefinitionAsync(next, current.ManifestPath, ct);
-                var reread = await ProjectRepository.OpenDefinitionAsync(current.ManifestPath, ct);
-                var manifestSha = await HashFileAsync(current.ManifestPath, ct);
-                Current = new OpenProjectContext(reread, current.ManifestPath, manifestSha);
-                CurrentChanged?.Invoke(this, EventArgs.Empty);
-                return new TestProjectEditorSession(reread.Id, current.ManifestPath,
-                    asset.Id, updatedAsset.Revision, asset.Name, path, hash, verifiedDocument);
-            }
-            catch
-            {
-                if (!manifestAttempted && File.Exists(backup) && File.Exists(path) &&
-                    string.Equals(await HashFileAsync(path, CancellationToken.None),
-                        Convert.ToHexString(SHA256.HashData(bytes)), StringComparison.OrdinalIgnoreCase))
-                    File.Copy(backup, path, overwrite: true);
-                throw;
-            }
-            finally { if (File.Exists(temp)) File.Delete(temp); }
+                var next = await SaveResourceClosureAsync(current, asset, bytes, ct).ConfigureAwait(false);
+                var updated = next.Definition.Assets.Single(a => a.Id == asset.Id);
+                var path = ProjectPathPolicy.Normalize(next.RootDirectory, updated.RelativePath);
+                var reread = TestProjectCodec.Decode(await File.ReadAllBytesAsync(path, CancellationToken.None).ConfigureAwait(false));
+                return (Context: next, Session: new TestProjectEditorSession(next.Definition.Id,
+                    next.ManifestPath, asset.Id, updated.Revision, asset.Name, path, updated.Sha256, reread));
+            }, ct);
+            Current = result.Context;
+            CurrentChanged?.Invoke(this, EventArgs.Empty);
+            return result.Session;
         }
         finally { _writeLock.Release(); }
     }
