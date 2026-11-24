@@ -466,7 +466,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
 
     /// <summary>Authorize a bounded snapshot of ECU CAN frames, not an open-ended raw CAN route.</summary>
     public async Task AuthorizeManualCanBatchAsync(string fingerprint, string confirmation,
-        IReadOnlyList<CanFrame> frames, int maxWrites = 3000, CancellationToken ct = default)
+        IReadOnlyList<CanFrame> frames, int? maxWrites = 3000, CancellationToken ct = default)
     {
         await _lifecycle.WaitAsync(ct);
         try
@@ -482,7 +482,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             _manualCanBatchApproved = true;
             AnnounceManualBatch(true);
             Record("手动 ECU CAN 任务已授权：报文数=" + frames.Count + " SHA=" + fingerprint +
-                "，最多 " + maxWrites + " 次写入 / 5 分钟 / 当前 USB 会话。");
+                (maxWrites.HasValue ? "，最多 " + maxWrites + " 次写入 / 5 分钟。" : "，持续发送至停止或当前 USB 会话结束。"));
         }
         finally { _lifecycle.Release(); }
     }
@@ -511,9 +511,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         try
         {
             _link?.RevokeManualCanBatch();
-            _link?.RevokeManualKeySequence();
-            _manualKeyActionApproved = false;
-            _manualKeyActionFingerprint = null;
+            // ECU CAN and KEY CAN are separate manual tasks.
             _manualCanBatchApproved = false;
             _manualBatchFingerprint = null;
             AnnounceManualBatch(false);
