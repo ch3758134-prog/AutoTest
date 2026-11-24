@@ -40,6 +40,7 @@
     </StackPanel>
     <StackPanel><TextBlock Text="DBC 编辑器" FontSize="19" FontWeight="SemiBold"/>
      <TextBlock Text="{Binding AssetName}" Foreground="#62778D" TextTrimming="CharacterEllipsis" ToolTip="{Binding FilePath}" Margin="0,4,0,0"/>
+     <TextBlock Text="{Binding SourceDescription}" Foreground="#62778D" FontSize="11" Margin="0,3,0,0"/>
     </StackPanel>
    </DockPanel>
   </Border>
