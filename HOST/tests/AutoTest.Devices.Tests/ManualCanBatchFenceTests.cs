@@ -50,6 +50,24 @@ public sealed class ManualCanBatchFenceTests
     }
 
     [Fact]
+    public void ContinuousManualBatchHasNoWriteQuotaButIsStillExactAndConnectionScoped()
+    {
+        var fence = new PhysicalCommandFence();
+        var hash = new string('f', 64);
+        var allowed = RawCan(StationCanWiring.DutPort, 0x701, 0x11);
+        var changed = RawCan(StationCanWiring.DutPort, 0x701, 0x12);
+        fence.AuthorizeManualCanBatch(hash, "AUTHORIZE BENCH CAN " + hash,
+            [allowed], 7, maxWrites: null);
+        var request = UsbWireCodec.EncodeRequest(1, MainControllerCodec.CanSend, allowed);
+        for (var i = 0; i < 12000; i++) fence.AssertAllowedAndConsume(request, 7);
+        Assert.Throws<UnauthorizedAccessException>(() =>
+            fence.AssertAllowedAndConsume(UsbWireCodec.EncodeRequest(2, MainControllerCodec.CanSend, changed), 7));
+        Assert.Throws<UnauthorizedAccessException>(() => fence.AssertAllowedAndConsume(request, 8));
+        fence.RevokeManualCanBatch();
+        Assert.Throws<UnauthorizedAccessException>(() => fence.AssertAllowedAndConsume(request, 7));
+    }
+
+    [Fact]
     public void ManualBatchAndPhysicalTestAreMutuallyExclusive()
     {
         var fence = new PhysicalCommandFence();
