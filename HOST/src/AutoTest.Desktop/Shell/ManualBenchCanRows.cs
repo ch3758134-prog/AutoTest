@@ -637,7 +637,7 @@ public sealed partial class ManualBenchViewModel
         {
             // Host-timed ECU CAN USB 0x40 only. Firmware 0x50 scheduling is KEY CAN.
             // Every ECU CAN cycle uses the real physical fence, per-write ACK,
-            // cancellation, bounded session and maximum authorized writes.
+            // cancellation and an exact allowlist scoped to the current connection.
             var frame = row.BuildFrame();
             int period = 0;
             if (row.IsPeriodic && single is null && (!int.TryParse(row.PeriodText, NumberStyles.None,
@@ -690,19 +690,21 @@ public sealed partial class ManualBenchViewModel
         var fingerprint = BatchFingerprint(prepared);
         await _hardware.AuthorizeManualCanBatchAsync(fingerprint,
             "AUTHORIZE BENCH CAN " + fingerprint, prepared.Select(item => item.Frame).ToArray(),
-            maxWrites: 8000);
-        var stop = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+            maxWrites: prepared.Any(item => item.PeriodMs > 0) ? null : prepared.Length);
+        var stop = new CancellationTokenSource();
         _canBatchStop = stop;
         var authorized = prepared.Select(x => x.Row).ToHashSet();
         foreach (var row in CanSendRows) row.SetBatchMembership(true, authorized.Contains(row));
         foreach (var row in prepared) { row.Row.Sent = 0; row.Row.Result = "运行中"; }
         IsCanBatchRunning = true;
-        _canBatchTask = RunCanRowsAsync(prepared, fingerprint, stop);
+        _canBatchTask = RunCanRowsAsync(prepared, fingerprint, stop, single is not null);
+        Status = prepared.Any(item => item.PeriodMs > 0) ? "ECU CAN 周期发送中，直至主动停止或连接中断。" : "ECU CAN 单次发送。";
     });
 
     private async Task RunCanRowsAsync(PreparedCanRow[] plan, string fingerprint,
-        CancellationTokenSource stop)
+        CancellationTokenSource stop, bool forceSingle)
     {
+        string? failure = null;
         try
         {
             await Task.WhenAll(plan.Select(async entry =>
@@ -717,8 +719,9 @@ public sealed partial class ManualBenchViewModel
                 long skipped = 0;
                 while (!stop.IsCancellationRequested)
                 {
-                    if (!entry.Row.Included)
+                    if (!forceSingle && !entry.Row.Included)
                     {
+                        if (entry.PeriodMs == 0) { entry.Row.Result = "未发送 · 已取消勾选"; break; }
                         entry.Row.Result = "已暂停 · 本轮不发送";
                         await Task.Delay(90, stop.Token);
                         scheduled = System.Diagnostics.Stopwatch.GetTimestamp();
@@ -762,7 +765,8 @@ public sealed partial class ManualBenchViewModel
         catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
         catch (Exception ex)
         {
-            Status = "ECU CAN 多报文异常终止：" + ex.Message;
+            failure = ex.Message;
+            Status = "ECU CAN 多报文异常终止：" + failure;
             Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"),
                 "ECU CAN", "ERROR", "", "", Status));
             stop.Cancel();
@@ -776,8 +780,9 @@ public sealed partial class ManualBenchViewModel
                     "USB", "ERROR", "", "", "撤销 CAN 授权失败：" + ex.Message));
             }
             foreach (var entry in plan)
-                entry.Row.Result = entry.Row.Sent > 0
-                    ? "已停止 · " + entry.Row.Sent + " 次 USB ACK" : "未完成";
+                entry.Row.Result = failure is not null ? "异常停止 · " + failure :
+                    entry.Row.Sent > 0 ? (entry.PeriodMs == 0 ? "单发完成 · " : "已停止 · ") +
+                    entry.Row.Sent + " 次 USB ACK" : "未发送";
             _canBatchStop = null;
             foreach (var row in CanSendRows) row.SetBatchMembership(false, false);
             IsCanBatchRunning = false;
