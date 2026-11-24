@@ -534,6 +534,14 @@ public sealed partial class ManualBenchViewModel
         finally { _savingKeyActions = false; NotifyKeyCommands(); }
     });
 
+    private static string KeyMaskName(uint mask)
+    {
+        if (mask == 0) return "全部断开";
+        return string.Join(" + ", Enumerable.Range(1, 20)
+            .Where(i => (mask & (1u << (i - 1))) != 0)
+            .Select(i => "K" + i.ToString("00", CultureInfo.InvariantCulture)));
+    }
+
     private async Task RunKeyActionAsync(Guid actionId)
     {
       try
@@ -613,7 +621,7 @@ public sealed partial class ManualBenchViewModel
                 if (segment.WaitOnly)
                 {
                     KeyActionRunStatus = "步骤 " + (i + 1) + "/" + list.Length +
-                        " · 纯等待 " + segment.HoldMs + " ms，不发送 KEY CAN";
+                        " · 等待 " + segment.HoldMs + " ms";
                     Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"),
                         "KEY SIM", "WAIT", "", "",
                         saved.Name + " · 纯等待，不改变此前 KEY 请求组合"));
@@ -622,8 +630,7 @@ public sealed partial class ManualBenchViewModel
                 {
                     var frame = frames[sentFrames++];
                     KeyActionRunStatus = "步骤 " + (i + 1) + "/" + list.Length +
-                        " · 发送 KEY " + (segment.KeyMask == 0
-                            ? "全部断开" : "0x" + segment.KeyMask.ToString("X5"));
+                        " · " + KeyMaskName(segment.KeyMask);
                     await _hardware.SendManualKeyStepAsync(frame, sha, stop.Token);
                     Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"),
                         "KEY CAN", "TX ACK", "0x730",
@@ -631,24 +638,24 @@ public sealed partial class ManualBenchViewModel
                         saved.Name + " · STEP " + segment.StepId +
                         " · 主控 ACK（非实际五路电压）"));
                     KeyActionRunStatus = "步骤 " + (i + 1) + "/" + list.Length +
-                        " · 主控 ACK；等待 " + segment.HoldMs + "ms，组合不会自动释放";
+                        " · " + KeyMaskName(segment.KeyMask) + " · " + segment.HoldMs + " ms";
                 }
                 if (segment.HoldMs > 0)
                     await Task.Delay(segment.HoldMs, stop.Token);
                 completed++;
             }
-            KeyActionRunStatus = "完成 " + completed + "/" + list.Length +
-                " 段；" + _hardware.KeyRequestStatus;
+            KeyActionRunStatus = saved.Name + " · 已完成 " + completed + "/" +
+                list.Length + " 段";
         }
         catch (OperationCanceledException) when (stop.IsCancellationRequested)
         {
-            KeyActionRunStatus = "操作员已停止（" + completed + "/" + list.Length +
-                "）；没有自动释放 KEY。 " + _hardware.KeyRequestStatus;
+            KeyActionRunStatus = saved.Name + " · 已停止 " + completed + "/" +
+                list.Length + " 段 · " + _hardware.KeyRequestStatus;
         }
         catch
         {
-            KeyActionRunStatus = "动作异常中止（" + completed + "/" + list.Length +
-                "）；没有自动释放 KEY。 " + _hardware.KeyRequestStatus;
+            KeyActionRunStatus = saved.Name + " · 执行失败 · " +
+                _hardware.KeyRequestStatus;
             throw;
         }
         finally
