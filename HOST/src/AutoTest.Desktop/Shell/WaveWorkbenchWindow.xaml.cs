@@ -54,6 +54,35 @@ public partial class WaveWorkbenchWindow : Window
         };
     }
 
+    /// <summary>
+    /// The parent must await actual evidence finalization before releasing
+    /// WinUSB or closing the station. An async Closing event cannot be treated
+    /// as a synchronous successful shutdown.
+    /// </summary>
+    public async Task<bool> PrepareForParentShutdownAsync()
+    {
+        if (_toolCloseInProgress) return false;
+        if (!_toolClosePrepared)
+        {
+            _toolCloseInProgress = true;
+            try
+            {
+                await _model.PrepareForToolCloseAsync();
+                _toolClosePrepared = true;
+            }
+            catch (Exception error) when (error is not OutOfMemoryException)
+            {
+                MessageBox.Show(this,
+                    "波形记录仍未完成安全保存；已阻止主窗口退出或切换工程：" + error.Message,
+                    "波形工具收尾失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+            finally { _toolCloseInProgress = false; }
+        }
+        Close();
+        return !IsVisible;
+    }
+
     private async void OnToolClosing(object? sender,
         System.ComponentModel.CancelEventArgs e)
     {
