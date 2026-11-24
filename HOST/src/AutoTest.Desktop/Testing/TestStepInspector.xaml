@@ -27,7 +27,7 @@
     <TextBlock x:Name="ActionDescription" TextWrapping="Wrap" Foreground="#64758C"
      FontSize="13" Margin="0,0,0,6" Visibility="Collapsed"/>
     <TextBlock x:Name="ImportWarning"
-     Text="当前步骤类型未接入真实执行；请核对参数并转换为已支持的正式步骤。"
+     Text="此步骤尚不能执行，请检查类型或参数。"
      TextWrapping="Wrap" Foreground="#9B6423" FontSize="13"
      Margin="0,0,0,10" Visibility="Collapsed"/>
     <DockPanel Margin="0,0,0,12" LastChildFill="True">

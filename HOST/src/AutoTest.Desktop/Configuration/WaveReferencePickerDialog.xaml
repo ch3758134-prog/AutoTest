@@ -15,7 +15,7 @@
              Text="选择已经采集并验证质量的波形" Margin="0,0,0,10"/>
   <TextBlock Grid.Row="1" TextWrapping="Wrap" Margin="0,0,0,12"
    Foreground="{StaticResource Subtle}"
-   Text="此操作会将选定的原始波形明确登记为参考。参考独立存储、不会覆盖已有参考；建立参考不意味着测试已通过。"/>
+   Text="将选定的实际采集保存为参考波形。"/>
   <ListBox x:Name="CaptureList" Grid.Row="2" ItemsSource="{Binding Choices}"
       DisplayMemberPath="Label" BorderBrush="{StaticResource Line}" BorderThickness="1"/>
   <StackPanel Grid.Row="3" Margin="0,12,0,5">

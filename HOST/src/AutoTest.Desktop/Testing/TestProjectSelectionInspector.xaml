@@ -21,7 +21,7 @@
     Style="{StaticResource AtPrimaryButton}" Margin="0,12,0,7"/>
    <TextBlock Text="{Binding StatusMessage}" Foreground="#A96D20"
     TextWrapping="Wrap" FontSize="11" Margin="0,0,0,7"/>
-   <TextBlock Text="真实项目运行会按顺序调用唯一 TEST 执行器；每个用例独立生成 RunId、证据与报告。"
+   <TextBlock Text="项目按顺序执行用例，并分别保存结果。"
     Foreground="#64758C" FontSize="11" TextWrapping="Wrap"/>
   </StackPanel>
  </ScrollViewer>
