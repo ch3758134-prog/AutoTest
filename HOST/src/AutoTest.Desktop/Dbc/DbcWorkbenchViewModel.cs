@@ -1,4 +1,7 @@
 using System.Collections.ObjectModel;
+using System.Collections.Immutable;
+using System.ComponentModel;
+using AutoTest.Projects.Dbc.Editing;
 using System.IO;
 using System.Globalization;
 using AutoTest.Desktop.Projects;
@@ -23,23 +26,46 @@ public sealed record DbcMessageRow(DbcMessage Message, DbcDisplayNames DisplayNa
     public string Summary => DisplayNames.MessageCommentPreview(Message.Id);
     public string Caption => DisplayName + " · " + HexId;
 }
-public sealed record DbcSignalRow(DbcSignal Signal, string DisplayName, string Summary)
+public sealed class DbcSignalRow : BindableBase, IEditableObject
 {
+    public DbcSignal Signal { get; private set; }
+    public string DisplayName { get; }
+    public string Summary { get; }
+    public string Alias { get; }
+    public int EnumCount { get; }
+    public DbcSignalEditState Draft { get; private set; }
+    public bool IsEditing { get; private set; }
+    public DbcSignalRow(DbcSignal signal, string displayName, string summary,
+        string alias = "", int enumCount = 0)
+    {
+        Signal = signal; DisplayName = displayName; Summary = summary;
+        Alias = alias; EnumCount = enumCount;
+        Draft = DbcSignalEditState.FromSignal(signal);
+    }
     public string Name => Signal.Name;
-    public string NavTitle => DisplayName.Contains(" · ", StringComparison.Ordinal)
-        ? DisplayName[..DisplayName.LastIndexOf(" · ", StringComparison.Ordinal)]
-        : DisplayName;
-    public string StartBit => Signal.StartBit.ToString();
-    public string BitLength => Signal.BitLength.ToString();
+    public string NavTitle => string.IsNullOrEmpty(Alias) ? Name : Alias;
+    public string StartBit => Signal.StartBit.ToString(CultureInfo.InvariantCulture);
+    public string BitLength => Signal.BitLength.ToString(CultureInfo.InvariantCulture);
     public string Order => Signal.Intel ? "Intel" : "Motorola";
     public string Signed => Signal.Signed ? "有符号" : "无符号";
-    public string Factor => Signal.Factor.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
-    public string Offset => Signal.Offset.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
-    public string MinMax => Signal.Minimum.ToString("R", System.Globalization.CultureInfo.InvariantCulture)
-        + " ～ " + Signal.Maximum.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
+    public string Factor => DbcSignalEditState.DisplayDouble(Signal.Factor);
+    public string Offset => DbcSignalEditState.DisplayDouble(Signal.Offset);
+    public string MinMax => Minimum + " ～ " + Maximum;
+    public string Minimum => DbcSignalEditState.DisplayDouble(Signal.Minimum);
+    public string Maximum => DbcSignalEditState.DisplayDouble(Signal.Maximum);
     public string Unit => Signal.Unit;
     public string Receiver => Signal.Receiver;
-    public string Multiplexer => Signal.Multiplexer ?? "—";
+    public string Multiplexer => Signal.Multiplexer ?? "";
+    public IReadOnlyList<string> ByteOrders { get; } = new[] { "Intel", "Motorola" };
+    public IReadOnlyList<string> SignTypes { get; } = new[] { "无符号", "有符号" };
+    public void Accept(DbcSignal signal)
+    {
+        Signal = signal; Draft = DbcSignalEditState.FromSignal(signal);
+        RaisePropertyChanged(string.Empty);
+    }
+    public void BeginEdit() => IsEditing = true;
+    public void EndEdit() => IsEditing = false;
+    public void CancelEdit() { IsEditing = false; Accept(Signal); }
 }
 
 /// <summary>Signal parameter form draft. Validate all fields in one transaction.</summary>
@@ -67,6 +93,8 @@ public sealed class DbcSignalEditState : BindableBase
     public bool Intel { get => _intel; set => SetProperty(ref _intel, value); }
     private bool _signed = false;
     public bool Signed { get => _signed; set => SetProperty(ref _signed, value); }
+    public string ByteOrder { get => Intel ? "Intel" : "Motorola"; set { Intel = value == "Intel"; RaisePropertyChanged(); } }
+    public string SignType { get => Signed ? "有符号" : "无符号"; set { Signed = value == "有符号"; RaisePropertyChanged(); } }
     /// <summary>Human-readable decimal; the unchanged original double is kept
     /// verbatim when a different DBC field is edited.</summary>
     public static string DisplayDouble(double value) =>
@@ -111,6 +139,158 @@ public sealed class DbcSignalEditState : BindableBase
 /// </summary>
 public sealed class DbcWorkbenchViewModel : BindableBase
 {
+    private readonly Stack<DbcWorkbenchDocument.EditCheckpoint> _undo = new();
+    private readonly Stack<DbcWorkbenchDocument.EditCheckpoint> _redo = new();
+    public bool CanChangeStructure => CanEdit && !_session.Document.IsSourcePreserving;
+    public bool CanUndo => _undo.Count > 0 && !IsBusy;
+    public bool CanRedo => _redo.Count > 0 && !IsBusy;
+    public bool HasOpenEditor { get; set; }
+    public bool HasActiveGridEdit => Signals.Any(r => r.IsEditing);
+    public DbcMessage? CurrentMessageModel => SelectedMessage is { } row
+        ? _session.Document.Model.Messages.FirstOrDefault(m => m.Id == row.Message.Id) : null;
+    public IReadOnlyDictionary<long, string> SelectedEnums =>
+        SelectedMessage is { } m && SelectedSignal is { } sg
+        ? _session.Document.ValueTables.FirstOrDefault(t => t.MessageId == m.Message.Id &&
+            t.SignalName == sg.Name)?.Labels ?? ImmutableDictionary<long, string>.Empty
+        : ImmutableDictionary<long, string>.Empty;
+
+    private void Remember(DbcWorkbenchDocument.EditCheckpoint before)
+    {
+        _undo.Push(before); _redo.Clear();
+        RefreshCommands();
+    }
+
+    public void UndoEdit(bool redo = false)
+    {
+        if (IsBusy || HasOpenEditor || HasActiveGridEdit || !TryCommitPendingSignal()) return;
+        var from = redo ? _redo : _undo;
+        var to = redo ? _undo : _redo;
+        if (from.Count == 0) return;
+        var id = SelectedMessage?.Message.Id; var signal = SelectedSignal?.Name;
+        to.Push(_session.Document.CaptureCheckpoint());
+        _session.Document.RestoreCheckpoint(from.Pop());
+        RefreshDocument(id, signal);
+        StatusMessage = redo ? "已重做修改。" : "已撤销修改。";
+    }
+
+    public void CheckDocument()
+    {
+        if (!TryCommitPendingSignal()) return;
+        try
+        {
+            _session.Document.Model.Validate();
+            _ = _session.Document.ExportText();
+            StatusMessage = "DBC 结构校验通过；保存时仍会核对文件与工程资源修订。";
+        }
+        catch (Exception error) when (error is ProjectDataException or ArgumentException or FormatException)
+        { StatusMessage = "DBC 检查失败：" + error.Message; }
+    }
+
+    public bool TrySaveNotes(bool message, string alias, string summary, string comment)
+    {
+        if (IsBusy || SelectedMessage is not { } m || (!message && SelectedSignal is null)) return false;
+        if (alias == (message ? MessageAliasText : SignalAliasText) &&
+            summary == (message ? MessageSummaryText : SignalSummaryText) &&
+            comment == (message ? MessageCommentText : SignalCommentText)) return true;
+        var before = _session.Document.CaptureCheckpoint();
+        try
+        {
+            if (message)
+            {
+                _session.Document.SetMessageAlias(m.Message.Id, alias);
+                _session.Document.SetMessageSummary(m.Message.Id, summary);
+                _session.Document.SetMessageComment(m.Message.Id, comment);
+            }
+            else
+            {
+                var name = SelectedSignal!.Name;
+                _session.Document.SetSignalAlias(m.Message.Id, name, alias);
+                _session.Document.SetSignalSummary(m.Message.Id, name, summary);
+                _session.Document.SetSignalComment(m.Message.Id, name, comment);
+            }
+            var keep = SelectedSignal?.Name;
+            RefreshDocument(m.Message.Id, keep);
+            Remember(before);
+            StatusMessage = "名称与注释已修改。";
+            return true;
+        }
+        catch (Exception error) when (error is ProjectDataException or ArgumentException)
+        {
+            _session.Document.RestoreCheckpoint(before);
+            StatusMessage = "说明未应用：" + error.Message;
+            return false;
+        }
+    }
+
+    public bool TrySaveEnums(IReadOnlyDictionary<long, string> values)
+    {
+        if (!CanChangeStructure || IsBusy || SelectedMessage is not { } m || SelectedSignal is not { } sg) return false;
+        if (SelectedEnums.Count == values.Count && SelectedEnums.All(p => values.TryGetValue(p.Key, out var v) && v == p.Value)) return true;
+        var before = _session.Document.CaptureCheckpoint();
+        try
+        {
+            _session.Document.ReplaceValueDescriptions(m.Message.Id, sg.Name, values);
+            RefreshDocument(m.Message.Id, sg.Name);
+            Remember(before);
+            StatusMessage = "枚举值已修改。";
+            return true;
+        }
+        catch (Exception error) when (error is ProjectDataException or ArgumentException)
+        { StatusMessage = "枚举未应用：" + error.Message; return false; }
+    }
+
+    public void AddMessage()
+    {
+        if (!CanChangeStructure || IsBusy || !TryCommitPendingSignal()) return;
+        var model = _session.Document.Model;
+        var id = Enumerable.Range(0, 2048).Select(x => (uint)x)
+            .FirstOrDefault(x => !model.Messages.Any(m => m.Id == x), uint.MaxValue);
+        if (id == uint.MaxValue) { StatusMessage = "没有空闲标准帧 ID。"; return; }
+        var name = "Message_" + id.ToString("X");
+        var edited = _dialogs.EditMessage(new DbcMessage(id, name, 8,
+            model.Nodes.FirstOrDefault() ?? "Vector__XXX", []));
+        if (edited is null) return;
+        var before = _session.Document.CaptureCheckpoint();
+        try { _session.Document.AddMessage(edited); RefreshDocument(edited.Id, null); Remember(before); }
+        catch (Exception error) when (error is ProjectDataException or ArgumentException)
+        { StatusMessage = error.Message; }
+    }
+
+    public void AddSignal()
+    {
+        if (!CanChangeStructure || IsBusy || !TryCommitPendingSignal() || CurrentMessageModel is not { } m) return;
+        if (m.Dlc == 0) { StatusMessage = "DLC 为 0，无法添加信号。"; return; }
+        var occupied = m.Signals.SelectMany(DbcSignalCodec.BitPositions).ToHashSet();
+        var bit = Enumerable.Range(0, m.Dlc * 8).FirstOrDefault(x => !occupied.Contains(x), -1);
+        if (bit < 0) { StatusMessage = "报文没有未占用位，请先调整已有信号。"; return; }
+        var i = 1; while (m.Signals.Any(s => s.Name == "Signal_" + i)) i++;
+        var edited = _dialogs.EditSignal(new DbcSignal("Signal_" + i, bit, 1, true, false,
+            1, 0, 0, 1, "", _session.Document.Model.Nodes.FirstOrDefault() ?? "Vector__XXX"));
+        if (edited is null) return;
+        var before = _session.Document.CaptureCheckpoint();
+        try { _session.Document.AddSignal(m.Id, edited); RefreshDocument(m.Id, edited.Name); Remember(before); }
+        catch (Exception error) when (error is ProjectDataException or ArgumentException)
+        { StatusMessage = error.Message; }
+    }
+
+    public void DeleteSelected(bool message)
+    {
+        if (!CanChangeStructure || IsBusy || !TryCommitPendingSignal() || SelectedMessage is not { } m) return;
+        if (!message && SelectedSignal is null) return;
+        var name = message ? m.Name : SelectedSignal!.Name;
+        if (!_dialogs.ConfirmDiscard("删除 " + name + "？已有 TEST/波形引用可能需要更新。")) return;
+        var before = _session.Document.CaptureCheckpoint();
+        try
+        {
+            if (message) _session.Document.DeleteMessage(m.Message.Id);
+            else _session.Document.DeleteSignal(m.Message.Id, name);
+            RefreshDocument(message ? null : m.Message.Id, null);
+            Remember(before);
+        }
+        catch (Exception error) when (error is ProjectDataException or ArgumentException)
+        { StatusMessage = error.Message; }
+    }
+
     private readonly ProjectWorkspaceService _workspace;
     private readonly DbcEditorDialogs _dialogs;
     private DbcEditorSession _session;
@@ -195,9 +375,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
           string.Join("、", _session.Document.UnsupportedDirectives.Take(12));
     public bool CanEdit => _session.Document.CanEdit;
     public bool CanSave => _session.Document.CanSave;
-    public bool HasPendingSignalDraft =>
-        SelectedSignal is { } selected && SignalDraft is { } draft &&
-        !draft.Matches(selected.Signal);
+    public bool HasPendingSignalDraft => Signals.Any(row => !row.Draft.Matches(row.Signal));
     public bool IsDirty => _session.Document.IsDirty || HasPendingSignalDraft;
     public string MessageAliasText
     {
@@ -287,8 +465,10 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         if (IsBusy || SelectedMessage is not { } message) return false;
         try
         {
+            var before = _session.Document.CaptureCheckpoint();
             _session.Document.SetMessageAlias(message.Message.Id, alias);
             RefreshMessages(message.Message.Id);
+            Remember(before);
             StatusMessage = "报文中文别名已修改 · Ctrl+S 保存。";
             RefreshCommands();
             return true;
@@ -306,8 +486,10 @@ public sealed class DbcWorkbenchViewModel : BindableBase
             return false;
         try
         {
+            var before = _session.Document.CaptureCheckpoint();
             _session.Document.SetSignalAlias(message.Message.Id, signal.Name, alias);
             RefreshSignals(signal.Name);
+            Remember(before);
             StatusMessage = "信号中文别名已修改 · Ctrl+S 保存。";
             RefreshCommands();
             return true;
@@ -356,8 +538,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
                 ? _session.Document.DisplayNames.MessageDescription(msg3.Message.Id) : "";
             SignalCommentText = SelectedMessage is { } m3 && SelectedSignal is { } sg3
                 ? _session.Document.DisplayNames.SignalDescription(m3.Message.Id, sg3.Name) : "";
-            SignalDraft = SelectedSignal is { } selected
-                ? DbcSignalEditState.FromSignal(selected.Signal) : null;
+            SignalDraft = SelectedSignal?.Draft;
             if (SignalDraft is { } draft)
                 draft.PropertyChanged += (_, _) =>
                 {
@@ -366,6 +547,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
                 };
             RaisePropertyChanged(nameof(SelectedMessageDefinition));
             RaisePropertyChanged(nameof(SelectedSignalDefinition));
+            RaisePropertyChanged(nameof(CurrentMessageModel));
         }
         finally { _settingAlias = false; }
     }
@@ -468,12 +650,15 @@ public sealed class DbcWorkbenchViewModel : BindableBase
     public void EditMessage()
     {
         if (!CanEdit || IsBusy || SelectedMessage is not { } chosen) return;
-        var edited = _dialogs.EditMessage(chosen.Message);
+        if (!TryCommitPendingSignal()) return;
+        var edited = _dialogs.EditMessage(CurrentMessageModel ?? chosen.Message);
         if (edited is null) return;
         try
         {
+            var before = _session.Document.CaptureCheckpoint();
             _session.Document.UpdateMessage(chosen.Message.Id, edited);
             RefreshDocument(edited.Id, null);
+            Remember(before);
             StatusMessage = "报文参数已修改（尚未保存）";
         }
         catch (Exception error) when (error is ProjectDataException or ArgumentException)
@@ -486,12 +671,15 @@ public sealed class DbcWorkbenchViewModel : BindableBase
     {
         if (!CanEdit || IsBusy || SelectedMessage is not { } message || SelectedSignal is not { } chosen)
             return;
+        if (!TryCommitPendingSignal()) return;
         var edited = _dialogs.EditSignal(chosen.Signal);
         if (edited is null) return;
         try
         {
+            var before = _session.Document.CaptureCheckpoint();
             _session.Document.UpdateSignal(message.Message.Id, chosen.Name, edited);
             RefreshDocument(message.Message.Id, edited.Name);
+            Remember(before);
             StatusMessage = "信号参数已修改（尚未保存）";
         }
         catch (Exception error) when (error is ProjectDataException or ArgumentException)
@@ -503,50 +691,65 @@ public sealed class DbcWorkbenchViewModel : BindableBase
     /// <summary>Apply a complete edited signal shape once, after full validation.</summary>
     public void ApplySignalParameters()
     {
-        if (!CanEdit || IsBusy || SelectedMessage is not { } message ||
-            SelectedSignal is not { } signal || SignalDraft is not { } draft) return;
+        foreach (var row in Signals.Where(r => !r.Draft.Matches(r.Signal)).ToArray())
+            if (!TryCommitSignalRow(row)) return;
+    }
+
+    public void ResetSignalRow(DbcSignalRow row)
+    {
+        row.CancelEdit();
+        if (ReferenceEquals(row, SelectedSignal)) RefreshAliasInputs();
+        RefreshCommands();
+    }
+
+    public bool TryCommitSignalRow(DbcSignalRow row)
+    {
+        if (row.Draft.Matches(row.Signal)) return true;
+        if (!CanEdit || IsBusy || SelectedMessage is not { } message || !Signals.Contains(row))
+            return false;
         try
         {
+            var draft = row.Draft;
             static int Integer(string input, string label) =>
                 int.TryParse(input, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
                     ? value : throw new FormatException(label + "须是有效整数。");
-            var updated = signal.Signal with
+            var original = row.Signal;
+            var updated = original with
             {
-                StartBit = Integer(draft.StartBit, "起始位"),
-                BitLength = Integer(draft.BitLength, "位长"),
+                StartBit = Integer(draft.StartBit, "起始位"), BitLength = Integer(draft.BitLength, "位长"),
                 Intel = draft.Intel, Signed = draft.Signed,
-                Factor = DbcSignalEditState.ResolveEditedNumber(
-                    draft.Factor, signal.Signal.Factor, "因子"),
-                Offset = DbcSignalEditState.ResolveEditedNumber(
-                    draft.Offset, signal.Signal.Offset, "偏移"),
-                Minimum = DbcSignalEditState.ResolveEditedNumber(
-                    draft.Minimum, signal.Signal.Minimum, "最小值"),
-                Maximum = DbcSignalEditState.ResolveEditedNumber(
-                    draft.Maximum, signal.Signal.Maximum, "最大值"),
-                Unit = draft.Unit, Receiver = draft.Receiver,
-                Multiplexer = string.IsNullOrWhiteSpace(draft.Multiplexer) ?
-                    null : draft.Multiplexer.Trim()
+                Factor = DbcSignalEditState.ResolveEditedNumber(draft.Factor, original.Factor, "因子"),
+                Offset = DbcSignalEditState.ResolveEditedNumber(draft.Offset, original.Offset, "偏移"),
+                Minimum = DbcSignalEditState.ResolveEditedNumber(draft.Minimum, original.Minimum, "最小值"),
+                Maximum = DbcSignalEditState.ResolveEditedNumber(draft.Maximum, original.Maximum, "最大值"),
+                Unit = draft.Unit, Receiver = draft.Receiver.Trim(),
+                Multiplexer = string.IsNullOrWhiteSpace(draft.Multiplexer) ? null : draft.Multiplexer.Trim()
             };
-            if (updated == signal.Signal)
+            if (updated.Unit.Contains('"') || updated.Unit.Any(char.IsControl))
+                throw new FormatException("单位不得包含引号或控制字符。");
+            if (!System.Text.RegularExpressions.Regex.IsMatch(updated.Receiver, @"^\w+$") ||
+                (updated.Multiplexer is { } mux && mux != "M" &&
+                    !System.Text.RegularExpressions.Regex.IsMatch(mux, @"^m\d+$")))
+                throw new FormatException("接收节点或复用标记不符合 DBC 格式。");
+            if (updated != original)
             {
-                // Different textual representations of the same value (e.g.
-                // 08 vs 8 or 0.0800 vs 0.08) are not unsaved semantic changes.
-                SignalDraft = DbcSignalEditState.FromSignal(signal.Signal);
-                StatusMessage = "参数未发生变化。";
-                RefreshCommands();
-                return;
+                updated.Validate(message.Message.Dlc);
+                var before = _session.Document.CaptureCheckpoint();
+                _session.Document.UpdateSignal(message.Message.Id, original.Name, updated);
+                row.Accept(updated);
+                Remember(before);
             }
-            if (updated.Unit.Contains('"') || updated.Unit.Contains('\n') ||
-                updated.Unit.Contains('\r'))
-                throw new FormatException("单位不得包含引号或换行。");
-            updated.Validate(message.Message.Dlc);
-            _session.Document.UpdateSignal(message.Message.Id, signal.Name, updated);
-            RefreshDocument(message.Message.Id, signal.Name);
-            StatusMessage = "已应用信号技术参数，Ctrl+S 保存 DBC。";
+            else row.Accept(original);
+            if (ReferenceEquals(row, SelectedSignal)) RefreshAliasInputs();
+            RaisePropertyChanged(nameof(CurrentMessageModel));
+            StatusMessage = "已应用信号参数；未保存的更改可撤销。";
+            RefreshCommands();
+            return true;
         }
         catch (Exception error) when (error is FormatException or ArgumentException or ProjectDataException)
         {
-            StatusMessage = "技术参数未应用：" + error.Message;
+            StatusMessage = row.Name + "：参数未应用 — " + error.Message;
+            return false;
         }
     }
 
@@ -564,7 +767,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
 
     private async Task SaveAsync()
     {
-        if (!CanSave || !IsDirty || IsBusy) return;
+        if (!CanSave || !IsDirty || IsBusy || HasOpenEditor) return;
         // Ctrl+S must include parameters visible in the inspector, not discard
         // an un-applied form while saving only CM_ or alias edits.
         if (HasPendingSignalDraft)
@@ -583,6 +786,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
             var messageId = SelectedMessage?.Message.Id;
             var signalName = SelectedSignal?.Name;
             _session = await _workspace.SaveDbcEditorAsync(_session);
+            _undo.Clear(); _redo.Clear();
             RefreshDocument(messageId, signalName);
             StatusMessage = "DBC 已保存、重新读取并更新工程资源修订 " + AssetRevision;
         }
@@ -669,12 +873,15 @@ public sealed class DbcWorkbenchViewModel : BindableBase
     private void RefreshSignals(string? signalName)
     {
         Signals.Clear();
-        if (SelectedMessage is { } message)
+        if (SelectedMessage is { } message && CurrentMessageModel is { } current)
         {
-            foreach (var signal in message.Message.Signals.OrderBy(s => s.StartBit).ThenBy(s => s.Name))
+            foreach (var signal in current.Signals.OrderBy(s => s.StartBit).ThenBy(s => s.Name))
                 Signals.Add(new DbcSignalRow(signal,
                     _session.Document.DisplayNames.SignalLabel(message.Message, signal),
-                    _session.Document.DisplayNames.SignalCommentPreview(message.Message.Id, signal.Name)));
+                    _session.Document.DisplayNames.SignalCommentPreview(message.Message.Id, signal.Name),
+                    _session.Document.DisplayNames.SignalAlias(message.Message.Id, signal.Name),
+                    _session.Document.ValueTables.FirstOrDefault(t => t.MessageId == message.Message.Id &&
+                        t.SignalName == signal.Name)?.Labels.Count ?? 0));
         }
         SelectedSignal = signalName is null ? null :
             Signals.FirstOrDefault(x => x.Name == signalName);
@@ -691,5 +898,8 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         SaveCommand?.RaiseCanExecuteChanged();
         ReloadCommand?.RaiseCanExecuteChanged();
         RaisePropertyChanged(nameof(CanSave));
+        RaisePropertyChanged(nameof(CanUndo));
+        RaisePropertyChanged(nameof(CanRedo));
+        RaisePropertyChanged(nameof(CanChangeStructure));
     }
 }
