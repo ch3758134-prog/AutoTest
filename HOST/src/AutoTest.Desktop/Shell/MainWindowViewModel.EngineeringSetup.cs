@@ -239,16 +239,17 @@ public sealed partial class MainWindowViewModel
 
             try
             {
-                var policy = await StationScanIdentityPolicyStore.LoadAsync();
-                scan = policy is null ? "未配置条码规则；可打开扫码页试扫真实数据"
-                    : "规则 " + policy.Format + " 已保存；" +
-                      (_scannerWorkbench.IsConnected
-                          ? "串口已连接；可在扫码页读取真实唯一编号"
-                          : "扫码设备未连接；可先编辑工程，安装后再试扫");
+                var expectation = project.Definition.BarcodeExpectation;
+                expectation?.Validate(project.Definition.EcuModelCode);
+                scan = expectation is null
+                    ? "尚未保存工程扫码期望；可离线编辑，不需要连接扫码枪"
+                    : "工程扫码期望已保存 · " + expectation.Fields.Length +
+                      " 个字段；型号与硬件版本精确匹配 · " +
+                      (_scannerWorkbench.IsConnected ? "串口已连接" : "串口未连接（不影响编辑）");
             }
             catch (Exception error) when (error is IOException or InvalidDataException or
                 UnauthorizedAccessException or ArgumentException or FormatException or
-                System.Text.Json.JsonException)
+                System.Text.Json.JsonException or ProjectDataException)
             {
                 scan = "扫码配置需要修复：" + error.Message;
             }
