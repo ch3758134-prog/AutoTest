@@ -302,8 +302,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     public string DraftMaskLabel => "待发送 Key 掩码 0x" + DraftMask.ToString("X5", CultureInfo.InvariantCulture);
     public bool HasConfiguredKeys => _controller?.KeyHardwarePolicy is not null;
     public bool CanSendHardware => IsConnected && !IsBusy && !_hardware.IsTestRunApproved;
-    public bool CanSendManualEcuCan => CanSendHardware && !IsCanBatchRunning &&
-        !_hardware.IsManualCanBatchApproved;
+    public bool CanSendManualEcuCan => CanSendHardware;
     public bool CanOperateGpio => CanSendHardware && _hardware.HasV02GpioContract;
     public bool CanReadGpio => IsConnected && !IsBusy && _hardware.HasV02GpioContract;
     // Interactive controls are enabled without USB; actual writes are still checked by the hardware service.
@@ -370,7 +369,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         ApplyEcuCanBitrateCommand = new DelegateCommand(
             async () => await ApplyEcuCanBitrateAsync(), () => !IsBusy);
         ConnectCommand = new DelegateCommand(async () => await ToggleConnectionAsync(),
-            () => !IsBusy && !IsCanBatchRunning && !_hardware.IsTestRunApproved);
+            () => !IsBusy && !_hardware.IsTestRunApproved);
         ReloadProfilesCommand = new DelegateCommand(async () => await ReloadResourcesAsync(), () => !IsBusy);
         SendCanCommand = new DelegateCommand(async () => await SendCanAsync(), () => !IsBusy);
         SendKeyCommand = new DelegateCommand(async () => await ApplyKeysAsync(), () => !IsBusy);
@@ -404,7 +403,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         global::System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() =>
         {
             if (_disposed) return;
-            if (approved) { _canBatchStop?.Cancel(); _keyActionStop?.Cancel(); Status = "自动测试已占用工位：手动发送、IGN 和断连操作被锁定。"; }
+            if (approved) { _ = StopCanRowsAsync(); _keyActionStop?.Cancel(); Status = "自动测试占用 ECU：手动发送已停止。"; }
             else Status = "自动测试授权已撤销；手动操作前请重新确认硬件实际状态。";
             RaiseCommands();
         }));
@@ -415,7 +414,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         {
             if (_disposed) return;
             _connected = epoch != 0;
-            if (epoch == 0) { _canBatchStop?.Cancel(); _keyActionStop?.Cancel(); }
+            if (epoch == 0) { _ = StopCanRowsAsync(); _keyActionStop?.Cancel(); }
             CanConfirmation = "";
             KeyConfirmation = "";
             IgnConfirmation = "";
@@ -522,7 +521,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
 
     private async Task ToggleConnectionAsync() => await Execute("USB", async () =>
     {
-        if (IsCanBatchRunning) throw new InvalidOperationException("请先停止 ECU CAN 发送任务。");
+        if (IsCanBatchRunning) await StopCanRowsAsync();
         if (_hardware.IsConnected) await _hardware.DisconnectAsync();
         else
         {
@@ -748,7 +747,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         if (!_hardware.IsConnected) throw new IOException("USB 未连接");
         await VerifyDbcFreshAsync();
         var frame = TryBuildCanFrame();
-        await _hardware.SendCanOnceAsync(frame, ExpectedConsent(() => frame));
+        await _hardware.SendManualBenchCanOnceAsync(frame);
         CanConfirmation = "";
         Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"),
             "ECU CAN", "TX ACK", "0x" + frame.Id.ToString("X"),
@@ -880,7 +879,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         if (_disposed) return;
         _disposed = true;
         StopMonitorDispatch();
-        _canBatchStop?.Cancel();
+        _ = StopCanRowsAsync();
         DisposeKeyActions();
         _hardware.FrameObserved -= FrameObserved;
         _hardware.EvidenceRecorded -= EvidenceRecorded;
