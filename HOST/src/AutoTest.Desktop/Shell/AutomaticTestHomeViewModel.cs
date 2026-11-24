@@ -21,6 +21,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     private readonly HardwareConnectionService _hardware;
     private readonly SerialScannerWorkbenchViewModel _scanner;
     private readonly Action _openEngineer;
+    private readonly Func<bool> _isProductionWorkspace;
     private bool _busy;
     private string _status = "正在读取检测工程";
     private EngineeringTestProjectPreview? _draftPreview;
@@ -55,13 +56,15 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     public AutomaticTestHomeViewModel(AutomaticTestPlanService plans,
         HardwareConnectionService hardware,
         SerialScannerWorkbenchViewModel scanner,
-        ProjectWorkspaceService engineering, Action openEngineer)
+        ProjectWorkspaceService engineering, Action openEngineer,
+        Func<bool>? isProductionWorkspace = null)
     {
         _plans = plans;
         _hardware = hardware;
         _scanner = scanner;
         _engineering = engineering;
         _openEngineer = openEngineer;
+        _isProductionWorkspace = isProductionWorkspace ?? (() => true);
         ChoosePlanCommand = new DelegateCommand(() => _openEngineer());
         RequestSoftwareStartCommand = new DelegateCommand(RequestSoftwareStart);
         _plans.Changed += OnPlanChanged;
