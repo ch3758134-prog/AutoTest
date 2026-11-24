@@ -41,7 +41,15 @@ public sealed partial class WaveWorkbenchViewModel
     private DateTimeOffset _captureStarted;
 
     public ObservableCollection<MappingChoice> AvailableSignals { get; } = new();
-    public IReadOnlyList<int> CaptureDurations { get; } = [0, 2, 5, 10, 20, 30, 60, 120, 300];
+    public IReadOnlyList<WaveTimeChoice> DurationChoices { get; } =
+    [new(0, "手动停止"), new(2, "2 秒"), new(5, "5 秒"),
+     new(10, "10 秒"), new(20, "20 秒"), new(30, "30 秒"),
+     new(60, "60 秒"), new(120, "120 秒"), new(300, "300 秒")];
+    public WaveTimeChoice SelectedDuration
+    {
+        get => DurationChoices.First(x => x.Seconds == CaptureDurationSeconds);
+        set { if (value is not null) CaptureDurationSeconds = value.Seconds; }
+    }
     public DelegateCommand ReloadSignalsCommand { get; private set; } = null!;
     public DelegateCommand AddSignalCommand { get; private set; } = null!;
     public DelegateCommand StartObserveCommand { get; private set; } = null!;
@@ -59,7 +67,13 @@ public sealed partial class WaveWorkbenchViewModel
     public int CaptureDurationSeconds
     {
         get => _durationSeconds;
-        set { if (CaptureDurations.Contains(value)) SetProperty(ref _durationSeconds, value); }
+        set
+        {
+            if (!DurationChoices.Any(x => x.Seconds == value) ||
+                !SetProperty(ref _durationSeconds, value)) return;
+            RaisePropertyChanged(nameof(SelectedDuration));
+            RaisePropertyChanged(nameof(CaptureDurationLabel));
+        }
     }
     public string CaptureDurationLabel => CaptureDurationSeconds == 0
         ? "手动停止（最长 60 分钟）" : CaptureDurationSeconds + " 秒";
