@@ -162,6 +162,8 @@
       <MenuItem Header="扫码枪独立诊断" Command="{Binding OpenSerialScannerCommand}"/>
       <MenuItem Header="DBC 工作台（当前工程）" Command="{Binding OpenDbcToolCommand}"/>
       <MenuItem Header="打开独立 DBC 文件…" Command="{Binding OpenIndependentDbcCommand}"/>
+      <MenuItem Header="UDS 诊断序列与记录回放" Command="{Binding OpenUdsWorkbenchCommand}"
+       ToolTip="独立编辑并保存诊断服务序列、核对导入的回放记录；尚不具备物理 ECU 诊断发送"/>
 
       <MenuItem Header="波形分析" Command="{Binding OpenWaveWorkbenchCommand}"/>
       <Separator/>
