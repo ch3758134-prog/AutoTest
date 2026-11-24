@@ -28,6 +28,49 @@ public sealed partial class WaveWorkbenchViewModel : BindableBase
     private int _selectionGeneration;
     private bool _closed;
     private string? _lastManifestPath;
+    private string? _independentWaveRoot;
+
+    // An independent wave archive is an explicit folder, never an implicit
+    // fake ECU project. All evidence is read through the same SHA-verified
+    // stores as the engineering workspace.
+    public string? WaveSourceRoot => _independentWaveRoot ??
+        (_project.Current is { } p ? Path.Combine(p.RootDirectory, "wave-records") : null);
+    public string? WaveSourceIdentity => _independentWaveRoot ??
+        _project.Current?.ManifestPath;
+    public bool IsIndependentArchive => _independentWaveRoot is not null;
+    public string SourceDescription => IsIndependentArchive
+        ? "独立波形目录 · " + _independentWaveRoot
+        : _project.Current is { } p
+            ? "工程波形 · " + p.Definition.Name
+            : "未选择波形来源；可以打开已采集的独立波形目录";
+
+    public void OpenIndependentArchive(string folder)
+    {
+        if (IsCapturing || IsObserving)
+            throw new InvalidOperationException("先停止真实采集或观察，再切换波形来源。");
+        var root = Path.GetFullPath(folder);
+        if (!Directory.Exists(root) ||
+            (!Directory.Exists(Path.Combine(root, "evidence")) &&
+             !Directory.Exists(Path.Combine(root, "references"))))
+            throw new InvalidDataException(
+                "请选择包含 evidence 或 references 子目录的既有 wave-records 目录，不能把任意文件夹当作有效波形库。");
+        _independentWaveRoot = root;
+        AbortCaptureForProjectChange();
+        RaisePropertyChanged(nameof(SourceDescription));
+        Refresh();
+    }
+
+    public void UseProjectArchive()
+    {
+        if (IsCapturing || IsObserving)
+            throw new InvalidOperationException("请先停止真实采集再切换波形来源。");
+        if (_project.Current is null)
+            throw new InvalidOperationException("当前没有 ECU 工程；请先打开工程或选择独立波形目录。");
+        _independentWaveRoot = null;
+        AbortCaptureForProjectChange();
+        RaisePropertyChanged(nameof(SourceDescription));
+        Refresh();
+    }
     private string _emptyListMessage = "";
     private WaveItem? _selected;
     private WaveSeries? _series;
@@ -91,6 +134,8 @@ public sealed partial class WaveWorkbenchViewModel : BindableBase
     private void ProjectChanged(object? sender, EventArgs e) =>
         System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() =>
         {
+            if (IsIndependentArchive) return;
+            RaisePropertyChanged(nameof(SourceDescription));
             // Project autosave emits CurrentChanged: do not clear the plot on
             // a manifest update in the same opened project.
             var nextPath = _project.Current?.ManifestPath;
@@ -130,14 +175,14 @@ public sealed partial class WaveWorkbenchViewModel : BindableBase
         NotifyChartChanged();
         Info = "";
 
-        if (_project.Current is not { } project)
+        var root = WaveSourceRoot;
+        var manifest = WaveSourceIdentity;
+        if (root is null || manifest is null)
         {
-            Status = "未打开工程；不会加载其他目录的波形记录。";
+            Status = "请选择已采集的真实波形目录；无工程也能查看和分析归档。";
             return;
         }
-        _lastManifestPath = project.ManifestPath;
-        var root = Path.Combine(project.RootDirectory, "wave-records");
-        var manifest = project.ManifestPath;
+        _lastManifestPath = _project.Current?.ManifestPath;
         Status = "正在后台校验真实波形证据与参考资源…";
         try
         {
@@ -184,7 +229,7 @@ public sealed partial class WaveWorkbenchViewModel : BindableBase
                 return (Items: items, Sessions: ReadSessionIndex(root));
             }, stop.Token);
             if (_closed || stop.IsCancellationRequested || !ReferenceEquals(_refreshStop, stop) ||
-                _project.Current?.ManifestPath != manifest) return;
+                WaveSourceIdentity != manifest) return;
             foreach (var item in collected.Items)
             {
                 Items.Add(item);
@@ -194,9 +239,9 @@ public sealed partial class WaveWorkbenchViewModel : BindableBase
             }
             foreach (var group in collected.Sessions) Sessions.Add(group);
             EmptyListMessage = Items.Count == 0
-                ? "尚无真实采集记录。\\n添加信号并开始记录后在这里查看。" : "";
+                ? "此目录没有有效波形证据或参考记录。" : "";
             Status = Items.Count == 0
-                ? "本工程暂无真实波形证据；连接设备并采集后可在此查看。"
+                ? "当前来源暂无已验证的波形证据。"
                 : "已载入 " + Items.Count + " 条已验证的波形记录；请选择一条查看。";
             if (Items.Count > 0 && !IsLiveView) Selected = Captures.FirstOrDefault() ?? Items[0];
         }
@@ -222,10 +267,10 @@ public sealed partial class WaveWorkbenchViewModel : BindableBase
         _points = Array.Empty<WaveChartPoint>();
         Info = "";
         NotifyChartChanged();
-        if (_closed || Selected is not { } selected || _project.Current is not { } project)
-            return;
-        var root = Path.Combine(project.RootDirectory, "wave-records");
-        var manifest = project.ManifestPath;
+        if (_closed || Selected is not { } selected) return;
+        var root = WaveSourceRoot;
+        var manifest = WaveSourceIdentity;
+        if (root is null || manifest is null) return;
         Status = "正在后台读取和投影真实波形…";
         try
         {
@@ -242,7 +287,7 @@ public sealed partial class WaveWorkbenchViewModel : BindableBase
                     Evidence: evidence);
             });
             if (_closed || generation != _selectionGeneration ||
-                Selected != selected || _project.Current?.ManifestPath != manifest) return;
+                Selected != selected || WaveSourceIdentity != manifest) return;
             _series = projected.Series;
             _points = projected.Points;
             if (projected.Evidence is { Kind: "Comparison", Reference: not null,
