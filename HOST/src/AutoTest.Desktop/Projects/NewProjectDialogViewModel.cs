@@ -10,6 +10,7 @@ public sealed class NewProjectDialogViewModel : BindableBase
     private readonly ProjectWorkspaceService _workspace;
     private readonly Func<string?> _chooseDirectory;
     private string _projectName = "新建测试工程";
+    private string _ecuModelCode = "";
     private string _parentDirectory;
     private string _validationMessage = "";
     private bool _isCreating;
@@ -39,6 +40,17 @@ public sealed class NewProjectDialogViewModel : BindableBase
                 RaisePropertyChanged(nameof(TargetPath));
                 Revalidate();
             }
+        }
+    }
+
+    /// <summary>Required real ECU model identity, not another DUT registry.</summary>
+    public string EcuModelCode
+    {
+        get => _ecuModelCode;
+        set
+        {
+            if (SetProperty(ref _ecuModelCode, value))
+                Revalidate();
         }
     }
 
@@ -90,6 +102,8 @@ public sealed class NewProjectDialogViewModel : BindableBase
     private void Revalidate()
     {
         ValidationMessage = ProjectWorkspaceService.ValidateInput(ProjectName, ParentDirectory);
+        if (ValidationMessage.Length == 0)
+            ValidationMessage = ProjectWorkspaceService.ValidateEcuModelCode(EcuModelCode);
         CreateCommand.RaiseCanExecuteChanged();
     }
 
@@ -99,7 +113,7 @@ public sealed class NewProjectDialogViewModel : BindableBase
         IsCreating = true;
         try
         {
-            await _workspace.CreateReadyToEditAsync(ProjectName, ParentDirectory);
+            await _workspace.CreateReadyToEditAsync(ProjectName, ParentDirectory, EcuModelCode);
             // Allow WPF Window.Closing to complete before setting DialogResult.
             IsCreating = false;
             CloseRequested?.Invoke(true);
