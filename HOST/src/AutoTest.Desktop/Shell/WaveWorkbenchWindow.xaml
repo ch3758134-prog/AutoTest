@@ -204,6 +204,19 @@
         </DataTemplate></ListBox.ItemTemplate>
        </ListBox>
       </TabItem>
+      <TabItem Header="比较证据">
+       <ListBox ItemsSource="{Binding Comparisons}"
+        SelectedItem="{Binding Selected,Mode=TwoWay}" BorderThickness="0"
+        ScrollViewer.VerticalScrollBarVisibility="Auto">
+        <ListBox.ItemTemplate><DataTemplate>
+         <StackPanel Margin="6,8">
+          <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13"/>
+          <TextBlock Text="{Binding Detail}" FontSize="12" Foreground="#52677D"
+           TextWrapping="Wrap" Margin="0,3,0,0"/>
+         </StackPanel>
+        </DataTemplate></ListBox.ItemTemplate>
+       </ListBox>
+      </TabItem>
       <TabItem Header="参考波形">
        <ListBox ItemsSource="{Binding References}"
         SelectedItem="{Binding SelectedReference,Mode=TwoWay}" BorderThickness="0"
