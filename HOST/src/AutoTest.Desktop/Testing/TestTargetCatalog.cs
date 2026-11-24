@@ -25,11 +25,13 @@ public sealed record MappingChoice(string Label, TestTargetMapping Mapping, DbcM
 public static class TestTargetCatalog
 {
     public static async Task<IReadOnlyList<MappingChoice>> LoadAsync(
-        ProjectWorkspaceService workspace, CancellationToken ct = default)
+        ProjectWorkspaceService workspace, CancellationToken ct = default,
+        bool includeAllDbcSignals = false)
     {
         var context = workspace.Current ?? throw new InvalidOperationException("工程未打开。");
         var activeTcfId = workspace.SelectedTestConfiguration;
-        var activeTcf = await workspace.ReadSelectedTestConfigurationAsync(ct);
+        var activeTcf = includeAllDbcSignals ? null :
+            await workspace.ReadSelectedTestConfigurationAsync(ct);
         return await Task.Run(async () =>
         {
             var choices = new List<MappingChoice>
@@ -125,7 +127,7 @@ public static class TestTargetCatalog
                 }
             }
             if (workspace.Current?.ManifestPath != context.ManifestPath ||
-                workspace.SelectedTestConfiguration != activeTcfId)
+                (!includeAllDbcSignals && workspace.SelectedTestConfiguration != activeTcfId))
                 throw new ProjectDataException("PROJECT_CHANGED",
                     "工程或当前 TCF 在选择测试对象期间发生变化。");
             return (IReadOnlyList<MappingChoice>)choices;
