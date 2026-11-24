@@ -160,6 +160,12 @@ public sealed class DbcWorkbenchViewModel : BindableBase
     private void Remember(DbcWorkbenchDocument.EditCheckpoint before)
     {
         _undo.Push(before); _redo.Clear();
+        if (_undo.Count > 80)
+        {
+            var latest = _undo.Take(80).Reverse().ToArray();
+            _undo.Clear();
+            foreach (var checkpoint in latest) _undo.Push(checkpoint);
+        }
         RefreshCommands();
     }
 
@@ -200,16 +206,16 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         {
             if (message)
             {
-                _session.Document.SetMessageAlias(m.Message.Id, alias);
-                _session.Document.SetMessageSummary(m.Message.Id, summary);
-                _session.Document.SetMessageComment(m.Message.Id, comment);
+                if (alias != MessageAliasText) _session.Document.SetMessageAlias(m.Message.Id, alias);
+                if (summary != MessageSummaryText) _session.Document.SetMessageSummary(m.Message.Id, summary);
+                if (comment != MessageCommentText) _session.Document.SetMessageComment(m.Message.Id, comment);
             }
             else
             {
                 var name = SelectedSignal!.Name;
-                _session.Document.SetSignalAlias(m.Message.Id, name, alias);
-                _session.Document.SetSignalSummary(m.Message.Id, name, summary);
-                _session.Document.SetSignalComment(m.Message.Id, name, comment);
+                if (alias != SignalAliasText) _session.Document.SetSignalAlias(m.Message.Id, name, alias);
+                if (summary != SignalSummaryText) _session.Document.SetSignalSummary(m.Message.Id, name, summary);
+                if (comment != SignalCommentText) _session.Document.SetSignalComment(m.Message.Id, name, comment);
             }
             var keep = SelectedSignal?.Name;
             RefreshDocument(m.Message.Id, keep);
@@ -541,19 +547,17 @@ public sealed class DbcWorkbenchViewModel : BindableBase
                 ? _session.Document.DisplayNames.MessageDescription(msg3.Message.Id) : "";
             SignalCommentText = SelectedMessage is { } m3 && SelectedSignal is { } sg3
                 ? _session.Document.DisplayNames.SignalDescription(m3.Message.Id, sg3.Name) : "";
+            if (SignalDraft is { } previousDraft) previousDraft.PropertyChanged -= SignalDraftChanged;
             SignalDraft = SelectedSignal?.Draft;
-            if (SignalDraft is { } draft)
-                draft.PropertyChanged += (_, _) =>
-                {
-                    RaisePropertyChanged(nameof(HasPendingSignalDraft));
-                    RefreshCommands();
-                };
+            if (SignalDraft is { } draft) draft.PropertyChanged += SignalDraftChanged;
             RaisePropertyChanged(nameof(SelectedMessageDefinition));
             RaisePropertyChanged(nameof(SelectedSignalDefinition));
             RaisePropertyChanged(nameof(CurrentMessageModel));
         }
         finally { _settingAlias = false; }
     }
+    private void SignalDraftChanged(object? sender, PropertyChangedEventArgs e) => RefreshCommands();
+
     public bool IsBusy
     {
         get => _isBusy;
