@@ -152,7 +152,7 @@ public partial class UdsWorkbenchWindow : Window
         }
         catch (Exception error) when (error is IOException or InvalidDataException or
             UnauthorizedAccessException or ArgumentException or FormatException or
-            NotSupportedException or KeyNotFoundException)
+            NotSupportedException or KeyNotFoundException or System.Text.Json.JsonException)
         {
             StatusText.Text = "打开 UDS 文档失败，原草稿未被覆盖：" + error.Message;
         }
@@ -221,7 +221,7 @@ public partial class UdsWorkbenchWindow : Window
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or
             ArgumentException or InvalidDataException or FormatException or NotSupportedException or
-            KeyNotFoundException or ArgumentOutOfRangeException)
+            KeyNotFoundException or System.Text.Json.JsonException)
         {
             StatusText.Text = (silent ? "自动保存失败：" : "无法保存 UDS 序列：") +
                 error.Message + "；草稿仍保留。";
@@ -374,6 +374,24 @@ public partial class UdsWorkbenchWindow : Window
         ReplayExplanation.Text = "";
         ReplayFrames.ItemsSource = null;
         UpdateReplayAvailability();
+    }
+
+    /// <summary>Parent shutdown needs a synchronous completion result, not a pending child Closing event.</summary>
+    public async Task<bool> PrepareForParentShutdownAsync()
+    {
+        if (_busy || _closing) return false;
+        if (_dirty)
+        {
+            if (_documentPath is null)
+            {
+                if (!ConfirmReplaceDraft()) return false;
+            }
+            else if (!await SaveCurrentAsync(_documentPath))
+                return false;
+        }
+        _closeApproved = true;
+        Close();
+        return !IsVisible;
     }
 
     private async void ClosingGuard(object? sender, CancelEventArgs e)
