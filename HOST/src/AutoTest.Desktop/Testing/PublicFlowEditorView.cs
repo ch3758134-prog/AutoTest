@@ -28,7 +28,7 @@ public sealed class PublicFlowEditorView : UserControl
     private bool _refreshing, _dirty, _busy;
     private StepId? _newStepId;
     private int _requestVersion;
-    private readonly Grid _propertyOverlay = new() { Visibility = Visibility.Collapsed, Background = new SolidColorBrush(Color.FromArgb(178, 241, 245, 249)) };
+    private readonly Grid _propertyOverlay = new() { Visibility = Visibility.Collapsed, Background = new SolidColorBrush(Color.FromArgb(64, 241, 245, 249)) };
     private readonly Border _propertyCard = new() { Background = Brushes.White, BorderBrush = new SolidColorBrush(Color.FromRgb(221, 230, 237)), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(9), Margin = new Thickness(18) };
     public bool IsPropertyEditorOpen => _propertyOverlay.Visibility == Visibility.Visible;
     private StepId? _cancelledStepId;
@@ -99,7 +99,7 @@ public sealed class PublicFlowEditorView : UserControl
         layout.Children.Add(_status);
         var cardLayout = new DockPanel();
         var header = new DockPanel { Margin = new Thickness(14, 8, 14, 4) };
-        var close = MakeButton("关闭", (_, _) => CancelPropertyEditor());
+        var close = MakeButton("关闭", (_, _) => TryDismissPropertyEditor());
         DockPanel.SetDock(close, Dock.Right);
         header.Children.Add(close);
         header.Children.Add(new TextBlock { Text = "步骤属性", FontSize = 17, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
@@ -108,6 +108,12 @@ public sealed class PublicFlowEditorView : UserControl
         cardLayout.Children.Add(InspectorHost);
         _propertyCard.Child = cardLayout;
         _propertyOverlay.Children.Add(_propertyCard);
+        _propertyOverlay.MouseLeftButtonDown += (_, args) =>
+        {
+            if (!ReferenceEquals(args.OriginalSource, _propertyOverlay)) return;
+            args.Handled = true;
+            TryDismissPropertyEditor();
+        };
         Grid.SetRowSpan(_propertyOverlay, 3);
         Panel.SetZIndex(_propertyOverlay, 100);
         layout.Children.Add(_propertyOverlay);
@@ -212,6 +218,24 @@ public sealed class PublicFlowEditorView : UserControl
         if (!IsPropertyEditorOpen && _newStepId is null) return true;
         _inspector?.ShowPendingWarning();
         return false;
+    }
+
+    public bool TryDismissPropertyEditor()
+    {
+        if (!IsPropertyEditorOpen) return _newStepId is null;
+        if (_busy) return false;
+        if (_inspector is not { } editor)
+        {
+            if (_newStepId is not null) return false;
+            ClosePropertyEditor(); // invalidates outstanding catalog loads
+            return true;
+        }
+        if (!editor.HasPendingEdits && _newStepId is null)
+        {
+            ClosePropertyEditor();
+            return true;
+        }
+        return editor.TryApplyChanges();
     }
 
     private void ClosePropertyEditor()
@@ -407,7 +431,7 @@ public sealed class PublicFlowEditorView : UserControl
 
     public async Task<bool> SaveForCloseAsync()
     {
-        if (_busy || !TryFinishInspector()) return false;
+        if (_busy || !TryDismissPropertyEditor()) return false;
         if (!_dirty) return true;
         _busy = true;
         try
