@@ -44,6 +44,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     private string _inspectedStatus = "";
     public string InspectedNode { get => _inspectedNode; private set => SetProperty(ref _inspectedNode, value); }
     public string InspectedStatus { get => _inspectedStatus; private set => SetProperty(ref _inspectedStatus, value); }
+    public bool HasInspectedNode => !string.IsNullOrWhiteSpace(InspectedStatus);
     public void SelectOperatorNode(object? selected)
     {
         switch (selected)
@@ -61,6 +62,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
                 InspectedStatus = "";
                 break;
         }
+        RaisePropertyChanged(nameof(HasInspectedNode));
     }
 
     public AutomaticTestHomeViewModel(AutomaticTestPlanService plans,

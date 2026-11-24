@@ -156,12 +156,16 @@
        <TextBlock Text="{Binding ScanStatus}" FontSize="14" Foreground="#334A62" TextWrapping="Wrap" Margin="0,0,0,6"/>
        <TextBlock Text="{Binding ScanTraceSummary}" FontSize="13" TextWrapping="Wrap" Foreground="#526477"/>
        <TextBlock Text="{Binding StartRequestStatus}" FontSize="14" TextWrapping="Wrap" Foreground="#914500" Margin="0,7,0,9"/>
-       <Border Height="1" Background="#D5DFE9" Margin="0,6,0,10"/>
-       <TextBlock Text="选中用例 / 步骤" FontSize="16" FontWeight="Bold"/>
-       <TextBlock Text="{Binding InspectedNode}" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,7,0,5"/>
-       <TextBlock Text="{Binding InspectedStatus}" FontSize="14" TextWrapping="Wrap" Foreground="#506276"/>
+       <StackPanel Visibility="{Binding HasInspectedNode,Converter={StaticResource BoolToVisibility}}">
+        <Border Height="1" Background="#D5DFE9" Margin="0,8,0,12"/>
+        <TextBlock Text="当前选择" FontSize="15" FontWeight="Bold"/>
+        <TextBlock Text="{Binding InspectedNode}" FontSize="16" FontWeight="SemiBold"
+         TextWrapping="Wrap" Margin="0,5,0,4"/>
+        <TextBlock Text="{Binding InspectedStatus}" FontSize="13" TextWrapping="Wrap"
+         Foreground="#506276"/>
+       </StackPanel>
        <Border Height="1" Background="#D5DFE9" Margin="0,12"/>
-       <TextBlock Text="工程实测" FontSize="16" FontWeight="Bold"/>
+       <TextBlock Text="工程实测 · 不计生产统计" FontSize="16" FontWeight="Bold"/>
        <TextBlock Text="{Binding OperatorRunState}" FontSize="17" FontWeight="SemiBold"
         Margin="0,6,0,3" TextWrapping="Wrap" Foreground="#164C86"/>
        <TextBlock Text="{Binding OperatorCurrentCase}" FontSize="14"
@@ -181,9 +185,7 @@
          </DataTemplate>
         </ItemsControl.ItemTemplate>
        </ItemsControl>
-       <Border Height="1" Background="#D5DFE9" Margin="0,12"/>
-       <TextBlock Text="生产运行准备" FontSize="16" FontWeight="Bold"/>
-       <TextBlock Text="{Binding ExecutionNotice}" FontSize="14" TextWrapping="Wrap" Margin="0,7,0,0" Foreground="#526477"/>
+
       </StackPanel>
      </ScrollViewer>
     </Grid>
