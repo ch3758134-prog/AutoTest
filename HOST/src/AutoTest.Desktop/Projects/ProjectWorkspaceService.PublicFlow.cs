@@ -87,82 +87,22 @@ public sealed partial class ProjectWorkspaceService
             // or a recursion cycle. The validator is read-only and does no writes.
             await PublicFlowGraphValidator.ValidateAsync(current, opened.AssetId, edited, ct)
                 .ConfigureAwait(false);
+            var preserved = current.Definition.Dependencies
+                .Where(dep => dep.From != opened.AssetId ||
+                    !string.Equals(dep.Purpose, "public-flow-call", StringComparison.Ordinal)).ToImmutableArray();
+            var linked = edited.References.Select(reference =>
+                new AssetDependency(opened.AssetId, AssetId.Create(reference.AssetId),
+                    reference.Revision, "public-flow-call"));
             var result = await Task.Run(async () =>
             {
-                await EnsureManifestUnchangedAsync(current, ct).ConfigureAwait(false);
-                var path = ProjectPathPolicy.Normalize(current.RootDirectory, asset.RelativePath);
-                if (!string.Equals(await HashFileAsync(path, ct).ConfigureAwait(false),
-                    opened.FileHash, StringComparison.OrdinalIgnoreCase))
-                    throw new ProjectDataException("FLOW_FILE_CONFLICT", "公共流程文件被外部修改。");
-                var temp = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
-                var backup = path + ".bak";
-                var manifestAttempted = false;
-                try
-                {
-                    await File.WriteAllBytesAsync(temp, bytes, ct).ConfigureAwait(false);
-                    _ = PublicFlowCodec.Deserialize(new UTF8Encoding(false, true).GetString(
-                        await File.ReadAllBytesAsync(temp, ct).ConfigureAwait(false)));
-                    ct.ThrowIfCancellationRequested();
-                    if (!File.Exists(path) ||
-                        !string.Equals(await HashFileAsync(path, ct).ConfigureAwait(false),
-                            opened.FileHash, StringComparison.OrdinalIgnoreCase))
-                        throw new ProjectDataException("FLOW_FILE_CONFLICT",
-                            "暂存期间公共流程原件发生变化。");
-                    File.Replace(temp, path, backup);
-                    var hash = await HashFileAsync(path, ct).ConfigureAwait(false);
-                    var reread = PublicFlowCodec.Deserialize(new UTF8Encoding(false, true).GetString(
-                        await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false)));
-                    if (reread.FlowId != edited.FlowId ||
-                        !string.Equals(hash, Convert.ToHexString(SHA256.HashData(bytes)),
-                            StringComparison.OrdinalIgnoreCase))
-                        throw new ProjectDataException("FLOW_SAVE_VERIFY", "公共流程保存回读校验失败。");
-                    var updated = asset with
-                    {
-                        Sha256 = hash,
-                        Revision = checked(asset.Revision + 1)
-                    };
-                    // Synchronize the canonical manifest dependency index with
-                    // the pinned call graph. This prevents deleting a flow still
-                    // referenced by another flow, while retaining other kinds
-                    // of dependencies and their original historical revisions.
-                    var preserved = current.Definition.Dependencies
-                        .Where(dep => dep.From != opened.AssetId ||
-                            !string.Equals(dep.Purpose, "public-flow-call",
-                                StringComparison.Ordinal))
-                        .ToImmutableArray();
-                    var linked = edited.References.Select(reference =>
-                        new AssetDependency(opened.AssetId, AssetId.Create(reference.AssetId),
-                            reference.Revision, "public-flow-call"));
-                    var next = (current.Definition with
-                    {
-                        Assets = current.Definition.Assets.SetItem(index, updated),
-                        Dependencies = preserved.AddRange(linked)
-                    }).WithRevision().Validate();
-                    await EnsureManifestUnchangedAsync(current, ct).ConfigureAwait(false);
-                    manifestAttempted = true;
-                    await ProjectRepository.SaveDefinitionAsync(next, current.ManifestPath, ct)
-                        .ConfigureAwait(false);
-                    var verified = await ProjectRepository.OpenDefinitionAsync(
-                        current.ManifestPath, ct).ConfigureAwait(false);
-                    var manifestHash = await HashFileAsync(current.ManifestPath, ct)
-                        .ConfigureAwait(false);
-                    return (Context: new OpenProjectContext(verified,
-                            current.ManifestPath, manifestHash),
-                        Session: new PublicFlowEditorSession(verified.Id,
-                            current.ManifestPath, asset.Id, updated.Revision,
-                            asset.Name, path, hash, reread));
-                }
-                catch
-                {
-                    if (!manifestAttempted && File.Exists(backup) && File.Exists(path) &&
-                        string.Equals(await HashFileAsync(path, CancellationToken.None)
-                                .ConfigureAwait(false),
-                            Convert.ToHexString(SHA256.HashData(bytes)),
-                            StringComparison.OrdinalIgnoreCase))
-                        File.Copy(backup, path, overwrite: true);
-                    throw;
-                }
-                finally { if (File.Exists(temp)) File.Delete(temp); }
+                var next = await SaveResourceClosureAsync(current, asset, bytes, ct,
+                    preserved.AddRange(linked)).ConfigureAwait(false);
+                var updated = next.Definition.Assets.Single(a => a.Id == asset.Id);
+                var path = ProjectPathPolicy.Normalize(next.RootDirectory, updated.RelativePath);
+                var reread = PublicFlowCodec.Deserialize(new UTF8Encoding(false, true).GetString(
+                    await File.ReadAllBytesAsync(path, CancellationToken.None).ConfigureAwait(false)));
+                return (Context: next, Session: new PublicFlowEditorSession(next.Definition.Id,
+                    next.ManifestPath, asset.Id, updated.Revision, asset.Name, path, updated.Sha256, reread));
             }, ct);
             Current = result.Context;
             CurrentChanged?.Invoke(this, EventArgs.Empty);
