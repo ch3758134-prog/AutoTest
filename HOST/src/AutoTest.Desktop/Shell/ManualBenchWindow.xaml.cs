@@ -178,6 +178,7 @@ public partial class ManualBenchWindow : Window
 
     private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
+        CancelPendingKeyPadClick();
         if (_closeAfterCanStopped) return;
         e.Cancel = true;
         if (_benchClosePending || _benchCloseScheduled) return;
