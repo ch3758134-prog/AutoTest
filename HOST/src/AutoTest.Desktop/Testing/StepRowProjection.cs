@@ -77,6 +77,7 @@ public sealed class StepRowProjection : BindableBase
         {
             if (!SetProperty(ref _inlineEditing, value)) return;
             RaisePropertyChanged(nameof(ShowQuickSummary));
+            RaisePropertyChanged(nameof(ShowNormalSummary));
             RaisePropertyChanged(nameof(ShowInlineEditor));
         }
     }
@@ -101,6 +102,16 @@ public sealed class StepRowProjection : BindableBase
     public string RowCount => IsPhase ? Item.Children.Count + " 步" : "";
     public string Kind => Item.Step is { } n ? StepUiCatalog.Label(n.Type) : "";
     public string Summary { get; }
+    public bool IsCanSendRow { get; }
+    public bool ShowNormalSummary => ShowQuickSummary && !IsCanSendRow;
+    public string CanFrameLine { get; } = "";
+    public string CanDataLine { get; } = "";
+    public string ResourceDisplay => IsCanSendRow ? _targetKind switch
+    {
+        TestTargetKind.RawCan => "原始 CAN",
+        TestTargetKind.CanMessage => "DBC 辅助",
+        _ => "待配置"
+    } : Resource;
     public string Resource { get; }
     public string State { get; }
     public Thickness Indent => new(9 + Depth * 18, 0, 0, 0);
@@ -116,8 +127,12 @@ public sealed class StepRowProjection : BindableBase
         Sequence = item.Kind == StepTreeItemKind.Step ? item.Index + 1 : 0;
         var step = item.Step;
         var targetName = step?.Properties.GetValueOrDefault("target", "");
-        _targetKind = mappings?.FirstOrDefault(x =>
-            string.Equals(x.Name, targetName, StringComparison.OrdinalIgnoreCase))?.Kind;
+        var targetMapping = mappings?.FirstOrDefault(x =>
+            string.Equals(x.Name, targetName, StringComparison.OrdinalIgnoreCase));
+        _targetKind = targetMapping?.Kind;
+        IsCanSendRow = step?.Type == "Write" &&
+            (_targetKind is TestTargetKind.CanMessage or TestTargetKind.RawCan ||
+             _draftActionKey == "can");
         QuickValue = OriginalQuickValue;
         IsNewDraft = newDraft;
         HasRealExecutionError = realFact?.Status is
@@ -185,7 +200,36 @@ public sealed class StepRowProjection : BindableBase
                 Summary += " · " + duration + " ms 后自动停止";
             else Summary += " · 直到停止或测试清理";
         }
-        if (Summary.Length > 150) Summary = Summary[..150] + "…";
+        if (IsCanSendRow)
+        {
+            var value = Prop("value");
+            var mode = "单次发送";
+            if (int.TryParse(Prop("periodMs"), out var periodMs) && periodMs > 0)
+            {
+                mode = "周期 " + periodMs + " ms";
+                mode += int.TryParse(Prop("durationMs"), out var durationMs) && durationMs > 0
+                    ? " · " + durationMs + " ms 后停止" : " · 直到停止 / 测试清理";
+            }
+            var frame = targetMapping is null ? "CAN ID 待配置" :
+                "0x" + targetMapping.CanId.ToString("X") +
+                (targetMapping.Extended ? " · 扩展帧" : " · 标准帧");
+            if (value.StartsWith("HEX:", StringComparison.OrdinalIgnoreCase))
+            {
+                var hex = string.Concat(value[4..].Where(ch => !char.IsWhiteSpace(ch)));
+                if (hex.Length <= 16 && hex.Length % 2 == 0 && hex.All(Uri.IsHexDigit))
+                {
+                    var bytes = Convert.FromHexString(hex);
+                    CanDataLine = bytes.Length == 0 ? "DATA：无数据 (DLC 0)" :
+                        "DATA  " + string.Join(" ", bytes.Select(b => b.ToString("X2")));
+                    frame += " · DLC " + bytes.Length;
+                }
+                else CanDataLine = "DATA 格式无效，请核对属性";
+            }
+            else CanDataLine = value.Contains('=') ? "信号赋值配置 · 打开属性核对实际 DATA" : "DATA 待配置";
+            CanFrameLine = frame + " · " + mode;
+            Summary = CanFrameLine + " · " + CanDataLine;
+        }
+        if (!IsCanSendRow && Summary.Length > 150) Summary = Summary[..150] + "…";
         Resource = step.Properties.GetValueOrDefault("target",
             step.Properties.GetValueOrDefault("profile", "—"));
         var descriptor = StepDescriptorCatalog.Builtins().Lookup(step.Type);
