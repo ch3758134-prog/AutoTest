@@ -10,11 +10,13 @@ public partial class DbcSignalEditDialog : Window
     private readonly DbcSignal _existing;
     public DbcSignal? Result { get; private set; }
 
-    public DbcSignalEditDialog(DbcSignal signal)
+    public DbcSignalEditDialog(DbcSignal signal, bool protectName = false)
     {
         InitializeComponent();
         _existing = signal;
         NameBox.Text = signal.Name;
+        NameBox.IsReadOnly = protectName;
+        NameBox.ToolTip = protectName ? "原文保护或已有值表引用；可通过中文别名修改显示名称。" : "DBC 原始信号标识符。";
         StartBitBox.Text = signal.StartBit.ToString(CultureInfo.InvariantCulture);
         BitLengthBox.Text = signal.BitLength.ToString(CultureInfo.InvariantCulture);
         FactorBox.Text = signal.Factor.ToString("R", CultureInfo.InvariantCulture);
