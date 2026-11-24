@@ -5,19 +5,22 @@ using AutoTest.Projects.Project;
 namespace AutoTest.Projects.KeyActions;
 
 /// <summary>
-/// Exactly two operator parameters per step: a full 20-switch mask and a hold duration.
-/// StepId is an engineering resource identity, not a third configurable parameter.
-/// The last mask remains requested after the action; there is NO implicit release.
+/// A KEY set step requests one exact 20-switch mask, then waits HoldMs
+/// before the next action. It NEVER releases at the end of the timer.
+/// WaitOnly is a distinct, explicit "no CAN write" step: zero mask on its own
+/// always means an explicit all-open request, not an idle wait.
+/// StepId is an engineering identity, not an operator-configurable parameter.
 /// </summary>
-public sealed record KeyActionStep(Guid StepId, uint KeyMask, int HoldMs)
+public sealed record KeyActionStep(Guid StepId, uint KeyMask, int HoldMs, bool WaitOnly = false)
 {
     public static KeyActionStep Create(uint mask = 0, int holdMs = 100) =>
         new KeyActionStep(Guid.NewGuid(), mask, holdMs).Validate();
     public KeyActionStep Validate()
     {
-        if (StepId == Guid.Empty || KeyMask > 0xFFFFF || HoldMs is < 0 or > 600_000)
+        if (StepId == Guid.Empty || KeyMask > 0xFFFFF || HoldMs is < 0 or > 600_000 ||
+            WaitOnly && (KeyMask != 0 || HoldMs == 0))
             throw new ProjectDataException("KEY_ACTION_STEP",
-                "KEY 步骤必须具有有效 ID、20-bit 组合以及 0～600000ms 保持时间。");
+                "KEY 步骤要求有效 ID、20-bit 组合、0～600000ms 等待；纯等待须为零掩码且时间大于 0。");
         return this;
     }
 }
