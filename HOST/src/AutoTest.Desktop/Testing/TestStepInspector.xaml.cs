@@ -1,5 +1,9 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.IO;
+using System.Windows.Media;
+using System.Windows.Shapes;
+using AutoTest.Specialists.Wave;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -720,6 +724,7 @@ public partial class TestStepInspector : UserControl
         var enteredId = IsCanSend ? FrameIdInput.Text : "";
         var enteredExtended = IsCanSend && GetCanFrameExtended();
         _selectedTarget = selected;
+        RefreshTargetDetail(selected);
         if (IsCanSend) CanSignalSearch.Clear();
         DbcCanPanel.Visibility = KeyPanel.Visibility =
             IgnitionPanel.Visibility = Visibility.Collapsed;
@@ -936,6 +941,125 @@ public partial class TestStepInspector : UserControl
             IgnitionPanel.Visibility = Visibility.Visible;
             var old = _editing?.Properties.GetValueOrDefault("value", "ON") ?? "ON";
             IgnitionState.SelectedIndex = old.Equals("OFF", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+        }
+    }
+
+    private int _targetPreviewVersion;
+
+    private void RefreshTargetDetail(MappingChoice? choice)
+    {
+        var request = ++_targetPreviewVersion;
+        TargetDetailCard.Visibility = Visibility.Collapsed;
+        WaveReferenceView.Visibility = Visibility.Collapsed;
+        WaveReferenceCanvas.Children.Clear();
+        WaveReferenceStatus.Text = "";
+        if (choice is null) return;
+        if (choice.Mapping.Kind == TestTargetKind.Signal)
+        {
+            TargetDetailCard.Visibility = Visibility.Visible;
+            var signal = choice.Message?.Signals.FirstOrDefault(s => s.Name == choice.Mapping.SignalName);
+            TargetDetail.Text = "CAN ID  0x" + choice.Mapping.CanId.ToString("X") +
+                (choice.Mapping.Extended ? " · 扩展帧" : " · 标准帧") +
+                "\n信号  " + choice.Mapping.SignalName +
+                "\nDBC 修订  " + choice.Mapping.AssetRevision +
+                (signal is null ? "\n原始信号定义未找到，请重新选择有效资源。" :
+                    "\n物理范围  " + signal.Minimum.ToString("G", CultureInfo.InvariantCulture) +
+                    " ～ " + signal.Maximum.ToString("G", CultureInfo.InvariantCulture) + " " + signal.Unit +
+                    "\n位长  " + signal.BitLength + (signal.Intel ? " · Intel" : " · Motorola"));
+            return;
+        }
+        if (choice.Mapping.Kind != TestTargetKind.WaveProfile) return;
+        TargetDetailCard.Visibility = Visibility.Visible;
+        if (choice.WaveSettings is not { } settings || choice.WaveProjectRoot is null)
+        {
+            TargetDetail.Text = "波形配置版本未能解析。请重新选择有效的工程资源。";
+            return;
+        }
+        var cfg = settings.Comparison;
+        TargetDetail.Text = "信号  " + settings.SignalName + " " + settings.Unit +
+            " · 0x" + settings.CanId.ToString("X") +
+            "\n参考  " + (string.IsNullOrWhiteSpace(settings.ReferenceName) ? "未指定" : settings.ReferenceName) +
+            "\n绝对容差  " + cfg.AbsoluteTolerance.ToString("G") + " " + settings.Unit +
+            "   相对容差  " + cfg.RelativeTolerance.ToString("P1") +
+            "\n覆盖率 ≥ " + cfg.MinimumCoverage.ToString("P1") +
+            "   通过比例 ≥ " + cfg.MinimumPassRatio.ToString("P1") +
+            "\n最大时间偏移  " + (cfg.MaximumShiftSeconds * 1000).ToString("G") + " ms" +
+            "\n最大连续越界  " + (cfg.MaximumOutOfToleranceSeconds * 1000).ToString("G") + " ms" +
+            "\n配置修订  " + choice.Mapping.AssetRevision +
+            "\n判定参数由所引用的工程波形配置维护；此处仅核对。";
+        if (string.IsNullOrWhiteSpace(settings.ReferenceName) || !settings.DbcAssetId.HasValue)
+        {
+            WaveReferenceStatus.Text = "尚无已配置参考波形。";
+            return;
+        }
+        WaveReferenceStatus.Text = "正在读取真实参考波形…";
+        _ = LoadWavePreviewAsync(choice, request);
+    }
+
+    private async Task LoadWavePreviewAsync(MappingChoice choice, int request)
+    {
+        try
+        {
+            var settings = choice.WaveSettings!;
+            var points = await Task.Run(() =>
+            {
+                var catalog = new WaveReferenceCatalog(Path.Combine(choice.WaveProjectRoot!,
+                    "wave-records", "references"));
+                var matches = catalog.List().Where(x =>
+                    x.Name == settings.ReferenceName &&
+                    x.Signal.DbcAsset.Id.Value == settings.DbcAssetId &&
+                    x.Signal.DbcAsset.Revision.Value == settings.DbcAssetRevision &&
+                    string.Equals(x.Signal.DbcAsset.Fingerprint.Sha256, settings.DbcAssetFingerprint,
+                        StringComparison.OrdinalIgnoreCase) && x.Signal.Role == settings.Bus &&
+                    x.Signal.FrameId == settings.CanId && x.Signal.SignalName == settings.SignalName &&
+                    x.Signal.Unit == settings.Unit).ToArray();
+                if (matches.Length != 1)
+                    throw new InvalidDataException("参考名称与当前信号修订没有唯一匹配。");
+                var reference = catalog.Load(matches[0].Reference);
+                var data = WaveChartAnalysis.FromSeries(reference.Series);
+                if (data.Length < 2 || data[^1].Seconds <= data[0].Seconds)
+                    throw new InvalidDataException("参考波形没有足够的有效时间序列。");
+                return WaveChartAnalysis.InWindow(data, data[0].Seconds, data[^1].Seconds, 400);
+            });
+            if (request != _targetPreviewVersion || !ReferenceEquals(choice, _selectedTarget)) return;
+            var t0 = points[0].Seconds;
+            var t1 = points[^1].Seconds;
+            var ymin = points.Min(p => p.Value);
+            var ymax = points.Max(p => p.Value);
+            var span = ymax - ymin;
+            if (span <= 0) span = Math.Max(1, Math.Abs(ymin) * 0.02);
+            double X(double t) => 43 + 305 * (t - t0) / (t1 - t0);
+            double Y(double v) => 147 - 124 * (v - ymin) / span;
+            void Label(string label, double x, double y)
+            {
+                var text = new TextBlock { Text = label, FontSize = 10, Foreground = Brushes.SlateGray };
+                Canvas.SetLeft(text, x); Canvas.SetTop(text, y);
+                WaveReferenceCanvas.Children.Add(text);
+            }
+            void Line(double x1, double y1, double x2, double y2)
+            {
+                WaveReferenceCanvas.Children.Add(new Line { X1 = x1, Y1 = y1, X2 = x2,
+                    Y2 = y2, Stroke = Brushes.LightSlateGray, StrokeThickness = 0.5 });
+            }
+            for (var i = 0; i <= 4; i++)
+                Line(43, 23 + i * 31, 348, 23 + i * 31);
+            Line(43, 23, 43, 147);
+            Label(settings.Unit, 4, 4);
+            Label(ymax.ToString("G4"), 3, 23);
+            Label(ymin.ToString("G4"), 3, 137);
+            Label((t0 * 1000).ToString("G4"), 43, 153);
+            Label((t1 * 1000).ToString("G4") + " ms", 278, 153);
+            var curve = new Polyline { Stroke = new SolidColorBrush(Color.FromRgb(52, 120, 214)),
+                StrokeThickness = 1.6 };
+            foreach (var point in points) curve.Points.Add(new Point(X(point.Seconds), Y(point.Value)));
+            WaveReferenceCanvas.Children.Add(curve);
+            WaveReferenceView.Visibility = Visibility.Visible;
+            WaveReferenceStatus.Text = "已校验参考资源 · 真实样本预览（显示降采样，不用于判定）";
+        }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            if (request == _targetPreviewVersion && ReferenceEquals(choice, _selectedTarget))
+                WaveReferenceStatus.Text = "参考波形无法预览：" + error.Message;
         }
     }
 
