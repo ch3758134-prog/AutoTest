@@ -250,7 +250,7 @@ public partial class RecordHistoryWindow : Window
 
     private async void ExportReport_Click(object sender, RoutedEventArgs e)
     {
-        if (_busy || _source is null || HistoryGrid.SelectedItem is not RecordHistoryDisplayRow selection) return;
+        if (_busy || HistoryGrid.SelectedItem is not RecordHistoryDisplayRow selection) return;
         var row = selection.Source;
         var picker = new SaveFileDialog
         {
