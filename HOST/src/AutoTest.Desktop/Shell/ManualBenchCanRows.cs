@@ -399,6 +399,7 @@ public sealed partial class ManualBenchViewModel
 
     private sealed record RunningCanRow(CancellationTokenSource Stop, Task Worker);
     private readonly Dictionary<BenchCanRow, RunningCanRow> _canWorkers = new();
+    private bool _stoppingAllCanRows;
     private string? _activeCanManifest;
     private Guid? _activeCanProjectId;
     private bool _canBatchRunning;
@@ -436,7 +437,7 @@ public sealed partial class ManualBenchViewModel
         private set { if (SetProperty(ref _canBatchRunning, value)) RaiseCommands(); }
     }
     public bool CanEditCanRows => !IsBusy;
-    public bool CanStartCanRows => !IsBusy &&
+    public bool CanStartCanRows => !IsBusy && !_stoppingAllCanRows &&
         CanSendRows.Any(x => x.Included && !_canWorkers.ContainsKey(x));
     public bool CanStopCanRows => IsCanBatchRunning;
 
@@ -462,7 +463,8 @@ public sealed partial class ManualBenchViewModel
         SendCanRowOnceCommand = new DelegateCommand<BenchCanRow>(
             async row => await StartCanRowsAsync(row), row => row is not null && !IsBusy);
         ToggleCanRowCommand = new DelegateCommand<BenchCanRow>(
-            async row => await ToggleCanRowAsync(row), row => row is not null && !IsBusy);
+            async row => await ToggleCanRowAsync(row),
+            row => row is not null && !IsBusy && !_stoppingAllCanRows);
         AddCanRow();
     }
 
@@ -806,10 +808,25 @@ public sealed partial class ManualBenchViewModel
 
     private async Task StopCanRowsAsync()
     {
-        var running = _canWorkers.Values.ToArray();
-        foreach (var item in running) item.Stop.Cancel();
-        await Task.WhenAll(running.Select(x => x.Worker));
-        if (running.Length > 0) Status = "全部 ECU CAN 周期任务已停止。";
+        if (_stoppingAllCanRows)
+        {
+            await Task.WhenAll(_canWorkers.Values.Select(x => x.Worker).ToArray());
+            return;
+        }
+        _stoppingAllCanRows = true;
+        NotifyCanRows();
+        try
+        {
+            var running = _canWorkers.Values.ToArray();
+            foreach (var item in running) item.Stop.Cancel();
+            await Task.WhenAll(running.Select(x => x.Worker));
+            if (running.Length > 0) Status = "全部 ECU CAN 周期任务已停止。";
+        }
+        finally
+        {
+            _stoppingAllCanRows = false;
+            NotifyCanRows();
+        }
     }
 
     /// <summary>Window closing waits for all ECU CAN writers to stop and for the fence to revoke.</summary>
