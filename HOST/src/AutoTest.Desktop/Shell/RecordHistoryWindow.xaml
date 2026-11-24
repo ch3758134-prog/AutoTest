@@ -49,11 +49,11 @@
      BorderThickness="0" GridLinesVisibility="Horizontal"
      HorizontalScrollBarVisibility="Auto">
      <DataGrid.Columns>
-      <DataGridTextColumn Header="检测时间" Width="157" Binding="{Binding StartedUtc,StringFormat={}{0:yyyy-MM-dd HH:mm:ss}}"/>
+      <DataGridTextColumn Header="检测时间" Width="157" Binding="{Binding StartedLocal}"/>
       <DataGridTextColumn Header="ECU 编号" Width="*" MinWidth="155" Binding="{Binding DutId}"/>
-      <DataGridTextColumn Header="类别" Width="102" Binding="{Binding Mode}"/>
-      <DataGridTextColumn Header="结果" Width="92" Binding="{Binding Verdict}"/>
-      <DataGridTextColumn Header="归档状态" Width="105" Binding="{Binding PersistenceState}"/>
+      <DataGridTextColumn Header="类别" Width="102" Binding="{Binding ModeLabel}"/>
+      <DataGridTextColumn Header="结果" Width="92" Binding="{Binding VerdictLabel}"/>
+      <DataGridTextColumn Header="归档状态" Width="105" Binding="{Binding PersistenceLabel}"/>
       <DataGridTextColumn Header="步骤事实" Width="93" Binding="{Binding StepFactCount}"/>
       <DataGridTextColumn Header="失败原因" Width="210" Binding="{Binding FailureReason}"/>
      </DataGrid.Columns>
