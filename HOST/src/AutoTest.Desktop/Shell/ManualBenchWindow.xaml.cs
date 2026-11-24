@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Threading;
+using System.Runtime.InteropServices;
 using Microsoft.Win32;
 using AutoTest.Desktop.Shell;
 
@@ -22,6 +23,63 @@ public partial class ManualBenchWindow : Window
     private bool _propertyOverlayClosing;
     private bool _benchClosePending;
     private bool _benchCloseScheduled;
+    private DispatcherTimer? _keyPadClickTimer;
+    private ManualBenchViewModel.KeyActionPadItem? _pendingKeyPad;
+    private DateTime _ignoreKeyPadClickUntilUtc;
+
+    [DllImport("user32.dll")]
+    private static extern uint GetDoubleClickTime();
+
+    private void CancelPendingKeyPadClick()
+    {
+        _keyPadClickTimer?.Stop();
+        _pendingKeyPad = null;
+    }
+
+    private void KeyPad_Click(object sender, RoutedEventArgs e)
+    {
+        if (DateTime.UtcNow <= _ignoreKeyPadClickUntilUtc) return;
+        if (sender is not Button { Tag: ManualBenchViewModel.KeyActionPadItem pad }) return;
+        // Button.Click normally fires on the FIRST click of a double click.
+        // A direct hardware command here would unintentionally execute when
+        // the operator only wants to edit. Dispatch only after the OS double
+        // click interval has expired without a second click.
+        CancelPendingKeyPadClick();
+        _pendingKeyPad = pad;
+        _keyPadClickTimer ??= new DispatcherTimer(DispatcherPriority.Normal);
+        _keyPadClickTimer.Interval = TimeSpan.FromMilliseconds(
+            Math.Clamp((int)GetDoubleClickTime() + 50, 300, 1100));
+        _keyPadClickTimer.Tick -= DispatchPendingKeyPad;
+        _keyPadClickTimer.Tick += DispatchPendingKeyPad;
+        _keyPadClickTimer.Start();
+    }
+
+    private void DispatchPendingKeyPad(object? sender, EventArgs e)
+    {
+        var pad = _pendingKeyPad;
+        CancelPendingKeyPadClick();
+        if (pad is null || _benchClosePending || _benchCloseScheduled || !IsLoaded)
+            return;
+        var command = _model.PressKeyPadCommand;
+        if (command.CanExecute(pad)) command.Execute(pad);
+    }
+
+    private void KeyPad_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount < 2) return;
+        CancelPendingKeyPadClick();
+        _ignoreKeyPadClickUntilUtc = DateTime.UtcNow.AddMilliseconds(
+            Math.Clamp((int)GetDoubleClickTime() + 50, 300, 1100));
+        if (sender is Button { Tag: ManualBenchViewModel.KeyActionPadItem pad } &&
+            _model.KeyActions.FirstOrDefault(x => x.ActionId == pad.ActionId) is { } action)
+            OpenKeyActionEditor(action);
+    }
+
+    private void KeyPad_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        // Opening the edit menu must cancel a pending single-click hardware action.
+        CancelPendingKeyPadClick();
+    }
 
     public ManualBenchWindow(ManualBenchViewModel model)
     {
@@ -34,7 +92,12 @@ public partial class ManualBenchWindow : Window
         PreviewMouseDown += (_, _) => _lastInteractionUtc = DateTime.UtcNow;
         PreviewKeyDown += (_, _) => _lastInteractionUtc = DateTime.UtcNow;
         PreviewTextInput += (_, _) => _lastInteractionUtc = DateTime.UtcNow;
-        Closed += (_, _) => { _keyAutosaveTimer.Stop(); _model.Dispose(); };
+        Closed += (_, _) =>
+        {
+            CancelPendingKeyPadClick();
+            _keyAutosaveTimer.Stop();
+            _model.Dispose();
+        };
     }
 
     private async void OnKeyAutosaveTick(object? sender, EventArgs e)
