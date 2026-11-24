@@ -50,25 +50,21 @@
      <DockPanel Margin="0,0,0,7">
       <Button DockPanel.Dock="Right" Content="扫码枪设置" Command="{Binding OpenScannerSettingsCommand}"
        Padding="8,4" MinHeight="30" FontSize="13" ToolTip="扫码设备首次配置、连接诊断或更换 COM；主控 USB 无需手动连接"/>
-      <TextBlock Text="工位连接 · 主控自动连接" Style="{StaticResource Label}" VerticalAlignment="Center"/>
+      <TextBlock Text="工位设备" Style="{StaticResource Label}" VerticalAlignment="Center"/>
      </DockPanel>
      <WrapPanel>
-      <Border><Border.Style><Style TargetType="Border" BasedOn="{StaticResource ConnectionChip}"><Style.Triggers><DataTrigger Binding="{Binding MainControllerConnected}" Value="True"><Setter Property="Background" Value="#E5F4E9"/><Setter Property="BorderBrush" Value="#72B28A"/></DataTrigger></Style.Triggers></Style></Border.Style>
+      <Border ToolTip="{Binding ControllerDetail}"><Border.Style><Style TargetType="Border" BasedOn="{StaticResource ConnectionChip}"><Style.Triggers><DataTrigger Binding="{Binding MainControllerConnected}" Value="True"><Setter Property="Background" Value="#E5F4E9"/><Setter Property="BorderBrush" Value="#72B28A"/></DataTrigger></Style.Triggers></Style></Border.Style>
        <TextBlock Text="{Binding ControllerLabel}" FontSize="14" FontWeight="SemiBold"/></Border>
-      <Border><Border.Style><Style TargetType="Border" BasedOn="{StaticResource ConnectionChip}"><Style.Triggers><DataTrigger Binding="{Binding ScannerConnected}" Value="True"><Setter Property="Background" Value="#E5F4E9"/><Setter Property="BorderBrush" Value="#72B28A"/></DataTrigger></Style.Triggers></Style></Border.Style>
+      <Border ToolTip="{Binding ScannerDetail}"><Border.Style><Style TargetType="Border" BasedOn="{StaticResource ConnectionChip}"><Style.Triggers><DataTrigger Binding="{Binding ScannerConnected}" Value="True"><Setter Property="Background" Value="#E5F4E9"/><Setter Property="BorderBrush" Value="#72B28A"/></DataTrigger></Style.Triggers></Style></Border.Style>
        <TextBlock Text="{Binding ScannerLabel}" FontSize="14" FontWeight="SemiBold"/></Border>
-      <Border><Border.Style><Style TargetType="Border" BasedOn="{StaticResource ConnectionChip}"><Style.Triggers><DataTrigger Binding="{Binding CanBitrateReady}" Value="True"><Setter Property="Background" Value="#E5F4E9"/><Setter Property="BorderBrush" Value="#72B28A"/></DataTrigger></Style.Triggers></Style></Border.Style>
+      <Border ToolTip="{Binding CanDetail}"><Border.Style><Style TargetType="Border" BasedOn="{StaticResource ConnectionChip}"><Style.Triggers><DataTrigger Binding="{Binding CanBitrateReady}" Value="True"><Setter Property="Background" Value="#E5F4E9"/><Setter Property="BorderBrush" Value="#72B28A"/></DataTrigger></Style.Triggers></Style></Border.Style>
        <TextBlock Text="{Binding CanLabel}" FontSize="14" FontWeight="SemiBold"/></Border>
      </WrapPanel>
-     <TextBlock Text="{Binding ControllerDetail}" FontSize="12" Foreground="#43566C" TextTrimming="CharacterEllipsis" ToolTip="{Binding ControllerDetail}"/>
-     <TextBlock Text="{Binding UsbAutoStatus}" FontSize="12" Foreground="#9A5600"
-      TextTrimming="CharacterEllipsis" ToolTip="{Binding UsbAutoStatus}" Margin="0,3,0,0"/>
-     <TextBlock Text="{Binding ScannerDetail}" FontSize="12" Foreground="#43566C" TextTrimming="CharacterEllipsis" ToolTip="{Binding ScannerDetail}" Margin="0,3,0,0"/>
-     <TextBlock Text="{Binding CanDetail}" FontSize="12" Foreground="#43566C" TextTrimming="CharacterEllipsis" ToolTip="{Binding CanDetail}" Margin="0,3,0,0"/>
+
     </StackPanel>
    </Grid>
   </Border>
-  <Border Grid.Row="1" Background="#FFF3E2" BorderBrush="#C47D26" BorderThickness="5,1,1,1" CornerRadius="5" Padding="14,9" Margin="0,0,0,10">
+  <Border Grid.Row="1" Background="#FFF3E2" BorderBrush="#C47D26" BorderThickness="5,1,1,1" CornerRadius="5" ToolTip="{Binding StartInputHint}" Padding="14,9" Margin="0,0,0,10">
    <DockPanel LastChildFill="True">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
      <Button Content="打开工程与调试" Command="{Binding ChoosePlanCommand}" MinHeight="40" FontSize="14" Padding="13,7" Margin="12,0,8,0"/>
@@ -81,7 +77,7 @@
     </StackPanel>
     <StackPanel>
      <TextBlock Text="{Binding StationReadiness}" FontSize="19" FontWeight="Bold" Foreground="#914500"/>
-     <TextBlock Text="{Binding StartInputHint}" FontSize="14" Foreground="#70491D" TextWrapping="Wrap" Margin="0,3,0,0"/>
+     
     </StackPanel>
    </DockPanel>
   </Border>
@@ -151,8 +147,8 @@
      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
       <StackPanel Margin="15,13">
        <Border Background="#F1F5F9" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="5" Padding="13">
-        <StackPanel><TextBlock Text="本次检测结果" Style="{StaticResource Label}"/>
-         <TextBlock Text="{Binding StationReadiness}" FontSize="20" FontWeight="Bold" Foreground="#475569" Margin="0,2,0,5" TextWrapping="Wrap"/>
+        <StackPanel><TextBlock Text="检测状态" Style="{StaticResource Label}"/>
+         
          <TextBlock Text="{Binding Status}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap"/>
         </StackPanel>
        </Border>
@@ -165,7 +161,7 @@
        <TextBlock Text="{Binding InspectedNode}" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,7,0,5"/>
        <TextBlock Text="{Binding InspectedStatus}" FontSize="14" TextWrapping="Wrap" Foreground="#506276"/>
        <Border Height="1" Background="#D5DFE9" Margin="0,12"/>
-       <TextBlock Text="真实整组实测（非生产放行）" FontSize="16" FontWeight="Bold"/>
+       <TextBlock Text="工程实测" FontSize="16" FontWeight="Bold"/>
        <TextBlock Text="{Binding OperatorRunState}" FontSize="17" FontWeight="SemiBold"
         Margin="0,6,0,3" TextWrapping="Wrap" Foreground="#164C86"/>
        <TextBlock Text="{Binding OperatorCurrentCase}" FontSize="14"
@@ -186,7 +182,7 @@
         </ItemsControl.ItemTemplate>
        </ItemsControl>
        <Border Height="1" Background="#D5DFE9" Margin="0,12"/>
-       <TextBlock Text="正式生产运行条件" FontSize="16" FontWeight="Bold"/>
+       <TextBlock Text="生产运行准备" FontSize="16" FontWeight="Bold"/>
        <TextBlock Text="{Binding ExecutionNotice}" FontSize="14" TextWrapping="Wrap" Margin="0,7,0,0" Foreground="#526477"/>
       </StackPanel>
      </ScrollViewer>
