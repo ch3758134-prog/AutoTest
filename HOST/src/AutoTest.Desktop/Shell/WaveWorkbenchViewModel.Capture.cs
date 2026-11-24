@@ -193,7 +193,7 @@ public sealed partial class WaveWorkbenchViewModel
         }
         try
         {
-            var choices = await TestTargetCatalog.LoadAsync(_project);
+            var choices = await TestTargetCatalog.LoadAsync(_project, includeAllDbcSignals: true);
             if (_closed || version != _signalRefreshVersion ||
                 _project.Current?.ManifestPath != project.ManifestPath) return;
             var previous = SelectedSignal?.Mapping.Name;
