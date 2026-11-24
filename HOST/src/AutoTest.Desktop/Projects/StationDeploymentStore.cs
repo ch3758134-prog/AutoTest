@@ -118,6 +118,7 @@ public static class StationDeploymentStore
         var before = await File.ReadAllBytesAsync(full, ct).ConfigureAwait(false);
         var definition = await ProjectRepository.OpenDefinitionAsync(full, ct)
             .ConfigureAwait(false);
+        await ProjectBundleContractAudit.ValidateAsync(definition, full, ct).ConfigureAwait(false);
         var after = await File.ReadAllBytesAsync(full, ct).ConfigureAwait(false);
         if (!SHA256.HashData(before).AsSpan()
                 .SequenceEqual(SHA256.HashData(after)))
