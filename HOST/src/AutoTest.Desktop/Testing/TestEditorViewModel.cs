@@ -805,7 +805,7 @@ public sealed class TestEditorViewModel : BindableBase
 
     private void Undo()
     {
-        if (IsBusy) return;
+        if (IsBusy || !CanProceed()) return;
         if (HasNewStepDraft)
         {
             CancelInspectorEdit();
