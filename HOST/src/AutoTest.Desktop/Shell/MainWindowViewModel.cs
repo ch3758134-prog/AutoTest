@@ -436,16 +436,25 @@ public sealed partial class MainWindowViewModel : BindableBase
             return;
         }
         if (!await TakeUsbForToolAsync("波形工作台")) return;
-        var view = new WaveWorkbenchWindow(new WaveWorkbenchViewModel(_workspace, _liveSignals, _hardware, _realTest),
-            () => OpenWaveConfigCommand.Execute());
-        _waveWorkbenchWindow = view;
-        view.Owner = global::System.Windows.Application.Current.MainWindow;
-        view.Closed += async (_, _) =>
+        try
         {
-            _waveWorkbenchWindow = null;
+            var view = new WaveWorkbenchWindow(new WaveWorkbenchViewModel(
+                _workspace, _liveSignals, _hardware, _realTest),
+                () => OpenWaveConfigCommand.Execute());
+            _waveWorkbenchWindow = view;
+            view.Owner = global::System.Windows.Application.Current.MainWindow;
+            view.Closed += async (_, _) =>
+            {
+                _waveWorkbenchWindow = null;
+                await ReturnUsbFromToolAsync("波形工作台");
+            };
+            view.Show();
+        }
+        catch (Exception error)
+        {
             await ReturnUsbFromToolAsync("波形工作台");
-        };
-        view.Show();
+            StatusMessage = "波形工具未能启动：" + error.Message;
+        }
     }
 
     private async Task OpenManualBenchAsync()
@@ -456,16 +465,24 @@ public sealed partial class MainWindowViewModel : BindableBase
             return;
         }
         if (!await TakeUsbForToolAsync("手动台架")) return;
-        var view = new ManualBenchWindow(new ManualBenchViewModel(_workspace, _hardware));
-        _manualBenchWindow = view;
-        view.Closed += async (_, _) =>
+        try
         {
-            _manualBenchWindow = null;
+            var view = new ManualBenchWindow(new ManualBenchViewModel(_workspace, _hardware));
+            _manualBenchWindow = view;
+            view.Closed += async (_, _) =>
+            {
+                _manualBenchWindow = null;
+                await ReturnUsbFromToolAsync("手动台架");
+                await RefreshEngineeringSetupAsync();
+            };
+            view.Owner = global::System.Windows.Application.Current.MainWindow;
+            view.Show();
+        }
+        catch (Exception error)
+        {
             await ReturnUsbFromToolAsync("手动台架");
-            await RefreshEngineeringSetupAsync();
-        };
-        view.Owner = global::System.Windows.Application.Current.MainWindow;
-        view.Show();
+            StatusMessage = "手动台架未能启动：" + error.Message;
+        }
     }
 
     /// <summary>Open the verified FlashLab WPF workbench in-process, without

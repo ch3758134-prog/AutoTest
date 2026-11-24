@@ -27,6 +27,7 @@ public sealed partial class MainWindowViewModel
     {
         if (_applicationClosing || _automaticUsbEnabled) return;
         _automaticUsbEnabled = true;
+        _automaticTestHome.PublishUsbAutoStatus("正在自动发现并连接主控 USB…");
         _automaticUsbTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
             Interval = TimeSpan.FromSeconds(3)
@@ -76,6 +77,7 @@ public sealed partial class MainWindowViewModel
             _nextAutoUsbAttempt = DateTimeOffset.MinValue;
             HardwareStatus = "主控自动连接成功 · " + _hardware.EcuCanBitrateStatus;
             StatusMessage = HardwareStatus;
+            _automaticTestHome.PublishUsbAutoStatus(HardwareStatus);
             RaisePropertyChanged(nameof(RequestedEcuCanBitrateKbps));
             RaisePropertyChanged(nameof(EcuCanRateStatus));
         }
@@ -86,6 +88,7 @@ public sealed partial class MainWindowViewModel
             _nextAutoUsbAttempt = DateTimeOffset.UtcNow.AddSeconds(retrySeconds);
             HardwareStatus = "主控自动连接未完成：" + error.Message;
             StatusMessage = HardwareStatus + "；" + retrySeconds + " 秒后再次尝试。";
+            _automaticTestHome.PublishUsbAutoStatus(StatusMessage);
         }
         finally
         {
@@ -130,6 +133,7 @@ public sealed partial class MainWindowViewModel
                 throw;
             }
             HardwareStatus = "USB 已移交 " + tool + "，由该工具手动连接";
+            _automaticTestHome.PublishUsbAutoStatus(HardwareStatus);
             return true;
         }
         finally { _usbOwnershipGate.Release(); }
@@ -154,6 +158,7 @@ public sealed partial class MainWindowViewModel
             {
                 _exclusiveUsbTool = null;
                 _nextAutoUsbAttempt = DateTimeOffset.MinValue;
+                _automaticTestHome.PublishUsbAutoStatus("工具已释放 USB，主工位正在恢复自动连接…");
                 RaisePropertyChanged(nameof(UsbConnectionOwner));
             }
         }

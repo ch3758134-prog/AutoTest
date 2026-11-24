@@ -25,6 +25,16 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     private readonly Func<bool> _isProductionWorkspace;
     private bool _busy;
     private string _status = "正在读取检测工程";
+    private string _usbAutoStatus = "启动后自动连接主控 USB";
+    public string UsbAutoStatus
+    {
+        get => _usbAutoStatus;
+        private set => SetProperty(ref _usbAutoStatus, value);
+    }
+    public void PublishUsbAutoStatus(string message)
+    {
+        OnUi(() => UsbAutoStatus = message);
+    }
     private EngineeringTestProjectPreview? _draftPreview;
     private string _draftIssue = "";
     private long _previewVersion;

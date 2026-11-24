@@ -61,6 +61,8 @@
        <TextBlock Text="{Binding CanLabel}" FontSize="14" FontWeight="SemiBold"/></Border>
      </WrapPanel>
      <TextBlock Text="{Binding ControllerDetail}" FontSize="12" Foreground="#43566C" TextTrimming="CharacterEllipsis" ToolTip="{Binding ControllerDetail}"/>
+     <TextBlock Text="{Binding UsbAutoStatus}" FontSize="12" Foreground="#9A5600"
+      TextTrimming="CharacterEllipsis" ToolTip="{Binding UsbAutoStatus}" Margin="0,3,0,0"/>
      <TextBlock Text="{Binding ScannerDetail}" FontSize="12" Foreground="#43566C" TextTrimming="CharacterEllipsis" ToolTip="{Binding ScannerDetail}" Margin="0,3,0,0"/>
      <TextBlock Text="{Binding CanDetail}" FontSize="12" Foreground="#43566C" TextTrimming="CharacterEllipsis" ToolTip="{Binding CanDetail}" Margin="0,3,0,0"/>
     </StackPanel>
