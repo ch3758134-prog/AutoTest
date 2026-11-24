@@ -144,7 +144,7 @@ public partial class MainWindow : Window
             {
                 _viewModel.BeginUsbShutdownPreparation();
                 if (!await _viewModel.PrepareEditorsForCloseAsync()) return;
-                if (!await _viewModel.PrepareToolWindowsForCloseAsync()) return;
+                if (!await _viewModel.PrepareToolWindowsForCloseAsync(exitingApplication: true)) return;
                 _shutdownStarted = true;
                 _autosaveTimer.Stop();
                 // Keep ONE task. On a timeout a second click observes this same
