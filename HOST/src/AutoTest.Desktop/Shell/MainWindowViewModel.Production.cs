@@ -40,10 +40,31 @@ public sealed partial class MainWindowViewModel
     }
 
     /// <summary>
-    /// Start as an automatic test terminal. Do not open or modify the IDE's
-    /// LastProject in the process; that is restored only upon entering Studio.
+    /// AutoTest and engineering TEST use one opened ECU project and one station
+    /// hardware session. Opening the previous project here does NOT open IDE
+    /// editing tabs or perform physical CAN/FLASH actions.
     /// </summary>
-    public Task RestoreAutomaticTestAtStartupAsync() => _automaticTestHome.RestoreAsync();
+    public async Task RestoreAutomaticTestAtStartupAsync()
+    {
+        if (_workspace.Current is null)
+        {
+            try
+            {
+                var path = _recentProjects.GetLastProjectManifest();
+                if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
+                    await _workspace.OpenAsync(path);
+                else
+                    StatusMessage = "自动测试尚未选择 ECU 工程；进入开发与调试完成工程设置。";
+            }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException or
+                InvalidDataException or ArgumentException or ProjectDataException or
+                System.Text.Json.JsonException)
+            {
+                StatusMessage = "自动测试恢复上次工程失败：" + error.Message;
+            }
+        }
+        await _automaticTestHome.RestoreAsync();
+    }
 
     private async Task ShowDeveloperAsync()
     {
