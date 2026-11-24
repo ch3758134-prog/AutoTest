@@ -109,12 +109,38 @@ public sealed partial class ProjectWorkspaceService
         string name, string parentDirectory, CancellationToken cancellationToken = default) =>
         CreateCoreAsync(name, parentDirectory, true, cancellationToken);
 
+    /// <summary>
+    /// New ECU projects need one genuine model identity for scanner matching.
+    /// The existing overload remains for non-interactive import/test callers.
+    /// </summary>
+    public Task<OpenProjectContext> CreateReadyToEditAsync(
+        string name, string parentDirectory, string ecuModelCode,
+        CancellationToken cancellationToken = default) =>
+        CreateCoreAsync(name, parentDirectory, true, cancellationToken, ecuModelCode);
+
+    public static string ValidateEcuModelCode(string? modelCode)
+    {
+        if (string.IsNullOrWhiteSpace(modelCode))
+            return "请输入 ECU 型号代码。";
+        return System.Text.RegularExpressions.Regex.IsMatch(modelCode.Trim().ToUpperInvariant(),
+            @"^[A-Z0-9]{2,16}$",
+            System.Text.RegularExpressions.RegexOptions.CultureInvariant,
+            TimeSpan.FromMilliseconds(100))
+            ? "" : "型号代码须为 2～16 位英文字母或数字。";
+    }
+
     private async Task<OpenProjectContext> CreateCoreAsync(
         string name, string parentDirectory, bool withInitialTest,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, string? ecuModelCode = null)
     {
         var error = ValidateInput(name, parentDirectory);
         if (error.Length > 0) throw new ArgumentException(error);
+        if (ecuModelCode is not null)
+        {
+            error = ValidateEcuModelCode(ecuModelCode);
+            if (error.Length > 0) throw new ArgumentException(error);
+            ecuModelCode = ecuModelCode.Trim().ToUpperInvariant();
+        }
 
         // ProjectRepository has an atomic FILE replace API. New PROJECT creation
         // must instead be non-overwriting. Build in a sibling staging directory,
@@ -134,6 +160,8 @@ public sealed partial class ProjectWorkspaceService
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var definition = ProjectDefinition.Create(name);
+                if (ecuModelCode is not null)
+                    definition = (definition with { EcuModelCode = ecuModelCode }).Validate();
                 if (withInitialTest)
                 {
                 // Normal desktop creation yields one TEST sequence and one
