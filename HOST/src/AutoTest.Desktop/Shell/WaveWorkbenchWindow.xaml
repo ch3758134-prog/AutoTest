@@ -48,7 +48,7 @@
      <Menu VerticalAlignment="Center" Background="White" Foreground="#253C54" Margin="0,0,7,0">
       <MenuItem Header="波形来源">
        <MenuItem Header="打开独立波形目录…" Click="OpenWaveFolder_Click"/>
-       <MenuItem Header="使用当前工程波形" Click="UseProjectWaveSource_Click"/>
+       <MenuItem Header="使用当前工程波形" IsEnabled="{Binding HasEcuProject}" Click="UseProjectWaveSource_Click"/>
       </MenuItem>
      </Menu>
      <Button Content="波形判定配置" Click="OpenConfiguration_Click"
