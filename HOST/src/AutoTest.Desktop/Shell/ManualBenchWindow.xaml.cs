@@ -168,6 +168,8 @@ public partial class ManualBenchWindow : Window
 
     private void OpenPropertyOverlay(UserControl content)
     {
+        PropertyOverlayCard.MaxWidth = content is ManualBenchKeyActionView ? 710 : 1120;
+        PropertyOverlayCard.MaxHeight = content is ManualBenchKeyActionView ? 620 : 760;
         PropertyOverlayContent.Content = content;
         PropertyOverlay.Visibility = Visibility.Visible;
         content.Focus();
