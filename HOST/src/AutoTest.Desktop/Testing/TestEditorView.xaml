@@ -42,6 +42,7 @@
        <MenuItem Header="期望判定" Command="{Binding QuickAddCommand}" CommandParameter="expect"/>
       </MenuItem>
      </Menu>
+     <Button Content="更新 DBC 引用" Command="{Binding RefreshDbcReferencesCommand}" Margin="0,0,6,0" ToolTip="按当前工程真实报文/信号身份批量更新本用例过期的 DBC 引用，确认后保存"/>
      <Button Content="运行前检查" Command="{Binding PreflightCommand}" Margin="0,0,6,0"/>
      <Button Content="保存" Click="SaveEditor_Click"/>
     </StackPanel>
