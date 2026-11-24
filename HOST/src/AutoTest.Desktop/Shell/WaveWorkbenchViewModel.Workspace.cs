@@ -157,9 +157,9 @@ public sealed partial class WaveWorkbenchViewModel
     public string ComparisonTone => _comparison is null ? "Idle" :
         _comparison.Verdict switch
         {
-            AutoTest.Contracts.Verdict.Pass => "Pass",
-            AutoTest.Contracts.Verdict.Fail => "Fail",
-            AutoTest.Contracts.Verdict.Inconclusive => "Warning",
+            Verdict.Pass => "Pass",
+            Verdict.Fail => "Fail",
+            Verdict.Inconclusive => "Warning",
             _ => "Warning"
         };
     public DelegateCommand EarlierWindowCommand { get; private set; } = null!;
