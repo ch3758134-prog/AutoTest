@@ -51,6 +51,58 @@ public sealed class DbcDisplayNames
     private readonly Dictionary<(uint Id, string Signal), string> _editedSignalComments = new();
     private readonly Dictionary<(uint Id, string Signal), string> _signalDescriptions = new();
 
+    private static void MoveKey<TKey>(Dictionary<TKey, string> entries, TKey oldKey, TKey newKey)
+        where TKey : notnull
+    {
+        if (entries.Remove(oldKey, out var value)) entries[newKey] = value;
+    }
+
+    internal void RemoveSignal(uint id, string name)
+    {
+        _explicitSignals.Remove((id, name));
+        _commentSignals.Remove((id, name));
+        _explicitSignalSummaries.Remove((id, name));
+        _signalDescriptions.Remove((id, name));
+        _editedSignalComments.Remove((id, name));
+    }
+
+    internal void RemoveMessage(uint id)
+    {
+        _explicitMessages.Remove(id);
+        _commentMessages.Remove(id);
+        _explicitMessageSummaries.Remove(id);
+        _messageDescriptions.Remove(id);
+        _editedMessageComments.Remove(id);
+        foreach (var key in _explicitSignals.Keys.Where(k => k.Id == id).ToArray()) _explicitSignals.Remove(key);
+        foreach (var key in _commentSignals.Keys.Where(k => k.Id == id).ToArray()) _commentSignals.Remove(key);
+        foreach (var key in _explicitSignalSummaries.Keys.Where(k => k.Id == id).ToArray()) _explicitSignalSummaries.Remove(key);
+        foreach (var key in _signalDescriptions.Keys.Where(k => k.Id == id).ToArray()) _signalDescriptions.Remove(key);
+        foreach (var key in _editedSignalComments.Keys.Where(k => k.Id == id).ToArray()) _editedSignalComments.Remove(key);
+    }
+
+    internal void RemapSignal(uint id, string oldName, string newName)
+    {
+        MoveKey(_explicitSignals, (id, oldName), (id, newName));
+        MoveKey(_commentSignals, (id, oldName), (id, newName));
+        MoveKey(_explicitSignalSummaries, (id, oldName), (id, newName));
+        MoveKey(_signalDescriptions, (id, oldName), (id, newName));
+        MoveKey(_editedSignalComments, (id, oldName), (id, newName));
+    }
+
+    internal void RemapMessage(uint oldId, uint newId)
+    {
+        MoveKey(_explicitMessages, oldId, newId);
+        MoveKey(_commentMessages, oldId, newId);
+        MoveKey(_explicitMessageSummaries, oldId, newId);
+        MoveKey(_messageDescriptions, oldId, newId);
+        MoveKey(_editedMessageComments, oldId, newId);
+        foreach (var key in _explicitSignals.Keys.Where(k => k.Id == oldId).ToArray()) MoveKey(_explicitSignals, key, (newId, key.Signal));
+        foreach (var key in _commentSignals.Keys.Where(k => k.Id == oldId).ToArray()) MoveKey(_commentSignals, key, (newId, key.Signal));
+        foreach (var key in _explicitSignalSummaries.Keys.Where(k => k.Id == oldId).ToArray()) MoveKey(_explicitSignalSummaries, key, (newId, key.Signal));
+        foreach (var key in _signalDescriptions.Keys.Where(k => k.Id == oldId).ToArray()) MoveKey(_signalDescriptions, key, (newId, key.Signal));
+        foreach (var key in _editedSignalComments.Keys.Where(k => k.Id == oldId).ToArray()) MoveKey(_editedSignalComments, key, (newId, key.Signal));
+    }
+
     internal DbcDisplayNames Copy()
     {
         var copy = new DbcDisplayNames();
