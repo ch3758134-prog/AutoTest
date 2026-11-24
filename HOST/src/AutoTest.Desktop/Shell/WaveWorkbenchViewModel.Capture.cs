@@ -157,7 +157,7 @@ public sealed partial class WaveWorkbenchViewModel
             NotifyChartChanged();
         }, () => !_closed && !IsObserving && !IsCapturing && SelectedSignal is not null);
         StartObserveCommand = new DelegateCommand(async () => await StartObservationAsync(),
-            () => !_closed && !IsObserving && !_realTest.IsRunning &&
+            () => !_closed && !IsIndependentArchive && !IsObserving && !_realTest.IsRunning &&
                 _hardware.IsConnected && Tracks.Count > 0);
         StopObserveCommand = new DelegateCommand(() => StopObservation(),
             () => !_closed && IsObserving && !IsCapturing);
@@ -167,7 +167,7 @@ public sealed partial class WaveWorkbenchViewModel
             if (!IsPreviewPaused) NotifyChartChanged();
         }, () => !_closed && IsObserving);
         StartCaptureCommand = new DelegateCommand(async () => await StartCaptureAsync(),
-            () => !_closed && !IsCapturing && !_realTest.IsRunning &&
+            () => !_closed && !IsIndependentArchive && !IsCapturing && !_realTest.IsRunning &&
                 _hardware.IsConnected && Tracks.Count > 0);
         StopCaptureCommand = new DelegateCommand(async () => await StopCaptureAsync(),
             () => !_closed && IsCapturing);
