@@ -83,6 +83,10 @@
    <DockPanel LastChildFill="True">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center"
      chrome:WindowChrome.IsHitTestVisibleInChrome="True">
+     <Button Content="记录与报告" Command="{Binding OpenRecordHistoryCommand}"
+      Style="{StaticResource AtQuietButton}" FontSize="13" Foreground="#334D69"
+      MinHeight="26" Padding="10,3" Margin="0,0,8,0"
+      ToolTip="按 ECU 编号查询真实检测和开发记录、查看与导出报告"/>
      <Button Content="开发与调试" Command="{Binding ShowEngineerWorkspaceCommand}"
       Visibility="{Binding IsProductionWorkspace,Converter={StaticResource BoolToVisibility}}"
       Style="{StaticResource AtQuietButton}" FontSize="13" Foreground="#334D69"
@@ -128,8 +132,8 @@
       <MenuItem Header="打开工程" Command="{Binding OpenProjectCommand}" InputGestureText="Ctrl+O"/>
       <MenuItem Header="保存当前" Command="{Binding SaveActiveCommand}" InputGestureText="Ctrl+S"/>
       <Separator/>
-      <MenuItem Header="新建测试项目" Command="{Binding NewTestProjectCommand}"/>
-      <MenuItem Header="新建独立用例定义（需加入测试项目）" Command="{Binding NewTestProgramCommand}"/>
+      <MenuItem Header="打开测试项目" Command="{Binding OpenFirstTestProjectCommand}"/>
+      <MenuItem Header="新建测试用例" Command="{Binding NewTestProgramCommand}"/>
       <MenuItem Header="导入 DBC" Command="{Binding ImportDbcCommand}"/>
       <Separator/>
       <MenuItem Header="退出 AutoTest" Click="Exit_Click" InputGestureText="Alt+F4"/>
@@ -148,7 +152,7 @@
       <MenuItem Header="显示／隐藏观察区" Click="ToggleBottom_Click"/>
       <MenuItem Header="显示／隐藏属性区" Click="ToggleInspector_Click"/>
       <Separator/>
-      <MenuItem Header="检测准备 · 配置与实测" Command="{Binding OpenProjectConfigurationOverviewCommand}"/>
+      <MenuItem Header="检测准备" Command="{Binding OpenProjectConfigurationOverviewCommand}"/>
      </MenuItem>
      <MenuItem Header="运行">
       <MenuItem Header="检查当前开发调试范围" Command="{Binding CheckActiveCommand}"/>
@@ -162,8 +166,8 @@
       <MenuItem Header="波形配置" Command="{Binding OpenWaveConfigCommand}"/>
        <MenuItem Header="CAN 监视" Command="{Binding OpenCanMonitorCommand}"/>
       <Separator/>
-      <MenuItem Header="UDS 工作台（尚未接入）" IsEnabled="False"/>
-      <MenuItem Header="原生烧录配置（当前 ECU 工程）" Command="{Binding OpenNativeFlashProfileCommand}"/>
+
+
       <MenuItem Header="ECU 烧录工具" Command="{Binding OpenFlashWorkbenchCommand}" ToolTip="实测过的 CanTool 流程，独立专业窗口；切换 USB 所有权前先断开主工位连接"/>
      </MenuItem>
      <MenuItem Header="帮助" Command="{Binding HelpCommand}"/>
