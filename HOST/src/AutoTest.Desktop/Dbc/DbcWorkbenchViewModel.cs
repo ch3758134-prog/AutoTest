@@ -300,7 +300,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         { StatusMessage = error.Message; }
     }
 
-    private readonly ProjectWorkspaceService _workspace;
+    private readonly ProjectWorkspaceService? _workspace;
     private readonly DbcEditorDialogs _dialogs;
     private DbcEditorSession _session;
     private DbcMessageRow? _selectedMessage;
@@ -319,7 +319,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
     private string _messageSearchText = "";
 
     public DbcWorkbenchViewModel(
-        ProjectWorkspaceService workspace, DbcEditorDialogs dialogs, DbcEditorSession opened)
+        ProjectWorkspaceService? workspace, DbcEditorDialogs dialogs, DbcEditorSession opened)
     {
         _workspace = workspace;
         _dialogs = dialogs;
@@ -332,6 +332,23 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         ReloadCommand = new DelegateCommand(async () => await ReloadAsync(), () => !IsBusy);
         RefreshDocument(null, null);
     }
+
+    /// <summary>
+    /// The standalone file adapter reuses the exact DBC document/editor and
+    /// conflict-checked disk store, without creating or altering an ECU project.
+    /// Synthetic session IDs are ephemeral editor bookkeeping only.
+    /// </summary>
+    public static DbcWorkbenchViewModel ForIndependentFile(
+        DbcEditorDialogs dialogs, DbcWorkbenchDocument document, DbcFileReceipt receipt) =>
+        new(null, dialogs, new DbcEditorSession(
+            AutoTest.Core.ProjectId.New(), "", "", AutoTest.Core.AssetId.New(),
+            receipt.Revision, Path.GetFileNameWithoutExtension(receipt.Path),
+            document, receipt));
+
+    public bool IsIndependentFile => _workspace is null;
+    public string SourceDescription => IsIndependentFile
+        ? "独立 DBC 文件 · 保存到原始文件，不会自动加入 ECU 工程"
+        : "当前 ECU 工程 DBC · 保存将更新工程资源修订";
 
     public ObservableCollection<DbcMessageRow> Messages { get; } = new();
     public ObservableCollection<DbcSignalRow> Signals { get; } = new();
@@ -798,9 +815,27 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         {
             var messageId = SelectedMessage?.Message.Id;
             var signalName = SelectedSignal?.Name;
-            _session = await _workspace.SaveDbcEditorAsync(_session);
+            if (_workspace is null)
+            {
+                var receipt = await DbcDocumentStore.SaveAsync(
+                    _session.Document, _session.FileReceipt.Path, _session.FileReceipt.Sha256);
+                var verified = await DbcDocumentStore.OpenAsync(receipt.Path);
+                if (!string.Equals(verified.Receipt.Sha256, receipt.Sha256,
+                        StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException("独立 DBC 保存后的回读校验失败。");
+                _session = _session with
+                {
+                    Document = verified.Document, FileReceipt = verified.Receipt,
+                    AssetRevision = verified.Receipt.Revision
+                };
+                StatusMessage = "已保存独立 DBC 文件；未修改当前工程资源。";
+            }
+            else
+            {
+                _session = await _workspace.SaveDbcEditorAsync(_session);
+                StatusMessage = "DBC 已保存、重新读取并更新工程资源修订 " + AssetRevision;
+            }
             RefreshDocument(messageId, signalName);
-            StatusMessage = "DBC 已保存、重新读取并更新工程资源修订 " + AssetRevision;
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or
                                         ProjectDataException or InvalidDataException or FormatException or
@@ -823,7 +858,17 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         {
             var messageId = SelectedMessage?.Message.Id;
             var signalName = SelectedSignal?.Name;
-            _session = await _workspace.OpenDbcEditorAsync(_session.AssetId);
+            if (_workspace is null)
+            {
+                var loaded = await DbcDocumentStore.OpenAsync(_session.FileReceipt.Path);
+                _session = _session with
+                {
+                    Document = loaded.Document, FileReceipt = loaded.Receipt,
+                    AssetRevision = loaded.Receipt.Revision
+                };
+            }
+            else
+                _session = await _workspace.OpenDbcEditorAsync(_session.AssetId);
             _undo.Clear(); _redo.Clear();
             RefreshDocument(messageId, signalName);
             StatusMessage = "已从磁盘重新加载 DBC";
@@ -847,6 +892,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         RaisePropertyChanged(nameof(AssetName));
         RaisePropertyChanged(nameof(FilePath));
         RaisePropertyChanged(nameof(AssetRevision));
+        RaisePropertyChanged(nameof(SourceDescription));
         RaisePropertyChanged(nameof(SelectedValueDescriptions));
         RaisePropertyChanged(nameof(CanEdit));
         RaisePropertyChanged(nameof(StateDescription));
