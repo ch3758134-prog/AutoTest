@@ -94,11 +94,11 @@
 
   <Grid Grid.Row="1" Margin="12,12,12,10">
    <Grid.ColumnDefinitions>
-    <ColumnDefinition Width="34*" MinWidth="400"/>
+    <ColumnDefinition Width="39*" MinWidth="450"/>
     <ColumnDefinition Width="6"/>
-    <ColumnDefinition Width="23*" MinWidth="270"/>
+    <ColumnDefinition Width="22*" MinWidth="270"/>
     <ColumnDefinition Width="6"/>
-    <ColumnDefinition Width="43*" MinWidth="330"/>
+    <ColumnDefinition Width="39*" MinWidth="330"/>
    </Grid.ColumnDefinitions>
 
    <!-- LEFT: SEND list is the one permanent complete raw-frame view;
@@ -139,7 +139,9 @@
       MouseDoubleClick="CanSendGrid_MouseDoubleClick"
       PreviewMouseRightButtonDown="CanSendGrid_RightClick"
       ScrollViewer.HorizontalScrollBarVisibility="Auto">
-      <DataGrid.ContextMenu>
+      <DataGrid.ColumnHeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}"><Setter Property="Padding" Value="4,5"/><Setter Property="FontSize" Value="12"/><Setter Property="Foreground" Value="#334963"/><Setter Property="VerticalContentAlignment" Value="Center"/></Style></DataGrid.ColumnHeaderStyle>
+       <DataGrid.CellStyle><Style TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}"><Setter Property="Padding" Value="3,2"/><Setter Property="VerticalContentAlignment" Value="Center"/></Style></DataGrid.CellStyle>
+       <DataGrid.ContextMenu>
        <ContextMenu DataContext="{Binding PlacementTarget.DataContext,RelativeSource={RelativeSource Self}}">
         <MenuItem Header="属性 / 完整编辑…" Click="CanProperties_Click"/>
         <MenuItem Header="编辑报文" Click="CanQuickEditMenu_Click"/>
@@ -150,25 +152,25 @@
        </ContextMenu>
       </DataGrid.ContextMenu>
       <DataGrid.Columns>
-       <DataGridTemplateColumn Header="勾选" Width="34">
+       <DataGridTemplateColumn Header="勾选" Width="42">
         <DataGridTemplateColumn.CellTemplate><DataTemplate>
          <CheckBox IsChecked="{Binding Included,Mode=TwoWay}" IsEnabled="{Binding CanToggleIncluded}"
           ToolTip="参与启动勾选发送；周期发送时可取消勾选暂停；行内单发独立"
           HorizontalAlignment="Center" VerticalAlignment="Center"/>
         </DataTemplate></DataGridTemplateColumn.CellTemplate>
        </DataGridTemplateColumn>
-       <DataGridTextColumn Header="报文" Binding="{Binding Name}" Width="54" MinWidth="48"/>
-       <DataGridTextColumn Header="CAN ID" Binding="{Binding PreviewId}" Width="82"/>
-       <DataGridTextColumn Header="DLC" Binding="{Binding PreviewDlc}" Width="32"/>
-       <DataGridTemplateColumn Header="完整 Data (HEX)" Width="*" MinWidth="170">
+       <DataGridTextColumn Header="报文" Binding="{Binding Name}" Width="76" MinWidth="65"/>
+       <DataGridTextColumn Header="CAN ID" Binding="{Binding PreviewId}" Width="96"/>
+       <DataGridTextColumn Header="DLC" Binding="{Binding PreviewDlc}" Width="42"/>
+       <DataGridTemplateColumn Header="DATA (HEX)" Width="*" MinWidth="182">
         <DataGridTemplateColumn.CellTemplate><DataTemplate>
          <TextBlock Text="{Binding PreviewData}" FontFamily="Consolas"
           FontSize="12" TextTrimming="None" VerticalAlignment="Center"
           ToolTip="{Binding PreviewFull}"/>
         </DataTemplate></DataGridTemplateColumn.CellTemplate>
        </DataGridTemplateColumn>
-       <DataGridTextColumn Header="方式" Binding="{Binding ModeLabel}" Width="74"/>
-       <DataGridTemplateColumn Header="操作" Width="78">
+       <DataGridTextColumn Header="方式" Binding="{Binding ModeLabel}" Width="88"/>
+       <DataGridTemplateColumn Header="操作" Width="94">
         <DataGridTemplateColumn.CellTemplate><DataTemplate>
          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
           <Button Content="单发" Padding="4,5" Margin="0,0,3,0"
@@ -264,8 +266,14 @@
        <StackPanel>
         <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="#244E74"
          TextTrimming="CharacterEllipsis" Margin="0,0,0,5"/>
-        <TextBlock Text="{Binding Summary}" Foreground="#627C9D" FontSize="10"
-         TextTrimming="CharacterEllipsis" Margin="0,0,0,7"/>
+        <TextBlock Text="{Binding Summary}" Foreground="#627C9D" FontSize="11" Margin="0,0,0,5"/>
+        <ItemsControl ItemsSource="{Binding Steps}" Margin="0,0,0,6">
+         <ItemsControl.ItemTemplate><DataTemplate>
+          <Border Background="#EDF3F9" CornerRadius="3" Padding="5,3" Margin="0,0,0,3">
+           <TextBlock Text="{Binding Summary}" Foreground="#355579" FontSize="12" TextWrapping="Wrap"/>
+          </Border>
+         </DataTemplate></ItemsControl.ItemTemplate>
+        </ItemsControl>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
          <Button Content="运行" Tag="{Binding}" Click="RunKeyAction_Click"
           PreviewMouseRightButtonUp="EditKeyAction_RightClick"
@@ -329,24 +337,26 @@
       EnableRowVirtualization="True"
       ScrollViewer.HorizontalScrollBarVisibility="Auto"
       PreviewMouseRightButtonDown="MonitorGrid_RightClick">
-      <DataGrid.ContextMenu>
+      <DataGrid.ColumnHeaderStyle><Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}"><Setter Property="Padding" Value="4,5"/><Setter Property="FontSize" Value="12"/><Setter Property="Foreground" Value="#334963"/><Setter Property="VerticalContentAlignment" Value="Center"/></Style></DataGrid.ColumnHeaderStyle>
+       <DataGrid.CellStyle><Style TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}"><Setter Property="Padding" Value="3,2"/><Setter Property="VerticalContentAlignment" Value="Center"/></Style></DataGrid.CellStyle>
+       <DataGrid.ContextMenu>
        <ContextMenu>
         <MenuItem Header="复制完整 CAN 帧" Click="CopyMonitorFrame_Click"/>
         <MenuItem Header="仅复制 HEX 数据" Click="CopyMonitorData_Click"/>
        </ContextMenu>
       </DataGrid.ContextMenu>
       <DataGrid.Columns>
-       <DataGridTextColumn Header="时间" Binding="{Binding Time}" Width="73"/>
-       <DataGridTextColumn Header="通道" Binding="{Binding Channel}" Width="48"/>
-       <DataGridTextColumn Header="CAN ID" Binding="{Binding Id}" Width="78"/>
-       <DataGridTextColumn Header="DLC" Binding="{Binding Dlc}" Width="34"/>
-       <DataGridTemplateColumn Header="完整 Data (HEX)" Width="*" MinWidth="170">
+       <DataGridTextColumn Header="时间" Binding="{Binding Time}" Width="104"/>
+       <DataGridTextColumn Header="通道" Binding="{Binding Channel}" Width="56"/>
+       <DataGridTextColumn Header="CAN ID" Binding="{Binding Id}" Width="96"/>
+       <DataGridTextColumn Header="DLC" Binding="{Binding Dlc}" Width="42"/>
+       <DataGridTemplateColumn Header="DATA (HEX)" Width="*" MinWidth="182">
         <DataGridTemplateColumn.CellTemplate><DataTemplate>
          <TextBlock Text="{Binding Data}" FontFamily="Consolas" FontSize="12"
           TextTrimming="None" VerticalAlignment="Center" ToolTip="{Binding FullFrame}"/>
         </DataTemplate></DataGridTemplateColumn.CellTemplate>
        </DataGridTemplateColumn>
-       <DataGridTextColumn Header="次数" Binding="{Binding Count}" Width="41"/>
+       <DataGridTextColumn Header="次数" Binding="{Binding Count}" Width="64"/>
       </DataGrid.Columns>
      </DataGrid>
      <Expander Grid.Row="2" Header="USB / 操作 / 错误日志（按需展开）"
@@ -386,7 +396,7 @@
   <Grid x:Name="PropertyOverlay" Grid.RowSpan="3" Panel.ZIndex="100"
         Background="#B2F5F7FB" Visibility="Collapsed"
         MouseLeftButtonDown="PropertyOverlay_MouseLeftButtonDown">
-   <Border MaxWidth="820" MaxHeight="760" Margin="20"
+   <Border x:Name="PropertyOverlayCard" MaxWidth="1120" MaxHeight="760" Margin="20"
            HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="#FFFFFF"
            BorderBrush="#DDE6ED" BorderThickness="1" CornerRadius="10"
            Padding="4">
