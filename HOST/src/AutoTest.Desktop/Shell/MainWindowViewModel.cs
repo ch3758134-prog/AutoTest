@@ -1951,9 +1951,9 @@ public sealed partial class MainWindowViewModel : BindableBase
         {
             Title = "DBC 编辑器 · " + name,
             Content = new DbcWorkbenchView(editor),
-            Width = Math.Min(1260, availableWidth),
-            Height = Math.Min(800, availableHeight),
-            MinWidth = Math.Min(820, availableWidth),
+            Width = Math.Min(1560, availableWidth),
+            Height = Math.Min(850, availableHeight),
+            MinWidth = Math.Min(980, availableWidth),
             MinHeight = Math.Min(520, availableHeight),
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             ShowInTaskbar = false
