@@ -12,8 +12,11 @@ public static class MonotonicDeadline
     {
         if (periodTicks <= 0)
             throw new ArgumentOutOfRangeException(nameof(periodTicks));
+        // Task.Delay may resume slightly before the previously scheduled tick.
+        // The timestamp is monotonic; it is the scheduled deadline that lies
+        // in the future. A harmless early wakeup is NOT a device failure.
         if (nowTicks < previousScheduledTicks)
-            throw new ArgumentOutOfRangeException(nameof(nowTicks));
+            nowTicks = previousScheduledTicks;
         var next = checked(previousScheduledTicks + periodTicks);
         if (nowTicks <= next) return new(next, 0);
         var skipped = checked((nowTicks - next) / periodTicks + 1);
