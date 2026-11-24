@@ -72,6 +72,16 @@
      </StackPanel>
      <TextBlock x:Name="TargetHint" Visibility="Collapsed" Foreground="#64758C"
       FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0"/>
+     <Border x:Name="TargetDetailCard" Visibility="Collapsed" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,10,0,0">
+      <StackPanel>
+       <TextBlock Text="配置核对" FontWeight="SemiBold" Foreground="#34475C" Margin="0,0,0,8"/>
+       <TextBlock x:Name="TargetDetail" TextWrapping="Wrap" Foreground="#42576C" FontSize="12"/>
+       <Viewbox x:Name="WaveReferenceView" Visibility="Collapsed" Stretch="Uniform" Margin="0,10,0,0">
+        <Canvas x:Name="WaveReferenceCanvas" Width="360" Height="184" Background="#F7FAFD" ClipToBounds="True"/>
+       </Viewbox>
+       <TextBlock x:Name="WaveReferenceStatus" TextWrapping="Wrap" Foreground="#526B84" FontSize="11" Margin="0,8,0,0"/>
+      </StackPanel>
+     </Border>
     </StackPanel>
     <ItemsControl x:Name="ParameterList" Grid.Row="1" ItemsSource="{Binding ParameterFields}">
      <ItemsControl.ItemTemplate>
