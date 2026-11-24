@@ -139,7 +139,7 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
         AddFieldMappingCommand = new DelegateCommand(AddMapping);
         RemoveFieldMappingCommand = new DelegateCommand(RemoveMapping,
             () => SelectedMapping is not null);
-        _ = LoadIdentityPolicyAsync();
+        // Legacy station identity configuration is not loaded for this device or production.
         _workspace.CurrentChanged += OnProjectChanged;
         OnProjectChanged(this, EventArgs.Empty);
         try
@@ -746,82 +746,30 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
             }
             var captured = result.Event;
             var capturedHex = _source?.LastFrameHex ?? "";
-            // Cross-project lookup is read-only, from an explicitly registered
-            // model index. It does not switch the live project on scan arrival.
-            StationModelCatalog.ResolveResult? station = null;
-            var policy = _activeIdentityPolicy;
-            var activeProject = _workspace.Current?.Definition;
-            var fixedModelFromProject = policy?.Format == ScanIdentityPolicy.SerialOnly ||
-                (policy?.Format == ScanIdentityPolicy.Mapped &&
-                 policy.FieldMappings?.Any(x =>
-                     x.Target == ScanIdentityPolicy.ModelTarget) != true);
-            var effectivePolicy = fixedModelFromProject &&
-                activeProject?.EcuModelCode is { Length: > 0 } activeModel
-                ? policy with { FixedModelCode = activeModel } : policy;
-            ScanIdentityResult? identity = effectivePolicy?.Decode(captured.Scan.Text);
-            try
-            {
-                // Only explicit cross-model label formats may use the old
-                // optional catalogue. A serial-only scanner gets its model
-                // from the current ECU project and never needs registration.
-                if (!fixedModelFromProject &&
-                    identity?.Parsed == true && identity.ModelCode is { } code)
-                    station = await _catalog.ResolveAsync(code, ct);
-            }
-            catch (Exception error) when (error is IOException or InvalidDataException or
-                                          UnauthorizedAccessException or JsonException)
-            { SetStatus("工位型号索引不可用：" + error.Message); }
-            var resolvedStation = station;
+            // The scanner is only an input device. Engineering previews the
+            // current project expectation; production independently checks the
+            // pinned deployment with the SAME matcher, never a global rule.
             OnUi(() =>
             {
                 try
                 {
                     LastRaw = captured.Scan.Text;
                     LastHex = capturedHex;
-                    // A real raw sample is useful even before the station has
-                    // a published decoder. Do not infer a format from it.
-                    if (string.IsNullOrWhiteSpace(SampleRaw))
-                        SampleRaw = captured.Scan.Text;
-                    var preview = policy is null
-                        ? new ProductionBarcodePreflightResult(
-                            "SCAN_POLICY_NOT_CONFIGURED", null, null, null,
-                            "未保存工位条码格式；请先选择格式并用样例验证，扫码不会自动匹配工程。")
-                        : ProductionBarcodePreflight.Inspect(
-                            captured.Scan.Text, _workspace.Current?.Definition, policy);
-                    var sameIdentityAsPrevious = !string.IsNullOrEmpty(preview.DutSerial) &&
-                        string.Equals(LastModel, preview.ModelCode, StringComparison.Ordinal) &&
-                        string.Equals(LastSerial, preview.DutSerial, StringComparison.Ordinal);
+                    SampleRaw = captured.Scan.Text;
+                    var project = _workspace.Current?.Definition;
+                    var preview = ProductionBarcodePreflight.InspectExpected(captured.Scan.Text, project);
                     LastModel = preview.ModelCode ?? "";
                     LastSerial = preview.DutSerial ?? "";
                     LastMappedFields = DescribeFields(preview.MappedFields);
-                    LastDecision = sameIdentityAsPrevious
-                        ? "SCAN_REPEAT_IDENTITY" : preview.Code;
+                    LastDecision = preview.Code;
                     ProductionPreview = "";
-                    _resolvedManifestPath = identity?.Parsed == true &&
-                        resolvedStation?.Matched == true
-                        ? resolvedStation.Entry?.ManifestPath : null;
-                    MatchedProjectName = fixedModelFromProject &&
-                        preview.IdentityMatched
-                        ? _workspace.Current?.Definition.Name ?? ""
-                        : resolvedStation?.Matched == true
-                            ? resolvedStation.Definition?.Name ?? "" : "";
+                    _resolvedManifestPath = null;
+                    MatchedProjectName = preview.IdentityMatched ? project?.Name ?? "" : "";
                     SwitchProjectCommand.RaiseCanExecuteChanged();
-                    var repeatNote = sameIdentityAsPrevious
-                        ? "重复识别同一编号；仅更新本次扫码观察，不算新增 DUT，也不会启动复检。"
-                        : "";
-                    Status = repeatNote +
-                        (fixedModelFromProject
-                            ? preview.Explanation +
-                              (preview.IdentityMatched
-                                  ? " · 当前工程：" + MatchedProjectName : "")
-                            : resolvedStation?.Matched == true
-                                ? preview.Explanation + " · 已登记工程：" +
-                                  MatchedProjectName
-                                : preview.Explanation + (resolvedStation is null
-                                    ? "" : " · " + resolvedStation.Explanation));
-                    // Real scan input is shared with the operator projection.
-                    // A repeated physical scan is still a distinct observation,
-                    // but it must never create a second DUT automatically.
+                    Status = project is null ? "已接收完整串口数据；工程扫码期望在检测准备中编辑。"
+                        : "开发工程预览：" + preview.Explanation;
+                    // Production consumes the same real frame, but never the
+                    // editable engineering preview or manually entered sample.
                     try { CompleteBarcodeReceived?.Invoke(captured.Scan.Text); }
                     catch { /* UI observers cannot alter scanner safety. */ }
                 }
