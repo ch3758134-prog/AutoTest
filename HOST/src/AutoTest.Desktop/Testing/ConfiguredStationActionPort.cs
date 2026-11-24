@@ -53,7 +53,10 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
     {
         var project = _projects.Current ?? throw new InvalidOperationException("工程未打开。");
         _buttons.Clear(); _can.Clear(); _active = []; _activeProfile = null;
-        _unknown = false; _hasRawKey = false; _rawMask = 0;
+        // An ACKed KEY request persists across TEST case boundaries. Do not
+        // silently assume all switches are open after the previous run.
+        _unknown = false; _hasRawKey = false;
+        _rawMask = _hardware.AcknowledgedKeyRequestMask ?? 0;
         foreach (var target in mappings)
         {
             ct.ThrowIfCancellationRequested();
@@ -326,8 +329,17 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
                 if (!_hasRawKey || _buttons.Count > 0)
                     throw new InvalidOperationException("原始 20 Key 模式未授权或与功能按键冲突。");
                 var request = RawKeyAction.Parse(action);
-                if (request.Action == RawKeyOperation.Pulse && _rawMask != 0)
-                    throw new InvalidOperationException("原始 Key 正在保持，先释放后再短按。");
+                if (request.Action == RawKeyOperation.Pulse &&
+                    (_hardware.AcknowledgedKeyRequestMask is not 0))
+                    throw new InvalidOperationException(
+                        "短按要求 KEY 已明确断开；当前可能仍保持或状态未知，请先执行 Release。");
+                if (request.Action == RawKeyOperation.Wait)
+                {
+                    // Pure wait is not a KEY request. It neither changes the
+                    // physical output nor resets the last requested mask.
+                    await Task.Delay(request.DurationMs, ct);
+                    return Ack("RAW_KEY_WAIT_NO_CAN");
+                }
                 bool rawKeyAttempted = false;
                 try
                 {
@@ -364,18 +376,11 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
                 }
                 catch
                 {
-                    if (rawKeyAttempted)
-                    {
-                        _unknown = true;
-                        try
-                        {
-                            using var release = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-                            await _hardware.SendTestCanAsync(
-                                KeypadCommandCodec.EncodeReleaseAll(), _fingerprint, release.Token);
-                            _rawMask = 0; _unknown = false;
-                        }
-                        catch { /* Physical state remains UNKNOWN. */ }
-                    }
+                    // Never send an implicit release on cancellation, a USB
+                    // write error or a timed hold interruption. The caller
+                    // can request Release explicitly; the last state may
+                    // have changed despite a missing ACK.
+                    if (rawKeyAttempted) _unknown = true;
                     throw;
                 }
             }
@@ -432,21 +437,9 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
             }
             catch
             {
-                if (changed)
-                {
-                    try
-                    {
-                        using var emergencyRelease = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-                        await _hardware.SendTestCanAsync(
-                            KeypadCommandCodec.EncodeMask(plan.MaskAfterOperation),
-                            _fingerprint, emergencyRelease.Token);
-                        _active = plan.ActiveAfterOperation;
-                    }
-                    catch { _unknown = true; }
-                }
-                else if (attempted) _unknown = true;
-                // A failure before a physical write was attempted does not establish
-                // an unknown output state. A failed attempted write always does.
+                // The combination may already have changed. Never transmit
+                // a hidden "restore" mask during abnormal termination.
+                if (attempted || changed) _unknown = true;
                 throw;
             }
         }
@@ -522,14 +515,11 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
             try
             {
                 await StopPeriodicWorkersAsync();
-                // Release regardless of our last ACK: a timed-out physical command can
-                // have affected the board even if the host did not receive confirmation.
-                if (_buttons.Count > 0 || _hasRawKey)
-                {
-                    await _hardware.SendTestCanAsync(KeypadCommandCodec.EncodeReleaseAll(),
-                        _fingerprint, ct);
-                    _active = []; _rawMask = 0;
-                }
+                // KEY_SIM has persistent requested state, by operator contract:
+                // ending a TEST case, cancellation, or normal cleanup does NOT
+                // automatically release it. Only an explicit Release / zero-mask
+                // operation issues the all-open command. USB disconnect makes
+                // the state unknown rather than inventing a release ACK.
             }
             finally
             {
