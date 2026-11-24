@@ -166,7 +166,7 @@ public sealed record ScanMatchSettingsDocument(int SchemaVersion, string Name, b
                  recipe.TargetEcuCanKbps is not (250 or 500) ||
                  string.IsNullOrWhiteSpace(recipe.FirmwareReleaseLabel)))
                 throw new ProjectDataException("SCAN_FLASH_BUNDLE",
-                    "必须烧录：请选择目标固件、已有烧录配置、250/500k 码率和软件发布名称；TEST 中仍需唯一 Flash 步骤。");
+                    "请选择目标固件、烧录配置、250/500 kbit/s 及软件版本名称。");
             if (recipe.FlashJobFingerprint is { Length: > 0 } sha &&
                 (sha.Length != 64 || !sha.All(Uri.IsHexDigit)))
                 throw new ProjectDataException("SCAN_FLASH_SHA",

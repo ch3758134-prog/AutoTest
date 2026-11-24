@@ -200,7 +200,7 @@ public sealed partial class MainWindowViewModel : BindableBase
                 "工程资源：左侧点击打开。测试用例：Ctrl+Space 新增、F2 编辑名称、F9 断点、" +
                 "Ctrl+F 查找、Ctrl+Z/Y 撤销/重做、Delete 删除、拖动调整顺序。" +
                 "\n测试项目勾选只作用于本次检查，工程默认独立保存。" +
-                "\n自动 TEST 内已有 FLASH 步骤源码候选，尚需 Windows 与真实 ECU 验收；正式生产的前置必烧录仍在独立集成中。",
+                "\n工程测试可运行前置烧录和全部用例；正式生产放行仍须整机验收。",
                 "AutoTest · 编辑帮助", MessageBoxButton.OK, MessageBoxImage.Information));
         _hardware.EvidenceRecorded += line =>
             global::System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() =>

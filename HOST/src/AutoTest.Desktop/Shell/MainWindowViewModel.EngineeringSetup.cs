@@ -282,7 +282,7 @@ public sealed partial class MainWindowViewModel
                 string.Equals(project.ManifestPath, _workspace.Current?.ManifestPath,
                     StringComparison.OrdinalIgnoreCase))
                 UpdateSetupStatuses(model, test, scan, flash, station,
-                    "已显示工程配置和可确认的工位事实。正式夹具/实体 START → 前置 Flash → TEST → RECORD 尚未完成整机现场验收，不能显示生产 PASS。");
+                    "工程配置已更新。正式生产运行仍需完成工位验收。");
         }
     }
 }

@@ -628,11 +628,11 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                 AddField("firmwareRelease", "软件发布名称／目标版本", r.FirmwareReleaseLabel ?? "",
                     "例如 EPB-R5；这是人类可读标识，软件实际版本仍需 ECU 专门验收。");
                 AddField("flashSettings", "烧录工艺配置（元数据）", AssetNameFor(r.FlashSettingsAssetId),
-                    "引用项目中已有烧录配置；真正执行仍使用 TEST Flash 步骤里的 CanTool XML/HEX/SafetyFile。",
+                    "使用工程内已保存的烧录设置。",
                     AssetNames(ProjectWorkspaceService.FlashSettingsKind));
                 AddField("ecuCanBaud", "目标 ECU CAN 波特率 kbit/s",
                     r.TargetEcuCanKbps?.ToString(CultureInfo.InvariantCulture) ?? "",
-                    "必须与主控 0x43 读回和 CanTool XML 一致；仅烧录支持 250k/500k。",
+                    "须与主控波特率读回一致；当前配方支持 250/500 kbit/s。",
                     new[] { "" }.Concat(ScanFlashPolicy.SupportedEcuCanKbps.Select(
                         x => x.ToString(CultureInfo.InvariantCulture))).ToArray());
                 AddField("flashJob", "已冻结的 CanTool 任务 SHA256", r.FlashJobFingerprint ?? "",
