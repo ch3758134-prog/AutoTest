@@ -397,6 +397,9 @@ public sealed partial class ManualBenchViewModel
 
     private CancellationTokenSource? _canBatchStop;
     private Task? _canBatchTask;
+    private string? _activeCanManifest;
+    private Guid? _activeCanProjectId;
+    private ManualBenchCanDraftStore.DbcPin[] _activeCanPins = [];
     private bool _canBatchRunning;
     private int _newCanRowNumber;
     private BenchCanRow? _selectedCanRow;
@@ -685,21 +688,41 @@ public sealed partial class ManualBenchViewModel
             throw new IOException("USB 未连接，请先点击顶部“连接”。");
         if (IsCanBatchRunning)
             throw new InvalidOperationException("ECU CAN 正在发送，请先停止当前任务。");
+        var project = _projects.Current ?? throw new InvalidOperationException("请先打开工程。");
         var prepared = PrepareCanRows(single);
         foreach (var row in prepared) await VerifyCanRowDbcFreshAsync(row.Row);
+        var pins = prepared.Select(x => x.Row.BoundDbcPin).OfType<ManualBenchCanDraftStore.DbcPin>().ToArray();
         var fingerprint = BatchFingerprint(prepared);
         await _hardware.AuthorizeManualCanBatchAsync(fingerprint,
             "AUTHORIZE BENCH CAN " + fingerprint, prepared.Select(item => item.Frame).ToArray(),
             maxWrites: prepared.Any(item => item.PeriodMs > 0) ? null : prepared.Length);
+        _activeCanManifest = project.ManifestPath;
+        _activeCanProjectId = project.Definition.Id.Value;
+        _activeCanPins = pins;
+        if (!ActiveCanProjectStillValid())
+        {
+            await _hardware.RevokeManualCanBatchAsync();
+            throw new InvalidOperationException("发送准备期间工程或所用 DBC 已变化，请重新启动发送。");
+        }
         var stop = new CancellationTokenSource();
         _canBatchStop = stop;
         var authorized = prepared.Select(x => x.Row).ToHashSet();
         foreach (var row in CanSendRows) row.SetBatchMembership(true, authorized.Contains(row));
         foreach (var row in prepared) { row.Row.Sent = 0; row.Row.Result = "运行中"; }
         IsCanBatchRunning = true;
-        _canBatchTask = RunCanRowsAsync(prepared, fingerprint, stop, single is not null);
         Status = prepared.Any(item => item.PeriodMs > 0) ? "ECU CAN 周期发送中，直至主动停止或连接中断。" : "ECU CAN 单次发送。";
+        _canBatchTask = RunCanRowsAsync(prepared, fingerprint, stop, single is not null);
     });
+
+    private bool ActiveCanProjectStillValid()
+    {
+        var current = _projects.Current;
+        return current is not null && current.Definition.Id.Value == _activeCanProjectId &&
+            string.Equals(current.ManifestPath, _activeCanManifest, StringComparison.OrdinalIgnoreCase) &&
+            _activeCanPins.All(pin => current.Definition.Assets.Any(asset =>
+                asset.Id.Value == pin.AssetId && asset.Revision == pin.Revision &&
+                string.Equals(asset.Sha256, pin.Sha256, StringComparison.OrdinalIgnoreCase)));
+    }
 
     private async Task RunCanRowsAsync(PreparedCanRow[] plan, string fingerprint,
         CancellationTokenSource stop, bool forceSingle)
@@ -784,6 +807,11 @@ public sealed partial class ManualBenchViewModel
                     entry.Row.Sent > 0 ? (entry.PeriodMs == 0 ? "单发完成 · " : "已停止 · ") +
                     entry.Row.Sent + " 次 USB ACK" : "未发送";
             _canBatchStop = null;
+            _activeCanManifest = null;
+            _activeCanProjectId = null;
+            _activeCanPins = [];
+            if (failure is null) Status = !_hardware.IsConnected ? "ECU CAN 已停止：USB 连接中断。" :
+                plan.All(x => x.PeriodMs == 0) ? "ECU CAN 单次发送结束。" : "ECU CAN 周期发送已停止。";
             foreach (var row in CanSendRows) row.SetBatchMembership(false, false);
             IsCanBatchRunning = false;
             stop.Dispose();
