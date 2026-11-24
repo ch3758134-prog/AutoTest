@@ -44,6 +44,8 @@ public static class TestTargetCatalog
                 if (asset.Kind is not (ProjectWorkspaceService.DbcKind or
                     ProjectWorkspaceService.ControllerKind or
                     ProjectWorkspaceService.WaveSettingsKind)) continue;
+                if (includeAllDbcSignals && asset.Kind != ProjectWorkspaceService.DbcKind)
+                    continue;
                 if (activeTcf is not null)
                 {
                     if (asset.Kind == ProjectWorkspaceService.DbcKind &&
