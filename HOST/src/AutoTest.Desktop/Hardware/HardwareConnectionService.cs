@@ -209,6 +209,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
     private string? _approvedPlan;
     private volatile bool _manualCanBatchApproved;
     private string? _manualBatchFingerprint;
+    private readonly Dictionary<Guid, string> _manualCanRows = new();
     private volatile bool _manualKeyActionApproved;
     private string? _manualKeyActionFingerprint;
     public bool IsManualKeyActionApproved => _manualKeyActionApproved;
@@ -269,6 +270,8 @@ public sealed class HardwareConnectionService : IAsyncDisposable
                 _manualKeyActionFingerprint = null;
                 _manualCanBatchApproved = false;
                 _manualBatchFingerprint = null;
+                _manualCanRows.Clear();
+                _link?.RevokeAllManualCanRows();
                 AnnounceManualBatch(false);
                 _testRunApproved = false;
                 _approvedPlan = null;
@@ -464,6 +467,77 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         finally { _lifecycle.Release(); }
     }
 
+    /// <summary>Permit one exact ECU CAN frame for this connection. Each row
+    /// can stop without revoking any other row's authorization.</summary>
+    public async Task<Guid> AuthorizeManualCanRowAsync(CanFrame frame, CancellationToken ct = default)
+    {
+        await _lifecycle.WaitAsync(ct);
+        try
+        {
+            if (_usb?.State != UsbSessionState.Connected || _link is null ||
+                _testRunApproved || _manualBatchFingerprint is not null ||
+                IsFlashSecuritySensitive)
+                throw new InvalidOperationException("USB 未连接或 TEST/FLASH 占用 ECU CAN。");
+            if (frame.Role != BusRole.DutCan)
+                throw new ArgumentException("只能在 ECU CAN 上发送手动报文。");
+            RequireConfiguredEcuCanBitrate();
+            var payload = CanFrameCodec.ToUsbPayload(frame, StationCanWiring.Current);
+            var token = Guid.NewGuid();
+            _link.AuthorizeManualCanRow(token, payload);
+            _manualCanRows.Add(token, Convert.ToHexString(payload));
+            if (!_manualCanBatchApproved)
+            {
+                _manualCanBatchApproved = true;
+                AnnounceManualBatch(true);
+            }
+            return token;
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    public async Task SendManualCanRowAsync(CanFrame frame, Guid token, CancellationToken ct)
+    {
+        await _lifecycle.WaitAsync(ct);
+        try
+        {
+            if (_usb?.State != UsbSessionState.Connected || _testRunApproved ||
+                frame.Role != BusRole.DutCan)
+                throw new IOException("当前主控连接不可发送 ECU CAN。");
+            RequireConfiguredEcuCanBitrate();
+            var payload = CanFrameCodec.ToUsbPayload(frame, StationCanWiring.Current);
+            if (!_manualCanRows.TryGetValue(token, out var granted) ||
+                !string.Equals(granted, Convert.ToHexString(payload), StringComparison.Ordinal))
+                throw new UnauthorizedAccessException("报文授权已经失效或发送内容发生改变。");
+            await _usb.RequestAsync(MainControllerCodec.CanSend, payload,
+                TimeSpan.FromSeconds(3), ct);
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    public async Task RevokeManualCanRowAsync(Guid token)
+    {
+        await _lifecycle.WaitAsync();
+        try
+        {
+            _link?.RevokeManualCanRow(token);
+            _manualCanRows.Remove(token);
+            if (_manualCanRows.Count == 0 && _manualBatchFingerprint is null)
+            {
+                _manualCanBatchApproved = false;
+                AnnounceManualBatch(false);
+            }
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    public async Task SendManualBenchCanOnceAsync(CanFrame frame,
+        CancellationToken ct = default)
+    {
+        var token = await AuthorizeManualCanRowAsync(frame, ct);
+        try { await SendManualCanRowAsync(frame, token, ct); }
+        finally { await RevokeManualCanRowAsync(token); }
+    }
+
     /// <summary>Authorize a bounded snapshot of ECU CAN frames, not an open-ended raw CAN route.</summary>
     public async Task AuthorizeManualCanBatchAsync(string fingerprint, string confirmation,
         IReadOnlyList<CanFrame> frames, int? maxWrites = 3000, CancellationToken ct = default)
@@ -514,6 +588,8 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             // ECU CAN and KEY CAN are separate manual tasks.
             _manualCanBatchApproved = false;
             _manualBatchFingerprint = null;
+            _manualCanRows.Clear();
+            _link?.RevokeAllManualCanRows();
             AnnounceManualBatch(false);
             Record("ECU CAN 任务已停止；不代表 ECU 电气状态发生改变。");
         }
@@ -853,6 +929,8 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             _link?.RevokeManualCanBatch();
             _manualCanBatchApproved = false;
             _manualBatchFingerprint = null;
+            _manualCanRows.Clear();
+            _link?.RevokeAllManualCanRows();
             AnnounceManualBatch(false);
             _testRunApproved = false;
             _approvedPlan = null;
