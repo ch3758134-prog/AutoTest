@@ -1003,7 +1003,7 @@ public partial class TestStepInspector : UserControl
             var settings = choice.WaveSettings!;
             var points = await Task.Run(() =>
             {
-                var catalog = new WaveReferenceCatalog(Path.Combine(choice.WaveProjectRoot!,
+                var catalog = new WaveReferenceCatalog(System.IO.Path.Combine(choice.WaveProjectRoot!,
                     "wave-records", "references"));
                 var matches = catalog.List().Where(x =>
                     x.Name == settings.ReferenceName &&
