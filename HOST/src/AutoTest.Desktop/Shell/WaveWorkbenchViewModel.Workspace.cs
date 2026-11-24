@@ -19,6 +19,10 @@ public sealed class WaveSignalTrack : BindableBase
     private string _state = "等待数据";
     private long _received;
     private bool _visible = true;
+    private bool _stepStyle;
+    private bool _hasGap;
+    private bool _hasTimeError;
+    private string _clockLabel = "未收到时间戳";
     public MappingChoice Choice { get; }
     public string Key => Choice.Mapping.Name;
     public string Name => Choice.Mapping.SignalName;
@@ -32,29 +36,44 @@ public sealed class WaveSignalTrack : BindableBase
     public bool Visible { get => _visible; set => SetProperty(ref _visible, value); }
     public DateTimeOffset? LastSampleUtc { get; private set; }
     public IReadOnlyList<WaveChartPoint> Points => _recent.ToArray();
-    public bool StepStyle => Choice.ValueLabels is { Count: > 0 };
+    public bool StepStyle
+    {
+        get => _stepStyle;
+        set => SetProperty(ref _stepStyle, value);
+    }
+    public string ClockLabel
+    {
+        get => _clockLabel;
+        private set => SetProperty(ref _clockLabel, value);
+    }
 
     public WaveSignalTrack(MappingChoice choice, string color)
     {
         Choice = choice;
         Color = color;
+        _stepStyle = choice.ValueLabels is { Count: > 0 };
     }
 
     public void Reset()
     {
         _recent.Clear();
+        _hasGap = false;
+        _hasTimeError = false;
+        ClockLabel = "未收到时间戳";
         LastSampleUtc = null;
         Latest = "—";
         State = "等待 CAN 帧";
         Received = 0;
     }
 
-    public void Add(double seconds, double value, DateTimeOffset utc, bool gap)
+    public void Add(double seconds, double value, DateTimeOffset utc, bool gap,
+        TimeQuality quality)
     {
         if (!double.IsFinite(seconds) || !double.IsFinite(value)) { State = "无效数据"; return; }
         if (_recent.TryPeek(out _) && _recent.Count > 0 &&
             _recent.Last().Seconds >= seconds)
         {
+            _hasTimeError = true;
             State = "时间戳未递增";
             return;
         }
@@ -64,7 +83,15 @@ public sealed class WaveSignalTrack : BindableBase
             (string.IsNullOrWhiteSpace(Unit) ? "" : " " + Unit);
         LastSampleUtc = utc;
         Received++;
-        State = gap ? "存在数据缺口" : "接收正常";
+        _hasGap |= gap;
+        ClockLabel = quality switch
+        {
+            TimeQuality.HostArrivalOnly => "主机接收时间 · 非硬件同步",
+            TimeQuality.SynchronizedHardware => "硬件同步时间",
+            _ => "时间质量：" + quality
+        };
+        State = _hasTimeError ? "时间序列异常" :
+            _hasGap ? "曾出现数据缺口" : "接收正常";
     }
 
     public void Mark(string message) => State = message;
@@ -126,6 +153,15 @@ public sealed partial class WaveWorkbenchViewModel
     public DelegateCommand ShowArchiveCommand { get; private set; } = null!;
     public DelegateCommand CompareCommand { get; private set; } = null!;
     public DelegateCommand ClearComparisonCommand { get; private set; } = null!;
+    public DelegateCommand<WaveReferenceEntry> ViewReferenceCommand { get; private set; } = null!;
+    public string ComparisonTone => _comparison is null ? "Idle" :
+        _comparison.Verdict switch
+        {
+            AutoTest.Contracts.Verdict.Pass => "Pass",
+            AutoTest.Contracts.Verdict.Fail => "Fail",
+            AutoTest.Contracts.Verdict.Inconclusive => "Warning",
+            _ => "Warning"
+        };
     public DelegateCommand EarlierWindowCommand { get; private set; } = null!;
     public DelegateCommand LaterWindowCommand { get; private set; } = null!;
     public DelegateCommand LatestWindowCommand { get; private set; } = null!;
@@ -181,6 +217,7 @@ public sealed partial class WaveWorkbenchViewModel
                 _referenceOverlay = null;
                 _comparison = null;
                 ComparisonSummary = "已选择参考；点击“比较”计算质量、覆盖率与偏差。";
+                RaisePropertyChanged(nameof(ComparisonTone));
                 CompareCommand?.RaiseCanExecuteChanged();
                 NotifyChartChanged();
             }
@@ -231,6 +268,13 @@ public sealed partial class WaveWorkbenchViewModel
             _viewOffsetSeconds = 0;
             NotifyChartChanged();
         });
+        ViewReferenceCommand = new DelegateCommand<WaveReferenceEntry>(reference =>
+        {
+            if (reference is null) return;
+            var found = Items.FirstOrDefault(item =>
+                item.IsReference && item.Id == reference.Reference.Asset.Id.Value);
+            if (found is not null) Selected = found;
+        });
         RemoveTrackCommand = new DelegateCommand<WaveSignalTrack>(track =>
         {
             if (track is null || IsObserving || IsCapturing) return;
@@ -258,6 +302,7 @@ public sealed partial class WaveWorkbenchViewModel
             _referenceOverlay = null;
             _comparison = null;
             ComparisonSummary = "比较已清除；不会修改原始采集与参考文件。";
+            RaisePropertyChanged(nameof(ComparisonTone));
             NotifyChartChanged();
         });
     }
@@ -369,6 +414,7 @@ public sealed partial class WaveWorkbenchViewModel
             var details = await Task.Run(() => WaveComparator.Compare(actual, referenceSeries, settings));
             if (_closed || !ReferenceEquals(actual, _series) || Selected != selected) return;
             _comparison = details;
+            RaisePropertyChanged(nameof(ComparisonTone));
             _referenceOverlay = details.Code == "SIGNAL_REVISION_MISMATCH" ? null : referenceSeries;
             ComparisonSummary = "分析预览 " + details.Verdict +
                 " · 覆盖率 " + details.Coverage.ToString("P1") +
