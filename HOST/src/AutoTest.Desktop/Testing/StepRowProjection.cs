@@ -286,20 +286,33 @@ public sealed class StepRowProjection : BindableBase
 
     private static string HumanWriteSummary(string target, string value, TestTargetKind? kind)
     {
-        if (kind == TestTargetKind.Ignition || target.Contains("IGN", StringComparison.OrdinalIgnoreCase))
+        if (kind == TestTargetKind.Ignition ||
+            target.Contains("IGN", StringComparison.OrdinalIgnoreCase))
             return "IGN " + (value.Equals("ON", StringComparison.OrdinalIgnoreCase) ? "开启" :
                 value.Equals("OFF", StringComparison.OrdinalIgnoreCase) ? "关闭" : value);
         if (kind is TestTargetKind.Button or TestTargetKind.RawKey ||
             target.Contains("KEY", StringComparison.OrdinalIgnoreCase))
         {
+            var parts = value.Split(':', StringSplitOptions.TrimEntries);
+            if (parts.Length > 0 && parts[0].Equals("Wait", StringComparison.OrdinalIgnoreCase))
+                return "纯等待 " + (parts.Length > 1 ? parts[1] : "?") +
+                    " ms · 不发送 KEY、不改变最后保持的组合";
             if (value.Equals("Release", StringComparison.OrdinalIgnoreCase))
-                return "释放按键组合";
-            var segments = value.Split(':', StringSplitOptions.TrimEntries);
-            if (segments.Length > 0 && segments[0] is "Hold" or "Pulse")
-                return (segments[0] == "Hold" ? "保持按键组合" : "短按按键组合") +
-                    (segments.Length > 1 ? " · " + segments[1] : "") +
-                    (segments.Length > 2 ? " · " + segments[2] + " ms" : "");
-            return "按键 " + target + " · " + (value.Length > 0 ? value : "待配置");
+                return "明确全部断开 KEY";
+            if (parts.Length > 0 && parts[0] is "Hold" or "Pulse" && parts.Length > 1)
+            {
+                var combination = kind == TestTargetKind.RawKey
+                    ? FriendlyKeyMask(parts[1]) : target;
+                var duration = parts.Length > 2 ? parts[2] + " ms" : "持续";
+                if (parts[0] == "Pulse")
+                    return "短按 " + combination + " · " + duration + " 后自动释放";
+                return combination == "全部断开"
+                    ? "全部断开 KEY · 等待 " + duration + "，继续保持全断开请求"
+                    : "请求保持 " + combination + " · 等待 " + duration +
+                        "，时间结束不自动释放";
+            }
+            return "按键 " + target + " · " +
+                (value.Length > 0 ? value : "待配置");
         }
         if (value.StartsWith("HEX:", StringComparison.OrdinalIgnoreCase))
             return "CAN " + target + " · DATA " +
@@ -312,4 +325,18 @@ public sealed class StepRowProjection : BindableBase
         }
         return target.Length > 0 ? target + " · " + value : "未选择操作对象";
     }
+
+    private static string FriendlyKeyMask(string code)
+    {
+        if (!code.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ||
+            !uint.TryParse(code[2..], System.Globalization.NumberStyles.HexNumber,
+                System.Globalization.CultureInfo.InvariantCulture, out var mask) ||
+            mask > 0xFFFFF)
+            return "KEY 组合待校验";
+        if (mask == 0) return "全部断开";
+        return string.Join(" + ", Enumerable.Range(1, 20)
+            .Where(i => (mask & (1u << (i - 1))) != 0)
+            .Select(i => "K" + i.ToString("00")));
+    }
+
 }

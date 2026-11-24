@@ -1586,8 +1586,7 @@ public partial class TestStepInspector : UserControl
                                 "零组合会请求全部断开。仅计时请选择“纯等待”，断开请选择“明确全部断开 KEY”。");
                         var value = operation == "Release" ? "Release" :
                             operation == "Wait"
-                                ? "Wait:" + ParseDuration(KeyDurationInput.Text)
-                                    .ToString(CultureInfo.InvariantCulture)
+                                ? "Wait:" + KeyDurationInput.Text.Trim()
                                 : operation + ":0x" + _selectedMask.ToString("X5") +
                                     ((operation == "Pulse" ||
                                       !string.IsNullOrWhiteSpace(KeyDurationInput.Text))
