@@ -380,7 +380,11 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
                     // write error or a timed hold interruption. The caller
                     // can request Release explicitly; the last state may
                     // have changed despite a missing ACK.
-                    if (rawKeyAttempted) _unknown = true;
+                    // A canceled hold timer is not a new physical output:
+                    // preserve a last ACKed request when it is known. A
+                    // write interrupted before ACK remains UNKNOWN.
+                    if (rawKeyAttempted)
+                        _unknown = _hardware.AcknowledgedKeyRequestMask is null;
                     throw;
                 }
             }
