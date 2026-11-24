@@ -253,6 +253,9 @@
          Style="{StaticResource WaveButton}"/>
         <Button Content="历史分析" Command="{Binding ShowArchiveCommand}"
          Style="{StaticResource WaveButton}"/>
+        <CheckBox Content="历史阶梯线" IsChecked="{Binding HistoryStepStyle,Mode=TwoWay}"
+         VerticalAlignment="Center" Margin="0,0,14,0" FontSize="13"
+         ToolTip="对离散状态信号使用阶梯显示；不影响存储采样或正式判定"/>
         <Button Content="清除游标" Click="ClearCursors_Click"
          Style="{StaticResource WaveButton}" Margin="0"/>
        </StackPanel>
