@@ -106,7 +106,8 @@ public sealed partial class ProjectWorkspaceService
                 };
                 var target = Pin(m.Asset, m.AssetRevision, m.AssetSha256, m.Name, kind);
                 VerifyDbcMapping(m);
-                builder[i] = m with { AssetRevision = target.Revision, AssetSha256 = target.Sha256 };
+                if (m.AssetRevision != target.Revision || !SameSha(m.AssetSha256, target.Sha256))
+                    builder[i] = m with { AssetRevision = target.Revision, AssetSha256 = target.Sha256 };
             }
             return builder.ToImmutable();
         }
@@ -151,8 +152,9 @@ public sealed partial class ProjectWorkspaceService
                 _ = Pin(targetId, revision, props.GetValueOrDefault("flowSha", ""), node.Name, PublicFlowKind);
                 await UpdateFlow(targetId).ConfigureAwait(false);
                 var target = latest[targetId];
-                props = props.SetItem("flowRevision", target.Revision.ToString(System.Globalization.CultureInfo.InvariantCulture))
-                    .SetItem("flowSha", target.Sha256);
+                if (revision != target.Revision || !SameSha(props.GetValueOrDefault("flowSha", ""), target.Sha256))
+                    props = props.SetItem("flowRevision", target.Revision.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                        .SetItem("flowSha", target.Sha256);
             }
             var slots = node.Slots.ToBuilder();
             var modified = !ReferenceEquals(props, node.Properties);
@@ -186,7 +188,8 @@ public sealed partial class ProjectWorkspaceService
                 _ = Pin(child, r.Revision, r.Sha256, asset.Name, PublicFlowKind);
                 await UpdateFlow(child).ConfigureAwait(false);
                 var pin = latest[child];
-                refs[i] = r with { Revision = pin.Revision, Sha256 = pin.Sha256 };
+                if (r.Revision != pin.Revision || !SameSha(r.Sha256, pin.Sha256))
+                    refs[i] = r with { Revision = pin.Revision, Sha256 = pin.Sha256 };
             }
             var nodes = flow.Body.ToBuilder();
             for (var i = 0; i < nodes.Count; i++)
@@ -228,7 +231,8 @@ public sealed partial class ProjectWorkspaceService
             {
                 var pin = Pin(AssetId.Create(entry.PackageAssetId), entry.PackageRevision,
                     entry.PackageSha256, entry.DisplayName, TestProgramKind);
-                return entry with { PackageRevision = pin.Revision, PackageSha256 = pin.Sha256 };
+                return entry.PackageRevision == pin.Revision && SameSha(entry.PackageSha256, pin.Sha256)
+                    ? entry : entry with { PackageRevision = pin.Revision, PackageSha256 = pin.Sha256 };
             }).ToList();
             if (!entries.SequenceEqual(plan.Packages))
                 Stage(asset, TestProjectCodec.Encode(plan with { Packages = entries }));
