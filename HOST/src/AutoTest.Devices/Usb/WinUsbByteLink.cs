@@ -225,6 +225,16 @@ public sealed class WinUsbByteLink : IUsbByteLink
         }
     }
 
+    public void RefreshPhysicalTestRun(string fingerprint, int maxWrites)
+    {
+        lock (_sync)
+        {
+            if (_state != WinUsbLinkState.Connected)
+                throw new IOException("测试期间 USB 连接已断开，不能续期。");
+            _fence.RefreshPhysicalRun(fingerprint, _epoch, maxWrites);
+        }
+    }
+
     public void RevokePhysicalTestRun()
     {
         lock (_sync) _fence.RevokePhysicalRun();
