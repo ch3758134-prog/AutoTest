@@ -557,6 +557,18 @@ public sealed partial class WaveWorkbenchViewModel
         }
     }
 
+    public async Task PrepareForToolCloseAsync()
+    {
+        if (IsCapturing) await StopCaptureAsync();
+        // Another user-triggered stop may already be finalizing the evidence.
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(20);
+        while (IsCapturing && DateTimeOffset.UtcNow < deadline)
+            await Task.Delay(60);
+        if (IsCapturing)
+            throw new TimeoutException("真实采集证据仍在保存，不能释放工具 USB。");
+        StopObservation();
+    }
+
     private void AbortCaptureForProjectChange()
     {
         if (IsCapturing) _ = StopCaptureAsync();

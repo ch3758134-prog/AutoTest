@@ -40,14 +40,15 @@ public sealed partial class MainWindowViewModel
     {
         if (!_automaticUsbEnabled || _applicationClosing || _exclusiveUsbTool is not null ||
             _hardwareBusy || _openingFlashLab || _realTest.IsRunning ||
-            _hardware.IsConnected || DateTimeOffset.UtcNow < _nextAutoUsbAttempt)
+            (_hardware.IsConnected && _hardware.IsEcuCanBitrateApplied) ||
+            DateTimeOffset.UtcNow < _nextAutoUsbAttempt)
             return;
         if (!await _usbOwnershipGate.WaitAsync(0)) return;
         try
         {
             if (_exclusiveUsbTool is not null || _hardwareBusy || _applicationClosing ||
-                _hardware.IsConnected) return;
-            if (_hardware.HasSession)
+                (_hardware.IsConnected && _hardware.IsEcuCanBitrateApplied)) return;
+            if (_hardware.HasSession && !_hardware.IsConnected)
                 await _hardware.DisconnectAsync();
 
             // A saved native ECU profile is the authoritative project target.
@@ -67,7 +68,7 @@ public sealed partial class MainWindowViewModel
                     StatusMessage = "工程 CAN 目标配置读取失败：" + error.Message;
                 }
             }
-            await _hardware.ConnectAsync();
+            if (!_hardware.IsConnected) await _hardware.ConnectAsync();
             // USB PING confirms controller protocol, not ECU bus traffic.
             if (!_hardware.IsEcuCanBitrateApplied)
                 await _hardware.ApplyRequestedEcuCanBitrateAsync();
@@ -101,7 +102,8 @@ public sealed partial class MainWindowViewModel
         await _usbOwnershipGate.WaitAsync();
         try
         {
-            if (_applicationClosing || _exclusiveUsbTool is not null)
+            if (_applicationClosing || _exclusiveUsbTool is not null || _hardwareBusy ||
+                _ecuCanBaudApplying)
             {
                 StatusMessage = "USB 已由 " + (_exclusiveUsbTool ?? "程序") + " 使用。";
                 return false;

@@ -13,6 +13,8 @@ namespace AutoTest.Desktop.Shell;
 public partial class WaveWorkbenchWindow : Window
 {
     private readonly WaveWorkbenchViewModel _model;
+    private bool _toolClosePrepared;
+    private bool _toolCloseInProgress;
     private readonly Action _openConfiguration;
     private double? _cursorA;
     private double? _cursorB;
@@ -36,6 +38,7 @@ public partial class WaveWorkbenchWindow : Window
         DataContext = model;
         InitializeComponent();
         _model.ChartChanged += OnChartChanged;
+        Closing += OnToolClosing;
         _previewTimer.Tick += (_, _) => _model.PollCapturePreview();
         Closed += (_, _) =>
         {
@@ -48,6 +51,28 @@ public partial class WaveWorkbenchWindow : Window
             RenderWave();
             _previewTimer.Start();
         };
+    }
+
+    private async void OnToolClosing(object? sender,
+        System.ComponentModel.CancelEventArgs e)
+    {
+        if (_toolClosePrepared) return;
+        e.Cancel = true;
+        if (_toolCloseInProgress) return;
+        _toolCloseInProgress = true;
+        try
+        {
+            await _model.PrepareForToolCloseAsync();
+            _toolClosePrepared = true;
+            Dispatcher.BeginInvoke(new Action(Close));
+        }
+        catch (Exception error)
+        {
+            MessageBox.Show(this, "波形工具仍在保存真实采集证据，尚未释放 USB：" +
+                error.Message, "不能安全关闭波形工具",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally { _toolCloseInProgress = false; }
     }
 
     private void OpenConfiguration_Click(object sender, RoutedEventArgs e) => _openConfiguration();
