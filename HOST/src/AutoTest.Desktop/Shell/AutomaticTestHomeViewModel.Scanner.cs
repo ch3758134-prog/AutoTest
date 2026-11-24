@@ -27,13 +27,6 @@ public sealed partial class AutomaticTestHomeViewModel
 
     private void OnScannerPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(SerialScannerWorkbenchViewModel.IdentityPolicyStatus))
-        {
-            // Re-saving/reloading a rule may change field meaning even if
-            // scanner connection and visible barcode are unchanged.
-            OnUi(() => InvalidateScan("扫码解析与字段映射规则已变化；请重新真实扫码以冻结新规则。"));
-            return;
-        }
         if (e.PropertyName == nameof(SerialScannerWorkbenchViewModel.IsConnected) &&
             !_scanner.IsConnected)
             OnUi(() => InvalidateScan("扫码枪断开，本次扫码身份失效；恢复后请重新扫码。"));
@@ -70,14 +63,17 @@ public sealed partial class AutomaticTestHomeViewModel
             return;
         try
         {
-            var ruleSnapshot = await StationScanIdentityPolicyStore.LoadSnapshotAsync();
-            if (ruleSnapshot is null)
+            var expectation = plan.Project.Definition.BarcodeExpectation;
+            if (expectation is null)
             {
-                Reject("未保存工位条码识别规则，不能从字符串猜 ECU 型号。");
+                Reject("已部署工程缺少扫码期望；请先在检测准备编辑并重新部署。");
                 return;
             }
-            var parsed = ProductionBarcodePreflight.Inspect(
-                raw, plan.Project.Definition, ruleSnapshot.Policy);
+            var ruleJson = System.Text.Json.JsonSerializer.Serialize(expectation);
+            var ruleSha = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(ruleJson)));
+            var parsed = ProductionBarcodePreflight.InspectExpected(
+                raw, plan.Project.Definition);
             if (!parsed.IdentityMatched ||
                 string.IsNullOrWhiteSpace(parsed.ModelCode) ||
                 string.IsNullOrWhiteSpace(parsed.DutSerial))
@@ -104,7 +100,7 @@ public sealed partial class AutomaticTestHomeViewModel
             }
             if (revision != _scanRevision || !_scanner.IsConnected ||
                 !ReferenceEquals(_plans.Current, plan)) return;
-            var identity = parsed.ModelCode + "\u001f" + parsed.DutSerial;
+            var identity = parsed.DutSerial;
             var repeated = string.Equals(_lastIdentity, identity,
                 StringComparison.Ordinal);
             _lastIdentity = identity;
@@ -113,14 +109,14 @@ public sealed partial class AutomaticTestHomeViewModel
                 ? new Dictionary<string, string>(StringComparer.Ordinal)
                 : parsed.MappedFields.ToDictionary(x => x.Key, x => x.Value,
                     StringComparer.Ordinal);
-            // Freeze a real observation with exact on-disk parser bytes.
+            // Freeze the project-owned expectation's serialized content and its SHA.
             // This is not yet a formal RECORD fact; no RunId exists until
             // the physical START and production record adapter are ready.
             _prepared = decision.Preparation! with
             {
                 AcceptedScannerObservation = new FrozenScanIdentity(
                     Guid.NewGuid(), scannedAt, scannerPort, raw,
-                    ruleSnapshot.SourceJson, ruleSnapshot.Sha256,
+                    ruleJson, ruleSha,
                     parsed.ModelCode, parsed.DutSerial, parsed.HardwareCode,
                     _scanMappedFields.ToDictionary(x => x.Key, x => x.Value,
                         StringComparer.Ordinal))
