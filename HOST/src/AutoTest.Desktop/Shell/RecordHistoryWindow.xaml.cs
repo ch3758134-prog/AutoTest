@@ -144,7 +144,8 @@ public partial class RecordHistoryWindow : Window
             await RefreshAsync();
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or
-                                       InvalidDataException or ArgumentException or Microsoft.Data.Sqlite.SqliteException or System.Text.Json.JsonException)
+                                       InvalidDataException or ArgumentException or InvalidOperationException or
+                                       Microsoft.Data.Sqlite.SqliteException or System.Text.Json.JsonException)
         {
             StatusText.Text = "记录库无法打开：" + error.Message;
         }
