@@ -94,11 +94,11 @@
 
   <Grid Grid.Row="1" Margin="12,12,12,10">
    <Grid.ColumnDefinitions>
-    <ColumnDefinition Width="39*" MinWidth="450"/>
+    <ColumnDefinition Width="40*" MinWidth="450"/>
     <ColumnDefinition Width="6"/>
     <ColumnDefinition Width="22*" MinWidth="270"/>
     <ColumnDefinition Width="6"/>
-    <ColumnDefinition Width="39*" MinWidth="330"/>
+    <ColumnDefinition Width="38*" MinWidth="330"/>
    </Grid.ColumnDefinitions>
 
    <!-- LEFT: SEND list is the one permanent complete raw-frame view;
@@ -133,7 +133,7 @@
       AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
       IsReadOnly="True" HeadersVisibility="Column" SelectionMode="Single"
       GridLinesVisibility="Horizontal" BorderBrush="#E2E7E7"
-      RowHeight="39" ColumnHeaderHeight="35" FontSize="12"
+      RowHeight="43" ColumnHeaderHeight="35" FontSize="12"
       EnableRowVirtualization="True" EnableColumnVirtualization="True"
       Background="White" AlternatingRowBackground="#F8FAFA"
       MouseDoubleClick="CanSendGrid_MouseDoubleClick"
@@ -159,7 +159,7 @@
           HorizontalAlignment="Center" VerticalAlignment="Center"/>
         </DataTemplate></DataGridTemplateColumn.CellTemplate>
        </DataGridTemplateColumn>
-       <DataGridTextColumn Header="报文" Binding="{Binding Name}" Width="76" MinWidth="65"/>
+       <DataGridTextColumn Header="报文" Binding="{Binding Name}" Width="64" MinWidth="60"/>
        <DataGridTextColumn Header="CAN ID" Binding="{Binding PreviewId}" Width="96"/>
        <DataGridTextColumn Header="DLC" Binding="{Binding PreviewDlc}" Width="42"/>
        <DataGridTemplateColumn Header="DATA (HEX)" Width="*" MinWidth="182">
@@ -169,8 +169,15 @@
           ToolTip="{Binding PreviewFull}"/>
         </DataTemplate></DataGridTemplateColumn.CellTemplate>
        </DataGridTemplateColumn>
-       <DataGridTextColumn Header="方式" Binding="{Binding ModeLabel}" Width="88"/>
-       <DataGridTemplateColumn Header="操作" Width="94">
+       <DataGridTemplateColumn Header="方式 / 状态" Width="96">
+         <DataGridTemplateColumn.CellTemplate><DataTemplate>
+          <StackPanel VerticalAlignment="Center" ToolTip="{Binding Result}">
+           <TextBlock Text="{Binding ModeLabel}" FontSize="12"/>
+           <TextBlock Text="{Binding Result}" FontSize="10" Foreground="#627C9D" TextTrimming="CharacterEllipsis"/>
+          </StackPanel>
+         </DataTemplate></DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+       <DataGridTemplateColumn Header="操作" Width="88">
         <DataGridTemplateColumn.CellTemplate><DataTemplate>
          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
           <Button Content="单发" Padding="4,5" Margin="0,0,3,0"
