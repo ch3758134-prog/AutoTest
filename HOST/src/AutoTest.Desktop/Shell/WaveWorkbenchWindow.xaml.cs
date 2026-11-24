@@ -186,7 +186,7 @@ public partial class WaveWorkbenchWindow : Window
                     StrokeThickness = 1,
                     IsHitTestVisible = false
                 });
-                var panel = WavePlot.Children[^1];
+                var panel = WavePlot.Children[WavePlot.Children.Count - 1];
                 Canvas.SetLeft(panel, 1);
                 Canvas.SetTop(panel, sectionTop);
                 for (var grid = 0; grid <= 6; grid++)
