@@ -59,6 +59,7 @@ public sealed partial class WaveWorkbenchViewModel : BindableBase
         AbortCaptureForProjectChange();
         RaisePropertyChanged(nameof(SourceDescription));
         RaisePropertyChanged(nameof(CanEditProjectWaveSettings));
+        RefreshCaptureCommands();
         Refresh();
     }
 
@@ -72,6 +73,7 @@ public sealed partial class WaveWorkbenchViewModel : BindableBase
         AbortCaptureForProjectChange();
         RaisePropertyChanged(nameof(SourceDescription));
         RaisePropertyChanged(nameof(CanEditProjectWaveSettings));
+        RefreshCaptureCommands();
         Refresh();
     }
     private string _emptyListMessage = "";
