@@ -4,10 +4,21 @@
  Background="#F7F8FA" Foreground="#303941" FontSize="13"
  FontFamily="{StaticResource UiFont}">
  <UserControl.Resources>
-  <Style x:Key="BenchKey" TargetType="CheckBox">
-   <Setter Property="Padding" Value="9,8"/>
+  <Style x:Key="BenchKey" TargetType="ToggleButton">
    <Setter Property="Margin" Value="2"/>
-   <Setter Property="MinHeight" Value="36"/>
+   <Setter Property="Height" Value="29"/>
+   <Setter Property="Foreground" Value="#355579"/>
+   <Setter Property="Template"><Setter.Value>
+    <ControlTemplate TargetType="ToggleButton">
+     <Border x:Name="KeyTile" Background="#FFFFFF" BorderBrush="#D2DEEB" BorderThickness="1" CornerRadius="4">
+      <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+     </Border>
+     <ControlTemplate.Triggers>
+      <Trigger Property="IsChecked" Value="True"><Setter TargetName="KeyTile" Property="Background" Value="#3478D6"/><Setter TargetName="KeyTile" Property="BorderBrush" Value="#3478D6"/><Setter Property="Foreground" Value="White"/></Trigger>
+      <Trigger Property="IsEnabled" Value="False"><Setter TargetName="KeyTile" Property="Opacity" Value="0.5"/></Trigger>
+     </ControlTemplate.Triggers>
+    </ControlTemplate>
+   </Setter.Value></Setter>
   </Style>
   <Style x:Key="FieldCaption" TargetType="TextBlock">
    <Setter Property="Foreground" Value="#627C9D"/>
@@ -39,8 +50,7 @@
     Visibility="{Binding IsKeyEditorExpanded,Converter={StaticResource BoolToVisibility}}">
    <Border BorderBrush="#E3EAE5" BorderThickness="0,1,0,0" Margin="0,8,0,10"/>
    <DockPanel Margin="0,0,0,8">
-    <Button DockPanel.Dock="Right" Content="完成" Click="CloseKeyEditor_Click"
-     Padding="8,5" Margin="4,0,0,0"/>
+    
     <Button DockPanel.Dock="Right" Content="复制动作" Command="{Binding CopyKeyActionCommand}"
      Padding="8,5" Margin="4,0,0,0"/>
     <Button DockPanel.Dock="Right" Content="删除动作" Command="{Binding DeleteKeyActionCommand}"
@@ -60,17 +70,17 @@
      <Button DockPanel.Dock="Right" Content="↓" Command="{Binding MoveKeyStepDownCommand}" Padding="8,5" Margin="5,0,0,0"/>
      <TextBlock Text="步骤 · KEY 组合 / 保持时间" Style="{StaticResource FieldCaption}" VerticalAlignment="Center"/>
     </DockPanel>
-    <ListBox ItemsSource="{Binding SelectedKeyAction.Steps}"
+    <ListBox ItemsSource="{Binding SelectedKeyAction.Steps}" MaxHeight="190" HorizontalContentAlignment="Stretch"
      SelectedItem="{Binding SelectedKeyStep,Mode=TwoWay}"
      MinHeight="60" BorderBrush="#E0E9F3" Padding="4"
-     ScrollViewer.VerticalScrollBarVisibility="Disabled">
+     ScrollViewer.VerticalScrollBarVisibility="Auto">
      <ListBox.ItemTemplate>
       <DataTemplate>
        <Grid Margin="3,4" MinHeight="30">
         <Grid.ColumnDefinitions>
          <ColumnDefinition Width="*"/><ColumnDefinition Width="75"/><ColumnDefinition Width="23"/>
         </Grid.ColumnDefinitions>
-        <TextBlock Text="{Binding Summary}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+        <TextBlock Text="{Binding Summary}" VerticalAlignment="Center" TextWrapping="Wrap"
          ToolTip="{Binding Summary}" Foreground="#355579" FontSize="11"/>
         <TextBox Grid.Column="1" Text="{Binding HoldMsText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
          ToolTip="保持时间（ms）" Padding="5,3" VerticalAlignment="Center" MinHeight="28"
@@ -90,7 +100,7 @@
        <Button Content="反选" Command="{Binding InvertStepKeysCommand}" Padding="7,5" Margin="0,0,5,5"/>
        <Button Content="复制上一段" Command="{Binding CopyPreviousStepKeysCommand}" Padding="7,5" Margin="0,0,5,5"/>
       </WrapPanel>
-      <Grid Margin="0,3,0,6">
+      <Grid Visibility="Collapsed" Margin="0,3,0,6">
        <Grid.ColumnDefinitions>
         <ColumnDefinition Width="Auto"/><ColumnDefinition Width="105"/>
         <ColumnDefinition Width="10"/><ColumnDefinition Width="Auto"/>
@@ -105,14 +115,13 @@
        <TextBlock Grid.Column="5" Text="ms" VerticalAlignment="Center" Margin="4,0,0,0"/>
       </Grid>
       <TextBlock Text="{Binding SelectedKeyStep.Summary}" Foreground="#516D87"
-       TextTrimming="CharacterEllipsis" FontSize="11" Margin="0,0,0,5"/>
-      <TextBlock Text="{Binding SelectedKeyStep.MaskError}" Foreground="#B34035"
-       FontSize="10" TextWrapping="Wrap" Margin="0,0,0,4"/>
+       TextWrapping="Wrap" FontSize="11" Margin="0,0,0,5"/>
+
       <ItemsControl ItemsSource="{Binding StepKeys}">
-       <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="5"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+       <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="10"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
        <ItemsControl.ItemTemplate>
         <DataTemplate>
-         <CheckBox Content="{Binding Label}" IsChecked="{Binding Checked,Mode=TwoWay}"
+         <ToggleButton Content="{Binding Label}" IsChecked="{Binding Checked,Mode=TwoWay}"
           Style="{StaticResource BenchKey}"/>
         </DataTemplate>
        </ItemsControl.ItemTemplate>
