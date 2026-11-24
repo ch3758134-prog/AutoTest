@@ -1,337 +1,395 @@
+using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Threading;
 using AutoTest.Projects.Dbc;
 
 namespace AutoTest.Desktop.Dbc;
 
-/// <summary>
-/// Native Windows editor conventions: one click selects, F2/double-click on a
-/// displayed name edits the Chinese alias in-place; complex DBC identifiers
-/// and shape updates use the revision-safe model's full parameter editor.
-/// </summary>
 public partial class DbcWorkbenchView : UserControl
 {
     private readonly DbcWorkbenchViewModel _viewModel;
-    private TextBox? _inlineEditor;
-    private FrameworkElement? _inlineDisplay;
-    private bool _inlineIsMessage;
+    private string _overlayKind = "";
+    private bool _messageNotes;
+    private readonly ObservableCollection<EnumEditRow> _enums = new();
+    private System.Reflection.PropertyInfo? _editingProperty;
+    private object? _editingValue;
+    private DbcSignalRow? _editingRow;
+
+    public sealed class EnumEditRow
+    {
+        public string Raw { get; set; } = "";
+        public string Label { get; set; } = "";
+    }
 
     public DbcWorkbenchView(DbcWorkbenchViewModel viewModel)
     {
         InitializeComponent();
         _viewModel = viewModel;
         DataContext = viewModel;
-        _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+        EnumGrid.ItemsSource = _enums;
+        viewModel.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(DbcWorkbenchViewModel.SelectedMessage) or
+                nameof(DbcWorkbenchViewModel.SelectedSignal) or nameof(DbcWorkbenchViewModel.CurrentMessageModel))
+                RebuildBitLayout();
+        };
         Loaded += (_, _) => RebuildBitLayout();
+        MessageGrid.PreviewMouseRightButtonDown += (_, e) => SelectContextRow(MessageGrid, e);
+        SignalGrid.PreviewMouseRightButtonDown += (_, e) => SelectContextRow(SignalGrid, e);
     }
 
-    private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private static T? Ancestor<T>(DependencyObject? source) where T : DependencyObject
     {
-        if (e.PropertyName is nameof(DbcWorkbenchViewModel.SelectedMessage) or
-            nameof(DbcWorkbenchViewModel.SelectedSignal))
-            RebuildBitLayout();
-    }
-
-    private static T? FindAncestor<T>(DependencyObject? source) where T : DependencyObject
-    {
-        var current = source;
-        while (current is not null)
+        while (source is not null)
         {
-            if (current is T matched) return matched;
-            current = current is Visual || current is System.Windows.Media.Media3D.Visual3D
-                ? VisualTreeHelper.GetParent(current)
-                : LogicalTreeHelper.GetParent(current);
+            if (source is T match) return match;
+            source = source is Visual || source is System.Windows.Media.Media3D.Visual3D
+                ? VisualTreeHelper.GetParent(source) : LogicalTreeHelper.GetParent(source);
         }
         return null;
     }
 
-    private static T? FindDescendant<T>(DependencyObject parent, string name)
-        where T : FrameworkElement
+    private void SelectContextRow(DataGrid grid, MouseButtonEventArgs e)
     {
-        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
+        var row = Ancestor<DataGridRow>(e.OriginalSource as DependencyObject);
+        if (row is null || !FinishGrid()) return;
+        grid.SelectedItem = row.Item;
+        if (grid == SignalGrid && row.Item is DbcSignalRow signal) _viewModel.SelectedSignal = signal;
+    }
+
+    private bool FinishGrid()
+    {
+        if (!SignalGrid.CommitEdit(DataGridEditingUnit.Cell, true)) return false;
+        if (!SignalGrid.CommitEdit(DataGridEditingUnit.Row, true)) return false;
+        _viewModel.ApplySignalParameters();
+        return !_viewModel.HasPendingSignalDraft;
+    }
+
+    public bool TryFinishEditing() => FinishOverlay() && FinishGrid();
+
+    private void Signal_BeginningEdit(object sender, DataGridBeginningEditEventArgs e)
+    {
+        if (!_viewModel.CanEdit || _viewModel.IsBusy || _viewModel.HasOpenEditor)
+        { e.Cancel = true; return; }
+        if (e.Row.Item is not DbcSignalRow row) { e.Cancel = true; return; }
+        _viewModel.SelectedSignal = row;
+        var path = (e.Column as DataGridBoundColumn)?.Binding is Binding b
+            ? b.Path.Path : "Draft." + e.Column.SortMemberPath;
+        _editingRow = row;
+        _editingProperty = typeof(DbcSignalEditState).GetProperty(path.Split('.').Last());
+        _editingValue = _editingProperty?.GetValue(row.Draft);
+    }
+
+    private void Signal_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+    {
+        if (e.EditAction == DataGridEditAction.Cancel && _editingRow is { } row &&
+            ReferenceEquals(e.Row.Item, row) && _editingProperty is { } property)
+            property.SetValue(row.Draft, _editingValue);
+        _editingProperty = null; _editingRow = null; _editingValue = null;
+    }
+
+    private void Signal_RowEditEnding(object sender, DataGridRowEditEndingEventArgs e)
+    {
+        if (e.Row.Item is not DbcSignalRow row) return;
+        if (e.EditAction == DataGridEditAction.Cancel)
         {
-            var child = VisualTreeHelper.GetChild(parent, index);
-            if (child is T match && match.Name == name) return match;
-            var nested = FindDescendant<T>(child, name);
-            if (nested is not null) return nested;
+            _viewModel.ResetSignalRow(row);
+            return;
         }
-        return null;
+        e.Cancel = !_viewModel.TryCommitSignalRow(row);
     }
 
-    private void BeginInlineRename(DependencyObject container, bool message)
+    private void Message_DoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (_viewModel.IsBusy) return;
-        if (_inlineEditor is not null) return;
-        if (message && _viewModel.SelectedMessage is null ||
-            !message && _viewModel.SelectedSignal is null) return;
-        var textbox = FindDescendant<TextBox>(container,
-            message ? "MessageInlineEditor" : "SignalInlineEditor");
-        var display = FindDescendant<FrameworkElement>(container,
-            message ? "MessageInlineDisplay" : "SignalInlineDisplay");
-        if (textbox is null || display is null) return;
-        _inlineEditor = textbox;
-        _inlineDisplay = display;
-        _inlineIsMessage = message;
-        textbox.Text = message
-            ? _viewModel.SelectedMessage!.DisplayNames.MessageAlias(
-                _viewModel.SelectedMessage.Message.Id)
-            : _viewModel.SelectedMessage!.DisplayNames.SignalAlias(
-                _viewModel.SelectedMessage.Message.Id, _viewModel.SelectedSignal!.Name);
-        display.Visibility = Visibility.Collapsed;
-        textbox.Visibility = Visibility.Visible;
-        Dispatcher.BeginInvoke(() =>
+        if (Ancestor<DataGridRow>(e.OriginalSource as DependencyObject) is { } row && FinishGrid())
         {
-            if (!ReferenceEquals(_inlineEditor, textbox)) return;
-            textbox.Focus();
-            textbox.SelectAll();
-        }, DispatcherPriority.Input);
-    }
-
-    private void EndInlineRename(bool commit)
-    {
-        var editor = _inlineEditor;
-        var display = _inlineDisplay;
-        if (editor is null) return;
-        // Reset first: rebuilding a message/signal list removes the template
-        // and can raise another LostKeyboardFocus event recursively.
-        _inlineEditor = null;
-        _inlineDisplay = null;
-        var message = _inlineIsMessage;
-        var value = editor.Text;
-        editor.Visibility = Visibility.Collapsed;
-        if (display is not null) display.Visibility = Visibility.Visible;
-        if (commit)
-        {
-            if (message) _viewModel.RenameSelectedMessage(value);
-            else _viewModel.RenameSelectedSignal(value);
+            MessageGrid.SelectedItem = row.Item;
+            OpenNotes(true); e.Handled = true;
         }
     }
 
-    private void InlineEditor_KeyDown(object sender, KeyEventArgs e)
+    private void Signal_DoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (e.Key is not (Key.Enter or Key.Escape)) return;
-        var wasMessage = _inlineIsMessage;
-        EndInlineRename(e.Key == Key.Enter);
-        e.Handled = true;
-        Dispatcher.BeginInvoke(() =>
-        {
-            if (wasMessage) MessageList.Focus();
-            else SignalGrid.Focus();
-        }, DispatcherPriority.Input);
-    }
-
-    private void InlineEditor_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
-    {
-        if (ReferenceEquals(sender, _inlineEditor)) EndInlineRename(true);
-    }
-
-    private void MessageList_DoubleClick(object sender, MouseButtonEventArgs e)
-    {
-        var item = FindAncestor<ListBoxItem>(e.OriginalSource as DependencyObject);
-        if (item is not null && !_viewModel.IsBusy)
-        {
-            MessageList.SelectedItem = item.DataContext;
-            BeginInlineRename(item, message: true);
-            e.Handled = true;
-        }
-    }
-
-    private void SignalGrid_DoubleClick(object sender, MouseButtonEventArgs e)
-    {
-        var row = FindAncestor<DataGridRow>(e.OriginalSource as DependencyObject);
-        if (row is null || _viewModel.IsBusy) return;
-        SignalGrid.SelectedItem = row.Item;
-        var cell = FindAncestor<DataGridCell>(e.OriginalSource as DependencyObject);
-        if (cell is null) return; // double-clicking a scrollbar/empty area is not Edit
-        if (cell.Column.DisplayIndex == 0)
-            BeginInlineRename(row, message: false);
-        else SignalTabs.SelectedIndex = 1;
+        var cell = Ancestor<DataGridCell>(e.OriginalSource as DependencyObject);
+        var row = Ancestor<DataGridRow>(e.OriginalSource as DependencyObject);
+        if (cell is null || row?.Item is not DbcSignalRow signal || _viewModel.IsBusy) return;
+        if (!cell.Column.IsReadOnly) return; // native DataGrid inline editing
+        if (!FinishGrid()) return;
+        _viewModel.SelectedSignal = signal;
+        if (cell.Column.Header?.ToString() == "枚举") OpenEnums();
+        else OpenNotes(false);
         e.Handled = true;
     }
 
     private void Workbench_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key != Key.F2 || _inlineEditor is not null || _viewModel.IsBusy) return;
-        if (MessageList.IsKeyboardFocusWithin &&
-            MessageList.ItemContainerGenerator.ContainerFromItem(MessageList.SelectedItem)
-                is ListBoxItem messageItem)
+        if (_viewModel.HasOpenEditor)
         {
-            BeginInlineRename(messageItem, message: true);
-            e.Handled = true;
+            if (e.Key == Key.Escape) { CloseOverlay(); e.Handled = true; }
+            else if (e.Key == Key.S && Keyboard.Modifiers == ModifierKeys.Control)
+            { Save_Click(this, new RoutedEventArgs()); e.Handled = true; }
+            return;
         }
-        else if (SignalGrid.IsKeyboardFocusWithin &&
-                 SignalGrid.ItemContainerGenerator.ContainerFromItem(SignalGrid.SelectedItem)
-                     is DataGridRow row)
+        if (e.Key == Key.S && Keyboard.Modifiers == ModifierKeys.Control)
+        { Save_Click(this, new RoutedEventArgs()); e.Handled = true; return; }
+        if (e.Key == Key.F5)
+        { Reload_Click(this, new RoutedEventArgs()); e.Handled = true; return; }
+        if (Keyboard.Modifiers == ModifierKeys.Control && e.Key is Key.Z or Key.Y &&
+            !SignalGrid.IsKeyboardFocusWithin && Keyboard.FocusedElement is not TextBox)
         {
-            BeginInlineRename(row, message: false);
-            e.Handled = true;
+            if (FinishGrid()) _viewModel.UndoEdit(e.Key == Key.Y);
+            e.Handled = true; return;
+        }
+        if (Keyboard.Modifiers == ModifierKeys.Control && e.Key is Key.Z or Key.Y &&
+            SignalGrid.IsKeyboardFocusWithin && !_viewModel.HasActiveGridEdit)
+        {
+            _viewModel.UndoEdit(e.Key == Key.Y); e.Handled = true; return;
+        }
+        if (e.Key == Key.F2 && MessageGrid.IsKeyboardFocusWithin)
+        { OpenNotes(true); e.Handled = true; }
+        else if (e.Key == Key.F2 && SignalGrid.IsKeyboardFocusWithin &&
+                 SignalGrid.CurrentColumn?.IsReadOnly == true)
+        { OpenNotes(false); e.Handled = true; }
+        else if (e.Key == Key.V && Keyboard.Modifiers == ModifierKeys.Control &&
+                 SignalGrid.IsKeyboardFocusWithin && !_viewModel.HasActiveGridEdit &&
+                 _viewModel.CanEdit && SignalGrid.CurrentItem is DbcSignalRow row &&
+                 SignalGrid.CurrentColumn is DataGridBoundColumn { IsReadOnly: false, Binding: Binding binding })
+        {
+            try
+            {
+                var value = Clipboard.GetText().Trim();
+                var property = typeof(DbcSignalEditState).GetProperty(binding.Path.Path.Split('.').Last());
+                if (property?.PropertyType == typeof(string) && !value.Any(c => c is '\r' or '\n' or '\t'))
+                {
+                    var original = property.GetValue(row.Draft);
+                    property.SetValue(row.Draft, value);
+                    if (!_viewModel.TryCommitSignalRow(row))
+                        property.SetValue(row.Draft, original);
+                    e.Handled = true;
+                }
+            }
+            catch (System.Runtime.InteropServices.ExternalException) { }
         }
     }
 
-    private void MessageList_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    private async void Save_Click(object sender, RoutedEventArgs e)
     {
-        var item = FindAncestor<ListBoxItem>(e.OriginalSource as DependencyObject);
-        if (item is not null) MessageList.SelectedItem = item.DataContext;
+        if (!TryFinishEditing()) return;
+        await _viewModel.SaveForCloseAsync();
+    }
+    private void Undo_Click(object sender, RoutedEventArgs e) { if (FinishGrid()) _viewModel.UndoEdit(); }
+    private void Redo_Click(object sender, RoutedEventArgs e) { if (FinishGrid()) _viewModel.UndoEdit(true); }
+    private void Reload_Click(object sender, RoutedEventArgs e)
+    { if (FinishGrid() && _viewModel.ReloadCommand.CanExecute()) _viewModel.ReloadCommand.Execute(); }
+    private void Check_Click(object sender, RoutedEventArgs e) { if (FinishGrid()) _viewModel.CheckDocument(); }
+    private void AddMessage_Click(object sender, RoutedEventArgs e) { if (FinishGrid()) _viewModel.AddMessage(); }
+    private void AddSignal_Click(object sender, RoutedEventArgs e) { if (FinishGrid()) _viewModel.AddSignal(); }
+    private void DeleteMessage_Click(object sender, RoutedEventArgs e) { if (FinishGrid()) _viewModel.DeleteSelected(true); }
+    private void DeleteSignal_Click(object sender, RoutedEventArgs e) { if (FinishGrid()) _viewModel.DeleteSelected(false); }
+    private void EditMessage_Click(object sender, RoutedEventArgs e) { if (FinishGrid()) _viewModel.EditMessage(); }
+    private void EditSignal_Click(object sender, RoutedEventArgs e) { if (FinishGrid()) _viewModel.EditSignal(); }
+    private void MessageNotes_Click(object sender, RoutedEventArgs e) => OpenNotes(true);
+    private void SignalNotes_Click(object sender, RoutedEventArgs e) => OpenNotes(false);
+    private void Enums_Click(object sender, RoutedEventArgs e) => OpenEnums();
+
+    private void ShowOverlay(string kind, string title)
+    {
+        _overlayKind = kind;
+        OverlayTitle.Text = title;
+        NotesPanel.Visibility = kind == "notes" ? Visibility.Visible : Visibility.Collapsed;
+        EnumsPanel.Visibility = kind == "enums" ? Visibility.Visible : Visibility.Collapsed;
+        PolicyText.Visibility = kind == "policy" ? Visibility.Visible : Visibility.Collapsed;
+        OverlayError.Text = "";
+        _viewModel.HasOpenEditor = true;
+        PropertyOverlay.Visibility = Visibility.Visible;
     }
 
-    private void SignalGrid_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    private void OpenNotes(bool message)
     {
-        var row = FindAncestor<DataGridRow>(e.OriginalSource as DependencyObject);
-        if (row is not null) SignalGrid.SelectedItem = row.Item;
+        if (!FinishGrid() || _viewModel.IsBusy || _viewModel.SelectedMessage is not { } m ||
+            (!message && _viewModel.SelectedSignal is null)) return;
+        _messageNotes = message;
+        OriginalName.Text = "原始名称：" + (message ? m.Name : _viewModel.SelectedSignal!.Name);
+        AliasBox.Text = message ? _viewModel.MessageAliasText : _viewModel.SignalAliasText;
+        SummaryBox.Text = message ? _viewModel.MessageSummaryText : _viewModel.SignalSummaryText;
+        CommentBox.Text = message ? _viewModel.MessageCommentText : _viewModel.SignalCommentText;
+        ShowOverlay("notes", message ? "报文名称与注释" : "信号名称与注释");
+        AliasBox.Focus(); AliasBox.SelectAll();
     }
 
-    private void RenameMessageMenu_Click(object sender, RoutedEventArgs e)
+    private void OpenEnums()
     {
-        if (MessageList.ItemContainerGenerator.ContainerFromItem(MessageList.SelectedItem)
-            is ListBoxItem item) BeginInlineRename(item, message: true);
+        if (!FinishGrid() || _viewModel.IsBusy || _viewModel.SelectedSignal is not { } s) return;
+        _enums.Clear();
+        foreach (var entry in _viewModel.SelectedEnums.OrderBy(x => x.Key))
+            _enums.Add(new EnumEditRow { Raw = entry.Key.ToString(CultureInfo.InvariantCulture), Label = entry.Value });
+        var editable = _viewModel.CanChangeStructure;
+        EnumGrid.IsReadOnly = !editable;
+        AddEnumButton.IsEnabled = DeleteEnumButton.IsEnabled = editable;
+        EnumPolicy.Text = editable ? "使用原始整数值；应用时检查位长、有符号范围和重复值。"
+            : "当前 DBC 原文受保护：仅查看原始枚举，不修改 VAL_ 定义。";
+        ShowOverlay("enums", s.Name + " · 枚举值");
     }
 
-    private void RenameSignalMenu_Click(object sender, RoutedEventArgs e)
+    private void ShowPolicy_Click(object sender, RoutedEventArgs e)
     {
-        if (SignalGrid.ItemContainerGenerator.ContainerFromItem(SignalGrid.SelectedItem)
-            is DataGridRow row) BeginInlineRename(row, message: false);
+        if (!FinishGrid()) return;
+        PolicyText.Text = _viewModel.StateDescription + "\n\n" +
+            (_viewModel.CanChangeStructure ? "支持报文与信号的新增、删除和枚举修改。" : _viewModel.UnsupportedDescription) +
+            "\n\n保存执行严格结构校验与原文回读，并更新工程资源修订；引用旧修订的 TEST 和波形配置需核对更新。";
+        ShowOverlay("policy", "DBC 编辑能力与保存");
     }
 
-    private void EditMessageMenu_Click(object sender, RoutedEventArgs e) => _viewModel.EditMessage();
-    private void EditSignalMenu_Click(object sender, RoutedEventArgs e) => _viewModel.EditSignal();
+    private void AddEnum_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_viewModel.CanChangeStructure) return;
+        var n = 0L; while (_enums.Any(r => r.Raw == n.ToString(CultureInfo.InvariantCulture))) n++;
+        var row = new EnumEditRow { Raw = n.ToString(CultureInfo.InvariantCulture) };
+        _enums.Add(row); EnumGrid.SelectedItem = row; EnumGrid.ScrollIntoView(row);
+    }
+    private void DeleteEnum_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel.CanChangeStructure && EnumGrid.SelectedItem is EnumEditRow row) _enums.Remove(row);
+    }
+
+    private void Overlay_Backdrop(object sender, MouseButtonEventArgs e)
+    {
+        if (!ReferenceEquals(e.OriginalSource, PropertyOverlay)) return;
+        e.Handled = true; FinishOverlay();
+    }
+    private void FinishOverlay_Click(object sender, RoutedEventArgs e) => FinishOverlay();
+    private void CancelOverlay_Click(object sender, RoutedEventArgs e) => CloseOverlay();
+
+    private bool FinishOverlay()
+    {
+        if (!_viewModel.HasOpenEditor) return true;
+        if (_overlayKind == "notes" &&
+            !_viewModel.TrySaveNotes(_messageNotes, AliasBox.Text, SummaryBox.Text, CommentBox.Text))
+        { OverlayError.Text = _viewModel.StatusMessage; return false; }
+        if (_overlayKind == "enums" && _viewModel.CanChangeStructure)
+        {
+            if (!EnumGrid.CommitEdit(DataGridEditingUnit.Cell, true) ||
+                !EnumGrid.CommitEdit(DataGridEditingUnit.Row, true)) return false;
+            var values = new Dictionary<long, string>();
+            foreach (var row in _enums)
+                if (!long.TryParse(row.Raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var raw) ||
+                    !values.TryAdd(raw, row.Label))
+                { OverlayError.Text = "枚举原始值必须是唯一的有效整数。"; return false; }
+            if (!_viewModel.TrySaveEnums(values))
+            { OverlayError.Text = _viewModel.StatusMessage; return false; }
+        }
+        CloseOverlay(); return true;
+    }
+
+    private void CloseOverlay()
+    {
+        PropertyOverlay.Visibility = Visibility.Collapsed;
+        _viewModel.HasOpenEditor = false;
+        _overlayKind = "";
+    }
+
+    private static readonly string[] ColorsBySignal =
+        ["#BAD7FA", "#BDE1D5", "#E1D1F5", "#F2DBAC", "#B9DDEB", "#D0E3B4", "#F2CAD8", "#C8D5E8"];
 
     private void RebuildBitLayout()
     {
         if (BitGrid is null) return;
-        BitGrid.Children.Clear();
-        BitGrid.RowDefinitions.Clear();
-        BitGrid.ColumnDefinitions.Clear();
-
-        // Physical bits are arranged by byte and bit index, not as a wall of
-        // repeated truncated signal names. The label at the right is shown once
-        // per byte, and individual bit cells carry exact, inspectable tooltips.
-        BitGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(54) });
-        for (var bit = 0; bit < 8; bit++)
-            BitGrid.ColumnDefinitions.Add(new ColumnDefinition
-            {
-                Width = new GridLength(1, GridUnitType.Star)
-            });
-        BitGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(160) });
-        for (var row = 0; row <= 8; row++)
-            BitGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(26) });
-
-        AddBitLabel(0, 0, "字节", true);
-        for (var bit = 7; bit >= 0; bit--)
-            AddBitLabel(0, 8 - bit, bit.ToString(), true);
-        AddBitLabel(0, 9, "信号", true);
-
-        var message = _viewModel.SelectedMessage?.Message;
-        var occupied = message is null
-            ? new Dictionary<string, HashSet<int>>(StringComparer.Ordinal)
-            : message.Signals.ToDictionary(signal => signal.Name,
-                signal => DbcSignalCodec.BitPositions(signal).ToHashSet(),
-                StringComparer.Ordinal);
-
-        for (var byteIndex = 0; byteIndex < 8; byteIndex++)
+        BitGrid.Children.Clear(); BitGrid.RowDefinitions.Clear(); BitGrid.ColumnDefinitions.Clear();
+        BitGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(55) });
+        for (var i = 0; i < 8; i++) BitGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(38) });
+        BitGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(230) });
+        BitGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(23) });
+        AddBitLabel(0, 0, "字节");
+        for (var b = 7; b >= 0; b--) AddBitLabel(0, 8 - b, b.ToString());
+        AddBitLabel(0, 9, "信号");
+        var message = _viewModel.CurrentMessageModel;
+        if (message is null) { BitStatus.Text = "请选择报文。"; return; }
+        var signals = message.Signals.ToArray();
+        var positions = signals.Select(s => DbcSignalCodec.BitPositions(s).ToHashSet()).ToArray();
+        var conflictBits = 0; var sharedBits = 0;
+        for (var byteIndex = 0; byteIndex < message.Dlc; byteIndex++)
         {
+            BitGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(25) });
             var row = byteIndex + 1;
-            AddBitLabel(row, 0, "Byte " + byteIndex, false);
-            var namesInByte = new HashSet<string>(StringComparer.Ordinal);
+            AddBitLabel(row, 0, "Byte " + byteIndex);
+            var names = new HashSet<string>(StringComparer.Ordinal);
             for (var bit = 7; bit >= 0; bit--)
             {
                 var physical = byteIndex * 8 + bit;
-                var matches = message is null ? Array.Empty<DbcSignal>() : message.Signals
-                    .Where(signal => occupied[signal.Name].Contains(physical))
-                    .ToArray();
-                foreach (var owner in matches) namesInByte.Add(owner.Name);
-                var selected = matches.Any(signal =>
-                    signal.Name == _viewModel.SelectedSignal?.Name);
-                var color = message is null || byteIndex >= message.Dlc ? "#EFF2F6" :
-                    matches.Length > 1 ? "#F4CD96" :
-                    selected ? "#83B8EC" :
-                    matches.Length == 1 ? "#D4E6F8" : "#FFFFFF";
+                var owners = Enumerable.Range(0, signals.Length).Where(i => positions[i].Contains(physical)).ToArray();
+                foreach (var i in owners) names.Add(signals[i].Name);
+                var mux = owners.Length > 1 && owners.All(i => signals[i].Multiplexer?.StartsWith('m') == true) &&
+                    owners.Select(i => signals[i].Multiplexer).Distinct().Count() == owners.Length;
+                if (owners.Length > 1) { if (mux) sharedBits++; else conflictBits++; }
+                var selected = owners.Any(i => signals[i].Name == _viewModel.SelectedSignal?.Name);
+                var color = owners.Length == 0 ? "#FFFFFF" : owners.Length == 1
+                    ? ColorsBySignal[owners[0] % ColorsBySignal.Length] : mux ? "#DBE6F5" : "#F8C5B8";
                 var cell = new Border
                 {
                     Background = (Brush)new BrushConverter().ConvertFromString(color)!,
-                    BorderBrush = new SolidColorBrush(Color.FromRgb(217, 226, 237)),
-                    BorderThickness = new Thickness(1),
-                    CornerRadius = new CornerRadius(3),
-                    Margin = new Thickness(2, 2, 2, 2),
+                    BorderBrush = (Brush)new BrushConverter().ConvertFromString(selected ? "#3478D6" : "#D7E0E9")!,
+                    BorderThickness = new Thickness(selected ? 2 : 1), CornerRadius = new CornerRadius(3),
+                    Margin = new Thickness(1),
                     ToolTip = "Byte " + byteIndex + " · bit " + bit + " · " +
-                        (matches.Length == 0 ? "未使用" :
-                            string.Join(" / ", matches.Select(signal => signal.Name)))
+                        (owners.Length == 0 ? "未使用" : string.Join(" / ", owners.Select(i => signals[i].Name)))
+                        + (mux ? " · 不同复用分支" : owners.Length > 1 ? " · 位冲突" : "")
                 };
-                Grid.SetRow(cell, row);
-                Grid.SetColumn(cell, 8 - bit);
-                BitGrid.Children.Add(cell);
-                if (matches.Length == 1)
+                if (owners.Length > 1)
+                    cell.Child = new TextBlock { Text = mux ? "M" : "!", FontSize = 11,
+                        HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+                if (owners.Length == 1)
                 {
-                    var name = matches[0].Name;
+                    var name = signals[owners[0]].Name;
                     cell.Cursor = Cursors.Hand;
                     cell.MouseLeftButtonUp += (_, _) => SelectBitSignal(name);
                 }
-                else if (matches.Length > 1)
+                else if (owners.Length > 1)
                 {
-                    cell.Child = new TextBlock
+                    var menu = new ContextMenu();
+                    foreach (var i in owners)
                     {
-                        Text = "×",
-                        HorizontalAlignment = HorizontalAlignment.Center,
-                        VerticalAlignment = VerticalAlignment.Center,
-                        Foreground = Brushes.SaddleBrown
-                    };
+                        var name = signals[i].Name;
+                        var item = new MenuItem { Header = name };
+                        item.Click += (_, _) => SelectBitSignal(name); menu.Items.Add(item);
+                    }
+                    cell.ContextMenu = menu;
+                    cell.Cursor = Cursors.Hand;
+                    cell.MouseLeftButtonUp += (_, _) => menu.IsOpen = true;
                 }
+                Grid.SetRow(cell, row); Grid.SetColumn(cell, 8 - bit); BitGrid.Children.Add(cell);
             }
-            var signalNames = namesInByte.Select(name =>
-            {
-                var signal = _viewModel.Signals.FirstOrDefault(s => s.Name == name);
-                return signal?.NavTitle ?? name;
-            }).ToArray();
-            var label = signalNames.Length switch
-            {
-                0 => "未使用",
-                1 => signalNames[0],
-                _ => signalNames.Length + " 个信号"
-            };
-            var labelBlock = AddBitLabel(row, 9, label, false);
-            labelBlock.ToolTip = namesInByte.Count == 0 ? "未使用" :
-                string.Join("、", namesInByte);
-            if (namesInByte.Count == 1)
-            {
-                var name = namesInByte.First();
-                labelBlock.Cursor = Cursors.Hand;
-                labelBlock.MouseLeftButtonUp += (_, _) => SelectBitSignal(name);
-            }
+            var label = AddBitLabel(row, 9, names.Count == 0 ? "未使用" : string.Join(" / ", names.Select(n =>
+                _viewModel.Signals.FirstOrDefault(s => s.Name == n)?.NavTitle ?? n)));
+            if (names.Count == 1)
+            { var name = names.First(); label.Cursor = Cursors.Hand; label.MouseLeftButtonUp += (_, _) => SelectBitSignal(name); }
         }
+        BitStatus.Text = "颜色区分信号 · 蓝框：当前信号 · M：不同复用分支 · !：位冲突" +
+            (sharedBits > 0 ? " · 复用共享 " + sharedBits + " bit" : "") +
+            (conflictBits > 0 ? " · 冲突 " + conflictBits + " bit，保存前须修复" : "");
     }
 
-    private TextBlock AddBitLabel(int row, int column, string text, bool heading)
+    private TextBlock AddBitLabel(int row, int col, string text)
     {
-        var label = new TextBlock
-        {
-            Text = text,
-            FontSize = heading ? 11 : 12,
-            FontWeight = heading ? FontWeights.SemiBold : FontWeights.Normal,
-            Foreground = heading ? new SolidColorBrush(Color.FromRgb(80, 103, 131))
-                : new SolidColorBrush(Color.FromRgb(57, 73, 93)),
+        var label = new TextBlock { Text = text, ToolTip = text, FontSize = 11,
+            Foreground = Brushes.SlateGray, VerticalAlignment = VerticalAlignment.Center,
             TextTrimming = TextTrimming.CharacterEllipsis,
-            VerticalAlignment = VerticalAlignment.Center,
-            HorizontalAlignment = column == 9 ? HorizontalAlignment.Left :
-                HorizontalAlignment.Center,
-            Margin = column == 9 ? new Thickness(10, 0, 2, 0) :
-                new Thickness(1, 0, 1, 0)
-        };
-        Grid.SetRow(label, row);
-        Grid.SetColumn(label, column);
-        BitGrid.Children.Add(label);
-        return label;
+            HorizontalAlignment = col == 9 ? HorizontalAlignment.Left : HorizontalAlignment.Center,
+            Margin = new Thickness(col == 9 ? 8 : 1, 0, 1, 0) };
+        Grid.SetRow(label, row); Grid.SetColumn(label, col); BitGrid.Children.Add(label); return label;
     }
 
-    private void SelectBitSignal(string signalName)
+    private void SelectBitSignal(string name)
     {
-        var signal = _viewModel.Signals.FirstOrDefault(s => s.Name == signalName);
-        if (signal is null) return;
-        _viewModel.SelectedSignal = signal;
-        SignalGrid.ScrollIntoView(signal);
+        if (!FinishGrid()) return;
+        var row = _viewModel.Signals.FirstOrDefault(s => s.Name == name);
+        if (row is null) return;
+        SignalGrid.SelectedItem = row;
+        _viewModel.SelectedSignal = row;
+        SignalGrid.ScrollIntoView(row);
     }
-
 }
