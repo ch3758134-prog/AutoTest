@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using Microsoft.Win32;
 using AutoTest.Records.Exports;
 using AutoTest.Records.Operations;
@@ -11,7 +12,8 @@ using AutoTest.Records.Storage;
 namespace AutoTest.Desktop.Shell;
 
 /// <summary>Only a localized visual projection of existing immutable RECORD facts.</summary>
-public sealed record RecordHistoryDisplayRow(RecordHistoryToolRow Source)
+public sealed record RecordHistoryDisplayRow(
+    RecordHistoryToolRow Source, string ProjectName, IRecordHistoryToolSource RecordSource)
 {
     public string StartedLocal => Source.StartedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss");
     public string DutId => Source.DutId;
@@ -48,8 +50,10 @@ public sealed record RecordHistoryDisplayRow(RecordHistoryToolRow Source)
 /// </summary>
 public partial class RecordHistoryWindow : Window
 {
-    private IRecordHistoryToolSource? _source;
-    private string? _databasePath;
+    // Several existing project databases may be compared without creating an
+    // aggregate database, silently migrating records, or modifying run facts.
+    private readonly Dictionary<string, IRecordHistoryToolSource> _sources =
+        new(StringComparer.OrdinalIgnoreCase);
     private bool _busy;
 
     public RecordHistoryWindow(string? projectRoot)
@@ -66,22 +70,60 @@ public partial class RecordHistoryWindow : Window
 
     private void SetSource(string path)
     {
-        if (!File.Exists(path))
-            throw new FileNotFoundException("记录库文件不存在。", path);
-        var directory = Path.GetDirectoryName(Path.GetFullPath(path))!;
-        var database = new RecordDatabase(path);
-        _source = new RecordHistoryToolSource(
+        if (_sources.Count >= 16)
+            throw new InvalidOperationException("最多同时查看 16 个记录库。请清空来源后重新选择。");
+        var absolute = Path.GetFullPath(path);
+        if (_sources.ContainsKey(absolute)) return;
+        if (!File.Exists(absolute))
+            throw new FileNotFoundException("记录库文件不存在。", absolute);
+        // Avoid interpreting an arbitrary file as an editable SQLite database.
+        using (var stream = File.OpenRead(absolute))
+        {
+            Span<byte> signature = stackalloc byte[16];
+            if (stream.Length < 100 || stream.Read(signature) != 16 ||
+                !signature.SequenceEqual("SQLite format 3\0"u8))
+                throw new InvalidDataException("所选文件不是有效的 SQLite 记录库。");
+        }
+        var directory = Path.GetDirectoryName(absolute)!;
+        var database = new RecordDatabase(absolute);
+        _sources.Add(absolute, new RecordHistoryToolSource(
             new RunHistoryQuery(database),
             new ProductionStatistics(database),
             new RunReportExporter(database,
-                new ArtifactRepository(Path.Combine(directory, "artifacts"))));
-        _databasePath = database.DatabasePath;
-        SourceLabel.Text = "记录库：" + _databasePath;
+                new ArtifactRepository(Path.Combine(directory, "artifacts")))));
+        SourceLabel.Text = "已选择 " + _sources.Count + " 个真实工程记录库";
         HistoryGrid.ItemsSource = null;
         SelectionSummary.Text = "选择一条记录查看详情";
         FailureDetail.Text = "";
         ViewReport.IsEnabled = false;
         ExportReport.IsEnabled = false;
+    }
+
+    private static string ProjectLabel(string databasePath)
+    {
+        var folder = Path.GetDirectoryName(databasePath)!;
+        if (string.Equals(Path.GetFileName(folder), "test-records", StringComparison.OrdinalIgnoreCase))
+            folder = Path.GetDirectoryName(folder)!;
+        return Path.GetFileName(folder);
+    }
+
+    private void ClearSources_Click(object sender, RoutedEventArgs e)
+    {
+        if (_busy) return;
+        _sources.Clear();
+        HistoryGrid.ItemsSource = null;
+        SourceLabel.Text = "尚未选择记录库";
+        SelectionSummary.Text = "选择一条记录查看详情";
+        FailureDetail.Text = "";
+        ViewReport.IsEnabled = ExportReport.IsEnabled = false;
+        StatusText.Text = "已清空查询来源；原始 SQLite 文件及记录均未修改。";
+    }
+
+    private async void DutSearch_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter) return;
+        e.Handled = true;
+        await RefreshAsync();
     }
 
     private async void ChooseDatabase_Click(object sender, RoutedEventArgs e)
@@ -92,12 +134,13 @@ public partial class RecordHistoryWindow : Window
             Title = "选择已有的 ECU 检测记录库",
             Filter = "AutoTest SQLite 记录库 (*.sqlite)|*.sqlite|全部文件 (*.*)|*.*",
             CheckFileExists = true,
-            Multiselect = false
+            Multiselect = true
         };
         if (picker.ShowDialog(this) != true) return;
         try
         {
-            SetSource(picker.FileName);
+            foreach (var file in picker.FileNames)
+                SetSource(file);
             await RefreshAsync();
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or
@@ -111,21 +154,42 @@ public partial class RecordHistoryWindow : Window
 
     private async Task RefreshAsync()
     {
-        if (_busy || _source is null) return;
+        if (_busy || _sources.Count == 0) return;
         _busy = true;
         try
         {
             StatusText.Text = "正在读取真实检测记录…";
             var mode = (ModeFilter.SelectedItem as ComboBoxItem)?.Tag as string ?? "All";
-            var rows = await _source.QueryAsync(DutSearch.Text, mode, 500);
-            HistoryGrid.ItemsSource = rows.Select(row => new RecordHistoryDisplayRow(row)).ToArray();
-            SelectionSummary.Text = rows.Count == 0
+            var rows = new List<RecordHistoryDisplayRow>();
+            var failed = new List<string>();
+            foreach (var (path, source) in _sources)
+            {
+                try
+                {
+                    var found = await source.QueryAsync(DutSearch.Text, mode, 500);
+                    rows.AddRange(found.Select(row =>
+                        new RecordHistoryDisplayRow(row, ProjectLabel(path), source)));
+                }
+                catch (Exception error) when (error is IOException or UnauthorizedAccessException or
+                    InvalidDataException or ArgumentException or InvalidOperationException or
+                    Microsoft.Data.Sqlite.SqliteException or System.Text.Json.JsonException)
+                {
+                    failed.Add(ProjectLabel(path) + "：" + error.Message);
+                }
+            }
+            var visible = rows.OrderByDescending(row => row.Source.StartedUtc)
+                .ThenBy(row => row.Source.RunId, StringComparer.Ordinal).Take(500).ToArray();
+            HistoryGrid.ItemsSource = visible;
+            SelectionSummary.Text = visible.Length == 0
                 ? "未找到符合条件的归档记录" : "选择一条记录查看详情";
             FailureDetail.Text = "";
             ViewReport.IsEnabled = false;
             ExportReport.IsEnabled = false;
-            StatusText.Text = "查询完成：" + rows.Count + " 次检测记录（最多显示最近 500 条）。" +
-                " 记录仅来自已有持久化事实；未提交和中断记录不视为通过。";
+            StatusText.Text = "查询完成：" + visible.Length + " 条记录，来自 " +
+                (_sources.Count - failed.Count) + " 个记录库（最多显示最近 500 条）。" +
+                (failed.Count > 0 ? " 有 " + failed.Count + " 个来源读取失败：" +
+                    string.Join("；", failed.Take(2)) : "") +
+                " 未结案或中断记录不视为通过。";
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or
                                        InvalidDataException or ArgumentException or
@@ -150,7 +214,7 @@ public partial class RecordHistoryWindow : Window
             FailureDetail.Text = "";
             return;
         }
-        var display = new RecordHistoryDisplayRow(row);
+        var display = (RecordHistoryDisplayRow)HistoryGrid.SelectedItem;
         SelectionSummary.Text = row.DutId + " · " + display.StartedLocal +
             " · " + display.VerdictLabel + " · " + display.PersistenceLabel +
             " · 步骤事实 " + row.StepFactCount;
@@ -159,13 +223,13 @@ public partial class RecordHistoryWindow : Window
 
     private async void OpenReport_Click(object sender, RoutedEventArgs e)
     {
-        if (_busy || _source is null || HistoryGrid.SelectedItem is not RecordHistoryDisplayRow selection) return;
+        if (_busy || HistoryGrid.SelectedItem is not RecordHistoryDisplayRow selection) return;
         var row = selection.Source;
         _busy = true;
         try
         {
             StatusText.Text = "正在核对证据并生成报告…";
-            var html = await _source.ExportFullReportHtmlAsync(row.RunId);
+            var html = await selection.RecordSource.ExportFullReportHtmlAsync(row.RunId);
             var folder = Path.Combine(Path.GetTempPath(), "AutoTest", "Reports");
             Directory.CreateDirectory(folder);
             var path = Path.Combine(folder, row.RunId + ".html");
@@ -206,7 +270,7 @@ public partial class RecordHistoryWindow : Window
         _busy = true;
         try
         {
-            await _source.ExportReportAsync(row.RunId, picker.FileName, picker.FilterIndex == 1);
+            await selection.RecordSource.ExportReportAsync(row.RunId, picker.FileName, picker.FilterIndex == 1);
             StatusText.Text = "报告已导出：" + picker.FileName;
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or
