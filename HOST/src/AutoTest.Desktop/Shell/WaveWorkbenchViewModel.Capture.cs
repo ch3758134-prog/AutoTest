@@ -158,7 +158,7 @@ public sealed partial class WaveWorkbenchViewModel
             () => !_closed && IsCapturing);
         SaveReferenceCommand = new DelegateCommand(SaveReference,
             () => !_closed && !IsCapturing && _series is not null &&
-                Selected?.IsReference == false &&
+                Selected is { IsReference: false, Kind: "Capture" } &&
                 !string.IsNullOrWhiteSpace(ReferenceName));
         ReloadAvailableSignals();
     }
@@ -464,7 +464,7 @@ public sealed partial class WaveWorkbenchViewModel
     private void SaveReference()
     {
         if (_closed || IsCapturing || _series is null ||
-            Selected?.IsReference != false || string.IsNullOrWhiteSpace(ReferenceName) ||
+            Selected is not { IsReference: false, Kind: "Capture" } || string.IsNullOrWhiteSpace(ReferenceName) ||
             _project.Current is not { } project)
             return;
         try
