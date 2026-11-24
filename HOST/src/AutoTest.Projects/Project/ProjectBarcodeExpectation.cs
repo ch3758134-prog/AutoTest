@@ -50,6 +50,9 @@ public sealed record ProjectBarcodeExpectation(string Separator,
         if (!Fields.Any(x => x.Name == Model && x.Purpose == Match) ||
             !Fields.Any(x => x.Name == Hardware && x.Purpose == Match))
             Bad("产品型号 ModelCode、硬件版本 HardwareCode 必须是精确匹配字段。");
+        if (!Regex.IsMatch(ExpectedModel, @"^[A-Z0-9]{2,16}$",
+                RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)))
+            Bad("产品型号必须为 2～16 位大写字母或数字。");
         if (!string.Equals(ExpectedModel, model, StringComparison.Ordinal))
             Bad("扫码期望型号必须与 ECU 工程型号一致。");
     }
