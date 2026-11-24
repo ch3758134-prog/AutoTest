@@ -182,7 +182,7 @@ public sealed partial class WaveWorkbenchViewModel
         SaveReferenceCommand?.RaiseCanExecuteChanged();
     }
 
-    private void CaptureStationChanged(long _)
+    private void CaptureStationChanged(long stationEpoch)
     {
         var dispatcher = System.Windows.Application.Current?.Dispatcher;
         if (dispatcher is null) return;
