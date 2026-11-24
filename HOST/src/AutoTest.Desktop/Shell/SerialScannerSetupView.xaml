@@ -9,9 +9,9 @@
    <RowDefinition Height="Auto"/>
   </Grid.RowDefinitions>
   <StackPanel Grid.Row="0" Margin="0,0,0,12">
-   <TextBlock Text="扫码枪 · 串口解析与字段映射" FontSize="20"
+   <TextBlock Text="扫码枪 · 串口设备" FontSize="20"
               FontWeight="SemiBold" Foreground="#20364A"/>
-   <TextBlock Text="先接收完整串口帧，再解析字段并映射到工程型号、ECU 唯一编号和本次扫码追溯信息；扫描本身不触发检测"
+   <TextBlock Text="独立设置设备，查看真实串口输入。工程扫码期望在检测准备内统一管理。"
               Foreground="#62798C" TextWrapping="Wrap" Margin="0,5,0,0"/>
   </StackPanel>
   <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
@@ -37,11 +37,11 @@
        </StackPanel>
        <Button Content="刷新端口" Command="{Binding RefreshPortsCommand}"
                Margin="0,18,6,0" Padding="12,6"/>
-       <Button Content="连接 / 试扫" Command="{Binding ConnectCommand}"
+       <Button Content="连接" Command="{Binding ConnectCommand}"
                IsEnabled="{Binding CanEditConnection}" Margin="0,18,6,0" Padding="12,6"/>
        <Button Content="断开" Command="{Binding DisconnectCommand}"
                IsEnabled="{Binding IsConnected}" Margin="0,18,6,0" Padding="12,6"/>
-       <Button Content="绑定已验证扫码枪" Command="{Binding BindScannerDeviceCommand}"
+       <Button Content="记住当前扫码枪" Command="{Binding BindScannerDeviceCommand}"
                ToolTip="真实试扫成功后绑定此实体设备，以后根据 USB 设备身份找到实际 COM"
                Margin="0,18,6,0" Padding="12,6"/>
        <Button Content="更换设备" Command="{Binding ReplaceScannerDeviceCommand}"
@@ -53,185 +53,24 @@
                  Foreground="#76899A" FontSize="11" Margin="0,5,0,0" TextWrapping="Wrap"/>
      </StackPanel>
     </Border>
-    <Border Background="White" BorderBrush="#DEE7EF" BorderThickness="1"
-            CornerRadius="8" Padding="14" Margin="0,0,0,12">
+    <Border Background="White" BorderBrush="#DEE7EF" BorderThickness="1" CornerRadius="8" Padding="14">
      <StackPanel>
-      <TextBlock Text="二、数据解析与字段映射" FontSize="15" FontWeight="SemiBold"
-                 Foreground="#20364A" Margin="0,0,0,4"/>
-      <TextBlock Text="映射是身份与追溯，不是第二份测试方案。ECU 唯一编号是必须的系统目标；型号未从条码解析时采用当前工程型号。"
-                 Foreground="#62798C" TextWrapping="Wrap" Margin="0,0,0,12"/>
-      <WrapPanel>
-       <StackPanel Width="300" Margin="0,0,12,9">
-        <TextBlock Text="解析模式" Foreground="#64798C" FontSize="11"/>
-        <ComboBox ItemsSource="{Binding IdentityFormats}"
-                  DisplayMemberPath="Label" SelectedValuePath="Mode"
-                  SelectedValue="{Binding IdentityFormat,Mode=TwoWay}"
-                  Margin="0,4,0,0" MinHeight="29"/>
-       </StackPanel>
-       <StackPanel Width="215" Margin="0,0,12,9"
-                   Visibility="{Binding IsMappedMode,Converter={StaticResource BoolToVisibility}}">
-        <TextBlock Text="字段提取方式" Foreground="#64798C" FontSize="11"/>
-        <ComboBox ItemsSource="{Binding MappingMethods}"
-                  DisplayMemberPath="Label" SelectedValuePath="Mode"
-                  SelectedValue="{Binding MappingMethod,Mode=TwoWay}"
-                  Margin="0,4,0,0" MinHeight="29"/>
-       </StackPanel>
-       <StackPanel Width="110" Margin="0,0,12,9"
-                   Visibility="{Binding UsesDelimiter,Converter={StaticResource BoolToVisibility}}">
-        <TextBlock Text="分隔符" Foreground="#64798C" FontSize="11"/>
-        <ComboBox SelectedValuePath="Content"
-                  SelectedValue="{Binding IdentitySeparator,Mode=TwoWay}"
-                  Margin="0,4,0,0" MinHeight="29">
-         <ComboBoxItem Content="-"/>
-         <ComboBoxItem Content="|"/>
-         <ComboBoxItem Content=":"/>
-         <ComboBoxItem Content="/"/>
-        </ComboBox>
-       </StackPanel>
-      </WrapPanel>
-      <StackPanel Visibility="{Binding IsMappedMode,Converter={StaticResource BoolToVisibility}}"
-                  Margin="0,2,0,6">
-       <DockPanel Margin="0,0,0,7">
-        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-         <Button Content="＋ 添加映射" Command="{Binding AddFieldMappingCommand}"
-                 Padding="11,5" Margin="0,0,6,0"/>
-         <Button Content="移除所选" Command="{Binding RemoveFieldMappingCommand}" Padding="11,5"/>
-        </StackPanel>
-        <TextBlock Text="字段映射表" FontWeight="SemiBold" Foreground="#354F69"
-                   VerticalAlignment="Center"/>
-       </DockPanel>
-       <DataGrid ItemsSource="{Binding MappingRows}"
-                 SelectedItem="{Binding SelectedMapping,Mode=TwoWay}"
-                 AutoGenerateColumns="False" CanUserAddRows="False"
-                 CanUserDeleteRows="False" HeadersVisibility="Column"
-                 RowHeight="35" MinHeight="92" MaxHeight="310"
-                 Visibility="{Binding IsDelimitedMapping,Converter={StaticResource BoolToVisibility}}">
-        <DataGrid.Columns>
-         <DataGridTextColumn Header="字段序号（从 1 起）" Width="180"
-                             Binding="{Binding FieldNumber,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
-         <DataGridTemplateColumn Header="映射到系统字段" Width="*">
-          <DataGridTemplateColumn.CellTemplate>
-           <DataTemplate>
-            <ComboBox ItemsSource="{Binding DataContext.MappingTargets,RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                      SelectedValuePath="Target" DisplayMemberPath="Label"
-                      SelectedValue="{Binding Target,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-                      Margin="3" MinHeight="25"/>
-           </DataTemplate>
-          </DataGridTemplateColumn.CellTemplate>
-         </DataGridTemplateColumn>
-        </DataGrid.Columns>
-       </DataGrid>
-       <DataGrid ItemsSource="{Binding MappingRows}"
-                 SelectedItem="{Binding SelectedMapping,Mode=TwoWay}"
-                 AutoGenerateColumns="False" CanUserAddRows="False"
-                 CanUserDeleteRows="False" HeadersVisibility="Column"
-                 RowHeight="35" MinHeight="92" MaxHeight="310"
-                 Visibility="{Binding IsFixedMapping,Converter={StaticResource BoolToVisibility}}">
-        <DataGrid.Columns>
-         <DataGridTextColumn Header="起始位置（从 1 起）" Width="145"
-                             Binding="{Binding Start,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
-         <DataGridTextColumn Header="字段长度" Width="120"
-                             Binding="{Binding Length,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
-         <DataGridTemplateColumn Header="映射到系统字段" Width="*">
-          <DataGridTemplateColumn.CellTemplate>
-           <DataTemplate>
-            <ComboBox ItemsSource="{Binding DataContext.MappingTargets,RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                      SelectedValuePath="Target" DisplayMemberPath="Label"
-                      SelectedValue="{Binding Target,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-                      Margin="3" MinHeight="25"/>
-           </DataTemplate>
-          </DataGridTemplateColumn.CellTemplate>
-         </DataGridTemplateColumn>
-        </DataGrid.Columns>
-       </DataGrid>
-       <TextBlock Text="工程型号只做唯一工程匹配；ECU 编号用于 DUT 身份与复检关联。其他解析字段目前可在扫码预览中查看并冻结为本次观察，正式生产 RECORD 的持久追溯写入尚未完成，不能在这里宣称已入库。"
-                  TextWrapping="Wrap" FontSize="11" Foreground="#788A9B" Margin="0,7,0,0"/>
-      </StackPanel>
-      <Expander Header="唯一编号合法性约束（可选，默认允许 1～64 字符）"
-                Foreground="#4D657E" Margin="0,4,0,9">
-       <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
-        <TextBlock Text="最短长度" VerticalAlignment="Center" Margin="0,0,6,0"/>
-        <TextBox Width="65" Text="{Binding MinimumSerialLength,UpdateSourceTrigger=PropertyChanged}"
-                 Padding="6,5" Margin="0,0,16,0"/>
-        <TextBlock Text="最长长度" VerticalAlignment="Center" Margin="0,0,6,0"/>
-        <TextBox Width="65" Text="{Binding MaximumSerialLength,UpdateSourceTrigger=PropertyChanged}"
-                 Padding="6,5"/>
-       </StackPanel>
-      </Expander>
-      <TextBlock Text="试解析原始串口内容（只查看字段映射，不触发夹具、START、烧录或 TEST）"
-                 Foreground="#61788E" FontSize="11" Margin="0,3,0,5"/>
-      <DockPanel>
-       <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" Margin="8,0,0,0">
-        <Button Content="试解析" Command="{Binding TestIdentitySampleCommand}"
-                Padding="12,6" Margin="0,0,7,0"/>
-        <Button Content="保存解析规则" Command="{Binding SaveIdentityPolicyCommand}" Padding="13,6"/>
-       </StackPanel>
-       <TextBox Text="{Binding SampleRaw,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-                Padding="8,6" MinHeight="30" ToolTip="可粘贴一条真实扫码文本离线检查"/>
-      </DockPanel>
-      <TextBlock Text="{Binding SampleResult}" Foreground="#345E83"
-                 TextWrapping="Wrap" Margin="0,9,0,0"/>
-      <TextBlock Text="{Binding SampleMappedFields}" Foreground="#355C76"
-                 TextWrapping="Wrap" Margin="0,5,0,0"/>
-      <TextBlock Text="{Binding IdentityPolicyStatus}" Foreground="#79899A"
-                 TextWrapping="Wrap" Margin="0,6,0,0"/>
+      <TextBlock Text="设备接收诊断" FontSize="15" FontWeight="SemiBold" Foreground="#20364A" Margin="0,0,0,12"/>
+      <TextBlock Text="此处只设置串口与检查设备输入；产品字段和期望内容请到 ECU 工程的「检测准备 → 扫码匹配」提前编辑。连接设备或试扫不是编辑工程的前提。" Foreground="#62798C" TextWrapping="Wrap" Margin="0,0,0,12"/>
+      <TextBlock Text="最近完整原始文本" Foreground="#64798C"/>
+      <TextBox Text="{Binding LastRaw,Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" Padding="8,6" Margin="0,4,0,12"/>
+      <TextBlock Text="原始帧 HEX" Foreground="#64798C"/>
+      <TextBox Text="{Binding LastHex,Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" Padding="8,6" Margin="0,4,0,12"/>
+      <TextBlock Text="当前开发工程的已保存期望（只读预览）" FontWeight="SemiBold" Foreground="#20364A"/>
+      <TextBlock Text="{Binding ProjectName}" FontWeight="SemiBold" Foreground="#345E83" Margin="0,6,0,4"/>
+      <TextBlock Text="{Binding LastMappedFields}" TextWrapping="Wrap" Foreground="#355C76"/>
+      <TextBlock Text="{Binding LastDecision}" Foreground="#657D90" Margin="0,6,0,0"/>
+      <TextBlock Text="正式检测使用已部署工程，不使用此处的预览结果。" TextWrapping="Wrap" Foreground="#788A9B" Margin="0,8,0,0"/>
      </StackPanel>
     </Border>
-    <Grid Margin="0,0,0,8">
-     <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="*"/>
-      <ColumnDefinition Width="12"/>
-      <ColumnDefinition Width="*"/>
-     </Grid.ColumnDefinitions>
-     <Border Grid.Column="0" Background="White" BorderBrush="#DEE7EF"
-             BorderThickness="1" CornerRadius="8" Padding="14">
-      <StackPanel>
-       <TextBlock Text="三、映射目标 · 当前 ECU 工程" FontSize="15" FontWeight="SemiBold"
-                  Foreground="#20364A" Margin="0,0,0,12"/>
-       <TextBlock Text="{Binding ProjectName}" Foreground="#2B5277"
-                  FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,0,11"/>
-       <TextBlock Text="当前工程型号（由 ECU 工程管理，不在扫码枪重复配置）"
-                  Foreground="#64798C" FontSize="11"/>
-       <TextBlock Text="{Binding ModelCode}" FontSize="16" FontWeight="SemiBold"
-                  Foreground="#285A87" Margin="0,6,0,8"/>
-       <TextBlock Text="条码含型号字段时只与当前工程做匹配；不含型号时以当前工程型号作为身份上下文。条码不得自动切换工程、测试用例或烧录工艺。"
-                  Foreground="#788A9A" TextWrapping="Wrap" FontSize="11" Margin="0,5,0,0"/>
-      </StackPanel>
-     </Border>
-     <Border Grid.Column="2" Background="White" BorderBrush="#DEE7EF"
-             BorderThickness="1" CornerRadius="8" Padding="14">
-      <StackPanel>
-       <TextBlock Text="最近一次真实扫码" FontSize="15" FontWeight="SemiBold"
-                  Foreground="#20364A" Margin="0,0,0,10"/>
-       <TextBlock Text="原始内容" Foreground="#64798C"/>
-       <TextBox Text="{Binding LastRaw,Mode=OneWay}" IsReadOnly="True"
-                TextWrapping="Wrap" Padding="6,5" Margin="0,4,0,8"/>
-       <TextBlock Text="原始帧 HEX" Foreground="#64798C"/>
-       <TextBox Text="{Binding LastHex,Mode=OneWay}" IsReadOnly="True"
-                TextWrapping="Wrap" Padding="6,5" Margin="0,4,0,8"/>
-       <TextBlock Text="工程型号 / ECU 唯一编号" Foreground="#64798C"/>
-       <StackPanel Orientation="Horizontal" Margin="0,4,0,8">
-        <TextBlock Text="{Binding LastModel}" FontWeight="SemiBold" Foreground="#2B5277"/>
-        <TextBlock Text="  /  " Foreground="#7B8995"/>
-        <TextBlock Text="{Binding LastSerial}" FontWeight="SemiBold" Foreground="#2B5277"/>
-       </StackPanel>
-       <TextBlock Text="{Binding LastMappedFields}" Foreground="#355C76" TextWrapping="Wrap"/>
-       <TextBlock Text="{Binding LastDecision}" Foreground="#657D90" Margin="0,6,0,0"/>
-       <TextBlock Text="{Binding MatchedProjectName}" FontWeight="SemiBold" TextWrapping="Wrap"
-                  Foreground="#3C6280" Margin="0,6,0,0"/>
-       <WrapPanel Margin="0,8,0,0">
-        <Button Content="当前工程配置预检" Command="{Binding PrepareProductionCommand}"
-                Padding="10,6" Margin="0,0,0,5"/>
-       </WrapPanel>
-       <TextBlock Text="{Binding ProductionPreview}" Foreground="#375B73"
-                  TextWrapping="Wrap" Margin="0,7,0,0"/>
-      </StackPanel>
-     </Border>
-    </Grid>
    </StackPanel>
   </ScrollViewer>
-  <Border Grid.Row="2" Background="#EBF1F5" CornerRadius="6"
-          Padding="10" Margin="0,10,0,0">
+  <Border Grid.Row="2" Background="#EBF1F5" CornerRadius="6" Padding="10" Margin="0,10,0,0">
    <TextBlock Text="{Binding Status}" Foreground="#314F63" TextWrapping="Wrap"/>
   </Border>
  </Grid>
