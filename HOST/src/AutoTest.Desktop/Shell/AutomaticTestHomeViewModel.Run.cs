@@ -362,6 +362,8 @@ public sealed partial class AutomaticTestHomeViewModel
                 OperatorRunState = outcome;
                 AddOperatorEvent(failure);
             }
+            AddOperatorEvent("KEY 输出状态：" + _hardware.KeyRequestStatus +
+                "；测试结束/停止没有自动发送释放帧");
             if (activeCaseIndex >= 0 && activeCaseIndex < Cases.Count &&
                 Cases[activeCaseIndex].State == "执行中")
                 ChangeCaseState(activeCaseIndex, outcome == "操作员停止；实体状态待核查"

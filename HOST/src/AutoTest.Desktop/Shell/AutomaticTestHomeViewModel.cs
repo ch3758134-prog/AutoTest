@@ -86,6 +86,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         RequestSoftwareStartCommand = new DelegateCommand(RequestSoftwareStart);
         _plans.Changed += OnPlanChanged;
         _hardware.ConnectionChanged += OnConnectionChanged;
+        _hardware.KeyRequestStateChanged += OnKeyRequestStateChanged;
         _scanner.PropertyChanged += OnScannerPropertyChanged;
         _scanner.CompleteBarcodeReceived += OnCompleteBarcodeReceived;
         _engineering.CurrentChanged += OnEngineeringProjectChanged;
@@ -157,6 +158,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     public string ProjectName => _plans.Current?.Project.Definition.Name ??
         _draftPreview?.Project.Definition.Name ?? "未打开工程";
     public bool MainControllerConnected => _hardware.IsConnected;
+    public string KeyRequestStatus => _hardware.KeyRequestStatus;
     public bool ScannerConnected => _scanner.IsConnected;
     public bool CanBitrateReady => _hardware.IsConnected && _hardware.IsEcuCanBitrateApplied;
     public bool IdentityAccepted => _prepared is not null;
@@ -295,6 +297,9 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         }
     }
 
+    private void OnKeyRequestStateChanged() => OnUi(() =>
+        RaisePropertyChanged(nameof(KeyRequestStatus)));
+
     private void OnConnectionChanged(long _)
     {
         var dispatcher = global::System.Windows.Application.Current?.Dispatcher;
@@ -321,6 +326,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         RaisePropertyChanged(nameof(ControllerDetail));
         RaisePropertyChanged(nameof(ScannerDetail));
         RaisePropertyChanged(nameof(CanDetail));
+        RaisePropertyChanged(nameof(KeyRequestStatus));
         RaisePropertyChanged(nameof(StationReadiness));
         RaisePropertyChanged(nameof(IdentityLabel));
         RaisePropertyChanged(nameof(HasPlan));
@@ -348,6 +354,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         DisposeOperatorExecution();
         _plans.Changed -= OnPlanChanged;
         _hardware.ConnectionChanged -= OnConnectionChanged;
+        _hardware.KeyRequestStateChanged -= OnKeyRequestStateChanged;
         _scanner.PropertyChanged -= OnScannerPropertyChanged;
         _scanner.CompleteBarcodeReceived -= OnCompleteBarcodeReceived;
         _engineering.CurrentChanged -= OnEngineeringProjectChanged;

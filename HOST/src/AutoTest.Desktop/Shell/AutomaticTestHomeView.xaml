@@ -172,6 +172,9 @@
         Foreground="#334A62" TextWrapping="Wrap" Margin="0,0,0,3"/>
        <TextBlock Text="{Binding OperatorCurrentStep}" FontSize="14"
         Foreground="#526477" TextWrapping="Wrap" Margin="0,0,0,6"/>
+       <TextBlock Text="{Binding KeyRequestStatus}" FontSize="12"
+        Foreground="#945900" TextWrapping="Wrap" Margin="0,0,0,8"
+        ToolTip="最后 ACK 的 KEY 组合请求；不是五路实际电压测量。TEST 停止和结束后不会自动断开"/>
        <TextBlock Text="{Binding OperatorRunEvidence}" FontSize="12"
         Foreground="#526477" TextWrapping="Wrap" Margin="0,0,0,6"/>
        <ItemsControl ItemsSource="{Binding OperatorEvents}">

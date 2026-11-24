@@ -39,6 +39,7 @@ public sealed class RealTestWorkbenchService
 
     public bool IsRunning => _running?.IsRunning ?? false;
     public bool IsHardwareConnected => _hardware.IsConnected;
+    public string KeyRequestStatus => _hardware.KeyRequestStatus;
     public long ConnectedStationEpoch => _hardware.CurrentStationEpoch;
     public event Action<RealStepFact>? StepReported;
     public event Action<StepId, string, TestPhase>? StepBegan;

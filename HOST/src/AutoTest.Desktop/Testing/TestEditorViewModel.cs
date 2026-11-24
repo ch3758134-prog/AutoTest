@@ -1152,6 +1152,8 @@ public sealed class TestEditorViewModel : BindableBase
         }
         finally
         {
+            RunSummary += " · " + _realTest.KeyRequestStatus;
+            StatusMessage = RunSummary;
             _realTest.StepReported -= OnPhysicalStep;
             _singleRunCancellation?.Dispose();
             _singleRunCancellation = null;
