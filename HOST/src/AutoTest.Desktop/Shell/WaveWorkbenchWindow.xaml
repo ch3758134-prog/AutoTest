@@ -45,13 +45,21 @@
      <Button Content="连接 USB" Command="{Binding ConnectToolUsbCommand}" Style="{StaticResource WaveButton}"/>
      <Button Content="断开 USB" Command="{Binding DisconnectToolUsbCommand}" Style="{StaticResource WaveButton}"/>
      <Button Content="刷新历史记录" Command="{Binding RefreshCommand}" Style="{StaticResource WaveButton}"/>
+     <Menu VerticalAlignment="Center" Background="White" Foreground="#253C54" Margin="0,0,7,0">
+      <MenuItem Header="波形来源">
+       <MenuItem Header="打开独立波形目录…" Click="OpenWaveFolder_Click"/>
+       <MenuItem Header="使用当前工程波形" Click="UseProjectWaveSource_Click"/>
+      </MenuItem>
+     </Menu>
      <Button Content="波形判定配置" Click="OpenConfiguration_Click"
+      IsEnabled="{Binding CanEditProjectWaveSettings}"
       Style="{StaticResource WaveButton}" ToolTip="编辑 TEST 使用的参考、容差与判定条件"/>
     </StackPanel>
     <StackPanel>
      <TextBlock Text="ECU 信号波形工作台" FontWeight="Bold" FontSize="21" Foreground="#173A59"/>
-     <TextBlock Text="多信号观察 · 采集记录 · 参考比较"
-      FontSize="13" Foreground="#52677D" Margin="0,3,0,0"/>
+     <TextBlock Text="{Binding SourceDescription}" FontSize="11" Foreground="#52677D"
+      Margin="0,3,0,0" MaxWidth="400" TextTrimming="CharacterEllipsis"
+      ToolTip="{Binding SourceDescription}"/>
     </StackPanel>
    </DockPanel>
   </Border>
