@@ -54,7 +54,8 @@ public sealed class StepRowProjection : BindableBase
         "Write" when _targetKind is TestTargetKind.Ignition or
             TestTargetKind.Button or TestTargetKind.RawKey => "Hardware",
         "Write" or "CanSend" or "CanWait" or "CanStopPeriodic" or "Read" or "WaitUntil" or "AssertSignal" => "Can",
-        "UdsRequest" or "Flash" => "Uds",
+        "Flash" => "Flash",
+        "UdsRequest" => "Uds",
         "WaveStart" or "WaveStop" or "WaveAnalyze" or "WaveCapture" or "WaveCompare" => "Wave",
         "If" or "Switch" or "Case" or "When" or "Loop" or "TryCatch" or "Sequence" or
             "Subroutine" or "CallSubroutine" => "Flow",
@@ -106,12 +107,27 @@ public sealed class StepRowProjection : BindableBase
     public bool ShowNormalSummary => ShowQuickSummary && !IsCanSendRow;
     public string CanFrameLine { get; } = "";
     public string CanDataLine { get; } = "";
-    public string ResourceDisplay => IsCanSendRow ? _targetKind switch
+    public string ResourceDisplay { get; }
+    public string TypeLabel => Item.Step?.Type switch
     {
-        TestTargetKind.RawCan => "原始 CAN",
-        TestTargetKind.CanMessage => "DBC 辅助",
-        _ => "待配置"
-    } : Resource;
+        "Write" when _targetKind == TestTargetKind.RawKey || _targetKind == TestTargetKind.Button || _draftActionKey == "key" => "按键",
+        "Write" when _targetKind == TestTargetKind.Ignition || _draftActionKey == "ign" => "IGN",
+        "Write" or "CanSend" => "CAN 发送",
+        "AssertSignal" => "信号判定",
+        "Read" => "信号读取",
+        "WaitUntil" => "信号等待",
+        "Flash" => "烧录",
+        "UdsRequest" => "UDS",
+        _ => Kind
+    };
+    public string StateTone => State switch
+    {
+        "已执行" => "Done",
+        "超时" or "数据无效" or "设备错误" or "无数据" or "步骤类型不支持" or "未知类型" => "Error",
+        "待完善" or "暂不能运行" or "结果待核查" => "Warning",
+        "已关闭" or "已跳过" or "条件不成立" or "已取消" => "Muted",
+        _ => "Idle"
+    };
     public string Resource { get; }
     public string State { get; }
     public Thickness Indent => new(9 + Depth * 18, 0, 0, 0);
@@ -150,10 +166,13 @@ public sealed class StepRowProjection : BindableBase
         {
             Summary = "";
             Resource = "";
+            ResourceDisplay = "";
             State = "";
             return;
         }
         string Prop(string key) => step.Properties.GetValueOrDefault(key, "");
+        var displayTarget = _targetKind == TestTargetKind.Signal && !string.IsNullOrWhiteSpace(targetMapping?.SignalName)
+            ? targetMapping!.SignalName : Prop("target");
         Summary = step.Type switch
         {
             "Wait" => Prop("milliseconds") + " ms",
@@ -168,11 +187,11 @@ public sealed class StepRowProjection : BindableBase
                 (Prop("dbcMessage").Length > 0 ? Prop("dbcMessage") : step.Name),
             "CanWait" => "待转换的 CAN 等待 · " +
                 (Prop("dbcMessage").Length > 0 ? Prop("dbcMessage") : step.Name),
-            "Read" => "读取 " + Prop("target") + " → " + Prop("variable") +
+            "Read" => "读取 " + displayTarget + " → " + Prop("variable") +
                 " · " + (Prop("mode") == "Latest" ? "最新有效值" : "等待新数据"),
-            "WaitUntil" => "信号 " + Prop("target") + " · 超时 " + Prop("timeoutMs") + " ms",
+            "WaitUntil" => "信号 " + displayTarget + " · 超时 " + Prop("timeoutMs") + " ms",
             "CanStopPeriodic" => "停止本次测试的全部 ECU CAN 周期发送",
-            "AssertSignal" => "判定 " + Prop("target") + " " +
+            "AssertSignal" => "判定 " + displayTarget + " " +
                 Prop("operator") + " " + Prop("expected") + " · " +
                 Prop("timeoutMs") + " 毫秒",
             "Expect" => Prop("left") + " " + Prop("operator") + " " + Prop("right"),
@@ -190,7 +209,7 @@ public sealed class StepRowProjection : BindableBase
             "Subroutine" => "子程序 " + step.Name,
             "CallSubroutine" => "调用 " + Prop("target"),
             "Sequence" => "按顺序执行子步骤",
-            _ => StepUiCatalog.Label(step.Type) + " · 请在右侧查看参数"
+            _ => StepUiCatalog.Label(step.Type) + " · 打开属性查看参数"
         };
         if (step.Type == "Write" &&
             int.TryParse(Prop("periodMs"), out var interval) && interval > 0)
@@ -232,6 +251,17 @@ public sealed class StepRowProjection : BindableBase
         if (!IsCanSendRow && Summary.Length > 150) Summary = Summary[..150] + "…";
         Resource = step.Properties.GetValueOrDefault("target",
             step.Properties.GetValueOrDefault("profile", "—"));
+        ResourceDisplay = _targetKind switch
+        {
+            TestTargetKind.RawKey => "20 Key",
+            TestTargetKind.Button => "按键动作",
+            TestTargetKind.Ignition => "IGN",
+            TestTargetKind.RawCan => "原始 CAN",
+            TestTargetKind.CanMessage => "DBC 辅助",
+            TestTargetKind.Signal => targetMapping?.SignalName ?? Resource,
+            TestTargetKind.WaveProfile => "波形配置",
+            _ => Resource
+        };
         var descriptor = StepDescriptorCatalog.Builtins().Lookup(step.Type);
         State = newDraft ? "待完善" :
             !StepExecutionPolicy.IsEnabled(step) && realFact is null ? "已关闭" :
@@ -251,7 +281,7 @@ public sealed class StepRowProjection : BindableBase
             } : descriptor is null ? "未知类型" :
             descriptor.ExecutableV1 || step.Type is "Write" or "Read" or "WaitUntil" or "AssertSignal" or "CanStopPeriodic" or
                 "Calculate" or "Expect" or "WaveStart" or "WaveStop" or "WaveAnalyze"
-                ? "待预检" : "暂不能运行";
+                ? "未执行" : "暂不能运行";
     }
 
     private static string HumanWriteSummary(string target, string value, TestTargetKind? kind)
@@ -263,11 +293,11 @@ public sealed class StepRowProjection : BindableBase
             target.Contains("KEY", StringComparison.OrdinalIgnoreCase))
         {
             if (value.Equals("Release", StringComparison.OrdinalIgnoreCase))
-                return "松开 KEY 开关 · " + target;
+                return "释放按键组合";
             var segments = value.Split(':', StringSplitOptions.TrimEntries);
             if (segments.Length > 0 && segments[0] is "Hold" or "Pulse")
                 return (segments[0] == "Hold" ? "保持按键组合" : "短按按键组合") +
-                    " · " + target + (segments.Length > 1 ? " · " + segments[1] : "") +
+                    (segments.Length > 1 ? " · " + segments[1] : "") +
                     (segments.Length > 2 ? " · " + segments[2] + " ms" : "");
             return "按键 " + target + " · " + (value.Length > 0 ? value : "待配置");
         }

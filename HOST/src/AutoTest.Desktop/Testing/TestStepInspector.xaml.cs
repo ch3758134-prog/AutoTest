@@ -536,8 +536,16 @@ public partial class TestStepInspector : UserControl
 
         foreach (var mapping in _boundMappings.Where(Eligible))
             if (!_allTargets.Any(x => x.Mapping == mapping))
-                _allTargets.Add(new MappingChoice("已绑定 / " + mapping.Name,
-                    mapping));
+                _allTargets.Add(new MappingChoice(mapping.Kind switch
+                {
+                    TestTargetKind.RawKey => "20 Key 按键组合",
+                    TestTargetKind.Ignition => "IGN 电源",
+                    TestTargetKind.RawCan => "原始 CAN 报文 · 0x" + mapping.CanId.ToString("X"),
+                    TestTargetKind.Signal => "当前信号 · " + mapping.SignalName,
+                    TestTargetKind.CanMessage => "当前报文 · 0x" + mapping.CanId.ToString("X"),
+                    TestTargetKind.Button => "当前按键动作 · " + mapping.Name,
+                    _ => mapping.Name
+                }, mapping));
         var oldTargetName = _editing?.Properties.GetValueOrDefault(
             action.TargetCategory == "wave" ? "profile" : "target", "");
         // A pinned mapping must be preferred over a catalog object with the same
@@ -553,8 +561,7 @@ public partial class TestStepInspector : UserControl
             !_catalog.Any(x => x.Mapping == originallyBound) &&
             originallyBound.Kind is not (TestTargetKind.RawCan or TestTargetKind.RawKey or
                 TestTargetKind.Ignition))
-            _targetRevisionWarning = "  注意：原步骤绑定的资源版本不在当前 TCF/DBC 中，"
-                + "软件不会自动换版本。请确认并显式重新选择有效对象。";
+            _targetRevisionWarning = "请核对当前工程中的报文、信号或波形资源。";
         if (!IsCanSend)
         {
             TargetHint.Text = _targetRevisionWarning.Trim();
@@ -562,8 +569,10 @@ public partial class TestStepInspector : UserControl
         }
         // No pointless resource picker for the single built-in IGN or direct
         // 20-Key action. Hardware/DBC-backed choices retain their picker.
-        if (_allTargets.Count == 1 &&
-            _allTargets[0].Mapping.Kind is TestTargetKind.RawKey or TestTargetKind.Ignition)
+        if (_allTargets.Count > 0 &&
+            _allTargets.All(x => x.Mapping.Kind == TestTargetKind.RawKey) ||
+            _allTargets.Count > 0 &&
+            _allTargets.All(x => x.Mapping.Kind == TestTargetKind.Ignition))
             TargetPanel.Visibility = Visibility.Collapsed;
     }
 

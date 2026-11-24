@@ -14,39 +14,39 @@
       <TextBlock x:Name="TypeIcon" Text="▣" Foreground="#475668" FontSize="13"
        HorizontalAlignment="Center" VerticalAlignment="Center"/>
      </Border>
-     <TextBlock x:Name="StepCode" DockPanel.Dock="Right" Visibility="Collapsed" Foreground="#627C9D"
-      VerticalAlignment="Center" FontFamily="Consolas" FontSize="10"/>
+     <TextBlock x:Name="StepCode" DockPanel.Dock="Right" Visibility="Collapsed" Foreground="#43566B"
+      VerticalAlignment="Center" FontFamily="Consolas" FontSize="13"/>
      <StackPanel VerticalAlignment="Center">
       <TextBlock x:Name="Heading" Text="编辑步骤" Visibility="Collapsed" Foreground="#344454"
-       FontWeight="SemiBold" FontSize="12"/>
+       FontWeight="SemiBold" FontSize="13"/>
       <TextBlock x:Name="TypeLabel" Foreground="#344454" FontSize="13" FontWeight="SemiBold"/>
      </StackPanel>
     </DockPanel>
     <!-- Editing existing StepId only. New action selection belongs exclusively to
          the central editor's grouped ActionPalette; no second type list here. -->
     <TextBlock x:Name="ActionDescription" TextWrapping="Wrap" Foreground="#64758C"
-     FontSize="11" Margin="0,0,0,6" Visibility="Collapsed"/>
+     FontSize="13" Margin="0,0,0,6" Visibility="Collapsed"/>
     <TextBlock x:Name="ImportWarning"
      Text="当前步骤类型未接入真实执行；请核对参数并转换为已支持的正式步骤。"
-     TextWrapping="Wrap" Foreground="#9B6423" FontSize="11"
+     TextWrapping="Wrap" Foreground="#9B6423" FontSize="13"
      Margin="0,0,0,10" Visibility="Collapsed"/>
     <DockPanel Margin="0,0,0,12" LastChildFill="True">
       <CheckBox x:Name="StepEnabledInput" DockPanel.Dock="Right" Content="执行此步骤"
        Margin="10,14,0,0" VerticalAlignment="Top" IsChecked="True"
        ToolTip="取消后，本步骤不参与测试；如果是流程容器，其子步骤也会跳过。步骤配置仍保留。"/>
       <StackPanel>
-       <TextBlock Text="名称" Foreground="#627C9D" FontWeight="SemiBold"
-        FontSize="11" Margin="0,0,0,4"/>
+       <TextBlock Text="名称" Foreground="#43566B" FontWeight="SemiBold"
+        FontSize="13" Margin="0,0,0,4"/>
        <TextBox x:Name="NameInput" MinHeight="34"/>
       </StackPanel>
      </DockPanel>
     <StackPanel x:Name="PublicFlowPanel" Visibility="Collapsed" Margin="0,0,0,13">
-     <TextBlock Text="调用公共流程" Foreground="#627C9D" FontWeight="SemiBold"
-      FontSize="11" Margin="0,0,0,5"/>
+     <TextBlock Text="调用公共流程" Foreground="#43566B" FontWeight="SemiBold"
+      FontSize="13" Margin="0,0,0,5"/>
      <ComboBox x:Name="PublicFlowPicker" ItemsSource="{Binding AvailableFlowChoices}"
       DisplayMemberPath="Label" MinHeight="34"/>
      <TextBlock x:Name="PublicFlowReferenceStatus" TextWrapping="Wrap"
-      Foreground="#A2752D" FontSize="10" Margin="0,5,0,0"/>
+      Foreground="#A2752D" FontSize="13" Margin="0,5,0,0"/>
     </StackPanel>
     <Grid x:Name="ObjectParameterGrid" Margin="0,0,0,10">
      <Grid.ColumnDefinitions><ColumnDefinition x:Name="ObjectParameterLeft" Width="*"/><ColumnDefinition x:Name="ObjectParameterGap" Width="0"/><ColumnDefinition x:Name="ObjectParameterRight" Width="0"/></Grid.ColumnDefinitions>
@@ -55,14 +55,14 @@
      <!-- All TEST DBC signals share the same search-first picker as CAN sending. -->
      <StackPanel x:Name="DbcSignalPickerPanel" Visibility="Collapsed">
       <TextBlock Text="DBC 信号" FontWeight="SemiBold" Foreground="#475668"
-       FontSize="12" Margin="0,0,0,6"/>
+       FontSize="13" Margin="0,0,0,6"/>
       <testing:DbcReferencePicker x:Name="SignalDbcPicker"
        ChoiceCommitted="DbcReference_ChoiceCommitted"/>
      </StackPanel>
      <!-- Keep existing non-DBC KEY, IGN and wave resource edit contracts. -->
      <StackPanel x:Name="LegacyTargetPanel">
-      <TextBlock Text="选择资源" Foreground="#627C9D"
-       FontWeight="SemiBold" FontSize="11" Margin="0,0,0,5"/>
+      <TextBlock Text="操作对象" Foreground="#43566B"
+       FontWeight="SemiBold" FontSize="13" Margin="0,0,0,5"/>
       <TextBox x:Name="TargetSearch" TextChanged="TargetSearch_Changed"
        ToolTip="搜索 KEY、IGN 或波形资源"
        Margin="0,0,0,5"/>
@@ -71,15 +71,15 @@
        SelectionChanged="TargetPicker_Changed"/>
      </StackPanel>
      <TextBlock x:Name="TargetHint" Visibility="Collapsed" Foreground="#64758C"
-      FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0"/>
+      FontSize="13" TextWrapping="Wrap" Margin="0,6,0,0"/>
      <Border x:Name="TargetDetailCard" Visibility="Collapsed" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,10,0,0">
       <StackPanel>
-       <TextBlock Text="配置核对" FontWeight="SemiBold" Foreground="#34475C" Margin="0,0,0,8"/>
-       <TextBlock x:Name="TargetDetail" TextWrapping="Wrap" Foreground="#42576C" FontSize="12"/>
+       <TextBlock Text="当前配置" FontWeight="SemiBold" Foreground="#34475C" Margin="0,0,0,8"/>
+       <TextBlock x:Name="TargetDetail" TextWrapping="Wrap" Foreground="#42576C" FontSize="13"/>
        <Viewbox x:Name="WaveReferenceView" Visibility="Collapsed" Stretch="Uniform" Margin="0,10,0,0">
         <Canvas x:Name="WaveReferenceCanvas" Width="360" Height="184" Background="#F7FAFD" ClipToBounds="True"/>
        </Viewbox>
-       <TextBlock x:Name="WaveReferenceStatus" TextWrapping="Wrap" Foreground="#526B84" FontSize="11" Margin="0,8,0,0"/>
+       <TextBlock x:Name="WaveReferenceStatus" TextWrapping="Wrap" Foreground="#526B84" FontSize="13" Margin="0,8,0,0"/>
       </StackPanel>
      </Border>
     </StackPanel>
@@ -87,7 +87,7 @@
      <ItemsControl.ItemTemplate>
       <DataTemplate>
        <StackPanel Margin="0,0,0,11">
-        <TextBlock Text="{Binding Label}" Foreground="#627C9D" FontSize="11"
+        <TextBlock Text="{Binding Label}" Foreground="#43566B" FontSize="13"
          FontWeight="SemiBold" Margin="0,0,0,5"/>
         <Grid>
          <TextBox Text="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}">
@@ -104,7 +104,7 @@
          </TextBox>
          <ComboBox ItemsSource="{Binding Choices}" DisplayMemberPath="Label"
           SelectedValuePath="Value" SelectedValue="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-          MinHeight="28" Padding="6,3">
+          MinHeight="34" Padding="6,3">
           <ComboBox.Style>
            <Style TargetType="ComboBox">
             <Setter Property="Visibility" Value="Collapsed"/>
@@ -135,36 +135,36 @@
         Margin="0,0,0,8"/>
        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
         <StackPanel Margin="0,0,10,0">
-         <TextBlock Text="CAN ID" FontSize="11" Foreground="#627C9D"
+         <TextBlock Text="CAN ID" FontSize="13" Foreground="#43566B"
           Margin="0,0,0,3"/>
          <TextBox x:Name="FrameIdInput" Width="126" Height="29"
           FontFamily="Consolas" TextChanged="CanId_Changed"
           LostFocus="CanId_LostFocus"/>
         </StackPanel>
         <StackPanel Margin="0,0,10,0">
-         <TextBlock Text="DLC" FontSize="11" Foreground="#627C9D"
+         <TextBlock Text="DLC" FontSize="13" Foreground="#43566B"
           Margin="0,0,0,3"/>
          <TextBox x:Name="CanDlcInput" Width="43" Height="29"
           IsReadOnly="True" Background="#F2F5F9"
           FontFamily="Consolas"/>
         </StackPanel>
         <StackPanel>
-         <TextBlock Text="帧格式" FontSize="11" Foreground="#627C9D"
+         <TextBlock Text="帧格式" FontSize="13" Foreground="#43566B"
           Margin="0,0,0,3"/>
          <TextBlock x:Name="CanFrameFormatLabel" Text="根据 CAN ID 自动识别"
-          Margin="0,5,0,0" FontSize="11" Foreground="#64758C"
+          Margin="0,5,0,0" FontSize="13" Foreground="#64758C"
           ToolTip="DBC 定义优先；无 DBC 时，ID 大于 0x7FF 自动识别为扩展帧，否则默认为标准帧。"/>
         </StackPanel>
        </StackPanel>
        <TextBlock Text="DATA · 实际发送字节（HEX）" FontWeight="SemiBold"
-        Foreground="#475668" FontSize="11" Margin="0,3,0,4"/>
+        Foreground="#475668" FontSize="13" Margin="0,3,0,4"/>
        <TextBox x:Name="RawCanDataInput" TextChanged="CanData_Changed"
         MinHeight="31" Padding="7,4"
-         HorizontalAlignment="Stretch" FontFamily="Consolas" FontSize="12"
+         HorizontalAlignment="Stretch" FontFamily="Consolas" FontSize="13"
         ToolTip="直接编辑完整报文字节，例如 00 00 00 00 00 00 00 00"/>
-       <TextBlock x:Name="CanFramePreview" FontSize="10"
-        Foreground="#627C9D" Margin="0,6,0,0" TextWrapping="Wrap"/>
-       <TextBlock x:Name="CanPreviewIssue" FontSize="10" Foreground="#AF533D"
+       <TextBlock x:Name="CanFramePreview" FontSize="13"
+        Foreground="#43566B" Margin="0,6,0,0" TextWrapping="Wrap"/>
+       <TextBlock x:Name="CanPreviewIssue" FontSize="13" Foreground="#AF533D"
         Margin="0,3,0,0" TextWrapping="Wrap"/>
       </StackPanel>
      </Border>
@@ -181,7 +181,7 @@
         <RadioButton x:Name="CanPeriodicMode" Content="周期"
          GroupName="CanSendMode" Checked="CanSendMode_Changed" Margin="0,0,12,0"/>
         <StackPanel x:Name="CanPeriodField" Orientation="Horizontal" VerticalAlignment="Center">
-         <TextBox x:Name="CanPeriodInput" Width="70" MinHeight="28" ToolTip="周期（毫秒）"/>
+         <TextBox x:Name="CanPeriodInput" Width="70" MinHeight="34" ToolTip="周期（毫秒）"/>
          <TextBlock Text="ms" VerticalAlignment="Center" Margin="5,0,0,0"/>
         </StackPanel>
        </WrapPanel>
@@ -191,12 +191,12 @@
          <RadioButton x:Name="CanUntilStopped" Content="直到停止" GroupName="CanSendStop" Checked="CanStopMode_Changed" VerticalAlignment="Center" Margin="0,0,12,0"/>
          <RadioButton x:Name="CanTimedStop" Content="定时" GroupName="CanSendStop" Checked="CanStopMode_Changed" VerticalAlignment="Center" Margin="0,0,7,0"/>
          <StackPanel x:Name="CanTimedDurationPanel" Visibility="Collapsed" Orientation="Horizontal" VerticalAlignment="Center">
-          <TextBox x:Name="CanDurationInput" Width="70" MinHeight="28" ToolTip="持续时间（毫秒）"/>
+          <TextBox x:Name="CanDurationInput" Width="70" MinHeight="34" ToolTip="持续时间（毫秒）"/>
           <TextBlock Text="ms" VerticalAlignment="Center" Margin="4,0,0,0"/>
          </StackPanel>
         </WrapPanel>
         <TextBlock Text="后台周期发送；后续测试步骤继续执行"
-         FontSize="11" Foreground="#526B84" Margin="0,6,0,0"
+         FontSize="13" Foreground="#526B84" Margin="0,6,0,0"
          TextWrapping="Wrap"/>
        </StackPanel>
       </StackPanel>
@@ -219,15 +219,15 @@
        <ComboBox x:Name="CanTargetPicker" ItemsSource="{Binding AvailableTargets}"
         DisplayMemberPath="Label" SelectionChanged="TargetPicker_Changed"/>
       </StackPanel>
-      <TextBlock x:Name="CanTargetHint" Foreground="#627C9D"
-       TextWrapping="Wrap" FontSize="11" Margin="0,1,0,5"/>
+      <TextBlock x:Name="CanTargetHint" Foreground="#43566B"
+       TextWrapping="Wrap" FontSize="13" Margin="0,1,0,5"/>
       <Button x:Name="CanRebindButton" Content="重新绑定 DBC"
        Click="CanRebind_Click" Visibility="Collapsed"
        HorizontalAlignment="Left" Padding="7,4" Margin="0,3,0,5"/>
       <StackPanel x:Name="DbcCanPanel" Visibility="Collapsed">
-       <TextBlock x:Name="DbcMessageInfo" FontSize="10" Foreground="#526B84"
+       <TextBlock x:Name="DbcMessageInfo" FontSize="13" Foreground="#526B84"
         Margin="0,0,0,7" TextWrapping="Wrap"/>
-       <TextBox x:Name="CanSignalSearch" TextChanged="CanSignalSearch_Changed" ToolTip="搜索信号名称或别名，不改变 DATA" MinHeight="28" Margin="0,0,0,6"/>
+       <TextBox x:Name="CanSignalSearch" TextChanged="CanSignalSearch_Changed" ToolTip="搜索信号名称或别名，不改变 DATA" MinHeight="34" Margin="0,0,0,6"/>
        <ScrollViewer MaxHeight="385" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
        <ItemsControl x:Name="SignalGrid" ItemsSource="{Binding SignalValues}" ItemTemplate="{StaticResource CanSignalEditorRow}"/>
        </ScrollViewer>
@@ -237,18 +237,18 @@
     </Grid>
 
     <StackPanel x:Name="KeyPanel" Visibility="Collapsed" Margin="0,0,0,13">
-     <TextBlock Text="KEY 动作" Foreground="#627C9D" FontWeight="SemiBold"
-      FontSize="11" Margin="0,0,0,6"/>
+     <TextBlock Text="按键动作" Foreground="#43566B" FontWeight="SemiBold"
+      FontSize="13" Margin="0,0,0,6"/>
 
      <ComboBox x:Name="KeyActionInput" SelectionChanged="KeyAction_Changed"
-      MinHeight="28" Margin="0,0,0,8">
+      MinHeight="34" Margin="0,0,0,8">
       <ComboBoxItem Content="按下后释放" Tag="Pulse"/>
       <ComboBoxItem Content="保持按下" Tag="Hold"/>
       <ComboBoxItem Content="恢复／释放" Tag="Release"/>
      </ComboBox>
      <StackPanel x:Name="RawKeyMaskPanel" Visibility="Collapsed">
-      <TextBlock Text="20 Key 组合" Foreground="#627C9D"
-       FontSize="11" Margin="0,0,0,5"/>
+      <TextBlock Text="20 Key 组合" Foreground="#43566B"
+       FontSize="13" Margin="0,0,0,5"/>
       <TextBox x:Name="RawKeyMaskInput" IsReadOnly="True" Visibility="Collapsed" FontFamily="Consolas"
        Margin="0,0,0,8"/>
       <UniformGrid x:Name="RawKeyGrid" Columns="5" Rows="4" Margin="0,0,0,7"/>
@@ -257,7 +257,7 @@
 
      </StackPanel>
      <StackPanel x:Name="KeyDurationPanel">
-      <TextBlock Text="保持时间（ms）" Foreground="#627C9D" FontSize="11"
+      <TextBlock Text="保持时间（ms）" Foreground="#43566B" FontSize="13"
        Margin="0,0,0,5"/>
       <TextBox x:Name="KeyDurationInput" Width="150"
        HorizontalAlignment="Left"/>
@@ -265,8 +265,8 @@
     </StackPanel>
 
     <StackPanel x:Name="IgnitionPanel" Visibility="Collapsed" Margin="0,0,0,13">
-     <TextBlock Text="IGN 目标状态" FontWeight="SemiBold" Foreground="#627C9D"
-      FontSize="11" Margin="0,0,0,6"/>
+     <TextBlock Text="IGN 目标状态" FontWeight="SemiBold" Foreground="#43566B"
+      FontSize="13" Margin="0,0,0,6"/>
      <ComboBox x:Name="IgnitionState">
       <ComboBoxItem Content="开启 IGN" Tag="ON"/>
       <ComboBoxItem Content="关闭 IGN" Tag="OFF"/>
@@ -282,7 +282,7 @@
   <Border Grid.Row="1" Background="#FAFBFB" BorderBrush="#E1E7E4"
    BorderThickness="0,1,0,0" Padding="12,8">
    <StackPanel>
-    <TextBlock x:Name="ErrorText" Foreground="#C04A57" FontSize="10"
+    <TextBlock x:Name="ErrorText" Foreground="#C04A57" FontSize="13"
      TextWrapping="Wrap" Margin="0,0,0,7"/>
     <DockPanel LastChildFill="True">
      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
@@ -291,7 +291,7 @@
      <Button x:Name="ConfirmButton" Content="应用"
       Style="{StaticResource AtPrimaryButton}" Click="Confirm_Click" MinWidth="92"/>
      </StackPanel>
-     <TextBlock Text="点击浮窗外部即可应用有效修改并返回列表" Foreground="#627C9D" FontSize="11" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,10,0"/>
+     <TextBlock Text="点击浮窗外部即可应用有效修改并返回列表" Foreground="#43566B" FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,10,0"/>
     </DockPanel>
    </StackPanel>
   </Border>
