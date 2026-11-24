@@ -13,7 +13,7 @@ public sealed partial class AutomaticTestHomeViewModel
 {
     private long _scanRevision;
     private string _dutSerial = "等待扫码";
-    private string _scanStatus = "等待已绑定工位扫码枪输入唯一编号";
+    private string _scanStatus = "请使用工位扫码枪扫描 ECU 编号";
     private string? _lastIdentity;
     private FrozenProductionPreparation? _prepared;
     private IReadOnlyDictionary<string, string> _scanMappedFields =
@@ -30,6 +30,8 @@ public sealed partial class AutomaticTestHomeViewModel
         if (e.PropertyName == nameof(SerialScannerWorkbenchViewModel.IsConnected) &&
             !_scanner.IsConnected)
             OnUi(() => InvalidateScan("扫码枪断开，本次扫码身份失效；恢复后请重新扫码。"));
+        else if (e.PropertyName == nameof(SerialScannerWorkbenchViewModel.IsConnected))
+            OnUi(UpdateConnection);
     }
 
     private void OnCompleteBarcodeReceived(string raw) =>

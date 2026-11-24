@@ -23,8 +23,9 @@ public sealed record AutomaticTestCase(string Index, string Name, TestDocumentId
     string State = "未执行")
 {
     public IReadOnlyList<AutomaticTestStep> Children { get; init; } = [];
-    public bool IsExpanded => true;
+    public bool IsExpanded => false;
     public string Detail => State;
+    public string StepCountLabel => Children.Count + " 步";
 }
 
 public sealed record AutomaticTestPlan(OpenProjectContext Project,

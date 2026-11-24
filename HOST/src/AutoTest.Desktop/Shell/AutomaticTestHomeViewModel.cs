@@ -88,9 +88,9 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         get => _startRequestStatus;
         private set => SetProperty(ref _startRequestStatus, value);
     }
-    public string PhysicalStartStatus => "实体 START：缺少已验证的独立输入接线，不接受虚拟按键代替。";
+    public string PhysicalStartStatus => "正式检测尚不可启动";
     public string StartInputHint =>
-        "正式启动必须进入唯一 RunId 仲裁，再执行工程夹具工艺、必经 FLASH、完整 TEST 与 RECORD；本页面尚未具备此运行授权。";
+        "实体 START 输入及完整生产执行链尚未接通；当前仅支持配置检查和扫码核对。";
 
     private void RequestSoftwareStart()
     {
@@ -135,6 +135,17 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     public string ModelCode => (_plans.Current?.Project.Definition.EcuModelCode ??
             _draftPreview?.Project.Definition.EcuModelCode) is { Length: > 0 } code
         ? code : "未设置";
+    public string ProjectName => _plans.Current?.Project.Definition.Name ??
+        _draftPreview?.Project.Definition.Name ?? "未打开工程";
+    public bool MainControllerConnected => _hardware.IsConnected;
+    public bool ScannerConnected => _scanner.IsConnected;
+    public bool CanBitrateReady => _hardware.IsConnected && _hardware.IsEcuCanBitrateApplied;
+    public bool IdentityAccepted => _prepared is not null;
+    public string ControllerLabel => MainControllerConnected ? "主控已连接" : "主控未连接";
+    public string ScannerLabel => ScannerConnected ? "扫码枪已连接" : "扫码枪未连接";
+    public string CanLabel => !MainControllerConnected ? "ECU CAN 未连接" :
+        CanBitrateReady ? "ECU CAN 已配置" : "ECU CAN 待配置";
+    public string IdentityLabel => IdentityAccepted ? "编号已核对" : "编号待核对";
     public string DutSerial => _dutSerial;
     public string ScanStatus => _scanStatus;
     public string Status => _status;
@@ -155,12 +166,12 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         ? _draftPreview is null ? _plans.Issue
             : "已显示当前编辑工程的用例（不会发送硬件指令）。" +
               _draftPreview.Description +
-              "需要完成前置烧录等检测配置并发布后才能进入正式检测。"
+              "需要完成前置烧录等检测配置才能进入正式检测。"
         : _plans.Current.ResourceIssues.Count != 0
-            ? "正式版本有 " + _plans.Current.ResourceIssues.Count +
+            ? "当前工程有 " + _plans.Current.ResourceIssues.Count +
               " 项运行资源问题；请进入开发与调试定位。"
             : _prepared is null
-                ? "正式版本已读取；需要实际扫码及工位预检。"
+                ? "当前工程已读取；需要实际扫码及工位预检。"
                 : "扫码与工程资源已核对；真实夹具、START、FLASH、TEST 和 RECORD 的整机执行尚未接通。";
 
     public async Task RestoreAsync()
@@ -267,6 +278,15 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
 
     private void Notify()
     {
+        RaisePropertyChanged(nameof(ProjectName));
+        RaisePropertyChanged(nameof(MainControllerConnected));
+        RaisePropertyChanged(nameof(ScannerConnected));
+        RaisePropertyChanged(nameof(CanBitrateReady));
+        RaisePropertyChanged(nameof(IdentityAccepted));
+        RaisePropertyChanged(nameof(ControllerLabel));
+        RaisePropertyChanged(nameof(ScannerLabel));
+        RaisePropertyChanged(nameof(CanLabel));
+        RaisePropertyChanged(nameof(IdentityLabel));
         RaisePropertyChanged(nameof(HasPlan));
         RaisePropertyChanged(nameof(NeedsSetup));
         RaisePropertyChanged(nameof(SetupIssue));
