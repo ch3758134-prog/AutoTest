@@ -33,7 +33,7 @@ public sealed partial class AutomaticTestHomeViewModel
     }
 
     private void OnCompleteBarcodeReceived(string raw) =>
-        OnUi(() => { _ = InspectRealBarcodeAsync(raw); });
+        OnUi(() => { if (_isProductionWorkspace()) _ = InspectRealBarcodeAsync(raw); });
 
     private static void OnUi(Action action)
     {
@@ -61,6 +61,11 @@ public sealed partial class AutomaticTestHomeViewModel
         var plan = _plans.Current;
         if (plan is null || !_scanner.IsConnected || string.IsNullOrWhiteSpace(raw))
             return;
+        _prepared = null;
+        _scanMappedFields = new Dictionary<string, string>(StringComparer.Ordinal);
+        _dutSerial = "正在核对";
+        _scanStatus = "正在匹配已部署工程的扫码期望与资源。";
+        Notify();
         try
         {
             var expectation = plan.Project.Definition.BarcodeExpectation;
@@ -99,7 +104,7 @@ public sealed partial class AutomaticTestHomeViewModel
                 return;
             }
             if (revision != _scanRevision || !_scanner.IsConnected ||
-                !ReferenceEquals(_plans.Current, plan)) return;
+                !_isProductionWorkspace() || !ReferenceEquals(_plans.Current, plan)) return;
             var identity = parsed.DutSerial;
             var repeated = string.Equals(_lastIdentity, identity,
                 StringComparison.Ordinal);
