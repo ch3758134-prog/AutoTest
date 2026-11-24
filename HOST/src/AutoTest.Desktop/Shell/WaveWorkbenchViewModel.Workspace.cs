@@ -297,7 +297,7 @@ public sealed partial class WaveWorkbenchViewModel
         });
         CompareCommand = new DelegateCommand(async () => await CompareSelectedAsync(),
             () => !_closed && !IsCapturing && _series is not null &&
-                Selected?.IsReference == false && SelectedReference is not null &&
+                Selected is { IsReference: false, Kind: "Capture" } && SelectedReference is not null &&
                 !string.IsNullOrWhiteSpace(AbsoluteToleranceText));
         ClearComparisonCommand = new DelegateCommand(() =>
         {
@@ -388,7 +388,7 @@ public sealed partial class WaveWorkbenchViewModel
 
     private async Task CompareSelectedAsync()
     {
-        if (_series is null || Selected?.IsReference != false ||
+        if (_series is null || Selected is not { IsReference: false, Kind: "Capture" } ||
             SelectedReference is not { } reference || _project.Current is not { } project)
             return;
         if (!double.TryParse(AbsoluteToleranceText, NumberStyles.Float,
@@ -450,6 +450,14 @@ public sealed partial class WaveWorkbenchViewModel
                     ? " · 已归档比较证据 " + completed.Id.Value.Value.ToString("N")[..8]
                     : " · 未生成比较证据");
             IsLiveView = false;
+            if (completed.Id is { } savedId)
+            {
+                var item = new WaveItem(actual.Signal.SignalName,
+                    "比较 · " + DateTimeOffset.Now.ToString("yyyy-MM-dd HH:mm:ss") +
+                    " · " + details.Verdict, savedId.Value, false, null, "Comparison");
+                Items.Insert(0, item);
+                Comparisons.Insert(0, item);
+            }
             Status = "已使用真实采集与参考证据执行比较；不会自动改变 TEST 判定。";
             NotifyChartChanged();
         }
