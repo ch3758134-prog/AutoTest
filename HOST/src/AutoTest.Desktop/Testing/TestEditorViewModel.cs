@@ -1441,6 +1441,12 @@ public sealed class TestEditorViewModel : BindableBase
         {
             _session = await _workspace.OpenTestEditorAsync(_session.AssetId);
             _transaction = new StepEditTransaction(_session.Document);
+            _preparedRunDocument = null;
+            _preparedStepId = null;
+            _preparedStationEpoch = 0;
+            RunApproval = "";
+            FlashApproval = "";
+            ExpectedFlashApproval = "";
             _newDraftId = null;
             _newDraftActionKey = null;
             _cancelledDraftId = null;
