@@ -115,7 +115,45 @@
       </StackPanel>
      </Border>
 
-     <StackPanel Margin="0,0,0,10">
+     <Border Background="White" BorderBrush="#E2E8E5" BorderThickness="1" CornerRadius="6"
+      Padding="10" Margin="0,0,0,12">
+      <StackPanel>
+       <TextBlock Text="发送方式" FontWeight="SemiBold"
+        Foreground="#475668" Margin="0,0,0,8"/>
+       <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+        <RadioButton x:Name="CanOnceMode" Content="单次"
+         GroupName="CanSendMode" Checked="CanSendMode_Changed"
+         Margin="0,0,15,0"/>
+        <RadioButton x:Name="CanPeriodicMode" Content="周期"
+         GroupName="CanSendMode" Checked="CanSendMode_Changed"/>
+       </StackPanel>
+       <StackPanel x:Name="CanPeriodicPanel" Visibility="Collapsed">
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,7">
+         <StackPanel>
+          <TextBlock Text="周期 ms" FontSize="11" Foreground="#64758C"
+           Margin="0,0,0,3"/>
+          <TextBox x:Name="CanPeriodInput" Width="94" MinHeight="28"/>
+         </StackPanel>
+         <StackPanel x:Name="CanTimedDurationPanel" Visibility="Collapsed" Margin="12,0,0,0">
+          <TextBlock Text="持续 ms" FontSize="11" Foreground="#64758C"
+           Margin="0,0,0,3"/>
+          <TextBox x:Name="CanDurationInput" Width="94" MinHeight="28"/>
+         </StackPanel>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal">
+         <RadioButton x:Name="CanTimedStop" Content="定时停止"
+          GroupName="CanSendStop" Checked="CanStopMode_Changed"
+          Margin="0,0,12,0"/>
+         <RadioButton x:Name="CanUntilStopped" Content="直到停止"
+          GroupName="CanSendStop" Checked="CanStopMode_Changed"/>
+        </StackPanel>
+        <TextBlock Text="后台周期发送；后续测试步骤继续执行"
+         FontSize="11" Foreground="#526B84" Margin="0,6,0,0"
+         TextWrapping="Wrap"/>
+       </StackPanel>
+      </StackPanel>
+     </Border>
+     <StackPanel Margin="0,0,0,0">
       <DockPanel Margin="0,0,0,7">
         <Button DockPanel.Dock="Right" Content="清除辅助" Click="ClearCanDbc_Click"
          Padding="9,4" MinWidth="80" ToolTip="解除 DBC 关联；保留 CAN ID、帧格式、DATA 和发送方式"/>
@@ -137,17 +175,19 @@
        Click="CanRebind_Click" Visibility="Collapsed"
        HorizontalAlignment="Left" Padding="7,4" Margin="0,3,0,5"/>
       <StackPanel x:Name="DbcCanPanel" Visibility="Collapsed">
-       <TextBlock x:Name="DbcMessageInfo" FontSize="10" Foreground="#97B6DE"
+       <TextBlock x:Name="DbcMessageInfo" FontSize="10" Foreground="#526B84"
         Margin="0,0,0,7" TextWrapping="Wrap"/>
+       <TextBox x:Name="CanSignalSearch" TextChanged="CanSignalSearch_Changed" ToolTip="搜索信号名称或别名，不改变 DATA" MinHeight="28" Margin="0,0,0,6"/>
+       <ScrollViewer MaxHeight="260" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
        <ItemsControl x:Name="SignalGrid" ItemsSource="{Binding SignalValues}">
         <ItemsControl.ItemTemplate>
          <DataTemplate>
           <Grid Margin="0,0,0,5" IsEnabled="{Binding IsEditable}">
            <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="125"/>
+            <ColumnDefinition Width="112"/>
            </Grid.ColumnDefinitions>
-           <TextBlock Text="{Binding DisplayName}" FontSize="11"
+           <TextBlock Text="{Binding DisplayName}" FontSize="12"
             Foreground="#475668" VerticalAlignment="Center"
             TextTrimming="CharacterEllipsis" ToolTip="{Binding Definition}"
             Margin="0,0,8,0"/>
@@ -182,48 +222,10 @@
          </DataTemplate>
         </ItemsControl.ItemTemplate>
        </ItemsControl>
+       </ScrollViewer>
       </StackPanel>
      </StackPanel>
 
-     <Border BorderBrush="#E3E9E6" BorderThickness="0,1,0,0"
-      Padding="0,9,0,0">
-      <StackPanel>
-       <TextBlock Text="发送方式" FontWeight="SemiBold"
-        Foreground="#475668" Margin="0,0,0,8"/>
-       <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-        <RadioButton x:Name="CanOnceMode" Content="单次"
-         GroupName="CanSendMode" Checked="CanSendMode_Changed"
-         Margin="0,0,15,0"/>
-        <RadioButton x:Name="CanPeriodicMode" Content="周期"
-         GroupName="CanSendMode" Checked="CanSendMode_Changed"/>
-       </StackPanel>
-       <StackPanel x:Name="CanPeriodicPanel" Visibility="Collapsed">
-        <StackPanel Orientation="Horizontal" Margin="0,0,0,7">
-         <StackPanel>
-          <TextBlock Text="周期 ms" FontSize="11" Foreground="#64758C"
-           Margin="0,0,0,3"/>
-          <TextBox x:Name="CanPeriodInput" Width="94" MinHeight="28"/>
-         </StackPanel>
-         <StackPanel Margin="12,0,0,0">
-          <TextBlock Text="持续 ms" FontSize="11" Foreground="#64758C"
-           Margin="0,0,0,3"/>
-          <TextBox x:Name="CanDurationInput" Width="94" MinHeight="28"/>
-         </StackPanel>
-        </StackPanel>
-        <StackPanel Orientation="Horizontal">
-         <RadioButton x:Name="CanTimedStop" Content="定时停止"
-          GroupName="CanSendStop" Checked="CanStopMode_Changed"
-          Margin="0,0,12,0"/>
-         <RadioButton x:Name="CanUntilStopped" Content="直到停止"
-          GroupName="CanSendStop" Checked="CanStopMode_Changed"/>
-        </StackPanel>
-        <StackPanel x:Name="CanTimedDurationPanel" Visibility="Collapsed"/>
-        <TextBlock Text="后台周期发送；后续测试步骤继续执行"
-         FontSize="10" Foreground="#8293A4" Margin="0,6,0,0"
-         TextWrapping="Wrap"/>
-       </StackPanel>
-      </StackPanel>
-     </Border>
     </StackPanel>
 
     <StackPanel x:Name="KeyPanel" Visibility="Collapsed" Margin="0,0,0,13">
