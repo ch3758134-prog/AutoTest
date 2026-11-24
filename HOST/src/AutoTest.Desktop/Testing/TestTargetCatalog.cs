@@ -12,7 +12,8 @@ namespace AutoTest.Desktop.Testing;
 
 public sealed record MappingChoice(string Label, TestTargetMapping Mapping, DbcMessage? Message = null,
     DbcDisplayNames? DisplayNames = null, IReadOnlyDictionary<long, string>? ValueLabels = null,
-    IReadOnlyDictionary<string, IReadOnlyDictionary<long, string>>? MessageValueLabels = null)
+    IReadOnlyDictionary<string, IReadOnlyDictionary<long, string>>? MessageValueLabels = null,
+    WaveSettingsDocument? WaveSettings = null, string? WaveProjectRoot = null)
 {
     public override string ToString() => Label;
 }
@@ -106,7 +107,8 @@ public static class TestTargetCatalog
                         (string.IsNullOrWhiteSpace(analysis.SignalName) ? "（未配置信号）" :
                         " · " + analysis.SignalName),
                         new TestTargetMapping(asset.Name, TestTargetKind.WaveProfile,
-                            asset.Id, asset.Revision, asset.Sha256)));
+                            asset.Id, asset.Revision, asset.Sha256),
+                        WaveSettings: analysis, WaveProjectRoot: context.RootDirectory));
                 }
                 else
                 {
