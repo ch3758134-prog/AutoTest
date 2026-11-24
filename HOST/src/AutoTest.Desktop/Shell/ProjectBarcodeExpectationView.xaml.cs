@@ -167,7 +167,7 @@ public partial class ProjectBarcodeExpectationView : UserControl
                 Serialize(current.Definition.BarcodeExpectation) != _savedExpectation)
                 throw new InvalidOperationException("工程或已保存扫码期望已经改变，请重新打开检测准备。");
             var draft = Draft();
-            await _workspace.SaveBarcodeExpectationAsync(_projectId, draft);
+            await _workspace.SaveBarcodeExpectationAsync(_projectId, _manifestPath, _savedExpectation, draft);
             _savedExpectation = Serialize(draft);
             IsDirty = false;
             SaveStatus.Text = "已保存至工程。用于正式生产前请重新部署工程；不需要试扫。";
