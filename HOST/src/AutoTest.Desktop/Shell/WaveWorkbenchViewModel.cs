@@ -18,7 +18,7 @@ namespace AutoTest.Desktop.Shell;
 public sealed partial class WaveWorkbenchViewModel : BindableBase
 {
     public sealed record WaveItem(string Title, string Detail, Guid Id, bool IsReference,
-        WaveReferenceEntry? Reference)
+        WaveReferenceEntry? Reference, string Kind = "Capture")
     {
         public string Display => Title + " · " + Detail;
     }
@@ -113,6 +113,7 @@ public sealed partial class WaveWorkbenchViewModel : BindableBase
         _selectionGeneration++; // invalidate any pending selection projection
         Items.Clear();
         Captures.Clear();
+        Comparisons.Clear();
         References.Clear();
         Sessions.Clear();
         _sessionSeries.Clear();
@@ -161,7 +162,7 @@ public sealed partial class WaveWorkbenchViewModel : BindableBase
                             items.Add(new WaveItem(actual.Actual.Signal.SignalName,
                                 actual.Kind + " · " + actual.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") +
                                 " · " + actual.Actual.Samples.Length + " 点",
-                                id, false, null));
+                                id, false, null, actual.Kind));
                         }
                         catch (Exception error) when (error is IOException or InvalidDataException or
                                                        ArgumentException or UnauthorizedAccessException)
@@ -178,7 +179,7 @@ public sealed partial class WaveWorkbenchViewModel : BindableBase
                     items.Add(new WaveItem(reference.Name,
                         "参考 · " + reference.Signal.SignalName + " · " +
                         reference.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm"),
-                        reference.Reference.Asset.Id.Value, true, reference));
+                        reference.Reference.Asset.Id.Value, true, reference, "Reference"));
                 }
                 return (Items: items, Sessions: ReadSessionIndex(root));
             }, stop.Token);
@@ -188,7 +189,8 @@ public sealed partial class WaveWorkbenchViewModel : BindableBase
             {
                 Items.Add(item);
                 if (item.IsReference && item.Reference is not null) References.Add(item.Reference);
-                else if (!item.IsReference) Captures.Add(item);
+                else if (item.Kind == "Capture") Captures.Add(item);
+                else if (item.Kind == "Comparison") Comparisons.Add(item);
             }
             foreach (var group in collected.Sessions) Sessions.Add(group);
             EmptyListMessage = Items.Count == 0
@@ -229,17 +231,37 @@ public sealed partial class WaveWorkbenchViewModel : BindableBase
         {
             var projected = await Task.Run(() =>
             {
+                WaveEvidenceDocument? evidence = selected.IsReference ? null :
+                    new WaveEvidenceStore(Path.Combine(root, "evidence"))
+                        .Read(new EvidenceRef(selected.Id));
                 var series = selected.IsReference
                     ? new WaveReferenceCatalog(Path.Combine(root, "references"))
                         .Load(selected.Reference!.Reference).Series
-                    : new WaveEvidenceStore(Path.Combine(root, "evidence"))
-                        .Read(new EvidenceRef(selected.Id)).Actual;
-                return (Series: series, Points: WaveChartAnalysis.FromSeries(series));
+                    : evidence!.Actual;
+                return (Series: series, Points: WaveChartAnalysis.FromSeries(series),
+                    Evidence: evidence);
             });
             if (_closed || generation != _selectionGeneration ||
                 Selected != selected || _project.Current?.ManifestPath != manifest) return;
             _series = projected.Series;
             _points = projected.Points;
+            if (projected.Evidence is { Kind: "Comparison", Reference: not null,
+                    Result: not null } record)
+            {
+                _referenceOverlay = record.Reference;
+                _comparison = record.Result;
+                if (record.Configuration is not null)
+                {
+                    AbsoluteToleranceText = record.Configuration.AbsoluteTolerance.ToString(
+                        "G", System.Globalization.CultureInfo.InvariantCulture);
+                    MinimumCoverageText = record.Configuration.MinimumCoverage.ToString(
+                        "G", System.Globalization.CultureInfo.InvariantCulture);
+                }
+                ComparisonSummary = "已载入历史比较证据 · " + record.Result.Verdict +
+                    " · 覆盖率 " + record.Result.Coverage.ToString("P1") +
+                    " · " + record.Result.Code;
+                RaisePropertyChanged(nameof(ComparisonTone));
+            }
             var values = _series.Samples.Select(x => x.Sample.Value).ToArray();
             var min = values.Length == 0 ? "" : values.Min().ToString("G6");
             var max = values.Length == 0 ? "" : values.Max().ToString("G6");
@@ -251,7 +273,9 @@ public sealed partial class WaveWorkbenchViewModel : BindableBase
             RaisePropertyChanged(nameof(DataQuality));
             CompareCommand?.RaiseCanExecuteChanged();
             CursorInfo = "点击同一信号轨道两次，测量时间差、幅值差与区间极值。";
-            Status = "显示真实样本；降采样仅用于绘图，不用于判定。";
+            Status = selected.Kind == "Comparison"
+                ? "历史比较证据已核验；实际波形、参考、容差与计算结果均来自归档文件。"
+                : "显示真实样本；降采样仅用于绘图，不用于判定。";
         }
         catch (Exception error)
         {
