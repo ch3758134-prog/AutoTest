@@ -40,6 +40,10 @@
   <Border Background="White" BorderBrush="#CBD5E1" BorderThickness="0,0,0,1">
    <DockPanel Margin="18,9">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+     <TextBlock Text="{Binding ToolUsbStatus}" FontSize="12" Foreground="#43556A"
+      VerticalAlignment="Center" Margin="0,0,10,0" MaxWidth="250" TextTrimming="CharacterEllipsis"/>
+     <Button Content="连接 USB" Command="{Binding ConnectToolUsbCommand}" Style="{StaticResource WaveButton}"/>
+     <Button Content="断开 USB" Command="{Binding DisconnectToolUsbCommand}" Style="{StaticResource WaveButton}"/>
      <Button Content="刷新历史记录" Command="{Binding RefreshCommand}" Style="{StaticResource WaveButton}"/>
      <Button Content="波形判定配置" Click="OpenConfiguration_Click"
       Style="{StaticResource WaveButton}" ToolTip="编辑 TEST 使用的参考、容差与判定条件"/>

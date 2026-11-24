@@ -33,6 +33,12 @@ public sealed partial class WaveWorkbenchViewModel
     private int _durationSeconds = 0;
     private string _referenceName = "";
     private bool _savingReference;
+    private bool _toolUsbConnecting;
+    public DelegateCommand ConnectToolUsbCommand { get; private set; } = null!;
+    public DelegateCommand DisconnectToolUsbCommand { get; private set; } = null!;
+    public string ToolUsbStatus => _toolUsbConnecting ? "USB 正在操作…" :
+        _hardware.IsConnected ? "主控已连接 · " + _hardware.EcuCanBitrateStatus :
+        "工具 USB 未连接（手动连接）";
     private int _signalRefreshVersion;
     private WaveCaptureService? _captureService;
     private readonly Dictionary<WaveCaptureId, string> _captureIds = new();
@@ -115,6 +121,14 @@ public sealed partial class WaveWorkbenchViewModel
         _hardware = hardware;
         _realTest = realTest;
         _hardware.ConnectionChanged += CaptureStationChanged;
+        ConnectToolUsbCommand = new DelegateCommand(
+            async () => await ConnectToolUsbAsync(),
+            () => !_closed && !_toolUsbConnecting && !_hardware.HasSession);
+        DisconnectToolUsbCommand = new DelegateCommand(
+            async () => await DisconnectToolUsbAsync(),
+            () => !_closed && !_toolUsbConnecting && _hardware.HasSession &&
+                !IsCapturing);
+
         ReloadSignalsCommand = new DelegateCommand(ReloadAvailableSignals,
             () => !_closed && !IsObserving && !IsCapturing);
         AddSignalCommand = new DelegateCommand(() =>
@@ -171,6 +185,9 @@ public sealed partial class WaveWorkbenchViewModel
         RaisePropertyChanged(nameof(LiveSourceStatus));
         RaisePropertyChanged(nameof(PauseLabel));
         RaisePropertyChanged(nameof(CaptureDurationLabel));
+        RaisePropertyChanged(nameof(ToolUsbStatus));
+        ConnectToolUsbCommand?.RaiseCanExecuteChanged();
+        DisconnectToolUsbCommand?.RaiseCanExecuteChanged();
         ReloadSignalsCommand?.RaiseCanExecuteChanged();
         AddSignalCommand?.RaiseCanExecuteChanged();
         RemoveTrackCommand?.RaiseCanExecuteChanged();
@@ -180,6 +197,48 @@ public sealed partial class WaveWorkbenchViewModel
         StartCaptureCommand?.RaiseCanExecuteChanged();
         StopCaptureCommand?.RaiseCanExecuteChanged();
         SaveReferenceCommand?.RaiseCanExecuteChanged();
+    }
+
+    private async Task ConnectToolUsbAsync()
+    {
+        if (_toolUsbConnecting || _hardware.HasSession) return;
+        _toolUsbConnecting = true;
+        RefreshCaptureCommands();
+        try
+        {
+            await _hardware.ConnectAsync();
+            if (!_hardware.IsEcuCanBitrateApplied)
+                await _hardware.ApplyRequestedEcuCanBitrateAsync();
+            Status = "波形工具已手动连接真实 USB；" + _hardware.EcuCanBitrateStatus;
+        }
+        catch (Exception error)
+        {
+            Status = "波形工具连接失败：" + error.Message;
+        }
+        finally
+        {
+            _toolUsbConnecting = false;
+            RefreshCaptureCommands();
+        }
+    }
+
+    private async Task DisconnectToolUsbAsync()
+    {
+        if (_toolUsbConnecting || IsCapturing) return;
+        _toolUsbConnecting = true;
+        RefreshCaptureCommands();
+        try
+        {
+            StopObservation();
+            if (_hardware.HasSession) await _hardware.DisconnectAsync();
+            Status = "波形工具已手动断开主控 USB。";
+        }
+        catch (Exception error) { Status = "波形工具断开失败：" + error.Message; }
+        finally
+        {
+            _toolUsbConnecting = false;
+            RefreshCaptureCommands();
+        }
     }
 
     private void CaptureStationChanged(long stationEpoch)

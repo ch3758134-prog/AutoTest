@@ -21,6 +21,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     private readonly HardwareConnectionService _hardware;
     private readonly SerialScannerWorkbenchViewModel _scanner;
     private readonly Action _openEngineer;
+    private readonly Action _openScannerSettings;
     private readonly Func<bool> _isProductionWorkspace;
     private bool _busy;
     private string _status = "正在读取检测工程";
@@ -57,15 +58,18 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         HardwareConnectionService hardware,
         SerialScannerWorkbenchViewModel scanner,
         ProjectWorkspaceService engineering, Action openEngineer,
-        Func<bool>? isProductionWorkspace = null)
+        Action openScannerSettings, Func<bool>? isProductionWorkspace = null)
     {
         _plans = plans;
         _hardware = hardware;
         _scanner = scanner;
         _engineering = engineering;
         _openEngineer = openEngineer;
+        _openScannerSettings = openScannerSettings;
         _isProductionWorkspace = isProductionWorkspace ?? (() => true);
         ChoosePlanCommand = new DelegateCommand(() => _openEngineer());
+        OpenScannerSettingsCommand = new DelegateCommand(() => _openScannerSettings());
+        RefreshStationCommand = new DelegateCommand(() => UpdateConnection());
         RequestSoftwareStartCommand = new DelegateCommand(RequestSoftwareStart);
         _plans.Changed += OnPlanChanged;
         _hardware.ConnectionChanged += OnConnectionChanged;
@@ -76,6 +80,8 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
 
     public ObservableCollection<AutomaticTestCase> Cases { get; } = new();
     public DelegateCommand ChoosePlanCommand { get; }
+    public DelegateCommand OpenScannerSettingsCommand { get; }
+    public DelegateCommand RefreshStationCommand { get; }
     public DelegateCommand RequestSoftwareStartCommand { get; }
 
     /// <summary>
@@ -141,10 +147,26 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     public bool ScannerConnected => _scanner.IsConnected;
     public bool CanBitrateReady => _hardware.IsConnected && _hardware.IsEcuCanBitrateApplied;
     public bool IdentityAccepted => _prepared is not null;
-    public string ControllerLabel => MainControllerConnected ? "主控已连接" : "主控未连接";
-    public string ScannerLabel => ScannerConnected ? "扫码枪已连接" : "扫码枪未连接";
-    public string CanLabel => !MainControllerConnected ? "ECU CAN 未连接" :
-        CanBitrateReady ? "ECU CAN 已配置" : "ECU CAN 待配置";
+    public string ControllerLabel => MainControllerConnected ? "主控 USB 已连接" :
+        "主控 USB 自动连接中";
+    public string ScannerLabel => ScannerConnected ? "扫码枪已连接" : "扫码枪等待连接";
+    public string CanLabel => !MainControllerConnected ? "CAN 码率待确认" :
+        CanBitrateReady ? "CAN 码率已确认" : "CAN 码率未确认";
+    public string ControllerDetail => MainControllerConnected
+        ? "USB 协议已连接 · " + (_hardware.ConnectedDeviceIdentity ?? "设备已识别")
+        : "主工位自动发现设备并受控重试，无需人工连接";
+    public string ScannerDetail => ScannerConnected
+        ? "实际端口：" + _scanner.ConnectedPort + " · 等待扫码"
+        : "已绑定设备自动重连；首次使用或故障时打开扫码枪设置";
+    public string CanDetail => _hardware.EcuCanBitrateStatus +
+        " · 此项仅代表主控配置，不代表 ECU 已响应";
+    public string StationReadiness => !_hardware.IsConnected ? "设备准备 · 等待主控 USB" :
+        !_hardware.IsEcuCanBitrateApplied ? "设备准备 · CAN 码率待确认" :
+        !_scanner.IsConnected ? "设备准备 · 扫码枪未连接" :
+        _plans.Current is null ? "检测准备 · 无正式检测工程" :
+        !_plans.Current.ResourceReady ? "检测准备 · 工程资源未就绪" :
+        _prepared is null ? "等待本次 ECU 扫码" :
+        "扫码与设备预检完成 · 正式生产执行链尚未接通";
     public string IdentityLabel => IdentityAccepted ? "编号已核对" : "编号待核对";
     public string DutSerial => _dutSerial;
     public string ScanStatus => _scanStatus;
@@ -268,11 +290,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
 
     private void UpdateConnection()
     {
-        _status = _plans.Current is null
-            ? _draftPreview is null ? "请先打开工程" : "当前工程配置待完善"
-            : !_plans.Current.ResourceReady ? "测试资源未就绪"
-            : !_hardware.IsConnected ? "主控未连接"
-            : "整机执行待接线";
+        _status = StationReadiness;
         Notify();
     }
 
@@ -286,6 +304,10 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         RaisePropertyChanged(nameof(ControllerLabel));
         RaisePropertyChanged(nameof(ScannerLabel));
         RaisePropertyChanged(nameof(CanLabel));
+        RaisePropertyChanged(nameof(ControllerDetail));
+        RaisePropertyChanged(nameof(ScannerDetail));
+        RaisePropertyChanged(nameof(CanDetail));
+        RaisePropertyChanged(nameof(StationReadiness));
         RaisePropertyChanged(nameof(IdentityLabel));
         RaisePropertyChanged(nameof(HasPlan));
         RaisePropertyChanged(nameof(NeedsSetup));

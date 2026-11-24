@@ -5,6 +5,7 @@
  FontFamily="{StaticResource UiFont}" FontSize="15" Background="#EFF3F7" Foreground="#182B3C"
  UseLayoutRounding="True">
  <UserControl.Resources>
+  <local:OperatorRowWidthConverter x:Key="OperatorRowWidthConverter"/>
   <Style x:Key="Label" TargetType="TextBlock">
    <Setter Property="FontSize" Value="14"/><Setter Property="Foreground" Value="#506276"/>
    <Setter Property="FontWeight" Value="Medium"/>
@@ -46,7 +47,11 @@
      </StackPanel>
     </Border>
     <StackPanel Grid.Column="2">
-     <TextBlock Text="设备状态" Style="{StaticResource Label}" Margin="0,0,0,7"/>
+     <DockPanel Margin="0,0,0,7">
+      <Button DockPanel.Dock="Right" Content="扫码枪设置" Command="{Binding OpenScannerSettingsCommand}"
+       Padding="8,4" MinHeight="30" FontSize="13" ToolTip="扫码设备首次配置、连接诊断或更换 COM；主控 USB 无需手动连接"/>
+      <TextBlock Text="工位连接 · 主控自动连接" Style="{StaticResource Label}" VerticalAlignment="Center"/>
+     </DockPanel>
      <WrapPanel>
       <Border><Border.Style><Style TargetType="Border" BasedOn="{StaticResource ConnectionChip}"><Style.Triggers><DataTrigger Binding="{Binding MainControllerConnected}" Value="True"><Setter Property="Background" Value="#E5F4E9"/><Setter Property="BorderBrush" Value="#72B28A"/></DataTrigger></Style.Triggers></Style></Border.Style>
        <TextBlock Text="{Binding ControllerLabel}" FontSize="14" FontWeight="SemiBold"/></Border>
@@ -55,6 +60,9 @@
       <Border><Border.Style><Style TargetType="Border" BasedOn="{StaticResource ConnectionChip}"><Style.Triggers><DataTrigger Binding="{Binding CanBitrateReady}" Value="True"><Setter Property="Background" Value="#E5F4E9"/><Setter Property="BorderBrush" Value="#72B28A"/></DataTrigger></Style.Triggers></Style></Border.Style>
        <TextBlock Text="{Binding CanLabel}" FontSize="14" FontWeight="SemiBold"/></Border>
      </WrapPanel>
+     <TextBlock Text="{Binding ControllerDetail}" FontSize="12" Foreground="#43566C" TextTrimming="CharacterEllipsis" ToolTip="{Binding ControllerDetail}"/>
+     <TextBlock Text="{Binding ScannerDetail}" FontSize="12" Foreground="#43566C" TextTrimming="CharacterEllipsis" ToolTip="{Binding ScannerDetail}" Margin="0,3,0,0"/>
+     <TextBlock Text="{Binding CanDetail}" FontSize="12" Foreground="#43566C" TextTrimming="CharacterEllipsis" ToolTip="{Binding CanDetail}" Margin="0,3,0,0"/>
     </StackPanel>
    </Grid>
   </Border>
@@ -62,10 +70,10 @@
    <DockPanel LastChildFill="True">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
      <Button Content="打开工程与调试" Command="{Binding ChoosePlanCommand}" MinHeight="40" FontSize="14" Padding="13,7" Margin="12,0,8,0"/>
-     <Button Content="检查启动条件" Command="{Binding RequestSoftwareStartCommand}" Style="{StaticResource AtPrimaryButton}" MinHeight="40" MinWidth="145" FontSize="15" Padding="14,7"/>
+     <Button Content="检查工位准备" Command="{Binding RequestSoftwareStartCommand}" Style="{StaticResource AtPrimaryButton}" MinHeight="40" MinWidth="145" FontSize="15" Padding="14,7"/>
     </StackPanel>
     <StackPanel>
-     <TextBlock Text="{Binding PhysicalStartStatus}" FontSize="19" FontWeight="Bold" Foreground="#914500"/>
+     <TextBlock Text="{Binding StationReadiness}" FontSize="19" FontWeight="Bold" Foreground="#914500"/>
      <TextBlock Text="{Binding StartInputHint}" FontSize="14" Foreground="#70491D" TextWrapping="Wrap" Margin="0,3,0,0"/>
     </StackPanel>
    </DockPanel>
@@ -83,7 +91,7 @@
       <DockPanel><TextBlock DockPanel.Dock="Right" Text="执行状态" FontSize="14" FontWeight="SemiBold" Width="150" VerticalAlignment="Center"/>
        <TextBlock Text="序号 / 用例与步骤（展开查看）" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/></DockPanel>
      </Border>
-     <TreeView Grid.Row="2" ItemsSource="{Binding Cases}" SelectedItemChanged="CasesTree_SelectedItemChanged"
+     <TreeView x:Name="CasesTree" Grid.Row="2" ItemsSource="{Binding Cases}" SelectedItemChanged="CasesTree_SelectedItemChanged"
       BorderThickness="0" Background="White" Padding="6,4" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
       Visibility="{Binding HasPlan,Converter={StaticResource BoolToVisibility}}">
       <TreeView.ItemContainerStyle>
@@ -94,7 +102,9 @@
       </TreeView.ItemContainerStyle>
       <TreeView.Resources>
        <HierarchicalDataTemplate DataType="{x:Type local:AutomaticTestCase}" ItemsSource="{Binding Children}">
-        <Border Background="#EAF1F9" BorderBrush="#C8D7E7" BorderThickness="3,0,0,1" Padding="9,0" MinHeight="51">
+        <Border Background="#EDF4FA" BorderBrush="#C8D7E7" BorderThickness="4,0,0,1" Padding="9,0" MinHeight="51"
+         Width="{Binding ActualWidth,ElementName=CasesTree,Converter={StaticResource OperatorRowWidthConverter}}"
+         HorizontalAlignment="Left">
          <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="42"/><ColumnDefinition Width="*"/><ColumnDefinition Width="68"/><ColumnDefinition Width="150"/></Grid.ColumnDefinitions>
           <TextBlock Text="{Binding Index}" FontSize="17" FontWeight="Bold" Foreground="#24588C" VerticalAlignment="Center"/>
           <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" Margin="0,0,10,0"/>
@@ -130,7 +140,7 @@
       <StackPanel Margin="15,13">
        <Border Background="#F1F5F9" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="5" Padding="13">
         <StackPanel><TextBlock Text="本次检测结果" Style="{StaticResource Label}"/>
-         <TextBlock Text="未执行" FontSize="32" FontWeight="Bold" Foreground="#475569" Margin="0,2,0,5"/>
+         <TextBlock Text="{Binding StationReadiness}" FontSize="20" FontWeight="Bold" Foreground="#475569" Margin="0,2,0,5" TextWrapping="Wrap"/>
          <TextBlock Text="{Binding Status}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap"/>
         </StackPanel>
        </Border>
