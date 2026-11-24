@@ -10,16 +10,16 @@ public sealed class DbcEditorDialogs
         global::System.Windows.Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive)
         ?? global::System.Windows.Application.Current.MainWindow;
 
-    public DbcMessage? EditMessage(DbcMessage existing)
+    public DbcMessage? EditMessage(DbcMessage existing, bool allowIdChange = false)
     {
-        var dialog = new DbcMessageEditDialog(existing);
+        var dialog = new DbcMessageEditDialog(existing, allowIdChange);
         if (ActiveOwner is { IsLoaded: true } owner) dialog.Owner = owner;
         return dialog.ShowDialog() == true ? dialog.Result : null;
     }
 
-    public DbcSignal? EditSignal(DbcSignal existing)
+    public DbcSignal? EditSignal(DbcSignal existing, bool protectName = false)
     {
-        var dialog = new DbcSignalEditDialog(existing);
+        var dialog = new DbcSignalEditDialog(existing, protectName);
         if (ActiveOwner is { IsLoaded: true } owner) dialog.Owner = owner;
         return dialog.ShowDialog() == true ? dialog.Result : null;
     }
