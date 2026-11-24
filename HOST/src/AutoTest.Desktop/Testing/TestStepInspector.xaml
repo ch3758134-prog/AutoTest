@@ -14,7 +14,7 @@
       <TextBlock x:Name="TypeIcon" Text="▣" Foreground="#475668" FontSize="13"
        HorizontalAlignment="Center" VerticalAlignment="Center"/>
      </Border>
-     <TextBlock x:Name="StepCode" DockPanel.Dock="Right" Visibility="Collapsed" Foreground="#97B6DE"
+     <TextBlock x:Name="StepCode" DockPanel.Dock="Right" Visibility="Collapsed" Foreground="#627C9D"
       VerticalAlignment="Center" FontFamily="Consolas" FontSize="10"/>
      <StackPanel VerticalAlignment="Center">
       <TextBlock x:Name="Heading" Text="编辑步骤" Visibility="Collapsed" Foreground="#344454"
@@ -102,11 +102,11 @@
           ToolTip="DBC 定义优先；无 DBC 时，ID 大于 0x7FF 自动识别为扩展帧，否则默认为标准帧。"/>
         </StackPanel>
        </StackPanel>
-       <TextBlock Text="DATA（HEX）" FontWeight="SemiBold"
+       <TextBlock Text="DATA · 实际发送字节（HEX）" FontWeight="SemiBold"
         Foreground="#475668" FontSize="11" Margin="0,3,0,4"/>
        <TextBox x:Name="RawCanDataInput" TextChanged="CanData_Changed"
-        Width="244" Height="31" Padding="7,4"
-        HorizontalAlignment="Left" FontFamily="Consolas" FontSize="12"
+        MinHeight="31" Padding="7,4"
+         HorizontalAlignment="Stretch" FontFamily="Consolas" FontSize="12"
         ToolTip="直接编辑完整报文字节，例如 00 00 00 00 00 00 00 00"/>
        <TextBlock x:Name="CanFramePreview" FontSize="10"
         Foreground="#627C9D" Margin="0,6,0,0" TextWrapping="Wrap"/>
@@ -116,8 +116,12 @@
      </Border>
 
      <StackPanel Margin="0,0,0,10">
-      <TextBlock Text="DBC 信号辅助" FontWeight="SemiBold" Foreground="#475668"
-       Margin="0,0,0,6"/>
+      <DockPanel Margin="0,0,0,7">
+        <Button DockPanel.Dock="Right" Content="清除辅助" Click="ClearCanDbc_Click"
+         Padding="9,4" MinWidth="80" ToolTip="解除 DBC 关联；保留 CAN ID、帧格式、DATA 和发送方式"/>
+        <TextBlock Text="DBC 信号辅助" FontWeight="SemiBold" Foreground="#475668"
+         VerticalAlignment="Center"/>
+       </DockPanel>
       <testing:DbcReferencePicker x:Name="CanDbcPicker" Margin="0,0,0,6"
        ChoiceCommitted="DbcReference_ChoiceCommitted"/>
       <!-- Hidden compatibility selection state for existing StepNode transactions.
