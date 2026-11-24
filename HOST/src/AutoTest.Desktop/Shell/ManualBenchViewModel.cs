@@ -301,6 +301,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     public string Status { get => _status; private set => SetProperty(ref _status, value); }
     public uint DraftMask => Keys.Aggregate(0u, (mask, key) => key.Checked ? mask | key.Mask : mask);
     public string DraftMaskLabel => "待发送 Key 掩码 0x" + DraftMask.ToString("X5", CultureInfo.InvariantCulture);
+    public string KeyRequestStatus => _hardware.KeyRequestStatus;
     public bool HasConfiguredKeys => _controller?.KeyHardwarePolicy is not null;
     public bool CanSendHardware => IsConnected && !IsBusy && !_hardware.IsTestRunApproved;
     public bool CanSendManualEcuCan => CanSendHardware;
@@ -346,6 +347,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     public DelegateCommand SendCanCommand { get; }
     public DelegateCommand SendKeyCommand { get; }
     public DelegateCommand ReleaseKeysCommand { get; }
+    public DelegateCommand ReleaseAllKeysCommand { get; }
     public DelegateCommand SendIgnCommand { get; }
     public DelegateCommand ReadIgnCommand { get; }
     public DelegateCommand SendClampCommand { get; }
@@ -364,6 +366,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         _hardware.FrameObserved += FrameObserved;
         _hardware.EvidenceRecorded += EvidenceRecorded;
         _hardware.ConnectionChanged += ConnectionChanged;
+        _hardware.KeyRequestStateChanged += OnKeyRequestStateChanged;
         _hardware.EcuCanBitrateSelectionChanged += OnSelectedEcuCanRateChanged;
         _hardware.TestRunAuthorizationChanged += TestRunAuthorizationChanged;
         _projects.CurrentChanged += ProjectChanged;
@@ -375,6 +378,10 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         SendCanCommand = new DelegateCommand(async () => await SendCanAsync(), () => !IsBusy);
         SendKeyCommand = new DelegateCommand(async () => await ApplyKeysAsync(), () => !IsBusy);
         ReleaseKeysCommand = new DelegateCommand(ReleaseDraftKeys, () => !IsBusy);
+        ReleaseAllKeysCommand = new DelegateCommand(
+            async () => await ReleaseAllKeysAsync(),
+            () => _hardware.IsConnected && !IsBusy && !IsKeyActionRunning &&
+                !_hardware.IsTestRunApproved && !_hardware.IsManualCanBatchApproved);
         SendIgnCommand = new DelegateCommand(async () => await ApplyIgnAsync(), () => CanInvokeManualIo);
         ReadIgnCommand = new DelegateCommand(async () => await ReadIgnAsync(), () => CanInvokeManualIo);
         SendClampCommand = new DelegateCommand(async () => await ApplyClampAsync(), () => CanInvokeManualIo);
@@ -398,6 +405,18 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         RaisePropertyChanged(nameof(DraftMask));
         RaisePropertyChanged(nameof(DraftMaskLabel));
         RaisePropertyChanged(nameof(KeyExpectedConsent));
+    }
+
+    private void OnKeyRequestStateChanged()
+    {
+        var dispatcher = global::System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher is null) return;
+        dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (_disposed) return;
+            RaisePropertyChanged(nameof(KeyRequestStatus));
+            ReleaseAllKeysCommand?.RaiseCanExecuteChanged();
+        }));
     }
 
     private void TestRunAuthorizationChanged(bool approved) =>
@@ -430,6 +449,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
             RaisePropertyChanged(nameof(ConnectionStatus));
             RaisePropertyChanged(nameof(ConnectionActionLabel));
             RaisePropertyChanged(nameof(CanSendHardware));
+            RaisePropertyChanged(nameof(KeyRequestStatus));
             RaiseCommands();
         }));
     }
@@ -499,6 +519,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         SendClampCommand?.RaiseCanExecuteChanged();
         ReadClampsCommand?.RaiseCanExecuteChanged();
         ReleaseKeysCommand?.RaiseCanExecuteChanged();
+        ReleaseAllKeysCommand?.RaiseCanExecuteChanged();
     }
 
     private async Task Execute(string operation, Func<Task> action)
@@ -781,8 +802,26 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     private void ReleaseDraftKeys()
     {
         foreach (var key in Keys) key.Checked = false;
-        Status = "已清空 Key 选择；点击“应用 Key 组合”将向 KEY CAN 发送全断开请求。";
+        Status = "仅清空编辑勾选；尚未发送 KEY。要真正断开请点击“实际全部断开 KEY”。";
     }
+
+    private async Task ReleaseAllKeysAsync() => await Execute(
+        "明确全部断开 KEY", async () =>
+    {
+        if (!_hardware.IsConnected)
+            throw new IOException("主控 USB 未连接；未下发全部断开请求。");
+        if (IsKeyActionRunning || _hardware.IsTestRunApproved ||
+            _hardware.IsManualCanBatchApproved)
+            throw new InvalidOperationException(
+                "KEY、TEST 或 CAN 任务正在运行；请先停止后再明确断开。");
+        var frame = KeypadCommandCodec.EncodeReleaseAll();
+        await _hardware.SendCanOnceAsync(frame, ExpectedConsent(() => frame));
+        LastKeyAck = "已明确发送全部断开 KEY，并收到主控 ACK；实际五路电压未测量。";
+        Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"),
+            "KEY CAN", "TX ACK", "0x730",
+            Convert.ToHexString(frame.Data.AsSpan()), LastKeyAck));
+        Status = LastKeyAck;
+    });
 
     public async Task ApplyIgnSelectionAsync(bool on)
     {
@@ -887,6 +926,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         _hardware.FrameObserved -= FrameObserved;
         _hardware.EvidenceRecorded -= EvidenceRecorded;
         _hardware.ConnectionChanged -= ConnectionChanged;
+        _hardware.KeyRequestStateChanged -= OnKeyRequestStateChanged;
         _hardware.EcuCanBitrateSelectionChanged -= OnSelectedEcuCanRateChanged;
         _hardware.TestRunAuthorizationChanged -= TestRunAuthorizationChanged;
         _projects.CurrentChanged -= ProjectChanged;
