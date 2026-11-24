@@ -190,11 +190,23 @@
       ToolTip="选择 ECU CAN 目标码率；按“应用”执行 USB 0x42 并通过 0x43 回读，确认成功后才允许实体 ECU CAN 发送。"/>
      <Button Content="应用" Command="{Binding ApplyEcuCanBitrateCommand}"
       Margin="0,0,7,0" Padding="8,4" ToolTip="{Binding EcuCanRateStatus}"/>
-     <Border Background="#EAF4EF" BorderBrush="#A9D3BC" BorderThickness="1"
-      CornerRadius="4" Padding="8,5" Margin="0,0,8,0"
+     <Border CornerRadius="4" Padding="8,5" Margin="0,0,8,0"
       ToolTip="{Binding HardwareStatus}">
-      <TextBlock Text="主工位 USB 自动维护" Foreground="#17633B" FontSize="12"
-       VerticalAlignment="Center"/>
+      <Border.Style>
+       <Style TargetType="Border">
+        <Setter Property="Background" Value="#FFF4E7"/>
+        <Setter Property="BorderBrush" Value="#D1A76D"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Style.Triggers>
+         <DataTrigger Binding="{Binding MainUsbConnected}" Value="True">
+          <Setter Property="Background" Value="#EAF4EF"/>
+          <Setter Property="BorderBrush" Value="#A9D3BC"/>
+         </DataTrigger>
+        </Style.Triggers>
+       </Style>
+      </Border.Style>
+      <TextBlock Text="{Binding MainUsbDisplay}" FontSize="12"
+       VerticalAlignment="Center" Foreground="#6E4F23"/>
      </Border>
      <Button Content="CAN 监视" Command="{Binding OpenCanMonitorCommand}" Margin="0"
        ToolTip="查看真实 CAN 收发记录"/>

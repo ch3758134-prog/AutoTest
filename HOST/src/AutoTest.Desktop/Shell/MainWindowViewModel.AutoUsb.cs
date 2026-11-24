@@ -20,6 +20,22 @@ public sealed partial class MainWindowViewModel
     private bool _applicationClosing;
     private bool _usbClosingPreparation;
 
+    public bool MainUsbConnected => _hardware.IsConnected && _exclusiveUsbTool is null;
+    public string MainUsbDisplay => _exclusiveUsbTool is not null
+        ? "USB 已移交 " + _exclusiveUsbTool
+        : _hardware.IsConnected ? "主工位 USB 已连接" : "主工位 USB 自动连接中";
+
+    private void OnAutoUsbConnectionChanged(long epoch)
+    {
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher is null) return;
+        dispatcher.BeginInvoke(new Action(() =>
+        {
+            RaisePropertyChanged(nameof(MainUsbConnected));
+            RaisePropertyChanged(nameof(MainUsbDisplay));
+        }));
+    }
+
     public string UsbConnectionOwner => _exclusiveUsbTool is null
         ? "AutoTest 主工位（自动连接）"
         : _exclusiveUsbTool + "（工具手动连接）";
@@ -36,6 +52,7 @@ public sealed partial class MainWindowViewModel
     {
         if (_applicationClosing || _automaticUsbEnabled) return;
         _automaticUsbEnabled = true;
+        _hardware.ConnectionChanged += OnAutoUsbConnectionChanged;
         _automaticTestHome.PublishUsbAutoStatus("正在自动发现并连接主控 USB…");
         _automaticUsbTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
@@ -106,6 +123,8 @@ public sealed partial class MainWindowViewModel
         {
             _usbOwnershipGate.Release();
             RaisePropertyChanged(nameof(UsbConnectionOwner));
+            RaisePropertyChanged(nameof(MainUsbConnected));
+            RaisePropertyChanged(nameof(MainUsbDisplay));
             RaisePropertyChanged(nameof(ConnectionButtonText));
             ConnectHardwareCommand.RaiseCanExecuteChanged();
             ApplyEcuCanBitrateCommand.RaiseCanExecuteChanged();
@@ -135,6 +154,8 @@ public sealed partial class MainWindowViewModel
             // races with a tool opening its own (possibly native WinUSB) handle.
             _exclusiveUsbTool = tool;
             RaisePropertyChanged(nameof(UsbConnectionOwner));
+            RaisePropertyChanged(nameof(MainUsbConnected));
+            RaisePropertyChanged(nameof(MainUsbDisplay));
             try
             {
                 if (_hardware.HasSession) await _hardware.DisconnectAsync();
@@ -171,6 +192,8 @@ public sealed partial class MainWindowViewModel
             {
                 _exclusiveUsbTool = null;
                 _nextAutoUsbAttempt = DateTimeOffset.MinValue;
+                RaisePropertyChanged(nameof(MainUsbConnected));
+                RaisePropertyChanged(nameof(MainUsbDisplay));
                 _automaticTestHome.PublishUsbAutoStatus("工具已释放 USB，主工位正在恢复自动连接…");
                 RaisePropertyChanged(nameof(UsbConnectionOwner));
             }
@@ -184,6 +207,7 @@ public sealed partial class MainWindowViewModel
     {
         _applicationClosing = true;
         _automaticUsbEnabled = false;
+        _hardware.ConnectionChanged -= OnAutoUsbConnectionChanged;
         _automaticUsbTimer?.Stop();
         _automaticUsbTimer = null;
     }
