@@ -1430,8 +1430,17 @@ public partial class TestStepInspector : UserControl
         // switch to a no-write Wait or an intentional all-release without
         // manufacturing a zero mask as an implicit wait.
         KeyActionInput.Visibility = Visibility.Visible;
+        // Pulse is a legacy press-and-release command, not the frozen
+        // persistent KEY_SIM semantics. Do not offer it for a new 20-Key step.
+        var legacyPulse = raw && _editing?.Properties.GetValueOrDefault("value", "")
+            .StartsWith("Pulse:", StringComparison.OrdinalIgnoreCase) == true;
         foreach (var item in KeyActionInput.Items.OfType<ComboBoxItem>())
+        {
             if ((string?)item.Tag == "Wait") item.IsEnabled = raw;
+            if ((string?)item.Tag == "Pulse")
+                item.Visibility = raw && !legacyPulse ? Visibility.Collapsed : Visibility.Visible;
+        }
+        KeyDurationLabel.Text = operation == "Wait" ? "纯等待时间（ms）" : "保持时间（ms）";
         KeyDurationPanel.Visibility =
             ((operation is "Pulse" or "Hold" or "Wait") && raw) ||
             operation == "Pulse"
@@ -1579,6 +1588,12 @@ public partial class TestStepInspector : UserControl
                         ?? throw new ArgumentException("请选择保持、释放、纯等待或短按。");
                     if (mapping.Kind == TestTargetKind.RawKey)
                     {
+                        if (operation is "Hold" or "Wait")
+                        {
+                            if (!int.TryParse(KeyDurationInput.Text.Trim(), NumberStyles.None,
+                                CultureInfo.InvariantCulture, out var keyMs) || keyMs is < 1 or > 600000)
+                                throw new ArgumentException("保持/纯等待时间须为 1～600000 毫秒，计时结束不会自动释放 KEY。");
+                        }
                         // Empty 20-switch combination is the explicit all-off
                         // action, represented by the existing Release wire syntax.
                         if (operation == "Hold" && _selectedMask == 0)
