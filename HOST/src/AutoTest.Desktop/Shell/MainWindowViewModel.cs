@@ -300,9 +300,8 @@ public sealed partial class MainWindowViewModel : BindableBase
             try
             {
                 _hardware.SelectRequestedEcuCanBitrate(value);
-                StatusMessage = "ECU CAN 目标已选 " + value +
-                    "k；" + _hardware.EcuCanBitrateStatus +
-                    "。必要时点击“应用/读回”执行 USB 0x42/0x43。";
+                StatusMessage = "ECU CAN 已选择 " + value + " kbit/s；点击应用。";
+                RaisePropertyChanged(nameof(EcuCanRateStatus));
             }
             catch (Exception error) when (error is InvalidOperationException or
                 ArgumentOutOfRangeException)
@@ -324,8 +323,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         try
         {
             var confirmed = await _hardware.ApplyRequestedEcuCanBitrateAsync();
-            StatusMessage = "ECU CAN 已由主控 USB 确认 " + confirmed +
-                " kbit/s；KEY CAN 未修改，物理总线速率仍需现场验证。";
+            StatusMessage = "ECU CAN 已设置：" + confirmed + " kbit/s。";
         }
         catch (Exception error)
         {

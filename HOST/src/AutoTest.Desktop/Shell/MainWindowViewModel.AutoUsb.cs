@@ -53,7 +53,7 @@ public sealed partial class MainWindowViewModel
         if (_applicationClosing || _automaticUsbEnabled) return;
         _automaticUsbEnabled = true;
         _hardware.ConnectionChanged += OnAutoUsbConnectionChanged;
-        _automaticTestHome.PublishUsbAutoStatus("正在自动发现并连接主控 USB…");
+        _automaticTestHome.PublishUsbAutoStatus("主控连接中");
         _automaticUsbTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
             Interval = TimeSpan.FromSeconds(3)
@@ -105,8 +105,8 @@ public sealed partial class MainWindowViewModel
             _autoUsbFailures = 0;
             _nextAutoUsbAttempt = DateTimeOffset.MinValue;
             HardwareStatus = "主控自动连接成功 · " + _hardware.EcuCanBitrateStatus;
-            StatusMessage = HardwareStatus;
-            _automaticTestHome.PublishUsbAutoStatus(HardwareStatus);
+            StatusMessage = "主控已连接";
+            _automaticTestHome.PublishUsbAutoStatus("主控已连接");
             RaisePropertyChanged(nameof(RequestedEcuCanBitrateKbps));
             RaisePropertyChanged(nameof(EcuCanRateStatus));
         }
@@ -117,7 +117,7 @@ public sealed partial class MainWindowViewModel
             _nextAutoUsbAttempt = DateTimeOffset.UtcNow.AddSeconds(retrySeconds);
             HardwareStatus = "主控自动连接未完成：" + error.Message;
             StatusMessage = HardwareStatus + "；" + retrySeconds + " 秒后再次尝试。";
-            _automaticTestHome.PublishUsbAutoStatus(StatusMessage);
+            _automaticTestHome.PublishUsbAutoStatus("主控连接失败，自动重试中");
         }
         finally
         {

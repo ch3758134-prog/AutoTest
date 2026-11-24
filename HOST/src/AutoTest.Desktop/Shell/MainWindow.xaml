@@ -92,8 +92,9 @@
       Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}"
       Style="{StaticResource AtQuietButton}" FontSize="13" Foreground="#245A94"
       MinHeight="26" Padding="10,3" Margin="0,0,8,0"/>
-     <TextBlock Text="{Binding HardwareStatus}" FontSize="13" FontWeight="SemiBold" Foreground="#805000"
-      VerticalAlignment="Center" MaxWidth="230" TextTrimming="CharacterEllipsis"
+     <TextBlock Text="{Binding MainUsbDisplay}" FontSize="13" FontWeight="SemiBold"
+      ToolTip="{Binding HardwareStatus}" Foreground="#345B76"
+      VerticalAlignment="Center" MaxWidth="210" TextTrimming="CharacterEllipsis"
       Margin="0,0,10,0"/>
      <Button Content="─" Style="{StaticResource ChromeButton}" ToolTip="最小化"
       chrome:WindowChrome.IsHitTestVisibleInChrome="True" Click="Minimize_Click"/>
@@ -411,9 +412,7 @@
    Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}">
    <DockPanel Margin="11,0">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-     <TextBlock Text="{Binding HardwareStatus}" Foreground="{StaticResource Ink}"
-      FontSize="12" VerticalAlignment="Center" Margin="0,0,13,0"/>
-     <Button Content="扫码枪" Command="{Binding OpenSerialScannerCommand}"
+      <Button Content="扫码枪" Command="{Binding OpenSerialScannerCommand}"
       ToolTip="连接 USB 虚拟串口扫描枪，识别型号及唯一编号"
       MinHeight="26" Height="26" Padding="8,0" Margin="0,0,6,0"/>
      <TextBlock Text="{Binding ScanStatus}" Width="175" FontSize="13"
