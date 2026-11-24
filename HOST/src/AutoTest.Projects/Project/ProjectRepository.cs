@@ -10,7 +10,7 @@ public sealed class ProjectRepository : IProjectService
 {
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true, PropertyNameCaseInsensitive = false };
     private sealed record StoredProject(int SchemaVersion, string Id, int Revision, string Name,
-        StoredAsset[] Assets, StoredDependency[] Dependencies, string? EcuModelCode = null);
+        StoredAsset[] Assets, StoredDependency[] Dependencies, string? EcuModelCode = null, ProjectBarcodeExpectation? BarcodeExpectation = null);
     private sealed record StoredAsset(string Id, int Revision, string Kind, string Name, string RelativePath, string Sha256);
     private sealed record StoredDependency(string From, string To, int RequiredRevision, string Purpose);
     public static ProjectDefinition Create(string name) => ProjectDefinition.Create(name);
@@ -24,7 +24,7 @@ public sealed class ProjectRepository : IProjectService
         var data = new StoredProject(project.SchemaVersion, project.Id.Value.ToString("D"), project.Revision, project.Name,
             project.Assets.Select(a => new StoredAsset(a.Id.Value.ToString("D"), a.Revision, a.Kind, a.Name, a.RelativePath, a.Sha256)).ToArray(),
             project.Dependencies.Select(d => new StoredDependency(d.From.Value.ToString("D"), d.To.Value.ToString("D"), d.RequiredRevision, d.Purpose)).ToArray(),
-            project.EcuModelCode);
+            project.EcuModelCode, project.BarcodeExpectation);
         var bytes = JsonSerializer.SerializeToUtf8Bytes(data, Json);
         var temporary = Path.Combine(dir, "." + Path.GetFileName(full) + "." + Guid.NewGuid().ToString("N") + ".tmp");
         try
@@ -67,7 +67,7 @@ public sealed class ProjectRepository : IProjectService
                 return new AssetDependency(from, to, d.RequiredRevision, d.Purpose);
             }).ToImmutableArray();
             return new ProjectDefinition(id, stored.SchemaVersion, stored.Revision, stored.Name, assets, dependencies,
-                stored.EcuModelCode).Validate();
+                stored.EcuModelCode, stored.BarcodeExpectation).Validate();
         }
         catch (JsonException e) { throw new ProjectDataException("PROJECT_CORRUPT", $"Invalid project JSON: {e.Message}"); }
     }
