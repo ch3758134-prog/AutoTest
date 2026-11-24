@@ -48,7 +48,10 @@
      <TextBlock x:Name="PublicFlowReferenceStatus" TextWrapping="Wrap"
       Foreground="#A2752D" FontSize="10" Margin="0,5,0,0"/>
     </StackPanel>
-    <StackPanel x:Name="TargetPanel" Margin="0,0,0,13">
+    <Grid x:Name="ObjectParameterGrid" Margin="0,0,0,10">
+     <Grid.ColumnDefinitions><ColumnDefinition x:Name="ObjectParameterLeft" Width="*"/><ColumnDefinition x:Name="ObjectParameterGap" Width="0"/><ColumnDefinition x:Name="ObjectParameterRight" Width="0"/></Grid.ColumnDefinitions>
+     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <StackPanel x:Name="TargetPanel" Grid.Row="0" Margin="0,0,0,13">
      <!-- All TEST DBC signals share the same search-first picker as CAN sending. -->
      <StackPanel x:Name="DbcSignalPickerPanel" Visibility="Collapsed">
       <TextBlock Text="DBC 信号" FontWeight="SemiBold" Foreground="#475668"
@@ -70,10 +73,51 @@
      <TextBlock x:Name="TargetHint" Visibility="Collapsed" Foreground="#64758C"
       FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0"/>
     </StackPanel>
+    <ItemsControl x:Name="ParameterList" Grid.Row="1" ItemsSource="{Binding ParameterFields}">
+     <ItemsControl.ItemTemplate>
+      <DataTemplate>
+       <StackPanel Margin="0,0,0,11">
+        <TextBlock Text="{Binding Label}" Foreground="#627C9D" FontSize="11"
+         FontWeight="SemiBold" Margin="0,0,0,5"/>
+        <Grid>
+         <TextBox Text="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}">
+          <TextBox.Style>
+           <Style TargetType="TextBox">
+            <Setter Property="Visibility" Value="Visible"/>
+            <Style.Triggers>
+             <DataTrigger Binding="{Binding HasChoices}" Value="True">
+              <Setter Property="Visibility" Value="Collapsed"/>
+             </DataTrigger>
+            </Style.Triggers>
+           </Style>
+          </TextBox.Style>
+         </TextBox>
+         <ComboBox ItemsSource="{Binding Choices}" DisplayMemberPath="Label"
+          SelectedValuePath="Value" SelectedValue="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+          MinHeight="28" Padding="6,3">
+          <ComboBox.Style>
+           <Style TargetType="ComboBox">
+            <Setter Property="Visibility" Value="Collapsed"/>
+            <Style.Triggers>
+             <DataTrigger Binding="{Binding HasChoices}" Value="True">
+              <Setter Property="Visibility" Value="Visible"/>
+             </DataTrigger>
+            </Style.Triggers>
+           </Style>
+          </ComboBox.Style>
+         </ComboBox>
+        </Grid>
+       </StackPanel>
+      </DataTemplate>
+     </ItemsControl.ItemTemplate>
+    </ItemsControl>
+    </Grid>
 
     <!-- CAN remains an exact byte editor; DBC is an automatically attached
          helper, with a compact optional picker for changing definitions. -->
-    <StackPanel x:Name="CanSendPanel" Visibility="Collapsed" Margin="0,0,0,12">
+    <Grid x:Name="CanSendPanel" Visibility="Collapsed" Margin="0,0,0,12">
+     <Grid.ColumnDefinitions><ColumnDefinition Width="370"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+     <StackPanel Grid.Column="0">
      <Border x:Name="CanDataCard" Background="White" BorderBrush="#E2E8E5"
       BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,11">
       <StackPanel>
@@ -120,39 +164,35 @@
       <StackPanel>
        <TextBlock Text="发送方式" FontWeight="SemiBold"
         Foreground="#475668" Margin="0,0,0,8"/>
-       <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+       <WrapPanel Margin="0,0,0,8" VerticalAlignment="Center">
         <RadioButton x:Name="CanOnceMode" Content="单次"
          GroupName="CanSendMode" Checked="CanSendMode_Changed"
          Margin="0,0,15,0"/>
         <RadioButton x:Name="CanPeriodicMode" Content="周期"
-         GroupName="CanSendMode" Checked="CanSendMode_Changed"/>
-       </StackPanel>
+         GroupName="CanSendMode" Checked="CanSendMode_Changed" Margin="0,0,12,0"/>
+        <StackPanel x:Name="CanPeriodField" Orientation="Horizontal" VerticalAlignment="Center">
+         <TextBox x:Name="CanPeriodInput" Width="70" MinHeight="28" ToolTip="周期（毫秒）"/>
+         <TextBlock Text="ms" VerticalAlignment="Center" Margin="5,0,0,0"/>
+        </StackPanel>
+       </WrapPanel>
        <StackPanel x:Name="CanPeriodicPanel" Visibility="Collapsed">
-        <StackPanel Orientation="Horizontal" Margin="0,0,0,7">
-         <StackPanel>
-          <TextBlock Text="周期 ms" FontSize="11" Foreground="#64758C"
-           Margin="0,0,0,3"/>
-          <TextBox x:Name="CanPeriodInput" Width="94" MinHeight="28"/>
+        <WrapPanel VerticalAlignment="Center" Margin="0,0,0,5">
+         <TextBlock Text="停止" VerticalAlignment="Center" Foreground="#526B84" Margin="0,0,9,0"/>
+         <RadioButton x:Name="CanUntilStopped" Content="直到停止" GroupName="CanSendStop" Checked="CanStopMode_Changed" VerticalAlignment="Center" Margin="0,0,12,0"/>
+         <RadioButton x:Name="CanTimedStop" Content="定时" GroupName="CanSendStop" Checked="CanStopMode_Changed" VerticalAlignment="Center" Margin="0,0,7,0"/>
+         <StackPanel x:Name="CanTimedDurationPanel" Visibility="Collapsed" Orientation="Horizontal" VerticalAlignment="Center">
+          <TextBox x:Name="CanDurationInput" Width="70" MinHeight="28" ToolTip="持续时间（毫秒）"/>
+          <TextBlock Text="ms" VerticalAlignment="Center" Margin="4,0,0,0"/>
          </StackPanel>
-         <StackPanel x:Name="CanTimedDurationPanel" Visibility="Collapsed" Margin="12,0,0,0">
-          <TextBlock Text="持续 ms" FontSize="11" Foreground="#64758C"
-           Margin="0,0,0,3"/>
-          <TextBox x:Name="CanDurationInput" Width="94" MinHeight="28"/>
-         </StackPanel>
-        </StackPanel>
-        <StackPanel Orientation="Horizontal">
-         <RadioButton x:Name="CanTimedStop" Content="定时停止"
-          GroupName="CanSendStop" Checked="CanStopMode_Changed"
-          Margin="0,0,12,0"/>
-         <RadioButton x:Name="CanUntilStopped" Content="直到停止"
-          GroupName="CanSendStop" Checked="CanStopMode_Changed"/>
-        </StackPanel>
+        </WrapPanel>
         <TextBlock Text="后台周期发送；后续测试步骤继续执行"
          FontSize="11" Foreground="#526B84" Margin="0,6,0,0"
          TextWrapping="Wrap"/>
        </StackPanel>
       </StackPanel>
      </Border>
+     </StackPanel>
+     <Border Grid.Column="2" Background="White" BorderBrush="#E2E8E5" BorderThickness="1" CornerRadius="6" Padding="12">
      <StackPanel Margin="0,0,0,0">
       <DockPanel Margin="0,0,0,7">
         <Button DockPanel.Dock="Right" Content="清除辅助" Click="ClearCanDbc_Click"
@@ -178,19 +218,19 @@
        <TextBlock x:Name="DbcMessageInfo" FontSize="10" Foreground="#526B84"
         Margin="0,0,0,7" TextWrapping="Wrap"/>
        <TextBox x:Name="CanSignalSearch" TextChanged="CanSignalSearch_Changed" ToolTip="搜索信号名称或别名，不改变 DATA" MinHeight="28" Margin="0,0,0,6"/>
-       <ScrollViewer MaxHeight="260" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+       <ScrollViewer MaxHeight="385" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
        <ItemsControl x:Name="SignalGrid" ItemsSource="{Binding SignalValues}">
         <ItemsControl.ItemTemplate>
          <DataTemplate>
           <Grid Margin="0,0,0,5" IsEnabled="{Binding IsEditable}">
            <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="112"/>
+            <ColumnDefinition Width="142"/>
            </Grid.ColumnDefinitions>
-           <TextBlock Text="{Binding DisplayName}" FontSize="12"
-            Foreground="#475668" VerticalAlignment="Center"
-            TextTrimming="CharacterEllipsis" ToolTip="{Binding Definition}"
-            Margin="0,0,8,0"/>
+           <StackPanel Margin="0,0,8,0" VerticalAlignment="Center">
+            <TextBlock Text="{Binding DisplayName}" FontSize="12" Foreground="#354B61" TextWrapping="Wrap" ToolTip="{Binding Definition}"/>
+            <TextBlock Text="{Binding Range}" FontSize="10" Foreground="#627C9D"/>
+           </StackPanel>
            <Grid Grid.Column="1">
             <TextBox Text="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
              FontFamily="Consolas" MinHeight="27"
@@ -225,8 +265,8 @@
        </ScrollViewer>
       </StackPanel>
      </StackPanel>
-
-    </StackPanel>
+     </Border>
+    </Grid>
 
     <StackPanel x:Name="KeyPanel" Visibility="Collapsed" Margin="0,0,0,13">
      <TextBlock Text="KEY 动作" Foreground="#627C9D" FontWeight="SemiBold"
@@ -265,44 +305,6 @@
      </ComboBox>
     </StackPanel>
 
-    <ItemsControl x:Name="ParameterList" ItemsSource="{Binding ParameterFields}">
-     <ItemsControl.ItemTemplate>
-      <DataTemplate>
-       <StackPanel Margin="0,0,0,11">
-        <TextBlock Text="{Binding Label}" Foreground="#627C9D" FontSize="11"
-         FontWeight="SemiBold" Margin="0,0,0,5"/>
-        <Grid>
-         <TextBox Text="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}">
-          <TextBox.Style>
-           <Style TargetType="TextBox">
-            <Setter Property="Visibility" Value="Visible"/>
-            <Style.Triggers>
-             <DataTrigger Binding="{Binding HasChoices}" Value="True">
-              <Setter Property="Visibility" Value="Collapsed"/>
-             </DataTrigger>
-            </Style.Triggers>
-           </Style>
-          </TextBox.Style>
-         </TextBox>
-         <ComboBox ItemsSource="{Binding Choices}" DisplayMemberPath="Label"
-          SelectedValuePath="Value" SelectedValue="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-          MinHeight="28" Padding="6,3">
-          <ComboBox.Style>
-           <Style TargetType="ComboBox">
-            <Setter Property="Visibility" Value="Collapsed"/>
-            <Style.Triggers>
-             <DataTrigger Binding="{Binding HasChoices}" Value="True">
-              <Setter Property="Visibility" Value="Visible"/>
-             </DataTrigger>
-            </Style.Triggers>
-           </Style>
-          </ComboBox.Style>
-         </ComboBox>
-        </Grid>
-       </StackPanel>
-      </DataTemplate>
-     </ItemsControl.ItemTemplate>
-    </ItemsControl>
     <Border BorderBrush="#E3E9E6" BorderThickness="0,1,0,0" Margin="0,12,0,8"/>
     <StackPanel x:Name="StepActionsPanel" Visibility="Collapsed"/>
 
