@@ -122,10 +122,15 @@
        </HierarchicalDataTemplate>
        <HierarchicalDataTemplate DataType="{x:Type local:AutomaticTestStep}" ItemsSource="{Binding Children}">
         <Border BorderBrush="#E2E8F0" BorderThickness="0,0,0,1" Padding="6,0" MinHeight="39">
-         <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition Width="*"/><ColumnDefinition Width="150"/></Grid.ColumnDefinitions>
+         <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition Width="245"/><ColumnDefinition Width="*"/><ColumnDefinition Width="150"/></Grid.ColumnDefinitions>
           <TextBlock Text="{Binding Index}" FontSize="14" Foreground="#526477" VerticalAlignment="Center"/>
-          <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="15" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" Margin="0,0,10,0"/>
-          <TextBlock Grid.Column="2" Text="{Binding State}" Style="{StaticResource NodeState}" TextTrimming="CharacterEllipsis" ToolTip="{Binding State}"/>
+          <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="15" VerticalAlignment="Center"
+           TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" Margin="0,0,10,0"/>
+          <TextBlock Grid.Column="2" Text="{Binding ActionSummary}" FontSize="13" Foreground="#315A7C"
+           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+           ToolTip="{Binding ActionSummary}" Margin="0,0,10,0"/>
+          <TextBlock Grid.Column="3" Text="{Binding State}" Style="{StaticResource NodeState}"
+           TextTrimming="CharacterEllipsis" ToolTip="{Binding State}"/>
          </Grid>
         </Border>
        </HierarchicalDataTemplate>
