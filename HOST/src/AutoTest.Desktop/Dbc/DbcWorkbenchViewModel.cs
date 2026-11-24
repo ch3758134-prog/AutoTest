@@ -251,7 +251,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         if (id == uint.MaxValue) { StatusMessage = "没有空闲标准帧 ID。"; return; }
         var name = "Message_" + id.ToString("X");
         var edited = _dialogs.EditMessage(new DbcMessage(id, name, 8,
-            model.Nodes.FirstOrDefault() ?? "Vector__XXX", []));
+            model.Nodes.FirstOrDefault() ?? "Vector__XXX", []), allowIdChange: true);
         if (edited is null) return;
         var before = _session.Document.CaptureCheckpoint();
         try { _session.Document.AddMessage(edited); RefreshDocument(edited.Id, null); Remember(before); }
@@ -654,8 +654,9 @@ public sealed class DbcWorkbenchViewModel : BindableBase
     {
         if (!CanEdit || IsBusy || SelectedMessage is not { } chosen) return;
         if (!TryCommitPendingSignal()) return;
-        var edited = _dialogs.EditMessage(CurrentMessageModel ?? chosen.Message);
-        if (edited is null) return;
+        var edited = _dialogs.EditMessage(CurrentMessageModel ?? chosen.Message,
+            CanChangeStructure && !_session.Document.ValueTables.Any(t => t.MessageId == chosen.Message.Id));
+        if (edited is null || edited == (CurrentMessageModel ?? chosen.Message)) return;
         try
         {
             var before = _session.Document.CaptureCheckpoint();
@@ -675,8 +676,8 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         if (!CanEdit || IsBusy || SelectedMessage is not { } message || SelectedSignal is not { } chosen)
             return;
         if (!TryCommitPendingSignal()) return;
-        var edited = _dialogs.EditSignal(chosen.Signal);
-        if (edited is null) return;
+        var edited = _dialogs.EditSignal(chosen.Signal, !CanChangeStructure || SelectedEnums.Count > 0);
+        if (edited is null || edited == chosen.Signal) return;
         try
         {
             var before = _session.Document.CaptureCheckpoint();
