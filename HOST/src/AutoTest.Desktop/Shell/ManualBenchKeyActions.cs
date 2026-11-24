@@ -92,12 +92,11 @@ public sealed partial class ManualBenchViewModel
             set { if (SetProperty(ref _holdText, value ?? "")) RaisePropertyChanged(nameof(Summary)); }
         }
         public string Summary => WaitOnly
-            ? "纯等待 " + HoldMsText + " ms · 不发送 KEY CAN / 不改变保持状态"
-            : (KeyMask == 0 ? "明确全部断开" :
-                string.Join(" + ", Enumerable.Range(1, 20)
-                    .Where(i => (KeyMask & (1u << (i - 1))) != 0)
-                    .Select(i => "K" + i.ToString("00", CultureInfo.InvariantCulture)))) +
-                " · " + HoldMsText + " ms 后进入下一段（不会自动释放）";
+            ? "纯等待"
+            : KeyMask == 0 ? "全部断开"
+            : string.Join(" + ", Enumerable.Range(1, 20)
+                .Where(i => (KeyMask & (1u << (i - 1))) != 0)
+                .Select(i => "K" + i.ToString("00", CultureInfo.InvariantCulture)));
         public KeyActionStep Export()
         {
             if (!string.IsNullOrEmpty(MaskError))
