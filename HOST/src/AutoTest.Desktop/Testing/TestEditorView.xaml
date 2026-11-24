@@ -126,7 +126,7 @@
     <Grid.ColumnDefinitions><ColumnDefinition Width="36"/>
      <ColumnDefinition Width="25*" MinWidth="140"/>
      <ColumnDefinition Width="75*" MinWidth="250"/>
-     <ColumnDefinition Width="92"/><ColumnDefinition Width="72"/></Grid.ColumnDefinitions>
+     <ColumnDefinition Width="92"/><ColumnDefinition Width="72"/><ColumnDefinition Width="72"/></Grid.ColumnDefinitions>
     <TextBlock Grid.Column="0" Text="序号" FontSize="11" Foreground="#435B74"
      VerticalAlignment="Center" HorizontalAlignment="Center"/>
     <TextBlock Grid.Column="1" Text="步骤 / 流程" FontSize="11" Foreground="#435B74"
@@ -135,6 +135,7 @@
      VerticalAlignment="Center" Margin="6,0"/>
     <TextBlock Grid.Column="3" Text="资源" FontSize="11" Foreground="#435B74"
      VerticalAlignment="Center" Margin="6,0"/>
+    <TextBlock Grid.Column="5" Text="操作" FontSize="11" Foreground="#435B74" VerticalAlignment="Center" HorizontalAlignment="Center"/>
     <TextBlock Grid.Column="4" Text="状态" FontSize="11" Foreground="#435B74"
      VerticalAlignment="Center" Margin="6,0"/>
    </Grid>
@@ -260,7 +261,7 @@
         <Grid.ColumnDefinitions><ColumnDefinition Width="36"/>
          <ColumnDefinition Width="25*" MinWidth="140"/>
          <ColumnDefinition Width="75*" MinWidth="250"/>
-         <ColumnDefinition Width="92"/><ColumnDefinition Width="72"/></Grid.ColumnDefinitions>
+         <ColumnDefinition Width="92"/><ColumnDefinition Width="72"/><ColumnDefinition Width="72"/></Grid.ColumnDefinitions>
         <Border Width="3" HorizontalAlignment="Left" Panel.ZIndex="2">
          <Border.Style><Style TargetType="{x:Type Border}">
           <Setter Property="Visibility" Value="Collapsed"/>
@@ -346,6 +347,7 @@
         <TextBlock Grid.Column="3" Text="{Binding ResourceDisplay}" TextTrimming="CharacterEllipsis"
          Foreground="#71849A" VerticalAlignment="Center" FontSize="11" Margin="7,0"
          ToolTip="{Binding Resource}"/>
+        <Button Grid.Column="5" Content="编辑" Click="EditStepRow_Click" Tag="{Binding}" Padding="8,3" Margin="6,0" VerticalAlignment="Center" ToolTip="打开步骤属性浮窗"/>
         <TextBlock Grid.Column="4" Text="{Binding State}" TextTrimming="CharacterEllipsis"
          VerticalAlignment="Center" FontSize="11" Margin="6,0" ToolTip="{Binding StateDetail}">
          <TextBlock.Style><Style TargetType="{x:Type TextBlock}">
@@ -390,7 +392,7 @@
        ToolTip="关闭步骤选择" Margin="12,0,0,0"/>
       <StackPanel>
        <TextBlock Text="添加测试步骤" FontSize="17" FontWeight="SemiBold" Foreground="#2F3C4B"/>
-       <TextBlock x:Name="PaletteHint" Text="单击选项即插入，随后在右侧编辑参数"
+       <TextBlock x:Name="PaletteHint" Text="单击选项即插入，随后打开属性浮窗"
         FontSize="11" Foreground="#64758C" Margin="0,5,0,0"/>
       </StackPanel>
      </DockPanel>
@@ -408,7 +410,7 @@
      <DockPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
       <Button DockPanel.Dock="Right" Content="关闭" Click="PaletteCancel_Click"
        MinWidth="72" HorizontalAlignment="Right"/>
-      <TextBlock Text="单击即插入列表、右侧立即编辑  ·  Enter 添加  ·  Esc 关闭"
+      <TextBlock Text="单击即插入列表、打开属性浮窗  ·  Enter 添加  ·  Esc 关闭"
        Foreground="#7A8EA6" FontSize="11" VerticalAlignment="Center"/>
      </DockPanel>
      <DockPanel>
@@ -480,5 +482,17 @@
     </DockPanel>
    </Border>
   </Popup>
+  <!-- A single explicit step transaction; no second shell inspector. -->
+  <Grid x:Name="StepPropertyOverlay" Grid.RowSpan="5" Panel.ZIndex="100" Visibility="Collapsed" Background="#B2F1F5F9" Focusable="True">
+   <Border x:Name="StepPropertyCard" MaxWidth="1120" MaxHeight="760" Margin="18" Background="#FAFBFC" BorderBrush="#DDE6ED" BorderThickness="1" CornerRadius="9" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+    <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+     <DockPanel Margin="14,10,14,6">
+      <Button DockPanel.Dock="Right" Content="关闭" Click="CancelPropertyOverlay_Click" Padding="10,4" ToolTip="取消本次未应用的属性修改"/>
+      <TextBlock Text="步骤属性" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="#34475C"/>
+     </DockPanel>
+     <ContentControl x:Name="StepPropertyHost" Grid.Row="1" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
+    </Grid>
+   </Border>
+  </Grid>
  </Grid>
 </UserControl>
