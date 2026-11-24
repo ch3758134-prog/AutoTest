@@ -32,7 +32,16 @@ public sealed class DbcSignalRow : BindableBase, IEditableObject
     public DbcSignal Signal { get; private set; }
     public string DisplayName { get; }
     public string Summary { get; }
-    public string Alias { get; }
+    private string _alias;
+    private string _acceptedAlias;
+    public string Alias { get => _alias; set => SetProperty(ref _alias, value ?? ""); }
+    public bool HasAliasDraft => !string.Equals(_alias, _acceptedAlias, StringComparison.Ordinal);
+    public void AcceptAlias()
+    {
+        _acceptedAlias = _alias;
+        RaisePropertyChanged(nameof(Alias));
+    }
+    public void ResetAlias() => Alias = _acceptedAlias;
     public int EnumCount { get; }
     public DbcSignalEditState Draft { get; private set; }
     public bool IsEditing { get; private set; }
@@ -40,7 +49,7 @@ public sealed class DbcSignalRow : BindableBase, IEditableObject
         string alias = "", int enumCount = 0)
     {
         Signal = signal; DisplayName = displayName; Summary = summary;
-        Alias = alias; EnumCount = enumCount;
+        _alias = _acceptedAlias = alias; EnumCount = enumCount;
         Draft = DbcSignalEditState.FromSignal(signal);
     }
     public string Name => Signal.Name;
@@ -68,7 +77,12 @@ public sealed class DbcSignalRow : BindableBase, IEditableObject
     }
     public void BeginEdit() => IsEditing = true;
     public void EndEdit() => IsEditing = false;
-    public void CancelEdit() { IsEditing = false; if (!Draft.Matches(Signal)) Accept(Signal); }
+    public void CancelEdit()
+    {
+        IsEditing = false;
+        ResetAlias();
+        if (!Draft.Matches(Signal)) Accept(Signal);
+    }
 }
 
 /// <summary>Signal parameter form draft. Validate all fields in one transaction.</summary>
@@ -401,7 +415,8 @@ public sealed class DbcWorkbenchViewModel : BindableBase
           string.Join("、", _session.Document.UnsupportedDirectives.Take(12));
     public bool CanEdit => _session.Document.CanEdit;
     public bool CanSave => !IsBusy && _session.Document.CanSave;
-    public bool HasPendingSignalDraft => Signals.Any(row => !row.Draft.Matches(row.Signal));
+    public bool HasPendingSignalDraft => Signals.Any(row =>
+        !row.Draft.Matches(row.Signal) || row.HasAliasDraft);
     public bool IsDirty => _session.Document.IsDirty || HasPendingSignalDraft;
     public string MessageAliasText
     {
@@ -716,7 +731,8 @@ public sealed class DbcWorkbenchViewModel : BindableBase
     /// <summary>Apply a complete edited signal shape once, after full validation.</summary>
     public void ApplySignalParameters()
     {
-        foreach (var row in Signals.Where(r => !r.Draft.Matches(r.Signal)).ToArray())
+        foreach (var row in Signals.Where(r =>
+            !r.Draft.Matches(r.Signal) || r.HasAliasDraft).ToArray())
             if (!TryCommitSignalRow(row)) return;
     }
 
@@ -729,7 +745,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
 
     public bool TryCommitSignalRow(DbcSignalRow row)
     {
-        if (row.Draft.Matches(row.Signal)) return true;
+        if (row.Draft.Matches(row.Signal) && !row.HasAliasDraft) return true;
         if (!CanEdit || IsBusy || SelectedMessage is not { } message || !Signals.Contains(row))
             return false;
         try
@@ -756,12 +772,27 @@ public sealed class DbcWorkbenchViewModel : BindableBase
                 (updated.Multiplexer is { } mux && mux != "M" &&
                     !System.Text.RegularExpressions.Regex.IsMatch(mux, @"^m\d+$")))
                 throw new FormatException("接收节点或复用标记不符合 DBC 格式。");
-            if (updated != original)
+            if (updated != original || row.HasAliasDraft)
             {
-                updated.Validate(message.Message.Dlc);
                 var before = _session.Document.CaptureCheckpoint();
-                _session.Document.UpdateSignal(message.Message.Id, original.Name, updated);
+                try
+                {
+                    if (updated != original)
+                    {
+                        updated.Validate(message.Message.Dlc);
+                        _session.Document.UpdateSignal(message.Message.Id, original.Name, updated);
+                    }
+                    if (row.HasAliasDraft)
+                        _session.Document.SetSignalAlias(
+                            message.Message.Id, original.Name, row.Alias);
+                }
+                catch
+                {
+                    _session.Document.RestoreCheckpoint(before);
+                    throw;
+                }
                 row.Accept(updated);
+                row.AcceptAlias();
                 Remember(before);
             }
             else row.Accept(original);
