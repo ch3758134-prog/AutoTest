@@ -243,11 +243,11 @@ public partial class ManualBenchWindow : Window
 
     private void PropertyOverlay_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        // Only the dimmed empty area dismisses the editor. Clicking inside the
-        // form does not close it or lose focus.
-        if (!ReferenceEquals(e.OriginalSource, PropertyOverlay)) return;
-        e.Handled = true;
-        _ = ClosePropertyOverlayAsync();
+        // The editor is a deliberate operation, not a hover popover.
+        // Clicking the surrounding surface must never close it and discard
+        // the operator's place. Use its explicit Close/Save buttons instead.
+        if (ReferenceEquals(e.OriginalSource, PropertyOverlay))
+            e.Handled = true;
     }
 
     private async Task ClosePropertyOverlayAsync()
