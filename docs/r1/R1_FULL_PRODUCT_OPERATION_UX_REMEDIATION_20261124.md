@@ -19,11 +19,11 @@
 | A 工程树/资源 | `ProjectExplorerView` → `MainWindowViewModel.OpenSelectedResourceAsync` | 单击直接打开；搜索只高亮不摧毁树；DBC 以工具窗口打开 | `ProjectWorkspaceService` AssetEntry | 已有路径；修正误导性的“新建测试项目”入口；文件联动/保存仍待 WPF 实测 |
 | B TEST 编辑 | `TestEditorView` → 步骤列表 → 选择器/参数编辑器 | 选中插入点 → 添加 → 搜索或分类 → 选类型即列表插入 → 编辑；双击实际步骤行进入属性 | `StepEditTransaction.Insert`、`TestStepInspector`，单 TEST DSL | **已改**：双击定位、双列选择器、显式应用/取消而非点击遮罩提交；复杂编辑滚动和快捷批量操作尚待验证 |
 | B TEST 调试 | `TestEditorViewModel` 的 Preflight、RunSelectedStep、RunCurrentCase | 运行单步需设备/可执行快照及相应真实授权；运行用例与临时工程范围区分 | `RealTestWorkbenchService`、真实设备状态、冻结资源 | 命令存在，未重写；仍须 Windows 实测和物理验证；现存准备/测试/清理后端相位与期望连续步骤模型存在差距 |
-| C 手动台架 | 工具→手动台架 → `ManualBenchWindow` | 连接 USB；新建多个 CAN 行并在表中单发/启停；KEY 快捷按钮单击执行、双击编辑；看右侧 CAN RX | `ManualBenchViewModel`、真实 `HardwareConnectionService`、周期任务 | **已改**：窄屏重排发送/KEY/监视；不修改真实发送、KEY/USB 管线；发送行横向空间仍可能不足，待不同 DPI 测量 |
+| C 手动台架 | 工具→手动台架 → `ManualBenchWindow` | 连接 USB；新建多个 CAN 行并在表中单发/启停；KEY 快捷按钮单击执行、双击编辑；看右侧 CAN RX | `ManualBenchViewModel`、真实 `HardwareConnectionService`、周期任务 | **已改**：窄屏重排发送/KEY/监视，并明确“停止全部发送”与单条停止；不修改真实发送、KEY/USB 管线；发送行横向空间仍可能不足，待不同 DPI 测量 |
 | D DBC | 工程资源 DBC → `DbcWorkbenchView`；无工程直接打开仍受限制 | 选报文→信号表连续编辑→位布局→保存；备注/枚举浮窗明确取消/应用 | `DbcWorkbenchViewModel` / DBC 修订事务 | **已改**：禁止点击编辑遮罩外隐式提交；文件独立模式、批量连续编辑仍待单独能力 |
 | E UDS | 工具菜单现无可用独立 UDS 工作台 | 尚无可执行的正式窗口入口 | 不能从界面推断存在真实诊断服务链 | **阻断**：不能凭空造死按钮或伪诊断日志；需要独立 UDS UI/服务实际接线任务 |
 | E Flash | 工具→FlashLab；检测准备→原生 Flash Profile | 独立打开可不依赖工程；原 XML 导入仍可见，但不得作为正式检测配置必选项 | FlashLab 真实服务和 `NativeFlashProfileWindow` | 既有工具保留，需优化真实参数/阶段/证据，未修改底层烧录 |
-| E Wave | 工具→`WaveWorkbenchWindow` | 选择信号→实时观察/记录→选已采集记录作参考/比较；当前入口要求工程 | WaveEvidenceStore、主控 CAN/DBC 信号流 | **阻断**：无工程独立采集仍未打通；已保留多轨与真实证据逻辑，不使用虚构数据 |
+| E Wave | 工具→`WaveWorkbenchWindow` | 选择信号→实时观察/记录→选已采集记录作参考/比较；当前入口要求工程 | WaveEvidenceStore、主控 CAN/DBC 信号流 | **部分整改**：已收紧波形窗口硬性最小宽度以改善高 DPI，但无工程独立采集仍未打通；保留真实多轨证据，不使用虚构数据 |
 | F 自动测试 | 默认 `AutomaticTestHomeView`（扫码→工程匹配→准备检查） | 当前有“工程整组实测”显式软件工程验证，而不是最终生产 START；正式连续物理过程尚未满足门禁 | COM 扫码、ProductionPreparation、Flash、TEST 依赖 | **已改**：按钮明确工程验证身份，避免误认为生产 PASS；正式实体 START/夹具证据/统一 Run 闭环仍阻断 |
 | G 检测记录 | 主窗口全局“记录与报告”→`RecordHistoryWindow` | 全局一次进入；默认当前工程 SQLite，也可选已有库；输入 ECU 编号→查询→选记录→打开/导出 HTML/JSON | **现有** `RecordHistoryToolSource`、`RunHistoryQuery`、`RunReportExporter` 和 artifact SHA 验证 | **新增真实操作**：只读查询/单台报告导出，显示中文结果/归档状态；项目间统一目录、多次正式生产 Inspection 与统计尚不完整 |
 
@@ -47,7 +47,7 @@
 | UI-D02 | `Dbc/DbcWorkbenchViewModel.cs` | 同一信号的大量参数水平滚动、报文/信号备注需弹窗 | **待操作审查**：当前表格已支持部分连续编辑 | 多个信号快速编辑/非法字段提示/保存后引用提示 |
 | UI-D03 | `MainWindowViewModel.OpenDbcToolAsync` | 不打开工程无法独立使用 DBC | **阻断**：当前工具与项目资源/修订会话强耦合，不能仅加按钮冒充完成 | 无工程启动、打开 .dbc、编辑/保存本地文件，明确纳入工程入口 |
 | UI-E01 | `FlashLabWindow.xaml` | XML、JSON、原生 Profile 多入口并存，正式配置概念混乱 | **待工具整改**：保留诊断兼容但工程正式流程只用原生 Profile | 工程保存后不需在每台检测前选 XML；真实 Flash 阶段/ACK/响应正确 |
-| UI-E02 | `WaveWorkbenchWindow.xaml`、`OpenWaveWorkbenchAsync` | 目前必须先有工程，窗口多种宽度存在高 DPI 风险 | **阻断**：工具数据源和项目根路径强绑定 | 无工程观察/采集；有工程时正确明确来源；多信号同步时间轴 |
+| UI-E02 | `WaveWorkbenchWindow.xaml`、`OpenWaveWorkbenchAsync` | 目前必须先有工程，窗口多种宽度存在高 DPI 风险 | **部分整改**：窄屏布局约束已放宽，工具数据源和项目根路径仍强绑定 | 无工程观察/采集；有工程时正确明确来源；多信号同步时间轴 |
 | UI-E03 | UDS 专业工具 | UI 当前缺独立 UDS 可用工作台入口 | **阻断**；不能以失效占位按钮充数 | 新建/保存连续 UDS 序列，真实请求/响应/NRC/取消及日志 |
 | UI-F01 | `AutomaticTestHomeView.xaml` 与 Run VM | 软件工程实测可能被误解为生产放行 | **已修改**：按钮文案和提示明确工程验证，正式 START 未冒充 | 不能因工程验证通过而更新正式良率/本台生产 PASS |
 | UI-F02 | R1 product-integration 合同 | 实体 START、夹具实际到位证据、前置 Flash+TEST+RECORD 端到端不存在已验收闭环 | **P0 执行链阻断**；不得在本 UI 专项改写服务 | 真实扫码/机械/启动/烧录/全量 TEST/单台记录按因果一条链运行 |
@@ -88,7 +88,7 @@
 | W04 | 在菜单/树新建“驻车测试”，重启工程 | 用例已进入有序测试项目且打开编辑器；无独立孤立资源 | WPF/PROJECT |
 | W05 | 以 IF/CAN/KEY/WAIT 逐条新增、取消、撤销、复制、双击第二行 | 新步骤先出现在正确位置；双击命中行；外围点击不会提交 | WPF |
 | W06 | DBC 信号连续编辑，浮窗取消与确认、非法字节布局尝试 | 取消无写入，应用合法保存，非法阻断并说明 | WPF/DBC |
-| W07 | 在 1920×1080 100%、125%、150% 和 1366×768 100%、125%、150% 改变手动台架大小 | CAN 发送与 KEY 状态可访问；窄宽度 CAN RX 在下方；不盖住任务栏；记实际横滚 | WPF/DPI |
+| W07 | 在 1920×1080 100%、125%、150% 和 1366×768 100%、125%、150% 改变手动台架及波形窗口大小 | CAN 发送与 KEY 状态可访问；窄宽度 CAN RX 在下方；不盖住任务栏；记实际横滚 | WPF/DPI |
 | W08 | 用历史已归档真实 RECORD SQLite 按 DUT 查多次运行，打开/导出 HTML/JSON | 显示本地时间/中文状态；每次原始 Run 独立；不覆盖原始证据 | WPF/RECORD |
 | W09 | 在无工程条件分别点手动台架、Flash、DBC、Wave、UDS | 前两者真实工具可用；后三者按阻断如实登记，不能标为通过 | WPF |
 | W10 | 对物理主控与 ECU 执行独立 CAN、KEY、IGN/夹具、Wave、Flash 和 TEST（需现场授权） | 硬件 ACK、ECU 观测、STOP、安全收尾、记录各有真实证据 | 实体 |
