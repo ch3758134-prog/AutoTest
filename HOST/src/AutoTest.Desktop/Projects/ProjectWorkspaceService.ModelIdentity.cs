@@ -6,16 +6,21 @@ public sealed partial class ProjectWorkspaceService
 {
     /// <summary>One atomic project revision for model identity and barcode expectation.
     /// The expectation is portable with the project and never depends on COM settings.</summary>
-    public async Task SaveBarcodeExpectationAsync(Guid projectId,
-        ProjectBarcodeExpectation expectation, CancellationToken ct = default)
+    public async Task SaveBarcodeExpectationAsync(Guid projectId, string manifestPath,
+        string? expectedRuleJson, ProjectBarcodeExpectation expectation, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(expectation);
         await _writeLock.WaitAsync(ct);
         try
         {
             var current = Current ?? throw new InvalidOperationException("请先打开 ECU 工程。");
-            if (current.Definition.Id.Value != projectId)
+            if (current.Definition.Id.Value != projectId ||
+                !string.Equals(current.ManifestPath, manifestPath, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException("工程已切换，禁止将扫码配置保存到另一工程。");
+            var currentRule = current.Definition.BarcodeExpectation is { } rule
+                ? System.Text.Json.JsonSerializer.Serialize(rule) : null;
+            if (currentRule != expectedRuleJson)
+                throw new InvalidOperationException("工程扫码期望已被其他编辑器修改，请重新打开后编辑。");
             var model = expectation.Fields.FirstOrDefault(x =>
                 x.Name == ProjectBarcodeExpectation.Model)?.Expected;
             var candidate = (current.Definition with
