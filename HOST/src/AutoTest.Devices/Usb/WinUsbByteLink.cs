@@ -82,6 +82,26 @@ public sealed class WinUsbByteLink : IUsbByteLink
         }
     }
 
+    public void AuthorizeManualCanRow(Guid token, ReadOnlySpan<byte> exactPayload)
+    {
+        lock (_sync)
+        {
+            if (_state != WinUsbLinkState.Connected)
+                throw new IOException("主控未连接，不能启动 ECU CAN 发送。");
+            _fence.AuthorizeManualCanRow(token, exactPayload, _epoch);
+        }
+    }
+
+    public void RevokeManualCanRow(Guid token)
+    {
+        lock (_sync) _fence.RevokeManualCanRow(token);
+    }
+
+    public void RevokeAllManualCanRows()
+    {
+        lock (_sync) _fence.RevokeAllManualCanRows();
+    }
+
     public void AuthorizeManualCanBatch(string fingerprint, string confirmation,
         IReadOnlyList<byte[]> exactPayloads, int? maxWrites)
     {
