@@ -913,6 +913,7 @@ public sealed partial class MainWindowViewModel : BindableBase
     public async Task ShutdownAsync()
     {
         StopAutomaticUsbConnection();
+        await _automaticTestHome.StopOperatorForShutdownAsync();
         _hardware.EcuCanBitrateSelectionChanged -= OnSelectedEcuCanRateChanged;
         _automaticTestHome.Dispose();
         await _scannerWorkbench.DisposeAsync();
