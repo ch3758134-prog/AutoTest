@@ -70,13 +70,9 @@ public static class AutomaticTestResourceContract
                 var target = assets.SingleOrDefault(a => a.Id.Value == entry.PackageAssetId &&
                     a.Kind == ProjectWorkspaceService.TestProgramKind)
                     ?? throw new InvalidDataException("用例源资源不存在。");
-                if (entry.PackageRevision != target.Revision ||
-                    !string.Equals(entry.PackageSha256, target.Sha256,
-                        StringComparison.OrdinalIgnoreCase))
-                    throw new InvalidDataException("用例所引用修订已过期。");
                 var source = await ReadPinnedAsync(project, target, ct);
-                var program = TestDocumentCodec.Deserialize(
-                    new UTF8Encoding(false, true).GetString(source));
+                var program = ProjectWorkspaceService.BindCurrentRunResources(TestDocumentCodec.Deserialize(
+                    new UTF8Encoding(false, true).GetString(source)), project);
                 // Compile first, but DO NOT replace a case's authoring tree or
                 // infer a successful test from absence of execution errors.
                 var prepared = new PlanCompiler().Prepare(program,

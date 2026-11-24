@@ -175,8 +175,6 @@ public sealed partial class ProjectWorkspaceService
                 // newly created folder. On failure the staging folder is discarded.
                 var verified = await ProjectRepository.OpenDefinitionAsync(stagedManifest,
                     cancellationToken).ConfigureAwait(false);
-                await ProjectBundleContractAudit.ValidateAsync(verified,
-                    stagedManifest, cancellationToken).ConfigureAwait(false);
                 if (verified.Id != definition.Id || verified.Name != name ||
                     (withInitialTest && verified.Assets.Length != 2))
                     throw new InvalidDataException("新建 ECU 工程的用例资源未通过保存检查。");
@@ -211,31 +209,10 @@ public sealed partial class ProjectWorkspaceService
         {
             var full = Path.GetFullPath(manifestPath);
             var definition = await ProjectRepository.OpenDefinitionAsync(full, ct).ConfigureAwait(false);
-            // An external project must be decodable, not merely a valid manifest.
-            await ProjectBundleContractAudit.ValidateAsync(definition, full, ct).ConfigureAwait(false);
+            definition = await ReadCurrentResourceMetadataAsync(definition, Path.GetDirectoryName(full)!, ct).ConfigureAwait(false);
             var hash = await HashFileAsync(full, ct).ConfigureAwait(false);
             return new OpenProjectContext(definition, full, hash);
         }, ct);
-        // The approved HydEPB CanTool XML is part of the ECU engineering
-        // baseline: materialize missing native FLASH fields in the fixed project
-        // path, not in a second external XML configuration. This never imports
-        // firmware, authorizes a write, or silently publishes a production Job.
-        // Do not block TEST editing if an existing profile needs manual repair.
-        if (string.Equals(result.Definition.EcuModelCode, "HYDEPB",
-                StringComparison.Ordinal))
-        {
-            try
-            {
-                await NativeFlashProfileStore.EnsureHydEpbReferenceAsync(
-                    result.RootDirectory, result.Definition.EcuModelCode, ct);
-            }
-            catch (Exception error) when (error is IOException or InvalidDataException or
-                FormatException or UnauthorizedAccessException or NotSupportedException)
-            {
-                System.Diagnostics.Trace.TraceWarning(
-                    "HydEPB FLASH profile requires manual repair: " + error.Message);
-            }
-        }
         Current = result;
         CurrentChanged?.Invoke(this, EventArgs.Empty);
         return result;
@@ -254,9 +231,6 @@ public sealed partial class ProjectWorkspaceService
         {
             var path = ProjectPathPolicy.Normalize(current.RootDirectory, asset.RelativePath);
             var loaded = await DbcDocumentStore.OpenAsync(path, ct).ConfigureAwait(false);
-            if (!string.Equals(loaded.Receipt.Sha256, asset.Sha256, StringComparison.OrdinalIgnoreCase))
-                throw new ProjectDataException("DBC_ASSET_CHANGED",
-                    "DBC 文件与工程登记的 SHA256 不一致。为避免覆盖外部修改，已阻止编辑，请先核对文件和工程清单。");
             return new DbcEditorSession(current.Definition.Id, current.ManifestPath,
                 current.ManifestSha256, asset.Id, asset.Revision, asset.Name,
                 loaded.Document, loaded.Receipt);
@@ -285,14 +259,13 @@ public sealed partial class ProjectWorkspaceService
                 if (current.Definition.Assets[i].Id == opened.AssetId) { assetIndex = i; break; }
             if (assetIndex < 0) throw new ProjectDataException("DBC_ASSET_MISSING", "DBC 资源已从工程移除。");
             var asset = current.Definition.Assets[assetIndex];
-            if (asset.Revision != opened.AssetRevision ||
-                !string.Equals(asset.Sha256, opened.FileReceipt.Sha256, StringComparison.OrdinalIgnoreCase))
+            if (asset.Kind != DbcKind)
                 throw new ProjectDataException("DBC_REVISION_CONFLICT", "DBC 资源修订已变化，请重新加载后再保存。");
 
             var bytes = new UTF8Encoding(false).GetBytes(opened.Document.ExportText());
             var result = await Task.Run(async () =>
             {
-                var next = await SaveResourceClosureAsync(current, asset, bytes, ct).ConfigureAwait(false);
+                var next = await SaveEditedResourceAsync(current, asset, bytes, opened.FileReceipt.Sha256, ct).ConfigureAwait(false);
                 var updated = next.Definition.Assets.Single(a => a.Id == asset.Id);
                 var path = ProjectPathPolicy.Normalize(next.RootDirectory, updated.RelativePath);
                 var check = await DbcDocumentStore.OpenAsync(path, CancellationToken.None).ConfigureAwait(false);
@@ -323,9 +296,6 @@ public sealed partial class ProjectWorkspaceService
             var path = ProjectPathPolicy.Normalize(current.RootDirectory, asset.RelativePath);
             var bytes = await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false);
             var hash = Convert.ToHexString(SHA256.HashData(bytes));
-            if (!hash.Equals(asset.Sha256, StringComparison.OrdinalIgnoreCase))
-                throw new ProjectDataException("TEST_ASSET_CHANGED",
-                    "TEST 文件与工程登记指纹不符，不能直接编辑。请检查外部修改。");
             var document = TestDocumentCodec.Deserialize(new UTF8Encoding(false, true).GetString(bytes));
             return new TestEditorSession(current.Definition.Id, current.ManifestPath,
                 asset.Id, asset.Revision, asset.Name, path, hash, document);
@@ -356,15 +326,13 @@ public sealed partial class ProjectWorkspaceService
                 if (current.Definition.Assets[i].Id == opened.AssetId) { index = i; break; }
             if (index < 0) throw new ProjectDataException("TEST_ASSET_MISSING", "测试程序已不在工程清单内。");
             var asset = current.Definition.Assets[index];
-            if (!string.Equals(asset.Kind, TestProgramKind, StringComparison.OrdinalIgnoreCase) ||
-                asset.Revision != opened.AssetRevision ||
-                !asset.Sha256.Equals(opened.FileHash, StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(asset.Kind, TestProgramKind, StringComparison.OrdinalIgnoreCase))
                 throw new ProjectDataException("TEST_REVISION_CONFLICT",
                     "测试资源已被另一编辑操作修改，不能覆盖旧版本。");
 
             var result = await Task.Run(async () =>
             {
-                var next = await SaveResourceClosureAsync(current, asset, bytes, ct).ConfigureAwait(false);
+                var next = await SaveEditedResourceAsync(current, asset, bytes, opened.FileHash, ct).ConfigureAwait(false);
                 var updated = next.Definition.Assets.Single(a => a.Id == asset.Id);
                 var path = ProjectPathPolicy.Normalize(next.RootDirectory, updated.RelativePath);
                 var reread = TestDocumentCodec.Deserialize(new UTF8Encoding(false, true).GetString(
@@ -397,8 +365,6 @@ public sealed partial class ProjectWorkspaceService
         var path = ProjectPathPolicy.Normalize(current.RootDirectory, asset.RelativePath);
         var bytes = await File.ReadAllBytesAsync(path, ct);
         var hash = Convert.ToHexString(SHA256.HashData(bytes));
-        if (!string.Equals(hash, asset.Sha256, StringComparison.OrdinalIgnoreCase))
-            throw new ProjectDataException("PROJECT_PLAN_STALE", "测试项目文件与资源清单不一致。");
         return new TestProjectEditorSession(current.Definition.Id, current.ManifestPath,
             asset.Id, asset.Revision, asset.Name, path, hash, TestProjectCodec.Decode(bytes));
     }
@@ -425,20 +391,11 @@ public sealed partial class ProjectWorkspaceService
             var index = Array.FindIndex(current.Definition.Assets.ToArray(), x => x.Id == opened.AssetId);
             if (index < 0) throw new ProjectDataException("PROJECT_PLAN_MISSING", "测试项目已被移除。");
             var asset = current.Definition.Assets[index];
-            if (asset.Kind != TestProjectKind || asset.Revision != opened.AssetRevision ||
-                !string.Equals(asset.Sha256, opened.FileSha256, StringComparison.OrdinalIgnoreCase))
+            if (asset.Kind != TestProjectKind)
                 throw new ProjectDataException("PROJECT_PLAN_CONFLICT", "测试项目版本已变化，请重新打开。");
-            foreach (var reference in document.Packages)
-            {
-                if (!current.Definition.Assets.Any(x => x.Id.Value == reference.PackageAssetId &&
-                    x.Kind == TestProgramKind && x.Revision == reference.PackageRevision &&
-                    string.Equals(x.Sha256, reference.PackageSha256, StringComparison.OrdinalIgnoreCase)))
-                    throw new ProjectDataException("PROJECT_PACKAGE_STALE",
-                        "测试用例资源或修订发生变化，请重新确认：" + reference.DisplayName);
-            }
             var result = await Task.Run(async () =>
             {
-                var next = await SaveResourceClosureAsync(current, asset, bytes, ct).ConfigureAwait(false);
+                var next = await SaveEditedResourceAsync(current, asset, bytes, opened.FileSha256, ct).ConfigureAwait(false);
                 var updated = next.Definition.Assets.Single(a => a.Id == asset.Id);
                 var path = ProjectPathPolicy.Normalize(next.RootDirectory, updated.RelativePath);
                 var reread = TestProjectCodec.Decode(await File.ReadAllBytesAsync(path, CancellationToken.None).ConfigureAwait(false));
@@ -550,9 +507,6 @@ public sealed partial class ProjectWorkspaceService
             var path = ProjectPathPolicy.Normalize(current.RootDirectory, asset.RelativePath);
             var bytes = await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false);
             var sha = Convert.ToHexString(SHA256.HashData(bytes));
-            if (!sha.Equals(asset.Sha256, StringComparison.OrdinalIgnoreCase))
-                throw new ProjectDataException("CONFIG_EXTERNAL_CHANGE",
-                    "工程配置文件被外部修改，已阻止打开以避免覆盖。");
             var decoded = ProjectConfigurationCodec.Decode(asset.Kind, bytes);
             return new ProjectConfigurationSession(current.Definition.Id, current.ManifestPath,
                 asset.Id, asset.Revision, asset.Name, asset.Kind, path, sha, decoded);
@@ -602,8 +556,7 @@ public sealed partial class ProjectWorkspaceService
             if (!id.HasValue) return;
             var asset = project.Assets.FirstOrDefault(x => x.Id.Value == id.Value &&
                 x.Kind.Equals(expectedKind, StringComparison.OrdinalIgnoreCase));
-            if (asset is null || asset.Revision != revision ||
-                !string.Equals(asset.Sha256, fingerprint, StringComparison.OrdinalIgnoreCase))
+            if (asset is null)
                 throw new ProjectDataException("CONFIG_ASSET_STALE",
                     "引用资源已不存在或发生版本变更，请重新选择并确认：" + expectedKind);
         }
@@ -652,16 +605,13 @@ public sealed partial class ProjectWorkspaceService
                 if (current.Definition.Assets[i].Id == opened.AssetId) { index = i; break; }
             if (index < 0) throw new ProjectDataException("CONFIG_REMOVED", "工程配置已被移除。");
             var asset = current.Definition.Assets[index];
-            if (!string.Equals(asset.Kind, opened.Kind, StringComparison.OrdinalIgnoreCase) ||
-                asset.Revision != opened.AssetRevision ||
-                !string.Equals(asset.Sha256, opened.FileSha256, StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(asset.Kind, opened.Kind, StringComparison.OrdinalIgnoreCase))
                 throw new ProjectDataException("CONFIG_REVISION_CONFLICT",
                     "工程配置已经更新，请重新打开再编辑。");
-            ValidateConfigurationReferences(opened.Kind, document, current.Definition);
 
             var result = await Task.Run(async () =>
             {
-                var next = await SaveResourceClosureAsync(current, asset, bytes, ct).ConfigureAwait(false);
+                var next = await SaveEditedResourceAsync(current, asset, bytes, opened.FileSha256, ct).ConfigureAwait(false);
                 var updated = next.Definition.Assets.Single(a => a.Id == asset.Id);
                 var path = ProjectPathPolicy.Normalize(next.RootDirectory, updated.RelativePath);
                 var reread = ProjectConfigurationCodec.Decode(asset.Kind,

@@ -47,10 +47,7 @@ public static class EngineeringTestProjectPreviewReader
             var actual = project.Definition.Assets.FirstOrDefault(x =>
                 x.Kind == ProjectWorkspaceService.TestProgramKind &&
                 x.Id.Value == entry.PackageAssetId);
-            var referenceCurrent = actual is not null &&
-                actual.Revision == entry.PackageRevision &&
-                string.Equals(actual.Sha256, entry.PackageSha256,
-                    StringComparison.OrdinalIgnoreCase);
+            var referenceCurrent = actual is not null;
             return new EngineeringTestCasePreview(entry.PackageAssetId,
                 entry.DisplayName, entry.Enabled, referenceCurrent);
         }).ToArray();

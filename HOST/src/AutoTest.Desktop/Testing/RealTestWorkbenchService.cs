@@ -48,7 +48,7 @@ public sealed class RealTestWorkbenchService
     public event Action<TestDocumentId, string>? DevelopmentRunFailed;
 
     public PreparedTestPlan Prepare(TestDocument document) =>
-        new PlanCompiler().Prepare(document, allowRealOperations: true);
+        new PlanCompiler().Prepare(ProjectWorkspaceService.BindCurrentRunResources(document, _projects.Current), allowRealOperations: true);
 
     public string ExpectedFlashApproval(TestDocument document)
     {
@@ -85,6 +85,7 @@ public sealed class RealTestWorkbenchService
             var plan = Prepare(document);
             if (!plan.Diagnostics.IsEmpty)
                 throw new InvalidOperationException(string.Join(Environment.NewLine, plan.Diagnostics));
+            document = plan.RestoreDocument();
             // An unused or disabled mapping must not widen a physical CAN lease
             // or break the run because its unrelated historical asset is stale.
             var mappings = TestRunStepScope.RequiredMappings(document);

@@ -38,9 +38,6 @@ public sealed partial class ProjectWorkspaceService
             var path = ProjectPathPolicy.Normalize(current.RootDirectory, asset.RelativePath);
             var bytes = await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false);
             var hash = Convert.ToHexString(SHA256.HashData(bytes));
-            if (!hash.Equals(asset.Sha256, StringComparison.OrdinalIgnoreCase))
-                throw new ProjectDataException("FLOW_ASSET_CHANGED",
-                    "公共流程文件与工程登记指纹不符，不能静默覆盖。");
             var document = PublicFlowCodec.Deserialize(new UTF8Encoding(false, true).GetString(bytes));
             return new PublicFlowEditorSession(current.Definition.Id, current.ManifestPath,
                 asset.Id, asset.Revision, asset.Name, path, hash, document);
@@ -69,34 +66,12 @@ public sealed partial class ProjectWorkspaceService
                 a => a.Id == opened.AssetId);
             if (index < 0) throw new ProjectDataException("FLOW_ASSET_MISSING", "公共流程已移出工程。");
             var asset = current.Definition.Assets[index];
-            if (asset.Kind != PublicFlowKind || asset.Revision != opened.AssetRevision ||
-                !string.Equals(asset.Sha256, opened.FileHash, StringComparison.OrdinalIgnoreCase))
+            if (asset.Kind != PublicFlowKind)
                 throw new ProjectDataException("FLOW_REVISION_CONFLICT",
                     "公共流程修订发生变化，请重新加载；不得覆盖旧修订。");
-            foreach (var reference in edited.References)
-            {
-                reference.Validate();
-                if (!current.Definition.Assets.Any(a =>
-                    a.Kind == PublicFlowKind && a.Id.Value == reference.AssetId &&
-                    a.Revision == reference.Revision &&
-                    string.Equals(a.Sha256, reference.Sha256, StringComparison.OrdinalIgnoreCase)))
-                    throw new ProjectDataException("STALE_REFERENCE",
-                        "被调用的公共流程修订已变化；请显式审查并更新调用引用。");
-            }
-            // Do not store a flow call graph with unresolved historical pins
-            // or a recursion cycle. The validator is read-only and does no writes.
-            await PublicFlowGraphValidator.ValidateAsync(current, opened.AssetId, edited, ct)
-                .ConfigureAwait(false);
-            var preserved = current.Definition.Dependencies
-                .Where(dep => dep.From != opened.AssetId ||
-                    !string.Equals(dep.Purpose, "public-flow-call", StringComparison.Ordinal)).ToImmutableArray();
-            var linked = edited.References.Select(reference =>
-                new AssetDependency(opened.AssetId, AssetId.Create(reference.AssetId),
-                    reference.Revision, "public-flow-call"));
             var result = await Task.Run(async () =>
             {
-                var next = await SaveResourceClosureAsync(current, asset, bytes, ct,
-                    preserved.AddRange(linked)).ConfigureAwait(false);
+                var next = await SaveEditedResourceAsync(current, asset, bytes, opened.FileHash, ct).ConfigureAwait(false);
                 var updated = next.Definition.Assets.Single(a => a.Id == asset.Id);
                 var path = ProjectPathPolicy.Normalize(next.RootDirectory, updated.RelativePath);
                 var reread = PublicFlowCodec.Deserialize(new UTF8Encoding(false, true).GetString(

@@ -176,21 +176,6 @@
            <StackPanel Orientation="Horizontal" Height="17" ToolTip="{Binding PinDetail}">
             <TextBlock Text="{Binding PinStatus}" FontSize="10" Foreground="#627C9D"
              TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-            <Button Content="采用当前修订" Tag="{Binding}" Click="AdoptCurrentRevision_Click"
-             FontSize="10" Margin="6,0,0,0" Padding="3,0" MinHeight="0" Height="17"
-             ToolTip="核对固定的 TEST Revision/SHA 后，再采用新修订">
-             <Button.Style>
-              <Style TargetType="{x:Type Button}" BasedOn="{StaticResource AtQuietButton}">
-               <Setter Property="Visibility" Value="Collapsed"/>
-               <Style.Triggers>
-                <DataTrigger Binding="{Binding CanAdoptLatest}" Value="True">
-                 <Setter Property="Visibility" Value="Visible"/>
-                 <Setter Property="Foreground" Value="#3478D6"/>
-                </DataTrigger>
-               </Style.Triggers>
-              </Style>
-             </Button.Style>
-            </Button>
             <Button Content="恢复历史排除" Tag="{Binding}" Click="RestoreLegacyInclusion_Click"
              FontSize="10" Margin="6,0,0,0" Padding="4,0" Height="17"
              MinHeight="0" Foreground="#94651F"

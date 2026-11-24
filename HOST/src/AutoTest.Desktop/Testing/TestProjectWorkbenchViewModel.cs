@@ -16,7 +16,7 @@ namespace AutoTest.Desktop.Testing;
 
 public sealed record TestProjectPackageChoice(AssetEntry Asset)
 {
-    public string Label => Asset.Name + " · 修订 " + Asset.Revision;
+    public string Label => Asset.Name;
 }
 
 public sealed class TestProjectPackageRow : BindableBase
@@ -37,39 +37,21 @@ public sealed class TestProjectPackageRow : BindableBase
     public string Sha256 { get => _sha256; private set => SetProperty(ref _sha256, value); }
     public int? LatestRevision => _latestRevision;
     public string? LatestSha256 => _latestSha256;
-    public bool CanAdoptLatest => _latestRevision is { } latest &&
-        (latest != Revision || !string.Equals(_latestSha256, Sha256, StringComparison.OrdinalIgnoreCase));
-    public string PinStatus => _latestRevision is not { } latest ? "资源已移除" :
-        CanAdoptLatest ? "绑定 r" + Revision + " → 当前 r" + latest :
-        "已绑定 r" + Revision;
-    public string PinDetail => "项目固定 SHA: " + Sha256 +
-        "\n工程当前 SHA: " + (_latestSha256 ?? "资源缺失");
+    public bool CanAdoptLatest => false;
+    public string PinStatus => _latestRevision is null ? "用例文件缺失" : "当前用例";
+    public string PinDetail => PinStatus;
 
-    /// <summary>
-    /// Refresh source metadata without changing the persisted reference. Adopting
-    /// current Revision/SHA requires a separate engineer-confirmed action.
-    /// </summary>
     public void RefreshAvailableRevision(int? revision, string? sha256)
     {
         _latestRevision = revision;
         _latestSha256 = sha256;
         RaisePropertyChanged(nameof(LatestRevision));
         RaisePropertyChanged(nameof(LatestSha256));
-        RaisePropertyChanged(nameof(CanAdoptLatest));
         RaisePropertyChanged(nameof(PinStatus));
         RaisePropertyChanged(nameof(PinDetail));
     }
 
-    public void AdoptCurrentRevision()
-    {
-        if (!CanAdoptLatest || _latestRevision is not { } revision ||
-            string.IsNullOrWhiteSpace(_latestSha256)) return;
-        Revision = revision;
-        Sha256 = _latestSha256;
-        RaisePropertyChanged(nameof(CanAdoptLatest));
-        RaisePropertyChanged(nameof(PinStatus));
-        RaisePropertyChanged(nameof(PinDetail));
-    }
+    public void AdoptCurrentRevision() { }
     public string Name { get; }
     public TestProjectPackageRow(TestProjectEntry item)
     {
@@ -370,23 +352,18 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
             {
                 var asset = context.Definition.Assets.FirstOrDefault(a =>
                     a.Id.Value == row.AssetId && a.Kind == ProjectWorkspaceService.TestProgramKind);
-                if (asset is null || asset.Revision != row.Revision ||
-                    !asset.Sha256.Equals(row.Sha256, StringComparison.OrdinalIgnoreCase))
-                    throw new InvalidDataException("引用失效：" + row.Name +
-                        "。需采用修订后保存测试项目。");
-
+                if (asset is null)
+                    throw new InvalidDataException("用例文件不存在：" + row.Name);
                 var opened = await _workspace.OpenTestEditorAsync(AssetId.Create(row.AssetId));
-                if (opened.AssetRevision != row.Revision ||
-                    !opened.FileHash.Equals(row.Sha256, StringComparison.OrdinalIgnoreCase))
-                    throw new InvalidDataException("用例文件发生变化：" + row.Name);
                 var plan = _realTest.Prepare(opened.Document);
                 if (!plan.Diagnostics.IsEmpty)
                     throw new InvalidDataException(row.Name + " 步骤预检：" +
                         string.Join("; ", plan.Diagnostics));
-                var mappings = TestRunStepScope.RequiredMappings(opened.Document);
+                var runDocument = plan.RestoreDocument();
+                var mappings = TestRunStepScope.RequiredMappings(runDocument);
                 var actionCheck = new ConfiguredStationActionPort(_hardware, _workspace);
                 await actionCheck.PrepareAsync(mappings, CancellationToken.None);
-                actionCheck.ValidateRunSteps(opened.Document);
+                actionCheck.ValidateRunSteps(runDocument);
 
                 var jobs = ConfiguredRealTestFlashPort.FreezeJobs(opened.Document, context.RootDirectory);
                 var caseFlash = jobs.Count == 0 ? "" : jobs.Values.Single().Consent;
@@ -397,7 +374,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
                             "R1 首版一个批次只允许一个 FLASH；请拆为独立批次分别授权。");
                     flashConsent = caseFlash;
                 }
-                prepared.Add(new FrozenSelectedCase(row.ToEntry(), plan.RestoreDocument(),
+                prepared.Add(new FrozenSelectedCase(row.ToEntry() with { PackageRevision = opened.AssetRevision, PackageSha256 = opened.FileHash }, runDocument,
                     plan.Fingerprint, RealTestWorkbenchService.ExpectedApproval(plan), caseFlash));
             }
             if (!ReferenceEquals(context, _workspace.Current) ||
@@ -595,9 +572,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
                 var asset = current.Definition.Assets.FirstOrDefault(x =>
                     x.Id.Value == row.AssetId &&
                     x.Kind == ProjectWorkspaceService.TestProgramKind);
-                if (asset is null ||
-                    asset.Revision != row.Revision ||
-                    !asset.Sha256.Equals(row.Sha256, StringComparison.OrdinalIgnoreCase))
+                if (asset is null)
                 {
                     row.StepCountLabel = "引用失效";
                     continue;
