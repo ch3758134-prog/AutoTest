@@ -76,10 +76,10 @@ public sealed partial class WaveWorkbenchViewModel : BindableBase
     public string CursorInfo { get => _cursorInfo; set => SetProperty(ref _cursorInfo, value); }
     public IReadOnlyList<WaveChartPoint> Points => _points;
     public WaveSeries? Series => _series;
-    public string EmptyWaveMessage => GetPlotLanes().Any(lane => lane.Actual.Count > 0)
+    public string EmptyWaveMessage => GetPlotLanes().Count > 0
         ? "" : IsLiveView
-            ? "尚无真实曲线。\\n先在左侧添加 DBC 信号，再点击“开始观察”。"
-            : "尚无历史证据。\\n从左下方选择一条记录或一次成组采集。";
+            ? "请选择工程 DBC 信号并添加到观察列表。\\n连接主控后点击开始观察。"
+            : "从左侧打开一次真实采集、原始记录或参考波形。";
     public string EmptyListMessage { get => _emptyListMessage; private set => SetProperty(ref _emptyListMessage, value); }
     private void NotifyChartChanged()
     {
