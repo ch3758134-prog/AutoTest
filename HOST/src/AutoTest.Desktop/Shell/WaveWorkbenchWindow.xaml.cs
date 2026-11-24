@@ -189,6 +189,13 @@ public partial class WaveWorkbenchWindow : Window
                 var panel = WavePlot.Children[^1];
                 Canvas.SetLeft(panel, 1);
                 Canvas.SetTop(panel, sectionTop);
+                for (var grid = 0; grid <= 6; grid++)
+                {
+                    var time = range.Min + (range.Max - range.Min) * grid / 6d;
+                    var gridX = X(time);
+                    Line(gridX, sectionTop + 3, gridX,
+                        sectionTop + LaneHeight - 13, "#E4EBF2", 1, true);
+                }
                 AtText(lane.Name, 9, sectionTop + 13, 14, "#213F5B", true, 95);
                 AtText(lane.Unit, 9, sectionTop + 34, 12, "#52677D", false, 95);
                 AtText(lane.Detail, 9, sectionTop + LaneHeight - 35, 10,
