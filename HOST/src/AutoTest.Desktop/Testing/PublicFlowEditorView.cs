@@ -28,6 +28,12 @@ public sealed class PublicFlowEditorView : UserControl
     private bool _refreshing, _dirty, _busy;
     private StepId? _newStepId;
     private int _requestVersion;
+    private readonly Grid _propertyOverlay = new() { Visibility = Visibility.Collapsed, Background = new SolidColorBrush(Color.FromArgb(178, 241, 245, 249)) };
+    private readonly Border _propertyCard = new() { Background = Brushes.White, BorderBrush = new SolidColorBrush(Color.FromRgb(221, 230, 237)), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(9), Margin = new Thickness(18) };
+    public bool IsPropertyEditorOpen => _propertyOverlay.Visibility == Visibility.Visible;
+    private StepId? _cancelledStepId;
+    private string? _cancelledActionKey;
+    private string? _newActionKey;
 
     public ContentControl InspectorHost { get; } = new()
     {
@@ -35,7 +41,7 @@ public sealed class PublicFlowEditorView : UserControl
         VerticalContentAlignment = VerticalAlignment.Stretch
     };
 
-    public bool IsDirty => _dirty || _newStepId is not null ||
+    public bool IsDirty => _dirty || IsPropertyEditorOpen || _newStepId is not null ||
                            _inspector?.HasPendingEdits == true;
     public bool IsBusy => _busy;
 
@@ -69,6 +75,7 @@ public sealed class PublicFlowEditorView : UserControl
             Margin = new Thickness(0, 0, 16, 0)
         });
         toolbar.Children.Add(MakeButton("＋ 添加步骤", (s, _) => ShowPalette(s as Button)));
+        toolbar.Children.Add(MakeButton("编辑步骤", (_, _) => EditSelected()));
         toolbar.Children.Add(MakeButton("删除", (_, _) => DeleteSelected()));
         toolbar.Children.Add(MakeButton("上移", (_, _) => MoveSelected(-1)));
         toolbar.Children.Add(MakeButton("下移", (_, _) => MoveSelected(1)));
@@ -81,13 +88,34 @@ public sealed class PublicFlowEditorView : UserControl
         _tree.Margin = new Thickness(12, 2, 12, 4);
         _tree.BorderBrush = new SolidColorBrush(Color.FromRgb(220, 228, 239));
         _tree.SelectedItemChanged += (_, args) => SelectedChanged(args.NewValue as TreeViewItem);
+        _tree.MouseDoubleClick += (_, args) => { if (CurrentSelection().Node is not null) { EditSelected(); args.Handled = true; } };
+        _tree.PreviewKeyDown += (_, args) => { if (args.Key == Key.F2) { EditSelected(); args.Handled = true; } };
         layout.Children.Add(_tree);
 
         Grid.SetRow(_status, 2);
-        _status.Text = "公共流程为连续步骤树；选择节点后在右侧编辑。运行由调用它的测试用例负责。";
+        _status.Text = "公共流程为连续步骤树；双击或点击编辑步骤打开属性浮窗。运行由调用它的测试用例负责。";
         _status.Padding = new Thickness(14, 6, 14, 6);
         _status.Foreground = new SolidColorBrush(Color.FromRgb(86, 111, 143));
         layout.Children.Add(_status);
+        var cardLayout = new DockPanel();
+        var header = new DockPanel { Margin = new Thickness(14, 8, 14, 4) };
+        var close = MakeButton("关闭", (_, _) => CancelPropertyEditor());
+        DockPanel.SetDock(close, Dock.Right);
+        header.Children.Add(close);
+        header.Children.Add(new TextBlock { Text = "步骤属性", FontSize = 17, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
+        DockPanel.SetDock(header, Dock.Top);
+        cardLayout.Children.Add(header);
+        cardLayout.Children.Add(InspectorHost);
+        _propertyCard.Child = cardLayout;
+        _propertyOverlay.Children.Add(_propertyCard);
+        Grid.SetRowSpan(_propertyOverlay, 3);
+        Panel.SetZIndex(_propertyOverlay, 100);
+        layout.Children.Add(_propertyOverlay);
+        PreviewKeyDown += (_, args) =>
+        {
+            if (IsPropertyEditorOpen && args.Key == Key.Escape)
+            { CancelPropertyEditor(); args.Handled = true; }
+        };
         Content = layout;
         RefreshTree(null);
     }
@@ -169,29 +197,44 @@ public sealed class PublicFlowEditorView : UserControl
 
     private void SelectedChanged(TreeViewItem? item)
     {
-        if (_refreshing || item?.Tag is not Selection selected) return;
-        if (!TryFinishInspector())
-        {
-            _status.Text = "当前步骤参数未完成，先修正或取消，再切换。";
-            return;
-        }
-        if (selected.Node is { } node)
-            _ = ShowInspectorAsync(node);
-        else
-            InspectorHost.Content = new TextBlock
-            {
-                Text = "已选择" + (selected.IsSlot ? "子分支" : "流程根步骤") +
-                    "；点击“添加步骤”插入到该位置。",
-                TextWrapping = TextWrapping.Wrap, Margin = new Thickness(14)
-            };
+        if (_refreshing || IsPropertyEditorOpen) return;
+        _requestVersion++;
+    }
+
+    private void EditSelected()
+    {
+        if (_busy || !TryFinishInspector() || CurrentSelection().Node is not { } node) return;
+        _ = ShowInspectorAsync(node);
     }
 
     private bool TryFinishInspector()
     {
-        if (_newStepId is not null)
-            return _inspector?.TryApplyChanges() == true;
-        return _inspector?.HasPendingEdits != true ||
-               _inspector.TryApplyChanges();
+        if (!IsPropertyEditorOpen && _newStepId is null) return true;
+        _inspector?.ShowPendingWarning();
+        return false;
+    }
+
+    private void ClosePropertyEditor()
+    {
+        _requestVersion++;
+        _propertyOverlay.Visibility = Visibility.Collapsed;
+        InspectorHost.Content = null;
+        _inspector = null;
+        _tree.Focus();
+    }
+
+    private void CancelPropertyEditor()
+    {
+        ClosePropertyEditor();
+        if (_newStepId is { } id && _transaction.CanUndo)
+        {
+            _transaction.Undo();
+            _cancelledStepId = id;
+            _cancelledActionKey = _newActionKey;
+            _newStepId = null;
+            _newActionKey = null;
+            RefreshTree(null);
+        }
     }
 
     private void ShowPalette(Button? owner)
@@ -217,12 +260,16 @@ public sealed class PublicFlowEditorView : UserControl
         try
         {
             var node = StepUiCatalog.NewNode(action.StepType) with { Name = action.Title };
+            if (action.Key == "can") node = node.WithProperty("value", "HEX:0000000000000000");
             var parent = place.IsSlot ? place.Parent : place.Parent;
             var slot = place.Slot;
             var index = place.IsSlot ? place.Index : place.Node is not null
                 ? place.Index + 1 : _transaction.Current.Get(TestPhase.Test).Length;
             _transaction.Insert(TestPhase.Test, parent, slot, index, node);
             _newStepId = node.Id;
+            _newActionKey = action.Key;
+            _cancelledStepId = null;
+            _cancelledActionKey = null;
             _dirty = true;
             RefreshTree(node.Id);
             _ = ShowInspectorAsync(node, action.Key);
@@ -233,6 +280,11 @@ public sealed class PublicFlowEditorView : UserControl
     private async Task ShowInspectorAsync(StepNode node, string? actionKey = null)
     {
         var request = ++_requestVersion;
+        _propertyCard.MaxWidth = 680;
+        _propertyCard.MaxHeight = 350;
+        _propertyOverlay.Visibility = Visibility.Visible;
+        _inspector = null;
+        InspectorHost.Content = new TextBlock { Text = "正在读取步骤属性…", Margin = new Thickness(18) };
         var assetKind = node.Type;
         var namedTarget = node.Properties.GetValueOrDefault("target", "");
         var bound = _transaction.Current.Mappings.FirstOrDefault(mapping =>
@@ -269,6 +321,7 @@ public sealed class PublicFlowEditorView : UserControl
             {
                 _transaction.ReplaceWithMapping(node.Id, result.Step, result.Mapping);
                 _newStepId = null;
+                _newActionKey = null;
                 _dirty = true;
                 RefreshTree(node.Id);
                 _status.Text = "已更新当前流程步骤，保存后更新工程资源修订。";
@@ -282,21 +335,15 @@ public sealed class PublicFlowEditorView : UserControl
         };
         inspector.AppliedSuccessfully += () =>
         {
-            if (ReferenceEquals(_inspector, inspector))
-                _ = ShowInspectorAsync(_transaction.Current.Walk()
-                    .First(x => x.Id == node.Id));
+            if (ReferenceEquals(_inspector, inspector)) ClosePropertyEditor();
         };
         inspector.Cancelled += () =>
         {
-            if (_newStepId == node.Id && _transaction.CanUndo)
-            {
-                _transaction.Undo();
-                _newStepId = null;
-                RefreshTree(null);
-            }
-            else _ = ShowInspectorAsync(node);
+            if (ReferenceEquals(_inspector, inspector)) CancelPropertyEditor();
         };
         _inspector = inspector;
+        _propertyCard.MaxWidth = inspector.PreferredEditorWidth;
+        _propertyCard.MaxHeight = inspector.PreferredEditorHeight;
         InspectorHost.Content = inspector;
     }
 
@@ -335,12 +382,23 @@ public sealed class PublicFlowEditorView : UserControl
     private void Redo()
     {
         if (_busy || !TryFinishInspector() || !_transaction.CanRedo) return;
-        _transaction.Redo(); _newStepId = null; _dirty = true; RefreshTree(null);
+        _transaction.Redo(); _newStepId = null; _dirty = true;
+        if (_cancelledStepId is { } id && _transaction.Current.Walk().FirstOrDefault(x => x.Id == id) is { } draft)
+        {
+            _newStepId = id;
+            _newActionKey = _cancelledActionKey;
+            _cancelledStepId = null;
+            _cancelledActionKey = null;
+            RefreshTree(id);
+            _ = ShowInspectorAsync(draft, _newActionKey);
+            return;
+        }
+        RefreshTree(null);
     }
 
     public bool ConfirmClose()
     {
-        if (_busy) return false;
+        if (_busy || !TryFinishInspector()) return false;
         if (!IsDirty) return true;
         return MessageBox.Show(Window.GetWindow(this),
             "公共流程有未保存修改，确定放弃吗？", "关闭公共流程",
