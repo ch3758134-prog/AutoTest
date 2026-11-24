@@ -4,6 +4,35 @@ namespace AutoTest.Desktop.Projects;
 
 public sealed partial class ProjectWorkspaceService
 {
+    /// <summary>One atomic project revision for model identity and barcode expectation.
+    /// The expectation is portable with the project and never depends on COM settings.</summary>
+    public async Task SaveBarcodeExpectationAsync(Guid projectId,
+        ProjectBarcodeExpectation expectation, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(expectation);
+        await _writeLock.WaitAsync(ct);
+        try
+        {
+            var current = Current ?? throw new InvalidOperationException("请先打开 ECU 工程。");
+            if (current.Definition.Id.Value != projectId)
+                throw new InvalidOperationException("工程已切换，禁止将扫码配置保存到另一工程。");
+            var model = expectation.Fields.FirstOrDefault(x =>
+                x.Name == ProjectBarcodeExpectation.Model)?.Expected;
+            var candidate = (current.Definition with
+            {
+                EcuModelCode = model,
+                BarcodeExpectation = expectation
+            }).WithRevision().Validate();
+            await EnsureManifestUnchangedAsync(current, ct);
+            await ProjectRepository.SaveDefinitionAsync(candidate, current.ManifestPath, ct);
+            var verified = await ProjectRepository.OpenDefinitionAsync(current.ManifestPath, ct);
+            var hash = await HashFileAsync(current.ManifestPath, ct);
+            Current = new OpenProjectContext(verified, current.ManifestPath, hash);
+            CurrentChanged?.Invoke(this, EventArgs.Empty);
+        }
+        finally { _writeLock.Release(); }
+    }
+
     /// <summary>
     /// Updates the declared ECU model without conflating it with the display name.
     /// No silent migration: old projects remain unbound until explicitly configured.
