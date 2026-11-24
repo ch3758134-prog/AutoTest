@@ -265,6 +265,62 @@ public sealed class DbcWorkbenchDocument
         a.Count == b.Count && a.All(x => b.Any(y => y.MessageId == x.MessageId &&
             y.SignalName == x.SignalName && x.Labels.Count == y.Labels.Count &&
             x.Labels.All(kv => y.Labels.TryGetValue(kv.Key, out var v) && v == kv.Value)));
+    // A checkpoint retains the in-memory repair model, including temporary
+    // overlapping signals; no export/reparse or revision increment is needed.
+    public sealed class EditCheckpoint
+    {
+        internal DbcWorkbenchDocument Owner { get; }
+        internal DbcDatabase Model { get; }
+        internal ImmutableArray<DbcValueTable> Tables { get; }
+        internal DbcDisplayNames Names { get; }
+        internal bool Dirty { get; }
+        internal bool DataDirty { get; }
+        internal EditCheckpoint(DbcWorkbenchDocument owner)
+        {
+            Owner = owner; Model = owner.Model; Tables = owner._tables;
+            Names = owner._displayNames.Copy(); Dirty = owner._dirty; DataDirty = owner._dataDirty;
+        }
+    }
+
+    public EditCheckpoint CaptureCheckpoint() => new(this);
+    public void RestoreCheckpoint(EditCheckpoint checkpoint)
+    {
+        if (!ReferenceEquals(checkpoint.Owner, this))
+            throw new InvalidOperationException("DBC checkpoint belongs to another file session.");
+        _editing = new DbcEditSession(checkpoint.Model, allowSignalOverlaps: true);
+        _tables = checkpoint.Tables;
+        _displayNames = checkpoint.Names.Copy();
+        _dirty = checkpoint.Dirty;
+        _dataDirty = checkpoint.DataDirty;
+    }
+
+    public void ReplaceValueDescriptions(uint messageId, string name,
+        IReadOnlyDictionary<long, string> values)
+    {
+        RejectShapeEdits();
+        var signal = Model.FindSignal(messageId, name);
+        foreach (var pair in values)
+        {
+            var raw = pair.Key;
+            var fits = signal.Signed
+                ? signal.BitLength == 64 || (raw >= -(1L << (signal.BitLength - 1)) &&
+                    raw <= (1L << (signal.BitLength - 1)) - 1)
+                : raw >= 0 && (signal.BitLength >= 63 || raw <= (1L << signal.BitLength) - 1);
+            if (!fits || string.IsNullOrWhiteSpace(pair.Value) ||
+                pair.Value.Any(char.IsControl))
+                throw new ProjectDataException("DBC_VAL", "枚举原始值超出位长范围，或描述为空/含控制字符。");
+        }
+        var next = values.ToImmutableDictionary();
+        var previous = _tables.FirstOrDefault(t => t.MessageId == messageId && t.SignalName == name);
+        if ((previous is null && next.IsEmpty) ||
+            (previous is not null && previous.Labels.Count == next.Count &&
+                previous.Labels.All(p => next.TryGetValue(p.Key, out var v) && v == p.Value))) return;
+        _tables = _tables.RemoveAll(t => t.MessageId == messageId && t.SignalName == name);
+        if (!next.IsEmpty)
+            _tables = _tables.Add(new DbcValueTable(messageId, name, next).Validate(Model));
+        _dirty = _dataDirty = true;
+    }
+
     public void Reset()
     {
         var fresh = Import(_name, _original);
