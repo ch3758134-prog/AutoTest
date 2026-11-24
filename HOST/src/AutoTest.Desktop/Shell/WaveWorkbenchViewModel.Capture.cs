@@ -32,6 +32,7 @@ public sealed partial class WaveWorkbenchViewModel
     private MappingChoice? _selectedSignal;
     private int _durationSeconds = 0;
     private string _referenceName = "";
+    private bool _savingReference;
     private int _signalRefreshVersion;
     private WaveCaptureService? _captureService;
     private readonly Dictionary<WaveCaptureId, string> _captureIds = new();
@@ -156,8 +157,9 @@ public sealed partial class WaveWorkbenchViewModel
                 _hardware.IsConnected && Tracks.Count > 0);
         StopCaptureCommand = new DelegateCommand(async () => await StopCaptureAsync(),
             () => !_closed && IsCapturing);
-        SaveReferenceCommand = new DelegateCommand(SaveReference,
-            () => !_closed && !IsCapturing && _series is not null &&
+        SaveReferenceCommand = new DelegateCommand(
+            async () => await SaveReferenceAsync(),
+            () => !_closed && !IsCapturing && !_savingReference && _series is not null &&
                 Selected is { IsReference: false, Kind: "Capture" } &&
                 !string.IsNullOrWhiteSpace(ReferenceName));
         ReloadAvailableSignals();
@@ -461,23 +463,39 @@ public sealed partial class WaveWorkbenchViewModel
         }
     }
 
-    private void SaveReference()
+    private async Task SaveReferenceAsync()
     {
-        if (_closed || IsCapturing || _series is null ||
-            Selected is not { IsReference: false, Kind: "Capture" } || string.IsNullOrWhiteSpace(ReferenceName) ||
-            _project.Current is not { } project)
-            return;
+        if (_closed || IsCapturing || _savingReference || _series is null ||
+            Selected is not { IsReference: false, Kind: "Capture" } ||
+            string.IsNullOrWhiteSpace(ReferenceName) ||
+            _project.Current is not { } project) return;
+        var selected = Selected;
+        var series = _series;
+        var name = ReferenceName.Trim();
+        _savingReference = true;
+        SaveReferenceCommand.RaiseCanExecuteChanged();
+        Status = "正在检查时间质量并保存真实参考波形…";
         try
         {
-            var catalog = new WaveReferenceCatalog(Path.Combine(
-                project.RootDirectory, "wave-records", "references"));
-            var saved = catalog.Save(ReferenceName.Trim(), _series);
+            var saved = await Task.Run(() =>
+                new WaveReferenceCatalog(Path.Combine(project.RootDirectory,
+                    "wave-records", "references")).Save(name, series));
+            if (_closed || _project.Current?.ManifestPath != project.ManifestPath) return;
             Status = "已保存真实参考波形：" + saved.Name +
-                "。仅供明确选择，不自动成为生产测试标准。";
-            ReferenceName = "";
+                "。不会自动成为生产测试标准。";
+            if (Selected == selected && ReferenceName.Trim() == name)
+                ReferenceName = "";
             Refresh();
         }
-        catch (Exception error) { Status = "保存参考失败：" + error.Message; }
+        catch (Exception error)
+        {
+            if (!_closed) Status = "保存参考失败：" + error.Message;
+        }
+        finally
+        {
+            _savingReference = false;
+            SaveReferenceCommand.RaiseCanExecuteChanged();
+        }
     }
 
     private void AbortCaptureForProjectChange()
