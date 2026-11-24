@@ -81,13 +81,9 @@ public partial class TestEditorView : UserControl
             if (_activeQuickRow is { IsInlineEditing: true } row &&
                 !CommitInlineQuickValue(row))
                 return false;
-            // Explicit Apply/Cancel owns the floating property transaction.
-            // Saving/closing the document must not silently apply its contents.
-            if (IsPropertyEditorOpen || _viewModel.HasNewStepDraft)
-            {
-                _inspector?.ShowPendingWarning();
-                return false;
-            }
+            // Explicit save/close may finish a valid property draft. The
+            // shell's idle autosave still skips documents with open overlays.
+            if (!TryDismissPropertyEditor()) return false;
             return await _viewModel.SaveForCloseAsync();
         }
         catch (Exception error) when (error is not OutOfMemoryException)
@@ -154,6 +150,41 @@ public partial class TestEditorView : UserControl
         _inspector = null;
         _focusNameOnNextInspector = false;
         StepsList.Focus();
+    }
+
+    // Match the manual bench overlay: clicking its backdrop is an explicit
+    // finish gesture, not a click-through to a run button or underlying row.
+    private void StepPropertyOverlay_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (!ReferenceEquals(e.OriginalSource, StepPropertyOverlay)) return;
+        e.Handled = true;
+        TryDismissPropertyEditor();
+    }
+
+    private void FinishPropertyOverlay_Click(object sender, RoutedEventArgs e) =>
+        TryDismissPropertyEditor();
+
+    public bool TryDismissPropertyEditor()
+    {
+        if (!IsPropertyEditorOpen) return !_viewModel.HasNewStepDraft;
+        if (_viewModel.IsApplyingInspector) return false;
+        if (_inspector is not { } editor)
+        {
+            // No editor exists yet, so there is nothing to apply. Keep a
+            // provisional new step open until its editor is ready or cancelled.
+            if (_viewModel.HasNewStepDraft) return false;
+            ClosePropertyOverlay();
+            _viewModel.CancelInspectorEdit(); // invalidate the outstanding request
+            return true;
+        }
+        if (!editor.HasPendingEdits && !_viewModel.HasNewStepDraft)
+        {
+            ClosePropertyOverlay();
+            return true;
+        }
+        // Reuse exactly the same validation and transaction as Apply.
+        // On failure leave the editor and the original step intact.
+        return editor.TryApplyChanges();
     }
 
     private void CancelPropertyOverlay_Click(object sender, RoutedEventArgs e)
