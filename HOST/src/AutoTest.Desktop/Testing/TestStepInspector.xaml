@@ -243,8 +243,9 @@
      <ComboBox x:Name="KeyActionInput" SelectionChanged="KeyAction_Changed"
       MinHeight="34" Margin="0,0,0,8">
       <ComboBoxItem Content="按下后释放" Tag="Pulse"/>
-      <ComboBoxItem Content="保持按下" Tag="Hold"/>
-      <ComboBoxItem Content="恢复／释放" Tag="Release"/>
+      <ComboBoxItem Content="设置组合并保持（到时不释放）" Tag="Hold"/>
+      <ComboBoxItem Content="明确全部断开 KEY" Tag="Release"/>
+      <ComboBoxItem Content="纯等待（不发送 KEY）" Tag="Wait"/>
      </ComboBox>
      <StackPanel x:Name="RawKeyMaskPanel" Visibility="Collapsed">
       <TextBlock Text="20 Key 组合" Foreground="#43566B"
@@ -257,7 +258,9 @@
 
      </StackPanel>
      <StackPanel x:Name="KeyDurationPanel">
-      <TextBlock Text="保持时间（ms）" Foreground="#43566B" FontSize="13"
+      <TextBlock Text="KEY_SIM 的组合请求在此时间结束后仍保持，直到下一次明确操作；纯等待不下发 CAN。"
+       Foreground="#945C16" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,6"/>
+      <TextBlock Text="本步骤等待时间（ms，到时不自动释放）" Foreground="#43566B" FontSize="13"
        Margin="0,0,0,5"/>
       <TextBox x:Name="KeyDurationInput" Width="150"
        HorizontalAlignment="Left"/>
