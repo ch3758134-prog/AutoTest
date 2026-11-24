@@ -70,10 +70,10 @@ public partial class RecordHistoryWindow : Window
 
     private void SetSource(string path)
     {
-        if (_sources.Count >= 16)
-            throw new InvalidOperationException("最多同时查看 16 个记录库。请清空来源后重新选择。");
         var absolute = Path.GetFullPath(path);
         if (_sources.ContainsKey(absolute)) return;
+        if (_sources.Count >= 16)
+            throw new InvalidOperationException("最多同时查看 16 个记录库。请清空来源后重新选择。");
         if (!File.Exists(absolute))
             throw new FileNotFoundException("记录库文件不存在。", absolute);
         // Avoid interpreting an arbitrary file as an editable SQLite database.
@@ -83,6 +83,30 @@ public partial class RecordHistoryWindow : Window
             if (stream.Length < 100 || stream.Read(signature) != 16 ||
                 !signature.SequenceEqual("SQLite format 3\0"u8))
                 throw new InvalidDataException("所选文件不是有效的 SQLite 记录库。");
+        }
+        // RecordDatabase's normal writer is allowed to migrate an empty DB.
+        // Never invoke that path on an arbitrary SQLite file selected by the
+        // operator. Validate the *existing* RECORD schema in read-only mode
+        // before attaching a query source.
+        using (var connection = new Microsoft.Data.Sqlite.SqliteConnection(
+            new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
+            {
+                DataSource = absolute,
+                Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadOnly
+            }.ToString()))
+        {
+            connection.Open();
+            using var version = connection.CreateCommand();
+            version.CommandText = "PRAGMA user_version;";
+            var currentVersion = Convert.ToInt32(version.ExecuteScalar());
+            if (currentVersion != RecordDatabase.CurrentSchemaVersion)
+                throw new InvalidDataException("所选 SQLite 文件不是支持的 AutoTest RECORD 版本。");
+            using var tables = connection.CreateCommand();
+            tables.CommandText = @"SELECT COUNT(*) FROM sqlite_master
+                WHERE type='table' AND name IN
+                ('run_headers','run_facts','run_step_facts','artifact_links');";
+            if (Convert.ToInt32(tables.ExecuteScalar()) != 4)
+                throw new InvalidDataException("所选文件缺少正式 RECORD 归档表。");
         }
         var directory = Path.GetDirectoryName(absolute)!;
         var database = new RecordDatabase(absolute);
