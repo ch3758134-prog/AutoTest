@@ -124,9 +124,9 @@
   <Border Grid.Row="2" Background="#F7F8FA" BorderBrush="#E1E5E9" BorderThickness="0,0,0,1">
    <Grid Margin="0,0,8,0">
     <Grid.ColumnDefinitions><ColumnDefinition Width="36"/>
-     <ColumnDefinition Width="29*" MinWidth="185"/>
-     <ColumnDefinition Width="71*" MinWidth="220"/>
-     <ColumnDefinition Width="126"/><ColumnDefinition Width="72"/></Grid.ColumnDefinitions>
+     <ColumnDefinition Width="25*" MinWidth="140"/>
+     <ColumnDefinition Width="75*" MinWidth="250"/>
+     <ColumnDefinition Width="92"/><ColumnDefinition Width="72"/></Grid.ColumnDefinitions>
     <TextBlock Grid.Column="0" Text="序号" FontSize="11" Foreground="#435B74"
      VerticalAlignment="Center" HorizontalAlignment="Center"/>
     <TextBlock Grid.Column="1" Text="步骤 / 流程" FontSize="11" Foreground="#435B74"
@@ -253,13 +253,14 @@
       </Border>
 
       <Border x:Name="StepRow" Background="Transparent" BorderBrush="#E7EDF5"
-       BorderThickness="0,0,0,1" Height="42"
+       BorderThickness="0,0,0,1"
        Visibility="{Binding IsStep,Converter={StaticResource BoolToVisibility}}">
+       <Border.Style><Style TargetType="Border"><Setter Property="Height" Value="42"/><Style.Triggers><DataTrigger Binding="{Binding IsCanSendRow}" Value="True"><Setter Property="Height" Value="Auto"/><Setter Property="MinHeight" Value="52"/></DataTrigger></Style.Triggers></Style></Border.Style>
        <Grid>
         <Grid.ColumnDefinitions><ColumnDefinition Width="36"/>
-         <ColumnDefinition Width="29*" MinWidth="185"/>
-         <ColumnDefinition Width="71*" MinWidth="220"/>
-         <ColumnDefinition Width="126"/><ColumnDefinition Width="72"/></Grid.ColumnDefinitions>
+         <ColumnDefinition Width="25*" MinWidth="140"/>
+         <ColumnDefinition Width="75*" MinWidth="250"/>
+         <ColumnDefinition Width="92"/><ColumnDefinition Width="72"/></Grid.ColumnDefinitions>
         <Border Width="3" HorizontalAlignment="Left" Panel.ZIndex="2">
          <Border.Style><Style TargetType="{x:Type Border}">
           <Setter Property="Visibility" Value="Collapsed"/>
@@ -327,9 +328,13 @@
         <Grid Grid.Column="2" Margin="6,0">
          <TextBlock Text="{Binding Summary}" TextTrimming="CharacterEllipsis"
           Foreground="#64737B" VerticalAlignment="Center" FontSize="13"
-          Visibility="{Binding ShowQuickSummary,Converter={StaticResource BoolToVisibility}}"
+          Visibility="{Binding ShowNormalSummary,Converter={StaticResource BoolToVisibility}}"
           MouseLeftButtonDown="QuickSummary_MouseLeftButtonDown"
           ToolTip="步骤摘要；等待时间与循环次数可双击直接修改"/>
+         <StackPanel VerticalAlignment="Center" Margin="0,5" Visibility="{Binding IsCanSendRow,Converter={StaticResource BoolToVisibility}}" ToolTip="{Binding Summary}">
+          <TextBlock Text="{Binding CanDataLine}" FontFamily="Consolas" FontSize="13" Foreground="#263D55" FontWeight="Medium" TextWrapping="Wrap"/>
+          <TextBlock Text="{Binding CanFrameLine}" FontSize="11" Foreground="#526B84" Margin="0,3,0,0" TextWrapping="Wrap"/>
+         </StackPanel>
          <TextBox Text="{Binding QuickValue,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
           Visibility="{Binding ShowInlineEditor,Converter={StaticResource BoolToVisibility}}"
           Background="White" BorderBrush="#5A9BD2" BorderThickness="1"
@@ -338,7 +343,7 @@
           ToolTip="Enter 应用到 TEST 草稿；Esc 恢复原值"
           LostFocus="QuickField_LostFocus" KeyDown="QuickField_KeyDown"/>
         </Grid>
-        <TextBlock Grid.Column="3" Text="{Binding Resource}" TextTrimming="CharacterEllipsis"
+        <TextBlock Grid.Column="3" Text="{Binding ResourceDisplay}" TextTrimming="CharacterEllipsis"
          Foreground="#71849A" VerticalAlignment="Center" FontSize="11" Margin="7,0"
          ToolTip="{Binding Resource}"/>
         <TextBlock Grid.Column="4" Text="{Binding State}" TextTrimming="CharacterEllipsis"
