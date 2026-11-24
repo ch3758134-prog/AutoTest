@@ -89,6 +89,8 @@ public partial class ManualBenchWindow : Window
         _model = model ?? throw new ArgumentNullException(nameof(model));
         DataContext = model;
         InitializeComponent();
+        SizeChanged += (_, _) => ApplyBenchAdaptiveLayout();
+        Loaded += (_, _) => ApplyBenchAdaptiveLayout();
         Closing += OnClosing;
         _keyAutosaveTimer.Tick += OnKeyAutosaveTick;
         Loaded += (_, _) => _keyAutosaveTimer.Start();
@@ -101,6 +103,59 @@ public partial class ManualBenchWindow : Window
             _keyAutosaveTimer.Stop();
             _model.Dispose();
         };
+    }
+
+    private bool? _narrowBenchLayout;
+
+    /// <summary>
+    /// Narrow/DPI-scaled windows preserve the real CAN table, KEY controls and
+    /// monitor without allowing the original three hard-minimum columns to
+    /// grow beyond the usable work area. Only panel positions change; each
+    /// control keeps the same ViewModel and WinUSB session.
+    /// </summary>
+    private void ApplyBenchAdaptiveLayout()
+    {
+        if (!IsInitialized) return;
+        var narrow = ActualWidth < 1200;
+        if (_narrowBenchLayout == narrow) return;
+        _narrowBenchLayout = narrow;
+        if (narrow)
+        {
+            BenchSendColumn.MinWidth = 370;
+            BenchKeyColumn.MinWidth = 320;
+            BenchSendColumn.Width = new GridLength(55, GridUnitType.Star);
+            BenchKeyColumn.Width = new GridLength(45, GridUnitType.Star);
+            BenchMonitorColumn.MinWidth = 0;
+            BenchMonitorColumn.Width = new GridLength(0);
+            BenchMonitorSplitterColumn.Width = new GridLength(0);
+            BenchPrimaryRow.Height = new GridLength(3, GridUnitType.Star);
+            BenchMonitorRow.Height = new GridLength(2, GridUnitType.Star);
+            Grid.SetRow(BenchKeyPanel, 0);
+            Grid.SetRowSpan(BenchKeyPanel, 2);
+            Grid.SetRow(BenchMonitorPanel, 1);
+            Grid.SetColumn(BenchMonitorPanel, 0);
+            Grid.SetRowSpan(BenchSendSplitter, 2);
+            BenchMonitorSplitter.Visibility = Visibility.Collapsed;
+            BenchBaudStatusText.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            Grid.SetRowSpan(BenchKeyPanel, 1);
+            Grid.SetRow(BenchMonitorPanel, 0);
+            Grid.SetColumn(BenchMonitorPanel, 4);
+            Grid.SetRowSpan(BenchSendSplitter, 1);
+            BenchMonitorSplitter.Visibility = Visibility.Visible;
+            BenchBaudStatusText.Visibility = Visibility.Visible;
+            BenchSendColumn.MinWidth = 420;
+            BenchKeyColumn.MinWidth = 335;
+            BenchMonitorColumn.MinWidth = 330;
+            BenchSendColumn.Width = new GridLength(37, GridUnitType.Star);
+            BenchKeyColumn.Width = new GridLength(29, GridUnitType.Star);
+            BenchMonitorSplitterColumn.Width = new GridLength(6);
+            BenchMonitorColumn.Width = new GridLength(34, GridUnitType.Star);
+            BenchPrimaryRow.Height = new GridLength(1, GridUnitType.Star);
+            BenchMonitorRow.Height = new GridLength(0);
+        }
     }
 
     private async void OnKeyAutosaveTick(object? sender, EventArgs e)
