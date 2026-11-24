@@ -11,7 +11,7 @@
   <StackPanel Grid.Row="0" Margin="0,0,0,12">
    <TextBlock Text="扫码枪 · 串口设备" FontSize="20"
               FontWeight="SemiBold" Foreground="#20364A"/>
-   <TextBlock Text="独立设置设备，查看真实串口输入。工程扫码期望在检测准备内统一管理。"
+   <TextBlock Text="连接扫码枪并查看实时输入。"
               Foreground="#62798C" TextWrapping="Wrap" Margin="0,5,0,0"/>
   </StackPanel>
   <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
@@ -49,14 +49,14 @@
       </WrapPanel>
       <TextBlock Text="{Binding DeviceStatus}" Foreground="#546E86"
                  TextWrapping="Wrap" Margin="0,9,0,0"/>
-      <TextBlock Text="当前串口帧以 CR、LF 或 CRLF 结束；显示实际原始字节，不会把半帧当作一台 ECU。"
+      <TextBlock Text="扫码以回车或换行结束。"
                  Foreground="#76899A" FontSize="11" Margin="0,5,0,0" TextWrapping="Wrap"/>
      </StackPanel>
     </Border>
     <Border Background="White" BorderBrush="#DEE7EF" BorderThickness="1" CornerRadius="8" Padding="14">
      <StackPanel>
       <TextBlock Text="设备接收诊断" FontSize="15" FontWeight="SemiBold" Foreground="#20364A" Margin="0,0,0,12"/>
-      <TextBlock Text="此处只设置串口与检查设备输入；产品字段和期望内容请到 ECU 工程的「检测准备 → 扫码匹配」提前编辑。连接设备或试扫不是编辑工程的前提。" Foreground="#62798C" TextWrapping="Wrap" Margin="0,0,0,12"/>
+      <TextBlock Text="产品条码规则在工程的「检测准备」中设置。" Foreground="#62798C" TextWrapping="Wrap" Margin="0,0,0,12"/>
       <TextBlock Text="最近完整原始文本" Foreground="#64798C"/>
       <TextBox Text="{Binding LastRaw,Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" Padding="8,6" Margin="0,4,0,12"/>
       <TextBlock Text="原始帧 HEX" Foreground="#64798C"/>
@@ -65,7 +65,7 @@
       <TextBlock Text="{Binding ProjectName}" FontWeight="SemiBold" Foreground="#345E83" Margin="0,6,0,4"/>
       <TextBlock Text="{Binding LastMappedFields}" TextWrapping="Wrap" Foreground="#355C76"/>
       <TextBlock Text="{Binding LastDecision}" Foreground="#657D90" Margin="0,6,0,0"/>
-      <TextBlock Text="正式检测使用已部署工程，不使用此处的预览结果。" TextWrapping="Wrap" Foreground="#788A9B" Margin="0,8,0,0"/>
+      <TextBlock Text="试扫不会启动检测。" TextWrapping="Wrap" Foreground="#788A9B" Margin="0,8,0,0"/>
      </StackPanel>
     </Border>
    </StackPanel>

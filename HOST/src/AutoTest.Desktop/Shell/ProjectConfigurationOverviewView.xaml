@@ -64,16 +64,16 @@
        <StackPanel>
         <TextBlock Text="{Binding CurrentProjectName}" FontWeight="SemiBold"
          FontSize="21" Foreground="{StaticResource Ink}"/>
-        <TextBlock Text="一份工程包含用例、资源和检测过程；无需额外建立被测系统或台架配置"
+        <TextBlock Text="测试流程、工位配置和工程资源"
          Margin="0,5,0,0" Foreground="{StaticResource Subtle}"/>
        </StackPanel>
       </DockPanel>
       <Border CornerRadius="8" Background="#F3F7FC" BorderBrush="#DFE8F2"
        BorderThickness="1" Padding="13" Margin="0,0,0,13">
        <StackPanel>
-        <TextBlock Text="在这里维护工程检测准备，TEST 用例在左侧单独编辑" FontWeight="SemiBold"
+        <TextBlock Text="检测工程配置" FontWeight="SemiBold"
          Foreground="#2B507D" FontSize="13" Margin="0,0,0,5"/>
-        <TextBlock Text="扫码身份、工程原生烧录工艺、夹具准备和收尾、实际工程资源均可在此编辑与核对；固定 COM 设备只需在本工位安装绑定一次。开发 TEST 调试无需先通过生产工位检查。"
+        <TextBlock Text="扫码、烧录、工位动作和测试资源集中管理。"
          Foreground="#4F647E" TextWrapping="Wrap"/>
         <TextBlock Text="{Binding SetupOverallStatus}" Foreground="#6D7683"
          TextWrapping="Wrap" Margin="0,8,0,0"/>
@@ -205,7 +205,7 @@
         <TextBlock Text="正确的工程操作顺序" FontWeight="SemiBold" Margin="0,0,0,8"/>
         <TextBlock Text="编辑并保存参数、固件和算法 → 按需预检和实体调试。正式检测使用当前保存的配置前置烧录。"
          Foreground="{StaticResource Subtle}" TextWrapping="Wrap"/>
-        <TextBlock Text="当前版本的真实烧录工具独占主控 USB；保存配置不意味着已成功烧录，实际 ECU 后验仍需真实执行。"
+        <TextBlock Text="烧录配置已保存不代表 ECU 已完成烧录。"
          Margin="0,9,0,0" TextWrapping="Wrap" Foreground="#9A6A2C"/>
        </StackPanel>
       </Border>
@@ -219,7 +219,7 @@
        FontWeight="SemiBold" Foreground="{StaticResource Ink}"/>
       <TextBlock Text="{Binding SetupStationStatus}" Foreground="#516B83"
        TextWrapping="Wrap" Margin="0,10,0,14"/>
-      <TextBlock Text="固定硬件：夹具1、夹具2由主控 USB 驱动；IGN 独立控制。使用真实手动台架可直接压紧/释放、读取 MCU GPIO 并观察 USB 结果，不需要创建 TEST 用例。"
+      <TextBlock Text="配置 IGN 和夹具动作；实际输出可在手动台架检查。"
        Foreground="{StaticResource Subtle}" TextWrapping="Wrap"/>
       <WrapPanel Margin="0,14,0,0">
        <Button Content="连接 / 断开主控" Command="{Binding ConnectHardwareCommand}" Padding="14,8"
@@ -232,7 +232,7 @@
       <Border Background="White" BorderBrush="#DDE6EE" BorderThickness="1"
        CornerRadius="7" Padding="13" Margin="0,12,0,0">
        <StackPanel>
-        <TextBlock Text="单项真实操作 · 一次点击只发送一条受控请求"
+        <TextBlock Text="工位操作"
          FontSize="13" FontWeight="SemiBold" Margin="0,0,0,10"/>
         <WrapPanel Margin="0,0,0,8">
          <TextBlock Text="夹具 1" Width="75" VerticalAlignment="Center" FontWeight="SemiBold"/>
@@ -249,7 +249,7 @@
          <Button Content="ON" Command="{Binding EngineeringIgnOnCommand}" Padding="14,7" Margin="0,0,9,0"/>
          <Button Content="OFF" Command="{Binding EngineeringIgnOffCommand}" Padding="14,7" Margin="0,0,9,0"/>
         </WrapPanel>
-        <TextBlock Text="这是当前工位的真实手动调试命令，不会修改正式工程流程、不自动运行测试、不声称夹具机械到位。主控未连接或协议不符时后台拒绝发送，按钮仍可点击。"
+        <TextBlock Text="工位操作需要主控连接；命令确认不代表夹具机械到位。"
          Foreground="#687C8B" TextWrapping="Wrap" Margin="0,12,0,0"/>
        </StackPanel>
       </Border>
@@ -273,7 +273,7 @@
          <TextBlock Text="本工程实际需要的夹具动作"
           FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
         </DockPanel>
-        <TextBlock Text="只有确实需要额外夹具或 IGN 准备/收尾动作时才创建；没有动作不需要空文件。保存后仍须验证真实硬件。"
+        <TextBlock Text="可选：检测前准备与检测后收尾动作。"
          Foreground="{StaticResource Subtle}" TextWrapping="Wrap" Margin="0,0,0,12"/>
         <ContentControl x:Name="InspectionProcedureHost"
          HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
@@ -283,7 +283,7 @@
        Background="White" Padding="13" Margin="0,14,0,0">
        <StackPanel>
         <TextBlock Text="正式检测关联" FontWeight="SemiBold" Margin="0,0,0,7"/>
-        <TextBlock Text="扫码 → 夹具准备 → 软件/实体 START → 原生前置烧录 → 全部 TEST → RECORD → 受控收尾。当前工位实际夹具动作顺序、等待和机械到位条件仍需通过真实硬件确定，不使用假传感器。"
+        <TextBlock Text="扫码 → 夹具准备 → START → 烧录 → 测试 → 收尾与报告。"
          TextWrapping="Wrap" Foreground="{StaticResource Subtle}"/>
        </StackPanel>
       </Border>
@@ -355,7 +355,7 @@
         </StackPanel>
        </DockPanel>
       </Border>
-      <TextBlock Text="当前工程保存后即为检测配置，不需要发布。检查配置不会执行 ECU 烧录或夹具动作。正式生产的 START、FLASH、TEST、RECORD 整机接线尚未完成验收，不能据此宣告 ECU 合格。"
+      <TextBlock Text="工程保存即生效；配置检查不会操作设备。"
        TextWrapping="Wrap" Foreground="#8B6845"/>
      </StackPanel>
     </ScrollViewer>

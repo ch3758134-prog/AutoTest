@@ -56,7 +56,7 @@
         Foreground="#263B51" FontWeight="SemiBold"/>
        <TextBlock Text="扫码 · 烧录 · 夹具 · 资源" Foreground="#2368BD"
         FontSize="13" Margin="0,9,0,6"/>
-       <TextBlock Text="配置、试验和检查一套 ECU 检测所需的真实条件"
+       <TextBlock Text="管理 ECU 测试工程"
         Foreground="#62788E" TextWrapping="Wrap"/>
       </StackPanel>
      </Button>
@@ -81,7 +81,7 @@
       <StackPanel>
        <TextBlock Text="当前工程还没有用例执行清单"
         Foreground="#245B96" FontSize="13" FontWeight="SemiBold"/>
-       <TextBlock Text="创建一条空白用例后就能编辑真实步骤，不需要先配置 TCF 或 TBC。"
+       <TextBlock Text="新建用例后即可添加测试步骤。"
         Foreground="#597491" TextWrapping="Wrap" Margin="0,5,0,0"/>
       </StackPanel>
      </DockPanel>
@@ -98,7 +98,7 @@
      <Button Content="打开波形工具" Command="{Binding OpenWaveWorkbenchCommand}"
       Padding="13,8" Margin="0,0,9,7"/>
     </WrapPanel>
-    <TextBlock Text="独立真实调试工具" FontSize="14" FontWeight="SemiBold"
+    <TextBlock Text="专业工具" FontSize="14" FontWeight="SemiBold"
      Foreground="#243950" Margin="0,18,0,10"/>
     <WrapPanel>
      <Button Content="手动台架" Command="{Binding OpenManualBenchCommand}"
@@ -108,7 +108,7 @@
      <Button Content="检查工程配置" Command="{Binding OpenProjectConfigurationOverviewCommand}"
       Padding="13,8" Margin="0,0,9,7"/>
     </WrapPanel>
-    <TextBlock Text="这些工具也可脱离自动检测单独使用；工具调试结果不会被冒充为本次 ECU 的正式生产 PASS。"
+    <TextBlock Text="专业工具可以独立使用。"
      TextWrapping="Wrap" Foreground="#798899" Margin="0,12,0,0"/>
    </StackPanel>
   </ScrollViewer>
