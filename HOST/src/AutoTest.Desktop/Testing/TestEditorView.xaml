@@ -483,11 +483,11 @@
    </Border>
   </Popup>
   <!-- A single explicit step transaction; no second shell inspector. -->
-  <Grid x:Name="StepPropertyOverlay" Grid.RowSpan="5" Panel.ZIndex="100" Visibility="Collapsed" Background="#B2F1F5F9" Focusable="True">
+  <Grid x:Name="StepPropertyOverlay" Grid.RowSpan="5" Panel.ZIndex="100" Visibility="Collapsed" Background="#40F1F5F9" Focusable="True" MouseLeftButtonDown="StepPropertyOverlay_MouseLeftButtonDown">
    <Border x:Name="StepPropertyCard" MaxWidth="1120" MaxHeight="760" Margin="18" Background="#FAFBFC" BorderBrush="#DDE6ED" BorderThickness="1" CornerRadius="9" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
     <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
      <DockPanel Margin="14,10,14,6">
-      <Button DockPanel.Dock="Right" Content="关闭" Click="CancelPropertyOverlay_Click" Padding="10,4" ToolTip="取消本次未应用的属性修改"/>
+      <Button DockPanel.Dock="Right" Content="关闭" Click="FinishPropertyOverlay_Click" Padding="10,4" ToolTip="应用有效修改并关闭，也可直接点击浮窗外部"/>
       <TextBlock Text="步骤属性" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="#34475C"/>
      </DockPanel>
      <ContentControl x:Name="StepPropertyHost" Grid.Row="1" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
