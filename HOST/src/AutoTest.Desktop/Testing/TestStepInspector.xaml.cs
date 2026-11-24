@@ -318,7 +318,8 @@ public partial class TestStepInspector : UserControl
         AddHandler(TextBox.TextChangedEvent,
             new TextChangedEventHandler((sender, e) =>
             {
-                if (ReferenceEquals(e.OriginalSource, TargetSearch)) return;
+                if (ReferenceEquals(e.OriginalSource, TargetSearch) ||
+                    ReferenceEquals(e.OriginalSource, CanSignalSearch)) return;
                 MarkDraftChanged();
                 if (IsCanSend && !_loadingCanData && CanDataCard is not null)
                     UpdateCanFramePreview();
@@ -711,6 +712,7 @@ public partial class TestStepInspector : UserControl
         var enteredId = IsCanSend ? FrameIdInput.Text : "";
         var enteredExtended = IsCanSend && GetCanFrameExtended();
         _selectedTarget = selected;
+        if (IsCanSend) CanSignalSearch.Clear();
         DbcCanPanel.Visibility = KeyPanel.Visibility =
             IgnitionPanel.Visibility = Visibility.Collapsed;
         SignalValues.Clear();
@@ -1146,6 +1148,17 @@ public partial class TestStepInspector : UserControl
         }
         UpdateCanFrameFormatLabel();
         UpdateCanFramePreview();
+    }
+
+    private void CanSignalSearch_Changed(object sender, TextChangedEventArgs e)
+    {
+        if (SignalGrid is null || CanSignalSearch is null) return;
+        var query = CanSignalSearch.Text.Trim();
+        SignalGrid.Items.Filter = item => query.Length == 0 ||
+            item is TestSignalInputField signal &&
+            (signal.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+             signal.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+             signal.Definition.Contains(query, StringComparison.OrdinalIgnoreCase));
     }
 
     private void CanData_Changed(object sender, TextChangedEventArgs e)
