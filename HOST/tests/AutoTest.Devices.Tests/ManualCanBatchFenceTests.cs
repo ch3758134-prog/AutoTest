@@ -188,4 +188,31 @@ public sealed class ManualCanBatchFenceTests
             fence.AuthorizeManualCanRow(Guid.NewGuid(), data, 9));
     }
 
+    [Fact]
+    public void RefreshingTestWriteBudgetPreservesTheOriginalExactCanScope()
+    {
+        var fence = new PhysicalCommandFence();
+        var fingerprint = new string('c', 64);
+        var allowed = RawCan(StationCanWiring.DutPort, 0x701, 0x01);
+        var denied = RawCan(StationCanWiring.DutPort, 0x702, 0x02);
+        fence.AuthorizePhysicalRun(fingerprint, "AUTHORIZE TEST RUN " + fingerprint,
+            [(StationCanWiring.DutPort, false, 0x701)], false, 9, maxWrites: 2);
+        var request = UsbWireCodec.EncodeRequest(1, MainControllerCodec.CanSend, allowed);
+        fence.AssertAllowedAndConsume(request, 9);
+        fence.AssertAllowedAndConsume(request, 9);
+        Assert.Throws<UnauthorizedAccessException>(() => fence.AssertAllowedAndConsume(request, 9));
+        Assert.Throws<UnauthorizedAccessException>(() =>
+            fence.RefreshPhysicalRun(new string('d', 64), 9, 2));
+        Assert.Throws<UnauthorizedAccessException>(() =>
+            fence.RefreshPhysicalRun(fingerprint, 10, 2));
+        fence.RefreshPhysicalRun(fingerprint, 9, 2);
+        fence.AssertAllowedAndConsume(request, 9);
+        Assert.Throws<UnauthorizedAccessException>(() =>
+            fence.AssertAllowedAndConsume(UsbWireCodec.EncodeRequest(
+                2, MainControllerCodec.CanSend, denied), 9));
+        fence.RevokePhysicalRun();
+        Assert.Throws<UnauthorizedAccessException>(() =>
+            fence.RefreshPhysicalRun(fingerprint, 9, 2));
+    }
+
 }
