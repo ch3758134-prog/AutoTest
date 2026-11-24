@@ -28,6 +28,8 @@ public sealed class PhysicalCommandFence
     private DateTimeOffset _runExpiry;
     private long _runGeneration;
     private string? _runFingerprint;
+    private readonly Dictionary<Guid, string> _manualCanRows = new();
+    private long _manualCanRowsGeneration;
     private HashSet<string>? _manualBatchCan;
     private long _manualBatchGeneration;
     private DateTimeOffset _manualBatchExpiry;
@@ -68,7 +70,7 @@ public sealed class PhysicalCommandFence
         lock(_sync)
         {
             if(_programming is not null || _runFingerprint is not null || _didGrant is not null ||
-                _manualBatchCan is not null || _manualKeySteps is not null)
+                _manualBatchCan is not null || _manualCanRows.Count != 0 || _manualKeySteps is not null)
                 throw new InvalidOperationException("Another physical CAN scope is already active.");
             // Cancel residual one-shot permissions from the main station before
             // transferring physical authority to a frozen programming job.
@@ -158,7 +160,7 @@ public sealed class PhysicalCommandFence
         lock (_sync)
         {
             if (_didGrant is not null || _programming is not null ||
-                _runFingerprint is not null || _manualBatchCan is not null ||
+                _runFingerprint is not null || _manualBatchCan is not null || _manualCanRows.Count != 0 ||
                 _manualKeySteps is not null)
                 throw new InvalidOperationException("A physical TEST, manual task, DID or flash job is already authorized.");
             _didGrant = new DidGrant { TxId=txId, RxId=rxId, Did=did,
@@ -251,7 +253,7 @@ public sealed class PhysicalCommandFence
             throw new ArgumentException("Invalid allowed CAN frame.");
         lock (_sync)
         {
-            if (_runFingerprint is not null || _manualBatchCan is not null ||
+            if (_runFingerprint is not null || _manualBatchCan is not null || _manualCanRows.Count != 0 ||
                 _manualKeySteps is not null || _programming is not null || _didGrant is not null)
                 throw new InvalidOperationException("Another physical run, CAN task or KEY action is active.");
             // Test authorization supersedes all pending manual one-shot grants.
@@ -292,6 +294,40 @@ public sealed class PhysicalCommandFence
         }
     }
 
+    /// <summary>Independent exact-frame grants for manually selected ECU CAN rows.</summary>
+    public void AuthorizeManualCanRow(Guid token, ReadOnlySpan<byte> payload, long generation)
+    {
+        if (token == Guid.Empty || generation <= 0 || payload.Length != 15 ||
+            payload[0] != StationCanWiring.DutPort || payload[1] > 1 || payload[6] > 8 ||
+            BinaryPrimitives.ReadUInt32LittleEndian(payload.Slice(2, 4)) >
+                (payload[1] == 1 ? 0x1FFFFFFFu : 0x7FFu))
+            throw new ArgumentException("ECU CAN 发送必须是合法的完整经典 CAN 帧。");
+        lock (_sync)
+        {
+            if (_runFingerprint is not null || _programming is not null ||
+                _didGrant is not null || _manualBatchCan is not null ||
+                (_manualCanRows.Count > 0 && _manualCanRowsGeneration != generation) ||
+                _manualCanRows.Count >= 32)
+                throw new InvalidOperationException("当前工位不能增加 CAN 发送任务。");
+            _manualCanRows.Add(token, Convert.ToHexString(payload));
+            _manualCanRowsGeneration = generation;
+        }
+    }
+
+    public void RevokeManualCanRow(Guid token)
+    {
+        lock (_sync)
+        {
+            _manualCanRows.Remove(token);
+            if (_manualCanRows.Count == 0) _manualCanRowsGeneration = 0;
+        }
+    }
+
+    public void RevokeAllManualCanRows()
+    {
+        lock (_sync) { _manualCanRows.Clear(); _manualCanRowsGeneration = 0; }
+    }
+
     /// <summary>Exact ECU CAN allowlist for the manual bench. Null budget means current-session continuous sending.
     /// The operator approves a content-fingerprinted snapshot; subsequent UI edits never widen it.</summary>
     public void AuthorizeManualCanBatch(string fingerprint, string confirmation,
@@ -310,7 +346,7 @@ public sealed class PhysicalCommandFence
             throw new ArgumentException("ECU CAN 手动发送必须配置 1～32 条有效报文。");
         lock (_sync)
         {
-            if (_runFingerprint is not null || _manualBatchCan is not null ||
+            if (_runFingerprint is not null || _manualBatchCan is not null || _manualCanRows.Count != 0 ||
                 _programming is not null || _didGrant is not null)
                 throw new InvalidOperationException("Physical test or manual batch is already authorized.");
             _singleCanPayload = null;
@@ -381,7 +417,7 @@ public sealed class PhysicalCommandFence
         if (code > 7 || epoch <= 0) throw new ArgumentOutOfRangeException(nameof(code));
         lock (_sync)
         {
-            if (_runFingerprint is not null || _manualBatchCan is not null ||
+            if (_runFingerprint is not null || _manualBatchCan is not null || _manualCanRows.Count != 0 ||
                 _manualKeySteps is not null || _programming is not null || _didGrant is not null)
                 throw new InvalidOperationException(
                     "ECU CAN 码率切换要求空闲的 TEST、CAN、KEY、UDS、FLASH 会话。");
@@ -420,7 +456,7 @@ public sealed class PhysicalCommandFence
         {
             if (_runFingerprint is not null || _programming is not null || _didGrant is not null ||
                 (_manualKeySteps is not null && exact15Bytes[0] == StationCanWiring.KeypadPort) ||
-                (_manualBatchCan is not null && !IsDocumentedKeySimFrame(exact15Bytes)))
+                ((_manualBatchCan is not null || _manualCanRows.Count != 0) && !IsDocumentedKeySimFrame(exact15Bytes)))
                 throw new InvalidOperationException("ECU CAN 发送任务运行中，仅允许已授权的单次 KEY CAN 按键命令。");
             _singleCanPayload = exact15Bytes.ToArray();
             _authorizedConnection = connectionGeneration;
@@ -507,7 +543,7 @@ public sealed class PhysicalCommandFence
                 _baudPermit == request.Payload[0] &&
                 _baudPermitEpoch == connectionGeneration &&
                 DateTimeOffset.UtcNow < _baudPermitExpires &&
-                _runFingerprint is null && _manualBatchCan is null &&
+                _runFingerprint is null && _manualBatchCan is null && _manualCanRows.Count == 0 &&
                 _manualKeySteps is null)
             {
                 _baudPermit = null; _baudPermitEpoch = 0; _baudPermitExpires = default;
@@ -562,6 +598,10 @@ public sealed class PhysicalCommandFence
         lock (_sync)
         {
             if (request.Command == MainControllerCodec.CanSend &&
+                _manualCanRows.Count > 0 && _manualCanRowsGeneration == connectionGeneration &&
+                _manualCanRows.Values.Contains(Convert.ToHexString(request.Payload)))
+                return;
+            if (request.Command == MainControllerCodec.CanSend &&
                 _manualBatchCan is not null &&
                 _manualBatchGeneration == connectionGeneration &&
                 DateTimeOffset.UtcNow < _manualBatchExpiry && (_manualBatchWrites is null or > 0) &&
@@ -603,6 +643,7 @@ public sealed class PhysicalCommandFence
             _programming = null; _didGrant = null;
             _runCan = null; _runIgn = false; _remainingWrites = 0;
             _runExpiry = default; _runGeneration = 0; _runFingerprint = null;
+            _manualCanRows.Clear(); _manualCanRowsGeneration = 0;
             _manualBatchCan = null; _manualBatchGeneration = 0;
             _manualBatchExpiry = default; _manualBatchWrites = 0;
             _manualBatchFingerprint = null;
