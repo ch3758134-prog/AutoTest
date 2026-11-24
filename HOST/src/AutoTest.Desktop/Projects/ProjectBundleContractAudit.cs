@@ -15,7 +15,7 @@ namespace AutoTest.Desktop.Projects;
 public static class ProjectBundleContractAudit
 {
     public static async Task ValidateAsync(ProjectDefinition project, string manifestPath,
-        CancellationToken ct = default)
+        CancellationToken ct = default, bool allowStaleReferencesForEditing = false)
     {
         var root = Path.GetDirectoryName(manifestPath)
             ?? throw new InvalidDataException("工程路径没有目录。");
@@ -50,8 +50,15 @@ public static class ProjectBundleContractAudit
                             if (mapping.AssetRevision != dependency.Revision ||
                                 !string.Equals(mapping.AssetSha256, dependency.Sha256,
                                     StringComparison.OrdinalIgnoreCase))
-                                throw new InvalidDataException("TEST 对象 " + mapping.Name +
-                                    " 引用的资源修订/指纹已失效。");
+                            {
+                                var issue = "TEST 对象 " + mapping.Name +
+                                    " 引用的资源修订/指纹已失效。";
+                                if (!allowStaleReferencesForEditing)
+                                    throw new InvalidDataException(issue);
+                                // File hashes and parsability are still checked for EVERY
+                                // asset. Only the old dependency pin is repairable.
+                                System.Diagnostics.Trace.TraceWarning(asset.Name + "：" + issue);
+                            }
                         }
                         break;
                     case ProjectWorkspaceService.InspectionKind:
