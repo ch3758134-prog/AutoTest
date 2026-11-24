@@ -42,6 +42,7 @@ public partial class ProjectBarcodeExpectationView : UserControl
     private readonly string _manifestPath;
     private readonly ObservableCollection<BarcodeExpectationEditorRow> _rows = new();
     private bool _initializing = true;
+    private long _editRevision;
     private string? _savedExpectation;
     public bool IsDirty { get; private set; }
     public bool IsBusy { get; private set; }
@@ -91,6 +92,7 @@ public partial class ProjectBarcodeExpectationView : UserControl
     {
         if (_initializing) return;
         IsDirty = true;
+        _editRevision++;
         SaveStatus.Text = "配置已修改，等待自动保存；也可立即保存。";
         MatchStatus.Text = "规则已修改，请重新验证。";
         foreach (var row in _rows) row.Actual = "";
@@ -148,17 +150,20 @@ public partial class ProjectBarcodeExpectationView : UserControl
     private async void Save_Click(object sender, RoutedEventArgs e)
     {
         // Explicit Save can validate a default/new draft even before its first edit.
+        CommitGrid();
         IsDirty = true;
+        _editRevision++;
         await SaveForCloseAsync();
     }
 
     public async Task<bool> SaveForCloseAsync()
     {
         if (IsBusy) return false;
-        CommitGrid();
         if (!IsDirty) return true;
+        // All editable bindings update the source as the user types; an idle
+        // save must not end the active DataGrid edit or steal keyboard focus.
         IsBusy = true;
-        EditPanel.IsEnabled = false;
+        var revision = _editRevision;
         try
         {
             var current = _workspace.Current;
@@ -169,10 +174,11 @@ public partial class ProjectBarcodeExpectationView : UserControl
             var draft = Draft();
             await _workspace.SaveBarcodeExpectationAsync(_projectId, _manifestPath, _savedExpectation, draft);
             _savedExpectation = Serialize(draft);
-            IsDirty = false;
-            SaveStatus.Text = "已保存至工程。用于正式生产前请重新部署工程；不需要试扫。";
+            IsDirty = revision != _editRevision;
+            SaveStatus.Text = IsDirty ? "较新的编辑尚未保存，将在下次自动保存处理。"
+                : "已保存至工程。用于正式生产前请重新部署工程；不需要试扫。";
             _ = _shell.RefreshEngineeringSetupAsync();
-            return true;
+            return !IsDirty;
         }
         catch (Exception error) when (error is IOException or InvalidOperationException or
             ArgumentException or ProjectDataException or UnauthorizedAccessException or FormatException)
@@ -180,6 +186,6 @@ public partial class ProjectBarcodeExpectationView : UserControl
             SaveStatus.Text = "尚未保存：" + error.Message;
             return false;
         }
-        finally { EditPanel.IsEnabled = true; IsBusy = false; }
+        finally { IsBusy = false; }
     }
 }
