@@ -4,6 +4,7 @@ using AutoTest.Core;
 using AutoTest.Desktop.Projects;
 using AutoTest.Projects.Project;
 using AutoTest.Testing.Authoring;
+using AutoTest.Devices.Station;
 
 namespace AutoTest.Desktop.Shell;
 
@@ -12,10 +13,11 @@ namespace AutoTest.Desktop.Shell;
 /// step is never a second executable program and never supplies a verdict.
 /// </summary>
 public sealed record AutomaticTestStep(string Index, string Name, string State,
-    IReadOnlyList<AutomaticTestStep> Children)
+    IReadOnlyList<AutomaticTestStep> Children, string ActionSummary = "")
 {
     public bool IsExpanded => false;
-    public string Detail => State;
+    public string Detail => string.IsNullOrEmpty(ActionSummary)
+        ? State : State + " · " + ActionSummary;
 }
 
 /// <summary>An ordered invocation from the unique canonical ECU TEST project.</summary>
@@ -103,13 +105,14 @@ public sealed class AutomaticTestPlanService
         foreach (var phase in Enum.GetValues<TestPhase>())
         {
             foreach (var node in document.Get(phase))
-                steps.Add(ProjectStep(node, (steps.Count + 1).ToString("D2")));
+                steps.Add(ProjectStep(node, (steps.Count + 1).ToString("D2"),
+                    document.Mappings));
         }
         return steps;
     }
 
     private static AutomaticTestStep ProjectStep(StepNode node, string index,
-        string? branch = null)
+        IReadOnlyList<TestTargetMapping> mappings, string? branch = null)
     {
         var children = new List<AutomaticTestStep>();
         // Name the IF/ELSE/WHEN/SWITCH/LOOP slot explicitly. Otherwise a
@@ -121,12 +124,46 @@ public sealed class AutomaticTestPlanService
             {
                 var child = slot.Value[i];
                 children.Add(ProjectStep(child, (i + 1).ToString("D2"),
-                    slot.Key));
+                    mappings, slot.Key));
             }
         }
         var state = StepExecutionPolicy.IsEnabled(node)
             ? "未执行" : "步骤已禁用（不执行）";
         var label = branch is null ? node.Name : "〔" + branch + "〕 " + node.Name;
-        return new(index, label, state, children);
+        return new(index, label, state, children, OperatorActionSummary(node, mappings));
+    }
+
+    private static string OperatorActionSummary(
+        StepNode node, IReadOnlyList<TestTargetMapping> mappings)
+    {
+        if (node.Type == "Wait")
+            return "纯等待 " + node.Properties.GetValueOrDefault("milliseconds", "0") +
+                " ms（不改变 KEY 状态）";
+        if (node.Type != "Write") return "";
+        var target = node.Properties.GetValueOrDefault("target", "");
+        var binding = mappings.FirstOrDefault(x => x.Name == target);
+        if (binding?.Kind != TestTargetKind.RawKey) return "";
+        var value = node.Properties.GetValueOrDefault("value", "");
+        try
+        {
+            var action = RawKeyAction.Parse(value);
+            if (action.Action == RawKeyOperation.Wait)
+                return "纯等待 " + action.DurationMs +
+                    " ms · 不发送 KEY CAN";
+            if (action.Action == RawKeyOperation.Release)
+                return "明确全部断开 KEY";
+            var names = action.Mask == 0 ? "全部断开" :
+                string.Join(" + ", Enumerable.Range(1, 20)
+                    .Where(i => (action.Mask & (1u << (i - 1))) != 0)
+                    .Select(i => "K" + i.ToString("00")));
+            return action.Action == RawKeyOperation.Pulse
+                ? "短按 " + names + " · " + action.DurationMs + "ms 后自动释放"
+                : "保持请求 " + names + " · " + action.DurationMs +
+                    "ms 后不自动释放";
+        }
+        catch (FormatException)
+        {
+            return "KEY 配置需核对：" + value;
+        }
     }
 }
