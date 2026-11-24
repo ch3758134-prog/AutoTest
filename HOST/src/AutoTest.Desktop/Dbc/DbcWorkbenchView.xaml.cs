@@ -62,6 +62,21 @@ public partial class DbcWorkbenchView : UserControl
         if (grid == SignalGrid && row.Item is DbcSignalRow signal) _viewModel.SelectedSignal = signal;
     }
 
+    private bool _advancedColumnsVisible;
+    private void ToggleAdvancedColumns_Click(object sender, RoutedEventArgs e)
+    {
+        if (!FinishGrid()) return;
+        _advancedColumnsVisible = !_advancedColumnsVisible;
+        var state = _advancedColumnsVisible ? Visibility.Visible : Visibility.Collapsed;
+        foreach (var column in new DataGridColumn[]
+        {
+            DbcMinimumColumn, DbcMaximumColumn, DbcReceiverColumn,
+            DbcMultiplexerColumn, DbcEnumColumn, DbcDescriptionColumn
+        })
+            column.Visibility = state;
+        AdvancedColumnsButton.Content = _advancedColumnsVisible ? "收起高级列" : "高级列";
+    }
+
     private bool FinishGrid()
     {
         if (!SignalGrid.CommitEdit(DataGridEditingUnit.Cell, true)) return false;
