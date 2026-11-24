@@ -487,6 +487,12 @@ public partial class TestStepInspector : UserControl
         TargetSearch.Text = "";
         CanTargetSearch.Text = "";
         CanSendPanel.Visibility = IsCanSend ? Visibility.Visible : Visibility.Collapsed;
+        var split = IsDbcSignal || action.TargetCategory == "wave";
+        ObjectParameterLeft.Width = new GridLength(split ? 0.48 : 1, GridUnitType.Star);
+        ObjectParameterGap.Width = new GridLength(split ? 18 : 0);
+        ObjectParameterRight.Width = new GridLength(split ? 0.52 : 0, GridUnitType.Star);
+        Grid.SetColumn(ParameterList, split ? 2 : 0);
+        Grid.SetRow(ParameterList, split ? 0 : 1);
         TargetPanel.Visibility = !IsCanSend && !string.IsNullOrEmpty(action.TargetCategory)
             ? Visibility.Visible : Visibility.Collapsed;
         DbcSignalPickerPanel.Visibility = IsDbcSignal ? Visibility.Visible : Visibility.Collapsed;
@@ -952,19 +958,19 @@ public partial class TestStepInspector : UserControl
 
     private void CanSendMode_Changed(object sender, RoutedEventArgs e)
     {
-        if (!_ready || CanPeriodicPanel is null) return;
+        if (!_ready || CanPeriodicPanel is null || CanPeriodField is null || CanTimedDurationPanel is null) return;
         UpdateCanSendingMode();
     }
 
     private void CanStopMode_Changed(object sender, RoutedEventArgs e)
     {
-        if (!_ready || CanTimedDurationPanel is null) return;
+        if (!_ready || CanTimedDurationPanel is null || CanPeriodField is null || CanPeriodicPanel is null) return;
         UpdateCanSendingMode();
     }
 
     private void UpdateCanSendingMode()
     {
-        CanPeriodicPanel.Visibility = CanPeriodicMode.IsChecked == true
+        CanPeriodicPanel.Visibility = CanPeriodField.Visibility = CanPeriodicMode.IsChecked == true
             ? Visibility.Visible : Visibility.Collapsed;
         CanTimedDurationPanel.Visibility = CanPeriodicMode.IsChecked == true &&
             CanTimedStop.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
