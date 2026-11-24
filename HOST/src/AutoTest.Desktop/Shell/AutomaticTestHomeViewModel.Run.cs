@@ -29,6 +29,8 @@ public sealed partial class AutomaticTestHomeViewModel
     private string _operatorCurrentCase = "—";
     private string _operatorCurrentStep = "—";
     private string _operatorRunEvidence = "";
+    private string _operatorFlashState = "尚未开始";
+    private string _operatorRecordState = "尚无工程验证记录";
     private Guid _operatorRunId;
     private Task? _operatorExecutionTask;
 
@@ -64,6 +66,17 @@ public sealed partial class AutomaticTestHomeViewModel
     {
         get => _operatorRunEvidence;
         private set => SetProperty(ref _operatorRunEvidence, value);
+    }
+    /// <summary>Physical FLASH stage state from the existing real operator run, never a simulated percentage.</summary>
+    public string OperatorFlashState
+    {
+        get => _operatorFlashState;
+        private set => SetProperty(ref _operatorFlashState, value);
+    }
+    public string OperatorRecordState
+    {
+        get => _operatorRecordState;
+        private set => SetProperty(ref _operatorRecordState, value);
     }
     public bool CanStartOperatorVerification =>
         !_operatorRunning && !_busy &&
@@ -227,6 +240,8 @@ public sealed partial class AutomaticTestHomeViewModel
         var ct = _operatorStop.Token;
         OperatorEvents.Clear();
         OperatorRunEvidence = "记录号 " + _operatorRunId.ToString("N");
+        OperatorFlashState = "尚未开始";
+        OperatorRecordState = "准备记录工程验证事实";
         OperatorCurrentStep = "—";
         IsOperatorRunning = true;
         for (var i = 0; i < Cases.Count; i++) ChangeCaseState(i, "未执行");
@@ -247,6 +262,7 @@ public sealed partial class AutomaticTestHomeViewModel
         {
             outcome = "执行中";
             Snapshot();
+            OperatorRecordState = "已创建工程验证过程记录";
             AddOperatorEvent("软件 START 已明确确认；本次结果不会作为生产放行");
             var validated = await ProductionPreparationService.PrepareAsync(
                 plan.Project, scan.ModelCode, scan.DutSerial, ct);
@@ -279,6 +295,7 @@ public sealed partial class AutomaticTestHomeViewModel
 
             OperatorRunState = "前置烧录 · 正在擦写 ECU";
             flashState = "烧录已启动 · 后续若中断 ECU 状态可能未知";
+            OperatorFlashState = flashState;
             Snapshot();
             AddOperatorEvent("FLASH 开始 · HEX/S19=" + frozen.FirmwareSha256[..12]);
             var flash = await _hardware.ProgramTestFlashAsync(frozen.Job,
@@ -289,6 +306,7 @@ public sealed partial class AutomaticTestHomeViewModel
                 throw new InvalidDataException("FLASH 未完成 APP 复位与传输验证：" +
                     flash.Outcome);
             flashState = "烧录完成 · APP 诊断会话已确认（非固件版本验收）";
+            OperatorFlashState = flashState;
             Snapshot();
             AddOperatorEvent(flashState);
 
@@ -332,6 +350,8 @@ public sealed partial class AutomaticTestHomeViewModel
         }
         catch (OperationCanceledException)
         {
+            if (flashState.StartsWith("烧录已启动", StringComparison.Ordinal))
+                OperatorFlashState = "烧录中断，ECU 状态待现场核查";
             outcome = "操作员停止；实体状态待核查";
             failure = "真实执行已取消；如曾进入烧录，须重新核实 ECU 状态。";
             OperatorRunState = outcome;
@@ -339,6 +359,8 @@ public sealed partial class AutomaticTestHomeViewModel
         }
         catch (Exception error)
         {
+            if (flashState.StartsWith("烧录已启动", StringComparison.Ordinal))
+                OperatorFlashState = "烧录未验证完成，ECU 状态未知";
             outcome = "真实执行中断";
             failure = error.Message;
             OperatorRunState = outcome;
@@ -371,6 +393,7 @@ public sealed partial class AutomaticTestHomeViewModel
             try
             {
                 Snapshot();
+                OperatorRecordState = "工程验证过程记录已保存（非生产结案）";
                 OperatorRunEvidence = "真实运行记录：" +
                     Path.Combine(opened.RootDirectory, "test-records",
                         "operator-verifications", _operatorRunId.ToString("N") + ".json");
@@ -378,6 +401,7 @@ public sealed partial class AutomaticTestHomeViewModel
             catch (Exception error)
             {
                         OperatorRunState = "记录保存失败；结果不可放行";
+                OperatorRecordState = "记录保存失败：" + error.Message;
                 AddOperatorEvent("本次真实运行汇总未能归档：" + error.Message);
             }
             _operatorStop?.Dispose();
