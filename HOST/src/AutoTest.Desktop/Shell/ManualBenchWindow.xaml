@@ -150,31 +150,31 @@
        </ContextMenu>
       </DataGrid.ContextMenu>
       <DataGrid.Columns>
-       <DataGridTemplateColumn Header="勾选" Width="40">
+       <DataGridTemplateColumn Header="勾选" Width="34">
         <DataGridTemplateColumn.CellTemplate><DataTemplate>
          <CheckBox IsChecked="{Binding Included,Mode=TwoWay}" IsEnabled="{Binding CanToggleIncluded}"
           ToolTip="参与启动勾选发送；周期发送时可取消勾选暂停；行内单发独立"
           HorizontalAlignment="Center" VerticalAlignment="Center"/>
         </DataTemplate></DataGridTemplateColumn.CellTemplate>
        </DataGridTemplateColumn>
-       <DataGridTextColumn Header="报文" Binding="{Binding Name}" Width="72" MinWidth="60"/>
-       <DataGridTextColumn Header="CAN ID" Binding="{Binding PreviewId}" Width="86"/>
-       <DataGridTextColumn Header="DLC" Binding="{Binding PreviewDlc}" Width="35"/>
-       <DataGridTemplateColumn Header="完整 Data (HEX)" Width="*" MinWidth="198">
+       <DataGridTextColumn Header="报文" Binding="{Binding Name}" Width="54" MinWidth="48"/>
+       <DataGridTextColumn Header="CAN ID" Binding="{Binding PreviewId}" Width="82"/>
+       <DataGridTextColumn Header="DLC" Binding="{Binding PreviewDlc}" Width="32"/>
+       <DataGridTemplateColumn Header="完整 Data (HEX)" Width="*" MinWidth="170">
         <DataGridTemplateColumn.CellTemplate><DataTemplate>
          <TextBlock Text="{Binding PreviewData}" FontFamily="Consolas"
           FontSize="12" TextTrimming="None" VerticalAlignment="Center"
           ToolTip="{Binding PreviewFull}"/>
         </DataTemplate></DataGridTemplateColumn.CellTemplate>
        </DataGridTemplateColumn>
-       <DataGridTextColumn Header="方式" Binding="{Binding ModeLabel}" Width="84"/>
-       <DataGridTemplateColumn Header="操作" Width="92">
+       <DataGridTextColumn Header="方式" Binding="{Binding ModeLabel}" Width="74"/>
+       <DataGridTemplateColumn Header="操作" Width="78">
         <DataGridTemplateColumn.CellTemplate><DataTemplate>
          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-          <Button Content="单发" Padding="6,5" Margin="0,0,4,0"
+          <Button Content="单发" Padding="4,5" Margin="0,0,3,0"
            Command="{Binding DataContext.SendCanRowOnceCommand,RelativeSource={RelativeSource AncestorType=Window}}"
            CommandParameter="{Binding}" ToolTip="发送该行当前完整帧，USB ACK 写入操作日志"/>
-          <Button Content="编辑" Padding="6,5" Tag="{Binding}" Click="OpenCanQuickEdit_Click"
+          <Button Content="编辑" Padding="4,5" Tag="{Binding}" Click="OpenCanQuickEdit_Click"
            ToolTip="打开完整 CAN 报文属性；支持 DATA 与 DBC 信号辅助"/>
          </StackPanel>
         </DataTemplate></DataGridTemplateColumn.CellTemplate>
@@ -185,7 +185,7 @@
    </Border>
 
    <!-- CENTER: priority order is real station IO then reusable KEY actions. -->
-   <GridSplitter Grid.Column="1" Width="6" Background="#DEE5EB" ResizeDirection="Columns" HorizontalAlignment="Stretch"/>
+   <GridSplitter Grid.Column="1" Width="6" Background="#DEE5EB" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" HorizontalAlignment="Stretch"/>
     <Border Grid.Column="2" Style="{StaticResource BenchCard}" Margin="0,0,4,0">
     <DockPanel LastChildFill="True">
      <StackPanel DockPanel.Dock="Top">
@@ -286,7 +286,7 @@
    </Border>
 
    <!-- RIGHT: raw CAN data is the primary content. Logs are optional. -->
-   <GridSplitter Grid.Column="3" Width="6" Background="#DEE5EB" ResizeDirection="Columns" HorizontalAlignment="Stretch"/>
+   <GridSplitter Grid.Column="3" Width="6" Background="#DEE5EB" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" HorizontalAlignment="Stretch"/>
    <Border Grid.Column="4" Style="{StaticResource BenchCard}">
     <Grid>
      <Grid.RowDefinitions>
@@ -340,7 +340,7 @@
        <DataGridTextColumn Header="通道" Binding="{Binding Channel}" Width="48"/>
        <DataGridTextColumn Header="CAN ID" Binding="{Binding Id}" Width="78"/>
        <DataGridTextColumn Header="DLC" Binding="{Binding Dlc}" Width="34"/>
-       <DataGridTemplateColumn Header="完整 Data (HEX)" Width="*" MinWidth="198">
+       <DataGridTemplateColumn Header="完整 Data (HEX)" Width="*" MinWidth="170">
         <DataGridTemplateColumn.CellTemplate><DataTemplate>
          <TextBlock Text="{Binding Data}" FontFamily="Consolas" FontSize="12"
           TextTrimming="None" VerticalAlignment="Center" ToolTip="{Binding FullFrame}"/>
