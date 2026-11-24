@@ -176,6 +176,9 @@ public partial class TestStepInspector : UserControl
     private readonly List<MappingChoice> _allTargets = [];
     private string _targetRevisionWarning = "";
     private bool _loadingCanData;
+    private bool _explicitRawCan;
+    private uint? _rawFormatId;
+    private bool _rawFormatExtended;
     private string _canSignalError = "";
     private bool _filteringTargets;
     private bool IsCanSend => _selected?.Key == "can";
@@ -250,6 +253,9 @@ public partial class TestStepInspector : UserControl
         var mapping = boundMappings.FirstOrDefault(m =>
             m.Name == editing.Properties.GetValueOrDefault("target", ""));
         var targetKind = mapping?.Kind;
+        // An applied raw mapping remains raw when reopening its inspector.
+        _explicitRawCan = mapping?.Kind == TestTargetKind.RawCan &&
+            mapping.Name.StartsWith("RAW-ECU-CAN-", StringComparison.OrdinalIgnoreCase);
         _legacySourceType = editing.Type is "KeySet" or "CanSend" or "CanWait"
             ? editing.Type : "";
         _convertedLegacy = _legacySourceType.Length > 0;
@@ -567,6 +573,11 @@ public partial class TestStepInspector : UserControl
             RefreshDbcPickers();
             return;
         }
+        if (IsCanSend && match.Mapping.Kind == TestTargetKind.RawCan)
+        {
+            ClearCanDbcAssistance();
+            return;
+        }
         if (_selectedTarget?.Mapping == match.Mapping) return;
         _filteringTargets = true;
         try { ActiveTargetPicker.SelectedItem = match; }
@@ -578,7 +589,8 @@ public partial class TestStepInspector : UserControl
     private void RefreshDbcPickers()
     {
         if (IsCanSend)
-            CanDbcPicker.SetChoices(_allTargets, _selectedTarget);
+            CanDbcPicker.SetChoices(_allTargets.Where(x => x.Mapping.Kind == TestTargetKind.CanMessage),
+                _selectedTarget?.Mapping.Kind == TestTargetKind.CanMessage ? _selectedTarget : null);
         else if (IsDbcSignal)
             SignalDbcPicker.SetChoices(_allTargets, _selectedTarget);
     }
@@ -726,6 +738,7 @@ public partial class TestStepInspector : UserControl
         {
             var definition = selected.Message;
             var isDbc = mapping.Kind == TestTargetKind.CanMessage;
+            if (isDbc) { _explicitRawCan = false; _rawFormatId = null; }
             var savedTarget = _editing?.Properties.GetValueOrDefault("target", "") ?? "";
             var sameSaved = string.Equals(mapping.Name, savedTarget, StringComparison.OrdinalIgnoreCase);
             var stored = sameSaved
@@ -735,13 +748,13 @@ public partial class TestStepInspector : UserControl
             var bytesText = "";
             var warning = "";
 
-            if (!sameSaved && previousTarget is { } earlier &&
+            if (previousTarget is not null &&
                 mapping.Kind == TestTargetKind.RawCan)
             {
                 // Explicitly removing the DBC must not throw away the actual bytes.
                 bytesText = enteredBytes;
             }
-            else if (!sameSaved && previousTarget is { } compatible &&
+            else if (previousTarget is { } compatible &&
                 definition is not null)
             {
                 // A raw CAN ID entered by the engineer may resolve to a DBC
@@ -851,7 +864,7 @@ public partial class TestStepInspector : UserControl
                     SynchronizeCanSignals();
                 }
             }
-            else CanTargetHint.Text = "DATA 可直接编辑；如工程存在匹配 DBC，可选择报文来解析或修改信号。";
+            else CanTargetHint.Text = "DATA 可直接编辑；需要 DBC 辅助时，选择对应报文。";
             UpdateCanFramePreview();
             if (warning.Length > 0) CanPreviewIssue.Text = warning;
             return;
@@ -981,6 +994,46 @@ public partial class TestStepInspector : UserControl
         MarkDraftChanged();
     }
 
+    private void ClearCanDbc_Click(object sender, RoutedEventArgs e) => ClearCanDbcAssistance();
+
+    private void ClearCanDbcAssistance()
+    {
+        if (!IsCanSend || _selectedTarget is null) return;
+        var idText = FrameIdInput.Text;
+        var data = RawCanDataInput.Text;
+        var extended = GetCanFrameExtended();
+        var hex = idText.Trim();
+        if (hex.StartsWith("0x", StringComparison.OrdinalIgnoreCase)) hex = hex[2..];
+        _rawFormatId = uint.TryParse(hex, NumberStyles.HexNumber,
+            CultureInfo.InvariantCulture, out var id) ? id : null;
+        _rawFormatExtended = extended;
+        _explicitRawCan = true;
+        var raw = _allTargets.FirstOrDefault(x =>
+            x.Mapping.Kind == TestTargetKind.RawCan && x.Mapping.Name == "原始 ECU CAN");
+        if (raw is null) return;
+        _filteringTargets = true;
+        try { ActiveTargetPicker.SelectedItem = raw; }
+        finally { _filteringTargets = false; }
+        UpdateTarget();
+        // Keep even incomplete draft bytes; applying still validates them.
+        _loadingCanData = true;
+        try
+        {
+            FrameIdInput.IsReadOnly = false;
+            FrameIdInput.Text = idText;
+            RawCanDataInput.Text = data;
+            DbcCanPanel.Visibility = Visibility.Collapsed;
+            CanRebindButton.Visibility = Visibility.Collapsed;
+            _canSignalError = "";
+            UpdateCanFrameFormatLabel();
+        }
+        finally { _loadingCanData = false; }
+        CanTargetHint.Text = "已清除 DBC 辅助；CAN ID、DATA、帧格式及发送参数保持不变。可重新选择报文。";
+        RefreshDbcPickers();
+        UpdateCanFramePreview();
+        MarkDraftChanged();
+    }
+
     private static string FormatCanBytes(byte[] data) =>
         string.Join(" ", data.Select(x => x.ToString("X2", CultureInfo.InvariantCulture)));
 
@@ -1004,6 +1057,8 @@ public partial class TestStepInspector : UserControl
             idText = idText[2..];
         if (!uint.TryParse(idText, NumberStyles.HexNumber,
             CultureInfo.InvariantCulture, out var id)) return false;
+
+        if (_rawFormatId == id) return _rawFormatExtended;
 
         // Preserve an explicitly saved raw frame format when editing that same ID.
         if (mapping?.Kind == TestTargetKind.RawCan &&
@@ -1050,7 +1105,7 @@ public partial class TestStepInspector : UserControl
 
     private void CanId_LostFocus(object sender, RoutedEventArgs e)
     {
-        if (!IsCanSend || _loadingCanData ||
+        if (!IsCanSend || _loadingCanData || _explicitRawCan ||
             _selectedTarget?.Mapping.Kind != TestTargetKind.RawCan) return;
         var idText = FrameIdInput.Text.Trim();
         if (idText.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
@@ -1069,8 +1124,17 @@ public partial class TestStepInspector : UserControl
             x.Mapping.CanId == id).ToArray();
         if (found.Length == 1)
         {
-            ApplyTargetFilter("", found[0].Mapping);
-            return;
+            // Automatic assistance must not replace entered DATA to fit a DBC.
+            try
+            {
+                if (ParseHex(RawCanDataInput.Text, 8).Length == found[0].Message!.Dlc)
+                {
+                    ApplyTargetFilter("", found[0].Mapping);
+                    return;
+                }
+            }
+            catch (ArgumentException) { }
+            CanTargetHint.Text = "找到对应 DBC，但 DATA 尚未与其 DLC 一致；已保留原始字节，可主动选择辅助。";
         }
         if (found.Length > 1)
         {
