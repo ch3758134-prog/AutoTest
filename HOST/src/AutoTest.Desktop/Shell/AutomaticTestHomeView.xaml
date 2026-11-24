@@ -19,6 +19,14 @@
    <Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="4"/>
    <Setter Property="Padding" Value="10,6"/><Setter Property="Margin" Value="0,0,8,6"/>
   </Style>
+  <Style x:Key="StageCaption" TargetType="TextBlock">
+   <Setter Property="FontSize" Value="14"/><Setter Property="FontWeight" Value="SemiBold"/>
+   <Setter Property="Foreground" Value="#29445C"/>
+  </Style>
+  <Style x:Key="StageValue" TargetType="TextBlock">
+   <Setter Property="FontSize" Value="13"/><Setter Property="Foreground" Value="#55687C"/>
+   <Setter Property="TextWrapping" Value="Wrap"/><Setter Property="Margin" Value="0,5,0,0"/>
+  </Style>
   <Style x:Key="NodeState" TargetType="TextBlock">
    <Setter Property="FontSize" Value="14"/><Setter Property="Foreground" Value="#526477"/>
    <Setter Property="FontWeight" Value="SemiBold"/><Setter Property="VerticalAlignment" Value="Center"/>
@@ -67,13 +75,9 @@
   <Border Grid.Row="1" Background="#FFF3E2" BorderBrush="#C47D26" BorderThickness="5,1,1,1" CornerRadius="5" ToolTip="{Binding StartInputHint}" Padding="14,9" Margin="0,0,0,10">
    <DockPanel LastChildFill="True">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-     <Button Content="打开工程与调试" Command="{Binding ChoosePlanCommand}" MinHeight="40" FontSize="14" Padding="13,7" Margin="12,0,8,0"/>
-     <Button Content="停止实测" Command="{Binding StopOperatorVerificationCommand}" MinHeight="40" FontSize="14" Padding="12,7"
-      Foreground="#AD261A" Margin="0,0,8,0"
-      ToolTip="请求停止真实 TEST/FLASH；如正在擦写 ECU，停止后必须核实实体状态"/>
-     <Button Content="工程验证（非生产）" Command="{Binding StartOperatorVerificationCommand}" Style="{StaticResource AtQuietButton}" MinHeight="40" MinWidth="132" FontSize="15" Padding="14,7"
-      ToolTip="仅工程验证：需要显式授权并进行真实工位操作、Flash 和全量 TEST；不属于正式生产，不计生产统计"/>
-     <Button Content="核对启动条件" Command="{Binding RequestSoftwareStartCommand}" MinHeight="40" FontSize="14" Padding="12,7" Margin="8,0,0,0"/>
+     <Button Content="检查工位" Command="{Binding RequestSoftwareStartCommand}"
+      MinHeight="34" FontSize="13" Padding="10,6" Margin="9,0,0,0"
+      ToolTip="只检查当前扫码、工程、主控与 CAN 的真实条件，不发送 START"/>
     </StackPanel>
     <StackPanel>
      <TextBlock Text="{Binding StationReadiness}" FontSize="19" FontWeight="Bold" Foreground="#914500"/>
@@ -82,8 +86,45 @@
    </DockPanel>
   </Border>
   <Grid Grid.Row="2">
-   <Grid.ColumnDefinitions><ColumnDefinition Width="2.1*" MinWidth="460"/><ColumnDefinition Width="10"/><ColumnDefinition Width="1*" MinWidth="325"/></Grid.ColumnDefinitions>
-   <Border Style="{StaticResource PanelCard}">
+   <Grid.ColumnDefinitions>
+    <ColumnDefinition Width="196"/><ColumnDefinition Width="8"/>
+    <ColumnDefinition Width="2.2*" MinWidth="460"/><ColumnDefinition Width="8"/>
+    <ColumnDefinition Width="1*" MinWidth="315"/>
+   </Grid.ColumnDefinitions>
+   <!-- Operator rail: only real input and actual run state. Physical START is blocked. -->
+   <Border Grid.Column="0" Style="{StaticResource PanelCard}">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+     <StackPanel Margin="14,14,10,14">
+      <TextBlock Text="工位流程" FontSize="18" FontWeight="Bold" Margin="0,0,0,16"
+       ToolTip="不模拟阶段进度；正式生产 START 及结果必须来自真实设备和记录"/>
+      <StackPanel Margin="0,0,0,18">
+       <TextBlock Text="01  扫码识别" Style="{StaticResource StageCaption}"/>
+       <TextBlock Text="{Binding IdentityLabel}" Style="{StaticResource StageValue}"/>
+      </StackPanel>
+      <StackPanel Margin="0,0,0,18">
+       <TextBlock Text="02  工位准备" Style="{StaticResource StageCaption}"/>
+       <TextBlock Text="{Binding StationReadiness}" Style="{StaticResource StageValue}"/>
+      </StackPanel>
+      <StackPanel Margin="0,0,0,18">
+       <TextBlock Text="03  实体 START" Style="{StaticResource StageCaption}"/>
+       <TextBlock Text="{Binding PhysicalStartStatus}" Style="{StaticResource StageValue}"/>
+      </StackPanel>
+      <StackPanel Margin="0,0,0,18">
+       <TextBlock Text="04  ECU 烧录" Style="{StaticResource StageCaption}"/>
+       <TextBlock Text="{Binding OperatorFlashState}" Style="{StaticResource StageValue}"/>
+      </StackPanel>
+      <StackPanel Margin="0,0,0,18">
+       <TextBlock Text="05  自动 TEST" Style="{StaticResource StageCaption}"/>
+       <TextBlock Text="{Binding OperatorRunState}" Style="{StaticResource StageValue}"/>
+      </StackPanel>
+      <StackPanel Margin="0,0,0,10">
+       <TextBlock Text="06  记录归档" Style="{StaticResource StageCaption}"/>
+       <TextBlock Text="{Binding OperatorRecordState}" Style="{StaticResource StageValue}"/>
+      </StackPanel>
+     </StackPanel>
+    </ScrollViewer>
+   </Border>
+   <Border Grid.Column="2" Style="{StaticResource PanelCard}">
     <Grid>
      <Grid.RowDefinitions><RowDefinition Height="52"/><RowDefinition Height="42"/><RowDefinition Height="*"/></Grid.RowDefinitions>
      <DockPanel Margin="15,0">
@@ -141,7 +182,7 @@
      </Border>
     </Grid>
    </Border>
-   <Border Grid.Column="2" Style="{StaticResource PanelCard}">
+   <Border Grid.Column="4" Style="{StaticResource PanelCard}">
     <Grid><Grid.RowDefinitions><RowDefinition Height="52"/><RowDefinition Height="*"/></Grid.RowDefinitions>
      <Border BorderBrush="#CBD5E1" BorderThickness="0,0,0,1" Padding="15,0"><TextBlock Text="检测状态与结果" FontSize="19" FontWeight="Bold" VerticalAlignment="Center"/></Border>
      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
