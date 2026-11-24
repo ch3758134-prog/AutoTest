@@ -125,6 +125,7 @@ public sealed partial class WaveWorkbenchViewModel
     private bool _pausedDisplay;
     private int _windowSeconds = 10;
     private double _viewOffsetSeconds;
+    private bool _historyStepStyle;
     private WaveSignalTrack? _selectedTrack;
     private WaveSessionItem? _selectedSession;
     private readonly List<WaveSeries> _sessionSeries = new();
@@ -241,14 +242,24 @@ public sealed partial class WaveWorkbenchViewModel
         private set => SetProperty(ref _comparisonSummary, value);
     }
     public string DisplayMode => IsLiveView ? "实时观察" : "历史分析";
+    public bool HistoryStepStyle
+    {
+        get => _historyStepStyle;
+        set { if (SetProperty(ref _historyStepStyle, value)) NotifyChartChanged(); }
+    }
     public string DataQuality => _series is null ? "暂无已打开的历史记录" :
         DescribeQuality(_series);
     private static string DescribeQuality(WaveSeries series)
     {
         var q = WaveTimeQuality.Describe(series);
-        return (q.CanJudge ? "数据质量合格" : "数据质量待处理：" + q.Code) +
-            " · " + series.Samples.Length + " 样本 · 时间源：" + q.Source +
-            " · 时间质量：" + q.Quality;
+        var time = series.Origin.Quality switch
+        {
+            TimeQuality.SynchronizedHardware => "硬件同步时间",
+            TimeQuality.HostArrivalOnly => "主机接收时间（不保证精密时序）",
+            _ => "时间质量：" + series.Origin.Quality
+        };
+        return (q.CanJudge ? "样本完整性通过" : "数据质量待处理：" + q.Code) +
+            " · " + series.Samples.Length + " 样本 · " + time;
     }
 
     private void InitializeWorkspace()
@@ -324,7 +335,7 @@ public sealed partial class WaveWorkbenchViewModel
                 var points = WaveChartAnalysis.FromSeries(s).Select(p =>
                     new WaveChartPoint(p.Seconds + offset, p.Value)).ToArray();
                 return new WavePlotLane(s.Signal.SignalName, s.Signal.Unit,
-                    TraceColors[i % TraceColors.Length], points, null, null, false,
+                    TraceColors[i % TraceColors.Length], points, null, null, HistoryStepStyle,
                     DescribeQuality(s));
             }).ToArray();
         }
@@ -337,7 +348,7 @@ public sealed partial class WaveWorkbenchViewModel
             _comparison is null ? null :
                 double.TryParse(AbsoluteToleranceText, NumberStyles.Float,
                     CultureInfo.InvariantCulture, out var tol) ? tol : null,
-            false, DataQuality)];
+            HistoryStepStyle, DataQuality)];
     }
 
     public (double Min, double Max)? VisibleTimeBounds(IReadOnlyList<WavePlotLane> lanes)
