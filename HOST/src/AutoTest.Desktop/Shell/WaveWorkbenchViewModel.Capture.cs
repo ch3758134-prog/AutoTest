@@ -264,7 +264,7 @@ public sealed partial class WaveWorkbenchViewModel
     {
         if (_closed || IsObserving || IsCapturing) return;
         var version = Interlocked.Increment(ref _signalRefreshVersion);
-        var project = _project.Current;
+        var project = IsIndependentArchive ? null : _project.Current;
         if (project is null)
         {
             AvailableSignals.Clear();
@@ -311,9 +311,11 @@ public sealed partial class WaveWorkbenchViewModel
     {
         if (_closed || IsObserving) return IsObserving;
         if (_realTest.IsRunning || !_hardware.IsConnected ||
-            _project.Current is null || Tracks.Count == 0)
+            _project.Current is null || IsIndependentArchive || Tracks.Count == 0)
         {
-            Status = "请打开工程、连接主控并选择 DBC 信号；自动 TEST 运行时不能重置信号流。";
+            Status = IsIndependentArchive
+                ? "独立波形目录支持真实历史分析；实时观察需要切回工程并选择带版本指纹的 DBC 信号。"
+                : "请打开工程、连接主控并选择 DBC 信号；自动 TEST 运行时不能重置信号流。";
             return false;
         }
         try
@@ -406,7 +408,7 @@ public sealed partial class WaveWorkbenchViewModel
     {
         if (_closed || IsCapturing || Tracks.Count == 0) return;
         if (!IsObserving && !await StartObservationAsync()) return;
-        if (_project.Current is not { } project || !_hardware.IsConnected) return;
+        if (IsIndependentArchive || _project.Current is not { } project || !_hardware.IsConnected) return;
         try
         {
             var root = Path.Combine(project.RootDirectory, "wave-records");
@@ -526,20 +528,20 @@ public sealed partial class WaveWorkbenchViewModel
     {
         if (_closed || IsCapturing || _savingReference || _series is null ||
             Selected is not { IsReference: false, Kind: "Capture" } ||
-            string.IsNullOrWhiteSpace(ReferenceName) ||
-            _project.Current is not { } project) return;
+            string.IsNullOrWhiteSpace(ReferenceName) || WaveSourceRoot is null) return;
         var selected = Selected;
         var series = _series;
         var name = ReferenceName.Trim();
+        var root = WaveSourceRoot!;
+        var sourceIdentity = WaveSourceIdentity;
         _savingReference = true;
         SaveReferenceCommand.RaiseCanExecuteChanged();
         Status = "正在检查时间质量并保存真实参考波形…";
         try
         {
             var saved = await Task.Run(() =>
-                new WaveReferenceCatalog(Path.Combine(project.RootDirectory,
-                    "wave-records", "references")).Save(name, series));
-            if (_closed || _project.Current?.ManifestPath != project.ManifestPath) return;
+                new WaveReferenceCatalog(Path.Combine(root, "references")).Save(name, series));
+            if (_closed || WaveSourceIdentity != sourceIdentity) return;
             Status = "已保存真实参考波形：" + saved.Name +
                 "。不会自动成为生产测试标准。";
             if (Selected == selected && ReferenceName.Trim() == name)
