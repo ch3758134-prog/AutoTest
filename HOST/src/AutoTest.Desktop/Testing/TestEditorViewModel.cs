@@ -975,6 +975,8 @@ public sealed class TestEditorViewModel : BindableBase
     private async Task RunCurrentCaseInteractiveAsync()
     {
         if (IsBusy || IsDirty || HasNewStepDraft || !CanProceed()) return;
+        await SynchronizeSavedRevisionAsync();
+        if (IsBusy || IsDirty || _workspace.Current?.Definition.Assets.SingleOrDefault(a => a.Id == _session.AssetId)?.Revision != _session.AssetRevision) return;
         bool needsPreparation = _preparedRunDocument is null || _preparedStepId is not null ||
             _preparedStationEpoch != _realTest.ConnectedStationEpoch ||
             _preparedDutIdentity != DutIdentity;
@@ -999,6 +1001,10 @@ public sealed class TestEditorViewModel : BindableBase
     private async Task RunSelectedStepInteractiveAsync()
     {
         if (IsBusy || IsDirty || HasNewStepDraft || !CanProceed()) return;
+        var selected = SelectedItem?.Step?.Id;
+        await SynchronizeSavedRevisionAsync();
+        if (IsBusy || IsDirty || _workspace.Current?.Definition.Assets.SingleOrDefault(a => a.Id == _session.AssetId)?.Revision != _session.AssetRevision) return;
+        if (selected is not null && SelectedItem?.Step?.Id != selected) { StatusMessage = "用例已更新，请重新选择运行步骤。"; return; }
         if (SelectedItem?.Step is not { } step) return;
         if (!_realTest.IsHardwareConnected || _realTest.ConnectedStationEpoch <= 0)
         {
@@ -1409,6 +1415,21 @@ public sealed class TestEditorViewModel : BindableBase
         }
         catch (Exception e) when (IsEditorError(e)) { StatusMessage = "保存失败：" + e.Message; _dialogs.ShowError(StatusMessage); }
         finally { IsBusy = false; }
+    }
+
+    public async Task SynchronizeSavedRevisionAsync()
+    {
+        if (IsBusy || !CanProceed() || HasNewStepDraft) return;
+        var context = _workspace.Current;
+        var asset = context?.Definition.Assets.FirstOrDefault(a => a.Id == _session.AssetId);
+        if (asset is null || context!.Definition.Id != _session.ProjectId ||
+            asset.Revision == _session.AssetRevision) return;
+        if (IsDirty)
+        {
+            StatusMessage = "当前用例磁盘修订已变化，草稿仍保留；请先核对后重新加载，禁止覆盖新版本。";
+            return;
+        }
+        await ReloadAsync();
     }
 
     private async Task ReloadAsync()
