@@ -138,11 +138,34 @@
             TextTrimming="CharacterEllipsis"/>
            <TextBlock Text="{Binding Latest}" FontSize="19" FontWeight="Bold"
             Foreground="#1D4B76" Margin="0,5,0,2"/>
-           <TextBlock Text="{Binding State}" FontSize="12" Foreground="#7C4A14"/>
+           <TextBlock Text="{Binding State}" FontSize="12">
+            <TextBlock.Style><Style TargetType="TextBlock">
+             <Setter Property="Foreground" Value="#946000"/>
+             <Style.Triggers>
+              <DataTrigger Binding="{Binding State}" Value="接收正常">
+               <Setter Property="Foreground" Value="#17633B"/>
+              </DataTrigger>
+              <DataTrigger Binding="{Binding State}" Value="时间序列异常">
+               <Setter Property="Foreground" Value="#B42318"/>
+               <Setter Property="FontWeight" Value="Bold"/>
+              </DataTrigger>
+              <DataTrigger Binding="{Binding State}" Value="曾出现数据缺口">
+               <Setter Property="Foreground" Value="#B42318"/>
+              </DataTrigger>
+             </Style.Triggers>
+            </Style></TextBlock.Style>
+           </TextBlock>
+           <TextBlock Text="{Binding ClockLabel}" FontSize="11"
+            Foreground="#52677D" Margin="0,3,0,0" TextWrapping="Wrap"/>
+           <TextBlock Text="{Binding Received,StringFormat='样本 {0}'}"
+            FontSize="11" Foreground="#52677D" Margin="0,2,0,0"/>
           </StackPanel>
           <StackPanel Grid.Column="2" VerticalAlignment="Top">
            <CheckBox Content="显示" IsChecked="{Binding Visible,Mode=TwoWay}"
-            FontSize="12" Margin="0,1,0,9"/>
+            FontSize="12" Margin="0,1,0,7"/>
+           <CheckBox Content="阶梯" IsChecked="{Binding StepStyle,Mode=TwoWay}"
+            FontSize="12" Margin="0,0,0,7"
+            ToolTip="离散/枚举状态建议阶梯显示；不修改实际采集证据"/>
            <Button Content="移除" FontSize="12" Padding="4,4"
             Command="{Binding DataContext.RemoveTrackCommand,RelativeSource={RelativeSource AncestorType=Window}}"
             CommandParameter="{Binding}" ToolTip="停止观察后可编辑信号集合"/>
@@ -189,7 +212,11 @@
          <StackPanel Margin="6,8">
           <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13"/>
           <TextBlock Text="{Binding Signal.SignalName}" FontSize="12"
-           Foreground="#52677D" Margin="0,3,0,0"/>
+           Foreground="#52677D" Margin="0,3,0,4"/>
+          <Button Content="查看波形" Padding="6,4" FontSize="12"
+           Command="{Binding DataContext.ViewReferenceCommand,RelativeSource={RelativeSource AncestorType=Window}}"
+           CommandParameter="{Binding}"
+           ToolTip="打开此参考波形；选择实际记录后可进行叠加比较"/>
          </StackPanel>
         </DataTemplate></ListBox.ItemTemplate>
        </ListBox>
@@ -263,7 +290,22 @@
          Style="{StaticResource WaveButton}"/>
        </WrapPanel>
        <TextBlock Text="{Binding ComparisonSummary}" FontSize="13" FontWeight="SemiBold"
-        Foreground="#35536F" Margin="0,7,0,0" TextWrapping="Wrap"/>
+        Margin="0,7,0,0" TextWrapping="Wrap">
+        <TextBlock.Style><Style TargetType="TextBlock">
+         <Setter Property="Foreground" Value="#35536F"/>
+         <Style.Triggers>
+          <DataTrigger Binding="{Binding ComparisonTone}" Value="Pass">
+           <Setter Property="Foreground" Value="#17633B"/>
+          </DataTrigger>
+          <DataTrigger Binding="{Binding ComparisonTone}" Value="Fail">
+           <Setter Property="Foreground" Value="#B42318"/>
+          </DataTrigger>
+          <DataTrigger Binding="{Binding ComparisonTone}" Value="Warning">
+           <Setter Property="Foreground" Value="#9A5600"/>
+          </DataTrigger>
+         </Style.Triggers>
+        </Style></TextBlock.Style>
+       </TextBlock>
        <TextBlock Text="比较只供独立分析；正式 PASS/FAIL 由 TEST 使用已保存的判定条件执行。"
         Foreground="#61758A" FontSize="12" Margin="0,5,0,0"/>
       </StackPanel>
