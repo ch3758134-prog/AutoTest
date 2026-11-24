@@ -87,6 +87,13 @@ public sealed class StepEditTransaction
     public void Copy(StepId id, TestPhase targetPhase, StepId? parent, string? slot, int index) =>
         Insert(targetPhase, parent, slot, index,
             Current.Walk().First(x => x.Id == id).CloneNewIds());
+    public void ReplaceMappings(System.Collections.Immutable.ImmutableArray<TestTargetMapping> mappings)
+    {
+        var errors = TestTargetMappings.Validate(mappings);
+        if (errors.Length > 0) throw new ArgumentException(string.Join("；", errors));
+        if (!Current.Mappings.SequenceEqual(mappings)) Apply(Current with { Mappings = mappings });
+    }
+
     public void UpsertMapping(TestTargetMapping mapping)
     {
         mapping.Validate();
