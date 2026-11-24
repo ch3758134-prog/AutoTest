@@ -132,8 +132,8 @@ public sealed partial class ProjectWorkspaceService
                     .SelectMany(m => m.Signals).Where(s => s.Name == cfg.SignalName && s.Unit == cfg.Unit).Count();
                 if (matches != 1)
                     throw new ProjectDataException("DBC_WAVE_SIGNAL", "DBC 修改会使波形信号失效：" + asset.Name);
-                var next = cfg with { DbcAssetRevision = pin.Revision, DbcAssetFingerprint = pin.Sha256 };
-                Stage(asset, ProjectConfigurationCodec.Encode(asset.Kind, next));
+                var updatedWaveSettings = cfg with { DbcAssetRevision = pin.Revision, DbcAssetFingerprint = pin.Sha256 };
+                Stage(asset, ProjectConfigurationCodec.Encode(asset.Kind, updatedWaveSettings));
             }
         }
 
