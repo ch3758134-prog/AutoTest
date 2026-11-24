@@ -5,6 +5,8 @@ using System.Windows;
 using AutoTest.Core;
 using AutoTest.Desktop.Projects;
 using AutoTest.Desktop.Testing;
+using AutoTest.Desktop.Hardware;
+using AutoTest.Projects.Resources;
 using AutoTest.Testing.Authoring;
 using AutoTest.Testing.Runtime;
 using Prism.Commands;
@@ -28,7 +30,7 @@ public sealed partial class AutomaticTestHomeViewModel
     private string _operatorCurrentStep = "—";
     private string _operatorRunEvidence = "";
     private Guid _operatorRunId;
-    private bool _lastOperatorRunSucceeded;
+    private Task? _operatorExecutionTask;
 
     public DelegateCommand StartOperatorVerificationCommand { get; private set; } = null!;
     public DelegateCommand StopOperatorVerificationCommand { get; private set; } = null!;
@@ -77,7 +79,11 @@ public sealed partial class AutomaticTestHomeViewModel
     {
         _operatorEngine = engine;
         StartOperatorVerificationCommand = new DelegateCommand(
-            async () => await StartOperatorVerificationAsync(),
+            async () =>
+            {
+                _operatorExecutionTask = StartOperatorVerificationAsync();
+                await _operatorExecutionTask;
+            },
             () => CanStartOperatorVerification);
         StopOperatorVerificationCommand = new DelegateCommand(() =>
         {
@@ -112,7 +118,8 @@ public sealed partial class AutomaticTestHomeViewModel
         {
             if (!IsOperatorRunning) return;
             if (fact.Status is not RealStepStatus.Completed && OperatorEvents.Count < 1000)
-                AddOperatorEvent("步骤 · " + fact.Status + " · " + fact.Name);
+                AddOperatorEvent("步骤 · " + fact.Type + " · " + fact.Status +
+                    " · " + fact.Detail);
         });
 
     private void AddOperatorEvent(string line)
@@ -129,7 +136,7 @@ public sealed partial class AutomaticTestHomeViewModel
 
     private static async Task ApplyStationActionsAsync(
         IReadOnlyList<InspectionStationAction> actions,
-        Hardware.HardwareConnectionService hardware, CancellationToken ct)
+        HardwareConnectionService hardware, CancellationToken ct)
     {
         foreach (var action in actions)
         {
@@ -167,7 +174,8 @@ public sealed partial class AutomaticTestHomeViewModel
         string Verdict, string ReportFile);
     private sealed record RealOperatorRunReceipt(Guid VerificationId, string Mode,
         DateTimeOffset StartedUtc, DateTimeOffset? EndedUtc,
-        string DutSerial, string ProjectPath, string PreparationFingerprint,
+        string DutSerial, Guid ScanObservation, string ScanRuleSha256,
+        string ScannerPort, string ProjectPath, string PreparationFingerprint,
         string FirmwareSha256, string UsbIdentity, long UsbEpoch,
         string FlashState, IReadOnlyList<RealOperatorCaseEvidence> Cases,
         string Outcome, string? Error);
@@ -214,7 +222,6 @@ public sealed partial class AutomaticTestHomeViewModel
         var outcome = "未完成";
         string? failure = null;
         _operatorRunId = Guid.NewGuid();
-        _lastOperatorRunSucceeded = false;
         _operatorStop = new CancellationTokenSource();
         var ct = _operatorStop.Token;
         OperatorEvents.Clear();
@@ -222,14 +229,15 @@ public sealed partial class AutomaticTestHomeViewModel
         OperatorCurrentStep = "—";
         IsOperatorRunning = true;
         for (var i = 0; i < Cases.Count; i++) ChangeCaseState(i, "未执行");
-        var postActionsAttempted = false;
+        int activeCaseIndex = -1;
 
         void Snapshot()
         {
             SaveOperatorReceipt(opened.RootDirectory, new RealOperatorRunReceipt(
                 _operatorRunId, "ENGINEERING_VERIFICATION_NOT_PRODUCTION_RELEASE",
                 started, outcome == "执行中" ? null : DateTimeOffset.UtcNow,
-                scan.DutSerial, opened.ManifestPath, frozen.PreparationFingerprint,
+                scan.DutSerial, scan.ObservationId, scan.RuleSha256,
+                scan.ScannerPort, opened.ManifestPath, frozen.PreparationFingerprint,
                 frozen.FirmwareSha256, _hardware.ConnectedDeviceIdentity ?? "UNKNOWN",
                 sessionEpoch, flashState, results.ToArray(), outcome, failure));
         }
@@ -289,6 +297,7 @@ public sealed partial class AutomaticTestHomeViewModel
                 if (_hardware.CurrentStationEpoch != sessionEpoch || !_hardware.IsConnected)
                     throw new IOException("主控 USB 会话切换，不能继续使用本次烧录结果。");
                 var item = programs.Cases[i];
+                activeCaseIndex = i;
                 OperatorCurrentCase = (i + 1) + "/" + programs.Cases.Count +
                     " · " + item.Entry.DisplayName;
                 OperatorCurrentStep = "正在准备...";
@@ -317,7 +326,6 @@ public sealed partial class AutomaticTestHomeViewModel
                         "，不会执行后续用例或发布生产结果。");
             }
             outcome = "工程整组真实实测完成（不构成生产放行）";
-            _lastOperatorRunSucceeded = true;
             OperatorRunState = outcome;
             AddOperatorEvent(outcome);
         }
@@ -339,7 +347,6 @@ public sealed partial class AutomaticTestHomeViewModel
         {
             try
             {
-                postActionsAttempted = true;
                 OperatorRunState += " · 工位收尾";
                 using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(12));
                 await ApplyStationActionsAsync(
@@ -348,13 +355,16 @@ public sealed partial class AutomaticTestHomeViewModel
             }
             catch (Exception error)
             {
-                _lastOperatorRunSucceeded = false;
-                outcome = "收尾异常 · 不可作为合格结果";
+                        outcome = "收尾异常 · 不可作为合格结果";
                 failure = (failure is null ? "" : failure + "；") +
                     "收尾动作失败：" + error.Message;
                 OperatorRunState = outcome;
                 AddOperatorEvent(failure);
             }
+            if (activeCaseIndex >= 0 && activeCaseIndex < Cases.Count &&
+                Cases[activeCaseIndex].State == "执行中")
+                ChangeCaseState(activeCaseIndex, outcome == "操作员停止；实体状态待核查"
+                    ? "已停止" : "执行异常");
             try
             {
                 Snapshot();
@@ -364,8 +374,7 @@ public sealed partial class AutomaticTestHomeViewModel
             }
             catch (Exception error)
             {
-                _lastOperatorRunSucceeded = false;
-                OperatorRunState = "记录保存失败；结果不可放行";
+                        OperatorRunState = "记录保存失败；结果不可放行";
                 AddOperatorEvent("本次真实运行汇总未能归档：" + error.Message);
             }
             _operatorStop?.Dispose();
@@ -374,6 +383,14 @@ public sealed partial class AutomaticTestHomeViewModel
             RefreshOperatorCommands();
             StartRequestStatus = OperatorRunState + "；正式生产放行仍需实体 START 与生产 RECORD 集成。";
         }
+    }
+
+    public async Task StopOperatorForShutdownAsync()
+    {
+        _operatorStop?.Cancel();
+        _operatorEngine.RequestStop();
+        if (_operatorExecutionTask is { IsCompleted: false } running)
+            await running.WaitAsync(TimeSpan.FromSeconds(30));
     }
 
     private void DisposeOperatorExecution()
