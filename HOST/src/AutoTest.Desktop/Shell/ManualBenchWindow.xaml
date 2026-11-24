@@ -320,7 +320,7 @@
         <Button DockPanel.Dock="Right" Content="保存修改"
          Command="{Binding SaveKeyActionsCommand}" Padding="8,5" Margin="5,0,0,0"
          ToolTip="成功保存后，快捷按钮才会使用新版本；未保存修改不会影响旧按钮"/>
-        <TextBlock Text="快捷动作" FontSize="15" FontWeight="SemiBold"
+        <TextBlock Text="按键动作" FontSize="15" FontWeight="SemiBold"
          Foreground="#254D70" VerticalAlignment="Center"/>
        </DockPanel>
        <Grid Margin="0,0,5,5">
@@ -336,7 +336,7 @@
        <DockPanel Margin="0,0,6,8">
         <TextBlock Text="{Binding KeyPadCountLabel}" Foreground="#596D81"
          FontSize="12" VerticalAlignment="Center"/>
-        <TextBlock DockPanel.Dock="Right" Text="点整个按钮执行 · 右键管理"
+        <TextBlock DockPanel.Dock="Right" Text="单击执行 · 双击编辑"
          Foreground="#596D81" FontSize="11" HorizontalAlignment="Right"/>
        </DockPanel>
        <ItemsControl ItemsSource="{Binding VisibleKeyPads}" Margin="0,0,0,4">
@@ -347,9 +347,10 @@
          <DataTemplate>
           <Button Style="{StaticResource BenchKeyActionPad}"
            Tag="{Binding}"
-           Command="{Binding DataContext.PressKeyPadCommand,RelativeSource={RelativeSource AncestorType=Window}}"
-           CommandParameter="{Binding}"
-           ToolTip="{Binding Name}">
+           Click="KeyPad_Click"
+            PreviewMouseLeftButtonDown="KeyPad_PreviewMouseLeftButtonDown"
+            PreviewMouseRightButtonDown="KeyPad_PreviewMouseRightButtonDown"
+            ToolTip="单击执行 · 双击编辑 · 右键更多操作">
            <Button.ContextMenu>
             <ContextMenu DataContext="{Binding PlacementTarget.DataContext,RelativeSource={RelativeSource Self}}">
              <MenuItem Header="编辑动作…" Tag="{Binding}" Click="EditKeyPad_Click"/>
@@ -394,7 +395,7 @@
          </DockPanel>
          <TextBlock Text="{Binding KeyActionRunStatus}" TextWrapping="Wrap"
           FontSize="12" Foreground="#425A73" ToolTip="{Binding KeyActionRunStatus}"/>
-         <TextBlock Text="按钮完成不代表 KEY 已释放；保持状态以上方主控 ACK 为准。"
+         <TextBlock Text="动作结束不自动断开 KEY"
           FontSize="11" Foreground="#875C24" TextWrapping="Wrap" Margin="0,5,0,0"/>
         </StackPanel>
        </Border>
