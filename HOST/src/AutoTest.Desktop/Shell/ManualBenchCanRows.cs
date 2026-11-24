@@ -23,7 +23,6 @@ public sealed partial class ManualBenchViewModel
         private string _name;
         private string _idHex = "701", _dataHex = "00 00 00 00 00 00 00 00", _periodText = "100", _result = "待发送";
         private bool _included = true, _extended, _periodic, _useDbc;
-        private bool _lockedToAuthorizedBatch;
         private bool _batchInProgress;
         private DbcChoice? _dbcChoice;
         private int _sent;
@@ -94,7 +93,6 @@ public sealed partial class ManualBenchViewModel
         public void SetBatchMembership(bool running, bool authorized)
         {
             _batchInProgress = running;
-            _lockedToAuthorizedBatch = authorized;
             RaisePropertyChanged(nameof(CanToggleIncluded));
             RaisePropertyChanged(nameof(CanEditFields));
             RaisePropertyChanged(nameof(IsTransmitting));
@@ -358,7 +356,16 @@ public sealed partial class ManualBenchViewModel
         public string DataSummary => "DATA " + DataHex.Trim() +
             (UseDbc && DbcMessage is not null
                 ? " · DBC " + DbcMessage.DisplayNames.MessageLabel(DbcMessage.Message) : "");
-        public string Result { get => _result; set => SetProperty(ref _result, value); }
+        public bool IsSendFault => _result.StartsWith("异常停止", StringComparison.Ordinal) ||
+            _result.StartsWith("撤销发送授权失败", StringComparison.Ordinal);
+        public string Result
+        {
+            get => _result;
+            set
+            {
+                if (SetProperty(ref _result, value)) RaisePropertyChanged(nameof(IsSendFault));
+            }
+        }
         public int Sent { get => _sent; set => SetProperty(ref _sent, value); }
         private void Notify()
         {
@@ -722,6 +729,10 @@ public sealed partial class ManualBenchViewModel
             await _hardware.SendManualBenchCanOnceAsync(frame);
             row.Sent++;
             row.Result = "单发完成 · USB ACK";
+            Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"),
+                "ECU CAN", "TX ACK", "0x" + frame.Id.ToString("X"),
+                Convert.ToHexString(frame.Data.AsSpan()),
+                row.Name + "：主控 ACK，不代表 DUT 收到"));
             return;
         }
         var token = await _hardware.AuthorizeManualCanRowAsync(frame);

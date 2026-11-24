@@ -205,6 +205,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     }
 
     public bool IsConnected => _hardware.IsConnected;
+    public string ConnectionActionLabel => IsConnected ? "断开 USB" : "连接 USB";
     public string ConnectionStatus => IsConnected
         ? "USB 已连接 · G" + _hardware.CurrentStationEpoch + " · " +
           (_hardware.ConnectedDeviceIdentity ?? "设备身份未返回") +
@@ -427,6 +428,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
             LastIgnAck = "未知：连接已改变，原状态不可继承";
             RaisePropertyChanged(nameof(IsConnected));
             RaisePropertyChanged(nameof(ConnectionStatus));
+            RaisePropertyChanged(nameof(ConnectionActionLabel));
             RaisePropertyChanged(nameof(CanSendHardware));
             RaiseCommands();
         }));
@@ -530,6 +532,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
             await _hardware.ConnectAsync();
         }
         RaisePropertyChanged(nameof(ConnectionStatus));
+        RaisePropertyChanged(nameof(ConnectionActionLabel));
     });
 
     public async Task ReloadResourcesAsync()

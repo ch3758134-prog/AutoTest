@@ -43,7 +43,7 @@
 
   <Border Grid.Row="0" Background="White" BorderBrush="#E0E5E5" BorderThickness="0,0,0,1">
    <DockPanel Margin="15,10" LastChildFill="True">
-    <Button DockPanel.Dock="Right" Content="连接 / 断开" Command="{Binding ConnectCommand}"
+    <Button DockPanel.Dock="Right" Content="{Binding ConnectionActionLabel}" Command="{Binding ConnectCommand}"
      Style="{StaticResource AtPrimaryButton}" Padding="15,8" Margin="9,0,0,0"/>
     <Button DockPanel.Dock="Right" Content="刷新资源" Command="{Binding ReloadProfilesCommand}"
      Padding="12,7" Margin="9,0,0,0"/>
@@ -173,7 +173,20 @@
          <DataGridTemplateColumn.CellTemplate><DataTemplate>
           <StackPanel VerticalAlignment="Center" ToolTip="{Binding Result}">
            <TextBlock Text="{Binding ModeLabel}" FontSize="12"/>
-           <TextBlock Text="{Binding Result}" FontSize="10" Foreground="#627C9D" TextTrimming="CharacterEllipsis"/>
+           <TextBlock Text="{Binding Result}" FontSize="12" TextTrimming="CharacterEllipsis">
+            <TextBlock.Style><Style TargetType="TextBlock">
+             <Setter Property="Foreground" Value="#43566B"/>
+             <Style.Triggers>
+              <DataTrigger Binding="{Binding IsTransmitting}" Value="True">
+               <Setter Property="Foreground" Value="#17633B"/>
+              </DataTrigger>
+              <DataTrigger Binding="{Binding IsSendFault}" Value="True">
+               <Setter Property="Foreground" Value="#B42318"/>
+               <Setter Property="FontWeight" Value="Bold"/>
+              </DataTrigger>
+             </Style.Triggers>
+            </Style></TextBlock.Style>
+           </TextBlock>
           </StackPanel>
          </DataTemplate></DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
