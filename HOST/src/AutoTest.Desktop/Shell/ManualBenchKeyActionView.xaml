@@ -39,8 +39,10 @@
   </Grid.RowDefinitions>
   <StackPanel Grid.Row="0" Margin="0,0,0,12">
    <TextBlock Text="KEY 动作 · 完整属性" FontSize="19" FontWeight="SemiBold"/>
-   <TextBlock Text="20 路 KEY 组合与每段保持时间；编辑只修改工程动作库，不会触发硬件输出。"
-    Foreground="#627C9D" FontSize="12" Margin="0,5,0,0"/>
+   <TextBlock Text="KEY_SIM：发送组合 → 等待所设时间 → 进入下一段。时间结束不会自动释放最后组合。"
+    Foreground="#485B6B" FontSize="13" TextWrapping="Wrap" Margin="0,5,0,0"/>
+   <TextBlock Text="纯等待不发送 KEY 命令；全部断开必须明确选择零组合或点击“实际全部断开”。"
+    Foreground="#99600C" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"/>
   </StackPanel>
   <Border Grid.Row="1" Background="White" BorderBrush="#E0E5E5"
    BorderThickness="1" CornerRadius="8" Padding="15">
@@ -63,7 +65,9 @@
     <TextBox Text="{Binding SelectedKeyAction.Name,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
      IsEnabled="{Binding CanEditKeyActions}" Padding="7,5"/>
     <DockPanel Margin="0,10,0,6">
-     <Button DockPanel.Dock="Right" Content="+ 步骤" Command="{Binding AddKeyStepCommand}" Padding="8,5" Margin="5,0,0,0"/>
+     <Button DockPanel.Dock="Right" Content="+ KEY 组合" Command="{Binding AddKeyStepCommand}" Padding="8,5" Margin="5,0,0,0"/>
+     <Button DockPanel.Dock="Right" Content="+ 纯等待" Command="{Binding AddWaitOnlyStepCommand}" Padding="8,5" Margin="5,0,0,0"
+      ToolTip="增加一个仅计时、不向 KEY CAN 发送任何报文的独立等待段"/>
      <Button DockPanel.Dock="Right" Content="复制" Command="{Binding CopyKeyStepCommand}" Padding="8,5" Margin="5,0,0,0"/>
      <Button DockPanel.Dock="Right" Content="删除" Command="{Binding DeleteKeyStepCommand}" Padding="8,5" Margin="5,0,0,0"/>
      <Button DockPanel.Dock="Right" Content="↑" Command="{Binding MoveKeyStepUpCommand}" Padding="8,5" Margin="5,0,0,0"/>
@@ -83,7 +87,7 @@
         <TextBlock Text="{Binding Summary}" VerticalAlignment="Center" TextWrapping="Wrap"
          ToolTip="{Binding Summary}" Foreground="#355579" FontSize="11"/>
         <TextBox Grid.Column="1" Text="{Binding HoldMsText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-         ToolTip="保持时间（ms）" Padding="5,3" VerticalAlignment="Center" MinHeight="28"
+         ToolTip="本段等待时间（ms）：到时进入下一段，不会自动释放 KEY" Padding="5,3" VerticalAlignment="Center" MinHeight="28"
          IsEnabled="{Binding DataContext.CanEditKeyActions,RelativeSource={RelativeSource AncestorType=ListBox}}"/>
         <TextBlock Grid.Column="2" Text="ms" Margin="3,0,0,0" VerticalAlignment="Center" FontSize="10"/>
        </Grid>
@@ -93,9 +97,13 @@
     <Border Background="#F7FAFE" BorderBrush="#DDE8F5" BorderThickness="1"
      CornerRadius="6" Padding="9" Margin="0,9,0,0">
      <StackPanel IsEnabled="{Binding CanEditKeyActions}">
-      <TextBlock Text="KEY 组合" Foreground="#3478D6"
+      <TextBlock Text="KEY 组合（请求保持，非脉冲）" Foreground="#295A81"
        FontWeight="SemiBold" Margin="0,0,0,6"/>
-      <WrapPanel Margin="0,0,0,5">
+      <CheckBox Content="仅等待（不修改当前按键状态、不发送 KEY CAN）"
+       IsChecked="{Binding SelectedKeyStep.WaitOnly,Mode=TwoWay}"
+       Margin="0,0,0,8" FontSize="13"
+       ToolTip="纯等待会保留此前最后一次 KEY 组合请求；与 20 Key 全部不选的“全部断开”不同"/>
+      <WrapPanel Margin="0,0,0,5" IsEnabled="{Binding SelectedKeyStep.CanChangeKeys}">
        <Button Content="清空" Command="{Binding ClearStepKeysCommand}" Padding="7,5" Margin="0,0,5,5"/>
        <Button Content="反选" Command="{Binding InvertStepKeysCommand}" Padding="7,5" Margin="0,0,5,5"/>
        <Button Content="复制上一段" Command="{Binding CopyPreviousStepKeysCommand}" Padding="7,5" Margin="0,0,5,5"/>
@@ -103,7 +111,7 @@
       <TextBlock Text="{Binding SelectedKeyStep.Summary}" Foreground="#516D87"
        TextWrapping="Wrap" FontSize="11" Margin="0,0,0,5"/>
 
-      <ItemsControl ItemsSource="{Binding StepKeys}">
+      <ItemsControl ItemsSource="{Binding StepKeys}" IsEnabled="{Binding SelectedKeyStep.CanChangeKeys}">
        <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="10"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
        <ItemsControl.ItemTemplate>
         <DataTemplate>
@@ -124,7 +132,11 @@
      Foreground="#3478D6" VerticalAlignment="Center"/>
    </DockPanel>
    <TextBlock Text="{Binding KeyActionRunStatus}" Style="{StaticResource BenchHint}"
-    ToolTip="{Binding KeyActionRunStatus}" TextTrimming="CharacterEllipsis" MaxHeight="21" Margin="0,5,0,0"/>
+    ToolTip="{Binding KeyActionRunStatus}" TextWrapping="Wrap" MaxHeight="84" Margin="0,5,0,5"/>
+   <TextBlock Text="{Binding KeyRequestStatus}" Foreground="#995400" FontSize="12"
+    TextWrapping="Wrap" Margin="0,0,0,7" ToolTip="主控 ACK 只能确认最后一次请求，不是电阻网络五路电压测量"/>
+   <Button Content="实际全部断开 KEY" Command="{Binding ReleaseAllKeysCommand}" Padding="10,7"
+    HorizontalAlignment="Left" ToolTip="明确向 KEY CAN 发送全部断开请求；不同于清空编辑勾选，必须主控 USB 连接且不在运行任务中"/>
   </StackPanel>
     </StackPanel>
    </ScrollViewer>
