@@ -1678,21 +1678,46 @@ public sealed partial class MainWindowViewModel : BindableBase
         });
     }
 
+    /// <summary>
+    /// The ordinary "new case" action always adds the new definition to the
+    /// ECU project's single ordered TEST project. Standalone definitions are
+    /// an internal resource concept, never an extra setup step for users.
+    /// </summary>
     private async Task CreateTestProgramAsync()
     {
-        if (!HasProject) return;
-        var name = _fileDialogs.AskResourceName("新建测试程序", "新建测试程序");
-        if (name is null) return;
+        if (!HasProject || IsBusy) return;
+        var project = _workspace.Current!.Definition.Assets.FirstOrDefault(a =>
+            a.Kind == ProjectWorkspaceService.TestProjectKind);
+        if (project is null)
+        {
+            await CreateStarterProjectAsync(useDefaultName: true);
+            return;
+        }
+
+        var key = "project|" + project.Id;
+        var open = OpenEditors.FirstOrDefault(t => t.Key == key);
+        if (open is not null)
+        {
+            if (open.Editor is TestProjectWorkbenchViewModel existing)
+                await CreateCaseInsideProjectAsync(existing);
+            return;
+        }
+
+        // Reuse the same project editor/transaction that is used by the
+        // "new case" button inside the ordered project. Do not create a
+        // detached TEST asset which production will silently omit.
         await RunOperationAsync(async () =>
         {
-            var entry = await _workspace.CreateTestProgramAsync(name);
-            SelectAsset(entry.Id);
-            var session = await _workspace.OpenTestEditorAsync(entry.Id);
-            var editor = new TestEditorViewModel(_workspace, _testDialogs, session, _realTest);
-            ActivateEditor("test|" + entry.Id, new TestEditorView(editor),
-                "测试程序 · " + entry.Name, editor.ConfirmClose);
-            StatusMessage = "测试程序已创建并打开：" + entry.Name;
+            var session = await _workspace.OpenTestProjectEditorAsync(project.Id);
+            var editor = new TestProjectWorkbenchViewModel(_workspace, _testDialogs,
+                session, _runSelections, _realTest, _hardware);
+            BindProjectNavigation(project, editor);
+            ActivateEditor(key, new TestProjectWorkbenchView(editor),
+                "测试项目 · " + project.Name, editor.ConfirmClose);
         });
+        var createdTab = OpenEditors.FirstOrDefault(t => t.Key == key);
+        if (createdTab?.Editor is TestProjectWorkbenchViewModel created)
+            await CreateCaseInsideProjectAsync(created);
     }
 
     /// <summary>
