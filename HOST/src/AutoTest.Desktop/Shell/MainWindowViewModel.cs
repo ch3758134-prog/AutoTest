@@ -1973,9 +1973,10 @@ public sealed partial class MainWindowViewModel : BindableBase
         timer.Tick += async (_, _) =>
         {
             if (saving || closing || !window.IsActive || !editor.IsDirty || editor.IsBusy ||
+                editor.HasOpenEditor || editor.HasActiveGridEdit || editor.HasPendingSignalDraft ||
                 DateTime.UtcNow - lastEdit < TimeSpan.FromSeconds(3)) return;
             saving = true;
-            try { await editor.SaveForCloseAsync(); }
+            try { await editor.AutoSaveAsync(); }
             catch (Exception error) when (error is not OutOfMemoryException)
             {
                 StatusMessage = "DBC 自动保存失败：" + error.Message;
@@ -1985,6 +1986,8 @@ public sealed partial class MainWindowViewModel : BindableBase
         window.Closing += async (_, args) =>
         {
             if (closeApproved) return;
+            if (window.Content is DbcWorkbenchView view && !view.TryFinishEditing())
+            { args.Cancel = true; return; }
             // If all draft edits have been saved (including the parent exit
             // path), close synchronously. Cancel-and-reclose from inside a WPF
             // Closing notification can violate Window's lifecycle contract.
@@ -2039,7 +2042,8 @@ public sealed partial class MainWindowViewModel : BindableBase
     {
         foreach (var (window, editor) in _dbcToolWindows.Values.ToArray())
         {
-            if (editor.IsBusy || !await editor.SaveForCloseAsync())
+            if (editor.IsBusy || (window.Content is DbcWorkbenchView view && !view.TryFinishEditing()) ||
+                !await editor.SaveForCloseAsync())
             {
                 StatusMessage = "DBC 尚未完成保存，禁止关闭或切换工程：" + window.Title;
                 return false;
