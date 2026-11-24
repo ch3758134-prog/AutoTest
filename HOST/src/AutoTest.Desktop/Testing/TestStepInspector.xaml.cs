@@ -917,7 +917,9 @@ public partial class TestStepInspector : UserControl
             KeyDurationInput.Text = _legacySourceType == "KeySet" && _editing is { } oldDuration
                 ? oldDuration.Properties.GetValueOrDefault("holdMs",
                     oldDuration.Properties.GetValueOrDefault("durationMs", ""))
-                : operation is "Pulse" or "Hold" && mapping.Kind == TestTargetKind.RawKey &&
+                : operation == "Wait" && mapping.Kind == TestTargetKind.RawKey &&
+                parts.Length == 2 ? parts[1] :
+                operation is "Pulse" or "Hold" && mapping.Kind == TestTargetKind.RawKey &&
                 parts.Length == 3 ? parts[2] :
                 operation == "Pulse" && mapping.Kind == TestTargetKind.Button &&
                 parts.Length == 2 ? parts[1] : "1000";
@@ -1423,18 +1425,20 @@ public partial class TestStepInspector : UserControl
     private void UpdateKeyTimingVisibility()
     {
         var operation = (KeyActionInput.SelectedItem as ComboBoxItem)?.Tag as string;
-        // New/direct KEY_SIM steps have only two regular inputs: 20 Key mask
-        // and hold time. Keep the operation selector only for existing legacy
-        // Pulse/Release actions, so opening/saving cannot silently change them.
-        KeyActionInput.Visibility = _selectedTarget?.Mapping.Kind == TestTargetKind.RawKey &&
-            operation == "Hold" ? Visibility.Collapsed : Visibility.Visible;
-        KeyDurationPanel.Visibility = operation is "Pulse" or "Hold" &&
-            _selectedTarget?.Mapping.Kind == TestTargetKind.RawKey || operation == "Pulse"
-            ? Visibility.Visible : Visibility.Collapsed;
-        if (operation == "Release" && _selectedTarget?.Mapping.Kind == TestTargetKind.RawKey)
-            RawKeyMaskPanel.Visibility = Visibility.Collapsed;
-        else if (_selectedTarget?.Mapping.Kind == TestTargetKind.RawKey)
-            RawKeyMaskPanel.Visibility = Visibility.Visible;
+        var raw = _selectedTarget?.Mapping.Kind == TestTargetKind.RawKey;
+        // A KEY_SIM hold is explicitly persistent; operators must be able to
+        // switch to a no-write Wait or an intentional all-release without
+        // manufacturing a zero mask as an implicit wait.
+        KeyActionInput.Visibility = Visibility.Visible;
+        foreach (var item in KeyActionInput.Items.OfType<ComboBoxItem>())
+            if ((string?)item.Tag == "Wait") item.IsEnabled = raw;
+        KeyDurationPanel.Visibility =
+            (operation is "Pulse" or "Hold" or "Wait" && raw) ||
+            (operation == "Pulse")
+                ? Visibility.Visible : Visibility.Collapsed;
+        RawKeyMaskPanel.Visibility = raw &&
+            operation is not ("Release" or "Wait")
+                ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void BuildRawKeyGrid()
@@ -1577,10 +1581,17 @@ public partial class TestStepInspector : UserControl
                     {
                         // Empty 20-switch combination is the explicit all-off
                         // action, represented by the existing Release wire syntax.
+                        if (operation == "Hold" && _selectedMask == 0)
+                            throw new ArgumentException(
+                                "零组合会请求全部断开。仅计时请选择“纯等待”，断开请选择“明确全部断开 KEY”。");
                         var value = operation == "Release" ? "Release" :
-                            operation + ":0x" + _selectedMask.ToString("X5") +
-                            ((operation == "Pulse" || !string.IsNullOrWhiteSpace(KeyDurationInput.Text))
-                                ? ":" + KeyDurationInput.Text.Trim() : "");
+                            operation == "Wait"
+                                ? "Wait:" + ParseDuration(KeyDurationInput.Text)
+                                    .ToString(CultureInfo.InvariantCulture)
+                                : operation + ":0x" + _selectedMask.ToString("X5") +
+                                    ((operation == "Pulse" ||
+                                      !string.IsNullOrWhiteSpace(KeyDurationInput.Text))
+                                        ? ":" + KeyDurationInput.Text.Trim() : "");
                         if (_legacySourceType == "KeySet" &&
                             string.IsNullOrWhiteSpace(KeyDurationInput.Text))
                             throw new ArgumentException("旧版按键步骤必须核对并填写保持时间。");
@@ -1589,6 +1600,8 @@ public partial class TestStepInspector : UserControl
                     }
                     else
                     {
+                        if (operation == "Wait")
+                            throw new ArgumentException("功能按键请使用单独的“等待”步骤；只有原始 KEY_SIM 支持纯等待。");
                         var suffix = operation == "Pulse" &&
                             !string.IsNullOrWhiteSpace(KeyDurationInput.Text)
                             ? ":" + ParseDuration(KeyDurationInput.Text).ToString(CultureInfo.InvariantCulture)
