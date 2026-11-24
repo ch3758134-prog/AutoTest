@@ -8,6 +8,7 @@ using AutoTest.FlashLab.Programming;
 using AutoTest.Contracts;
 using AutoTest.Devices.Can;
 using AutoTest.Devices.Usb;
+using AutoTest.Devices.Station;
 
 namespace AutoTest.Desktop.Hardware;
 
@@ -18,7 +19,89 @@ namespace AutoTest.Desktop.Hardware;
 /// </summary>
 public sealed class HardwareConnectionService : IAsyncDisposable
 {
+
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
+    private readonly object _keyRequestGate = new();
+    private uint? _acknowledgedKeyMask;
+    private long _acknowledgedKeyEpoch;
+    private bool _keyRequestUncertain = true;
+    public event Action? KeyRequestStateChanged;
+
+    /// <summary>
+    /// Last KEY mask accepted by the USB controller in this connection epoch.
+    /// This is NOT a measurement of the five analogue voltages.
+    /// Null means no reliable request state is known.
+    /// </summary>
+    public uint? AcknowledgedKeyRequestMask
+    {
+        get
+        {
+            lock (_keyRequestGate)
+                return !_keyRequestUncertain && IsConnected &&
+                    _acknowledgedKeyEpoch == CurrentStationEpoch
+                    ? _acknowledgedKeyMask : null;
+        }
+    }
+
+    public string KeyRequestStatus
+    {
+        get
+        {
+            var mask = AcknowledgedKeyRequestMask;
+            if (!mask.HasValue)
+                return "KEY 状态未知（未收到本会话有效 ACK / 发送异常 / USB 重连）；请明确下发组合或全部断开";
+            if (mask.Value == 0)
+                return "最后 KEY 请求：全部断开（主控 ACK，未测量实际电压）";
+            var keys = string.Join(" + ", Enumerable.Range(1, 20)
+                .Where(n => (mask.Value & (1u << (n - 1))) != 0)
+                .Select(n => "K" + n.ToString("00")));
+            return "最后 KEY 请求：" + keys +
+                " · 保持至下一次明确操作（主控 ACK，非实际电压测量）";
+        }
+    }
+
+    private static bool TryDecodeKeyRequest(CanFrame frame, out uint mask)
+    {
+        mask = 0;
+        if (frame.Role != BusRole.KeypadCan ||
+            frame.Id != KeypadCommandCodec.KeypadId || frame.Data.Length != 8)
+            return false;
+        if (frame.Data[0] == 0x80) return true;
+        if (frame.Data[0] != 0x01) return false;
+        mask = (uint)frame.Data[1] | ((uint)frame.Data[2] << 8) |
+            ((uint)(frame.Data[3] & 0x0F) << 16);
+        return true;
+    }
+
+    private void ReportKeyRequestState()
+    {
+        foreach (Action callback in KeyRequestStateChanged?.GetInvocationList()
+                     .Cast<Action>() ?? Enumerable.Empty<Action>())
+            try { callback(); } catch { /* UI must not affect WinUSB. */ }
+    }
+
+    private void MarkKeyRequestUnknown()
+    {
+        lock (_keyRequestGate)
+        {
+            _keyRequestUncertain = true;
+            _acknowledgedKeyMask = null;
+            _acknowledgedKeyEpoch = 0;
+        }
+        ReportKeyRequestState();
+    }
+
+    private void ConfirmKeyRequest(CanFrame frame)
+    {
+        if (!TryDecodeKeyRequest(frame, out var mask)) return;
+        lock (_keyRequestGate)
+        {
+            _acknowledgedKeyMask = mask;
+            _acknowledgedKeyEpoch = CurrentStationEpoch;
+            _keyRequestUncertain = false;
+        }
+        ReportKeyRequestState();
+    }
     private int _flashSecuritySensitive;
     public bool IsFlashSecuritySensitive => Volatile.Read(ref _flashSecuritySensitive) != 0;
 
@@ -265,6 +348,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             {
                 if (state != UsbSessionState.Faulted) return;
                 Interlocked.Exchange(ref _currentEpoch, 0);
+                MarkKeyRequestUnknown();
                 Interlocked.Exchange(ref _ledCapabilityEpoch, 0);
                 SetObservedEcuCanBaud(0, 0, legacy: false);
                 _link?.RevokePhysicalTestRun();
@@ -345,6 +429,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
                 ObserveBusAsync(_hub, BusRole.KeypadCan, _monitorStop.Token)
             };
             Interlocked.Exchange(ref _currentEpoch, Interlocked.Increment(ref _epochCounter));
+            MarkKeyRequestUnknown();
             SetObservedEcuCanBaud(observedRate,
                 observedRate == 0 ? 0 : CurrentStationEpoch, legacy500);
             try { ConnectionChanged?.Invoke(CurrentStationEpoch); } catch { }
@@ -409,8 +494,10 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             _link.AuthorizeOneCanTransmission(payload, exactConfirmation);
             Record("CAN TX 授权：" + frame.Role + " ID=0x" + frame.Id.ToString("X") +
                 " data=" + Convert.ToHexString(frame.Data.ToArray()));
+            if (TryDecodeKeyRequest(frame, out _)) MarkKeyRequestUnknown();
             await _usb.RequestAsync(MainControllerCodec.CanSend, payload,
                 TimeSpan.FromSeconds(3), cancellationToken);
+            ConfirmKeyRequest(frame);
             Record("CAN TX 设备 ACK；不能据此认定 DUT 已收到该帧。");
         }
         finally { _lifecycle.Release(); }
@@ -449,8 +536,10 @@ public sealed class HardwareConnectionService : IAsyncDisposable
                 throw new UnauthorizedAccessException("当前 USB 会话没有有效 KEY 序列授权。");
             var payload = CanFrameCodec.ToUsbPayload(frame,
                 StationCanWiring.Current);
+            if (TryDecodeKeyRequest(frame, out _)) MarkKeyRequestUnknown();
             await _usb.RequestAsync(MainControllerCodec.CanSend, payload,
                 TimeSpan.FromSeconds(3), ct);
+            ConfirmKeyRequest(frame);
             Record("KEY CAN 主控 ACK：0x" + frame.Id.ToString("X") +
                 " DATA=" + Convert.ToHexString(frame.Data.AsSpan()) +
                 "（非五路电压或 ECU 识别确认）");
@@ -820,8 +909,10 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             var payload = CanFrameCodec.ToUsbPayload(frame,
                 StationCanWiring.Current);
             RefreshTestRunGrantIfNeeded(fingerprint);
+            if (TryDecodeKeyRequest(frame, out _)) MarkKeyRequestUnknown();
             await _usb.RequestAsync(MainControllerCodec.CanSend, payload,
                 TimeSpan.FromSeconds(3), ct);
+            ConfirmKeyRequest(frame);
             _testRunGrantUsed++;
             Record("测试 CAN 写入设备 ACK：CAN" + payload[0] + " 0x" +
                 frame.Id.ToString("X") + "；尚不能证明 DUT 已响应。");
