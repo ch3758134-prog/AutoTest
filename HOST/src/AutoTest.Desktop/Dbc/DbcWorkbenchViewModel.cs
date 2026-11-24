@@ -18,6 +18,7 @@ public sealed record DbcMessageRow(DbcMessage Message, DbcDisplayNames DisplayNa
     public string FrameType => Message.IsExtended ? "扩展帧" : "标准帧";
     public string DecimalId => Message.Id.ToString();
     public string Name => Message.Name;
+    public string Alias => DisplayNames.MessageAlias(Message.Id);
     public string DisplayName => DisplayNames.MessageLabel(Message);
     public string NavTitle => string.IsNullOrWhiteSpace(DisplayNames.MessageAlias(Message.Id))
         ? Message.Name : DisplayNames.MessageAlias(Message.Id);
@@ -47,6 +48,8 @@ public sealed class DbcSignalRow : BindableBase, IEditableObject
     public string StartBit => Signal.StartBit.ToString(CultureInfo.InvariantCulture);
     public string BitLength => Signal.BitLength.ToString(CultureInfo.InvariantCulture);
     public string Order => Signal.Intel ? "Intel" : "Motorola";
+    public string ByteOrder => Order;
+    public string SignType => Signed;
     public string Signed => Signal.Signed ? "有符号" : "无符号";
     public string Factor => DbcSignalEditState.DisplayDouble(Signal.Factor);
     public string Offset => DbcSignalEditState.DisplayDouble(Signal.Offset);
@@ -93,8 +96,8 @@ public sealed class DbcSignalEditState : BindableBase
     public bool Intel { get => _intel; set => SetProperty(ref _intel, value); }
     private bool _signed = false;
     public bool Signed { get => _signed; set => SetProperty(ref _signed, value); }
-    public string ByteOrder { get => Intel ? "Intel" : "Motorola"; set { Intel = value == "Intel"; RaisePropertyChanged(); } }
-    public string SignType { get => Signed ? "有符号" : "无符号"; set { Signed = value == "有符号"; RaisePropertyChanged(); } }
+    public string ByteOrder { get => Intel ? "Intel" : "Motorola"; set { if (value is "Intel" or "Motorola") { Intel = value == "Intel"; RaisePropertyChanged(); } } }
+    public string SignType { get => Signed ? "有符号" : "无符号"; set { if (value is "有符号" or "无符号") { Signed = value == "有符号"; RaisePropertyChanged(); } } }
     /// <summary>Human-readable decimal; the unchanged original double is kept
     /// verbatim when a different DBC field is edited.</summary>
     public static string DisplayDouble(double value) =>
@@ -168,7 +171,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         if (from.Count == 0) return;
         var id = SelectedMessage?.Message.Id; var signal = SelectedSignal?.Name;
         to.Push(_session.Document.CaptureCheckpoint());
-        _session.Document.RestoreCheckpoint(from.Pop());
+        _session = _session with { Document = DbcWorkbenchDocument.RecreateHistoricalDraft(from.Pop()) };
         RefreshDocument(id, signal);
         StatusMessage = redo ? "已重做修改。" : "已撤销修改。";
     }
@@ -758,14 +761,19 @@ public sealed class DbcWorkbenchViewModel : BindableBase
 
     public async Task<bool> SaveForCloseAsync()
     {
-        if (IsBusy) return false;
+        if (IsBusy || HasOpenEditor) return false;
         if (!IsDirty) return true;
-        var previousRevision = AssetRevision;
         await SaveAsync();
-        return !IsBusy && !IsDirty && AssetRevision > previousRevision;
+        return !IsBusy && !IsDirty;
     }
 
-    private async Task SaveAsync()
+    public async Task AutoSaveAsync()
+    {
+        if (IsBusy || HasOpenEditor || HasActiveGridEdit || HasPendingSignalDraft || !IsDirty) return;
+        await SaveAsync(silent: true);
+    }
+
+    private async Task SaveAsync(bool silent = false)
     {
         if (!CanSave || !IsDirty || IsBusy || HasOpenEditor) return;
         // Ctrl+S must include parameters visible in the inspector, not discard
@@ -775,7 +783,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
             ApplySignalParameters();
             if (HasPendingSignalDraft)
             {
-                _dialogs.ShowError("信号技术参数尚未通过校验，请先修正参数再保存。");
+                if (!silent) _dialogs.ShowError("信号技术参数尚未通过校验，请先修正参数再保存。");
                 return;
             }
         }
@@ -786,7 +794,6 @@ public sealed class DbcWorkbenchViewModel : BindableBase
             var messageId = SelectedMessage?.Message.Id;
             var signalName = SelectedSignal?.Name;
             _session = await _workspace.SaveDbcEditorAsync(_session);
-            _undo.Clear(); _redo.Clear();
             RefreshDocument(messageId, signalName);
             StatusMessage = "DBC 已保存、重新读取并更新工程资源修订 " + AssetRevision;
         }
@@ -795,7 +802,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
                                         ArgumentException or NotSupportedException)
         {
             StatusMessage = "保存失败：" + error.Message;
-            _dialogs.ShowError("DBC 保存失败。\n" + error.Message +
+            if (!silent) _dialogs.ShowError("DBC 保存失败。\n" + error.Message +
                 "\n如果 DBC 文件已修改而工程清单未成功保存，请检查同目录 .bak 备份。");
         }
         finally { IsBusy = false; RefreshCommands(); }
@@ -803,7 +810,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
 
     private async Task ReloadAsync()
     {
-        if (IsBusy) return;
+        if (IsBusy || HasOpenEditor) return;
         if (IsDirty && !_dialogs.ConfirmDiscard("重新加载会丢弃未保存的 DBC 参数修改，确定继续吗？"))
             return;
         IsBusy = true;
@@ -812,6 +819,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
             var messageId = SelectedMessage?.Message.Id;
             var signalName = SelectedSignal?.Name;
             _session = await _workspace.OpenDbcEditorAsync(_session.AssetId);
+            _undo.Clear(); _redo.Clear();
             RefreshDocument(messageId, signalName);
             StatusMessage = "已从磁盘重新加载 DBC";
         }
