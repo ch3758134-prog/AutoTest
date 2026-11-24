@@ -168,6 +168,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         CheckActiveCommand = new DelegateCommand(CheckActive);
         OpenDbcToolCommand = new DelegateCommand(async () => await OpenDbcToolAsync());
         OpenIndependentDbcCommand = new DelegateCommand(async () => await OpenIndependentDbcAsync());
+        OpenUdsWorkbenchCommand = new DelegateCommand(OpenUdsWorkbench);
         OpenRecordHistoryCommand = new DelegateCommand(OpenRecordHistory);
         OpenFirstTestProjectCommand = new DelegateCommand(async () => await OpenFirstAssetAsync(
             ProjectWorkspaceService.TestProjectKind, CreateTestProjectAsync));
@@ -364,6 +365,7 @@ public sealed partial class MainWindowViewModel : BindableBase
     public DelegateCommand CheckActiveCommand { get; }
     public DelegateCommand OpenDbcToolCommand { get; }
     public DelegateCommand OpenIndependentDbcCommand { get; }
+    public DelegateCommand OpenUdsWorkbenchCommand { get; }
     public DelegateCommand OpenRecordHistoryCommand { get; }
     public DelegateCommand HelpCommand { get; }
     public DelegateCommand OpenFirstTestProjectCommand { get; }
@@ -683,6 +685,31 @@ public sealed partial class MainWindowViewModel : BindableBase
             default: ShowOverview(); break;
         }
     }
+    private UdsWorkbenchWindow? _udsWorkbenchWindow;
+    private void OpenUdsWorkbench()
+    {
+        if (_udsWorkbenchWindow is { IsVisible: true } existing)
+        {
+            existing.Activate();
+            return;
+        }
+        if (_closeGuardActive ||
+            global::System.Windows.Application.Current?.Dispatcher.HasShutdownStarted == true)
+            return;
+        var window = new UdsWorkbenchWindow
+        {
+            Owner = global::System.Windows.Application.Current.MainWindow
+        };
+        _udsWorkbenchWindow = window;
+        window.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(_udsWorkbenchWindow, window))
+                _udsWorkbenchWindow = null;
+        };
+        window.Show();
+        StatusMessage = "独立 UDS 服务序列工作台已打开；仅编辑与导入记录回放，尚不能进行实体 UDS 发送。";
+    }
+
     private RecordHistoryWindow? _recordHistoryWindow;
     private void OpenRecordHistory()
     {
