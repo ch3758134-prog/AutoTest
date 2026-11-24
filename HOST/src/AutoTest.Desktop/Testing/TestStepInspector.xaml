@@ -284,12 +284,15 @@
    <StackPanel>
     <TextBlock x:Name="ErrorText" Foreground="#C04A57" FontSize="10"
      TextWrapping="Wrap" Margin="0,0,0,7"/>
-    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+    <DockPanel LastChildFill="True">
+     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
      <Button x:Name="CancelButton" Content="取消" Click="Cancel_Click"
       MinWidth="70" Margin="0,0,7,0"/>
      <Button x:Name="ConfirmButton" Content="应用"
       Style="{StaticResource AtPrimaryButton}" Click="Confirm_Click" MinWidth="92"/>
-    </StackPanel>
+     </StackPanel>
+     <TextBlock Text="点击浮窗外部即可应用有效修改并返回列表" Foreground="#627C9D" FontSize="11" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,10,0"/>
+    </DockPanel>
    </StackPanel>
   </Border>
  </Grid>
