@@ -167,6 +167,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         RedoActiveCommand = new DelegateCommand(RedoActive);
         CheckActiveCommand = new DelegateCommand(CheckActive);
         OpenDbcToolCommand = new DelegateCommand(async () => await OpenDbcToolAsync());
+        OpenRecordHistoryCommand = new DelegateCommand(OpenRecordHistory);
         OpenFirstTestProjectCommand = new DelegateCommand(async () => await OpenFirstAssetAsync(
             ProjectWorkspaceService.TestProjectKind, CreateTestProjectAsync));
         OpenFirstTestProgramCommand = new DelegateCommand(async () => await OpenFirstAssetAsync(
@@ -361,6 +362,7 @@ public sealed partial class MainWindowViewModel : BindableBase
     public DelegateCommand RedoActiveCommand { get; }
     public DelegateCommand CheckActiveCommand { get; }
     public DelegateCommand OpenDbcToolCommand { get; }
+    public DelegateCommand OpenRecordHistoryCommand { get; }
     public DelegateCommand HelpCommand { get; }
     public DelegateCommand OpenFirstTestProjectCommand { get; }
     public DelegateCommand CreateStarterProjectCommand { get; }
@@ -682,6 +684,27 @@ public sealed partial class MainWindowViewModel : BindableBase
             default: ShowOverview(); break;
         }
     }
+    private RecordHistoryWindow? _recordHistoryWindow;
+    private void OpenRecordHistory()
+    {
+        if (_recordHistoryWindow is { IsVisible: true })
+        {
+            _recordHistoryWindow.Activate();
+            return;
+        }
+        var window = new RecordHistoryWindow(_workspace.Current?.RootDirectory)
+        {
+            Owner = global::System.Windows.Application.Current.MainWindow
+        };
+        _recordHistoryWindow = window;
+        window.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(_recordHistoryWindow, window))
+                _recordHistoryWindow = null;
+        };
+        window.Show();
+    }
+
     private async Task OpenDbcToolAsync()
     {
         if (_workspace.Current is null)
