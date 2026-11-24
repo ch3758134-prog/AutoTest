@@ -1520,6 +1520,7 @@ public sealed class TestEditorViewModel : BindableBase
         CopyStepCommand?.RaiseCanExecuteChanged();
         PasteStepCommand?.RaiseCanExecuteChanged();
         AddMappingCommand?.RaiseCanExecuteChanged();
+        RefreshDbcReferencesCommand?.RaiseCanExecuteChanged();
         RemoveMappingCommand?.RaiseCanExecuteChanged();
         PrepareRunApprovalCommand?.RaiseCanExecuteChanged();
         RunCommand?.RaiseCanExecuteChanged();
