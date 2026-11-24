@@ -31,7 +31,7 @@ public sealed class PhysicalCommandFence
     private HashSet<string>? _manualBatchCan;
     private long _manualBatchGeneration;
     private DateTimeOffset _manualBatchExpiry;
-    private int _manualBatchWrites;
+    private int? _manualBatchWrites;
     private string? _manualBatchFingerprint;
     private byte[][]? _manualKeySteps;
     private int _manualKeyIndex;
@@ -292,10 +292,10 @@ public sealed class PhysicalCommandFence
         }
     }
 
-    /// <summary>Time- and write-limited allowlist of exact ECU CAN frames for the manual bench.
+    /// <summary>Exact ECU CAN allowlist for the manual bench. Null budget means current-session continuous sending.
     /// The operator approves a content-fingerprinted snapshot; subsequent UI edits never widen it.</summary>
     public void AuthorizeManualCanBatch(string fingerprint, string confirmation,
-        IEnumerable<byte[]> exactCanPayloads, long generation, int maxWrites = 3000)
+        IEnumerable<byte[]> exactCanPayloads, long generation, int? maxWrites = 3000)
     {
         if (fingerprint.Length != 64 || !fingerprint.All(Uri.IsHexDigit) ||
             confirmation != "AUTHORIZE BENCH CAN " + fingerprint)
@@ -318,7 +318,7 @@ public sealed class PhysicalCommandFence
             _singleClampPayload = null;
             _manualBatchCan = payloads.Select(payload => Convert.ToHexString(payload)).ToHashSet(StringComparer.Ordinal);
             _manualBatchGeneration = generation;
-            _manualBatchExpiry = DateTimeOffset.UtcNow.AddMinutes(5);
+            _manualBatchExpiry = maxWrites.HasValue ? DateTimeOffset.UtcNow.AddMinutes(5) : DateTimeOffset.MaxValue;
             _manualBatchWrites = maxWrites;
             _manualBatchFingerprint = fingerprint;
         }
@@ -564,10 +564,10 @@ public sealed class PhysicalCommandFence
             if (request.Command == MainControllerCodec.CanSend &&
                 _manualBatchCan is not null &&
                 _manualBatchGeneration == connectionGeneration &&
-                DateTimeOffset.UtcNow < _manualBatchExpiry && _manualBatchWrites > 0 &&
+                DateTimeOffset.UtcNow < _manualBatchExpiry && (_manualBatchWrites is null or > 0) &&
                 _manualBatchCan.Contains(Convert.ToHexString(request.Payload)))
             {
-                _manualBatchWrites--;
+                if (_manualBatchWrites.HasValue) _manualBatchWrites--;
                 return;
             }
             if (_runFingerprint is not null && _runCan is not null &&
