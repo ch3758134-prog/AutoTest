@@ -7,6 +7,8 @@ namespace AutoTest.Desktop.Tests.Shell;
 public sealed class PeriodicCanDeadlineTests
 {
     [Theory]
+    [InlineData(100, 99, 100, 200, 0)]
+    [InlineData(100, 50, 100, 200, 0)]
     [InlineData(0, 10, 100, 100, 0)]
     [InlineData(0, 100, 100, 100, 0)]
     [InlineData(0, 151, 100, 200, 1)]
