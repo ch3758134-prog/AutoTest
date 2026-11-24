@@ -442,7 +442,7 @@ public sealed class TestEditorViewModel : BindableBase
             // The shared Write descriptor historically defaults to Key "Pulse".
             // A new CAN send must begin with an unconfigured payload instead of
             // accidentally interpreting that KEY action as CAN bytes.
-            if (chosen.Key == "can") node = node.WithProperty("value", "");
+            if (chosen.Key == "can") node = node.WithProperty("value", "HEX:0000000000000000");
             place.ValidateNode(node);
             _transaction.Insert(place.Phase, place.ParentId, place.Slot, place.Index, node);
             _cancelledDraftId = null;
@@ -452,7 +452,7 @@ public sealed class TestEditorViewModel : BindableBase
             _inspectorAdding = false;
             _pendingInsertion = null;
             RefreshTree(node.Id);
-            StatusMessage = "已插入可撤销草稿步骤。请在右侧填写必要参数并应用；未完成前不得保存资源或执行。";
+            StatusMessage = "已插入可撤销草稿步骤。请在属性浮窗填写必要参数并应用；未完成前不得保存资源或执行。";
             return true;
         }
         catch (Exception error) when (IsEditorError(error))
@@ -464,6 +464,7 @@ public sealed class TestEditorViewModel : BindableBase
 
     public void CancelInspectorEdit()
     {
+        _interaction.NextInspectorRequest(); // invalidate any late catalog load
         if (_newDraftId is { } provisional)
         {
             try
@@ -499,7 +500,9 @@ public sealed class TestEditorViewModel : BindableBase
     {
         _inspectorAdding = _selectedItem?.Kind != StepTreeItemKind.Step;
         _pendingInsertion = null;
-        _ = PublishInspectorAsync(_inspectorAdding ? null : _selectedItem?.Step, null);
+        _interaction.NextInspectorRequest();
+        if (_selectedItem?.Step is { } draft && draft.Id == _newDraftId)
+            _ = PublishInspectorAsync(draft, _newDraftActionKey);
     }
 
     private async Task PublishInspectorAsync(StepNode? original, string? initialActionKey)
@@ -697,7 +700,11 @@ public sealed class TestEditorViewModel : BindableBase
         UpdateInspector();
         _pendingInsertion = null;
         _inspectorAdding = item?.Kind != StepTreeItemKind.Step;
-        _ = PublishInspectorAsync(_inspectorAdding ? null : item?.Step, null);
+        // Selection is observation only. Explicit edit or a new provisional
+        // step requests the property editor; ordinary navigation never loads DBC.
+        _interaction.NextInspectorRequest();
+        if (item?.Step is { } draft && draft.Id == _newDraftId)
+            _ = PublishInspectorAsync(draft, _newDraftActionKey);
     }
 
     private void UpdateInspector()
@@ -823,7 +830,7 @@ public sealed class TestEditorViewModel : BindableBase
             _cancelledDraftId = null;
             _cancelledDraftActionKey = null;
             RefreshTree(cancelled);
-            StatusMessage = "已恢复未完成的新步骤；请先应用右侧属性。";
+            StatusMessage = "已恢复未完成的新步骤；请先应用浮窗属性。";
             return;
         }
         _cancelledDraftId = null;
@@ -1219,7 +1226,7 @@ public sealed class TestEditorViewModel : BindableBase
         {
             _transaction.SetProperty(step.Id, key, value.ToString());
             RefreshTree(step.Id);
-            StatusMessage = "已在当前 TEST 草稿中修改参数；右侧属性与中央摘要已同步。";
+            StatusMessage = "已在当前 TEST 草稿中修改参数；步骤摘要已同步。";
             return true;
         }
         catch (Exception error) when (IsEditorError(error))
@@ -1372,7 +1379,7 @@ public sealed class TestEditorViewModel : BindableBase
         if (IsBusy) return false;
         if (HasNewStepDraft)
         {
-            StatusMessage = "新步骤尚未完成配置。请在右侧应用属性，或点击取消新增后再保存。";
+            StatusMessage = "新步骤尚未完成配置。请在浮窗应用属性，或点击取消新增后再保存。";
             return false;
         }
         if (!IsDirty) return true;
@@ -1386,7 +1393,7 @@ public sealed class TestEditorViewModel : BindableBase
     {
         if (HasNewStepDraft)
         {
-            StatusMessage = "仍有未完成的新步骤；先在右侧应用属性，或取消该新增。";
+            StatusMessage = "仍有未完成的新步骤；先在浮窗应用属性，或取消该新增。";
             return;
         }
         if (!IsDirty || IsBusy || !CanProceed()) return;
