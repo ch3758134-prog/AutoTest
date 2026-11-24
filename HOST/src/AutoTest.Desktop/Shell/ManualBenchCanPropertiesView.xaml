@@ -15,10 +15,11 @@
    <TextBlock Text="编辑的是待发送配置，不会自动向 ECU 发送。点击旁边空白处关闭属性浮层，报文配置保持在列表中。"
     Foreground="#627C9D" FontSize="12" Margin="0,5,0,0"/>
   </StackPanel>
-  <Border Grid.Row="1" Background="White" BorderBrush="#E0E5E5" BorderThickness="1"
-   CornerRadius="8" Padding="14">
-   <ScrollViewer VerticalScrollBarVisibility="Auto">
-    <StackPanel DataContext="{Binding SelectedCanRow}">
+  <Grid Grid.Row="1" DataContext="{Binding SelectedCanRow}" IsEnabled="{Binding CanEditFields}">
+   <Grid.ColumnDefinitions><ColumnDefinition Width="360"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+   <Border Background="White" BorderBrush="#E0E5E5" BorderThickness="1" CornerRadius="8" Padding="12">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+     <StackPanel>
      <TextBlock Text="报文名称" Margin="0,0,0,5"/>
      <TextBox Text="{Binding Name,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
       Padding="8,6" MinHeight="33" Margin="0,0,0,13"/>
@@ -26,8 +27,8 @@
       Foreground="#475668" Margin="0,0,0,9"/>
      <Grid Margin="0,0,0,9">
       <Grid.ColumnDefinitions>
-       <ColumnDefinition Width="160"/>
-       <ColumnDefinition Width="64"/>
+       <ColumnDefinition Width="135"/>
+       <ColumnDefinition Width="52"/>
        <ColumnDefinition Width="*"/>
       </Grid.ColumnDefinitions>
       <StackPanel Grid.Column="0" Margin="0,0,10,0">
@@ -41,7 +42,7 @@
        <TextBox Text="{Binding PreviewDlc,Mode=OneWay}" IsReadOnly="True"
         Background="#F7F8FA" FontFamily="Consolas" MinHeight="32"/>
       </StackPanel>
-      <StackPanel Grid.Column="2" Margin="14,0,0,0">
+      <StackPanel Grid.Column="2" Margin="9,0,0,0">
        <TextBlock Text="帧格式" FontSize="11" Foreground="#667789"
         Margin="0,0,0,4"/>
        <TextBlock Text="{Binding PreviewFrameFormat}" VerticalAlignment="Center"
@@ -56,7 +57,25 @@
       Margin="0,0,0,5"/>
      <TextBlock Text="{Binding PreviewError}" Foreground="#B64E3D"
       TextWrapping="Wrap" FontSize="11" Margin="0,0,0,11"/>
-     <Border Height="1" Background="#E4E8ED" Margin="0,5,0,13"/>
+      <Border Height="1" Background="#E4E8ED" Margin="0,6,0,12"/>
+     <TextBlock Text="发送方式" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+     <TextBlock Text="周期发送持续到主动停止、连接中断或真实通信失败。行内单发始终只发一次。"
+      TextWrapping="Wrap" Foreground="#627C9D" Margin="0,0,0,10"/>
+     <Grid IsEnabled="{Binding CanEditFields}">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+      <CheckBox Content="周期发送" IsChecked="{Binding IsPeriodic,Mode=TwoWay}"
+       VerticalAlignment="Center" Margin="0,0,18,0"/>
+      <TextBox Grid.Column="1" Width="100" HorizontalAlignment="Left"
+       Text="{Binding PeriodText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+       Padding="7,6"/>
+     </Grid>
+     </StackPanel>
+    </ScrollViewer>
+   </Border>
+   <Border Grid.Column="2" Background="White" BorderBrush="#E0E5E5" BorderThickness="1" CornerRadius="8" Padding="12">
+    <Grid>
+     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+     <StackPanel Grid.Row="0">
      <DockPanel Margin="0,0,0,7">
       <Button DockPanel.Dock="Right" Content="清除辅助" Click="ClearDbc_Click"
        Padding="9,4" MinWidth="80" ToolTip="解除 DBC 定义，不删除 CAN ID 或 DATA 字节"/>
@@ -68,17 +87,18 @@
      <TextBlock Text="选报文即可看到信号；直接改 DATA 也会同步解析信号。无需切换编辑模式。"
       FontSize="11" Foreground="#606F7F" TextWrapping="Wrap"
       Margin="0,0,0,9"/>
-     <StackPanel Visibility="{Binding UseDbc,Converter={StaticResource BoolToVisibility}}">
+     </StackPanel>
+     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Visibility="{Binding UseDbc,Converter={StaticResource BoolToVisibility}}">
       <ItemsControl ItemsSource="{Binding SignalValues}">
        <ItemsControl.ItemTemplate>
         <DataTemplate>
-         <Grid Margin="0,0,0,9" IsEnabled="{Binding IsEditable}">
+         <Grid Margin="0,0,0,3" MinHeight="28" IsEnabled="{Binding IsEditable}">
           <Grid.ColumnDefinitions>
            <ColumnDefinition Width="*"/>
-           <ColumnDefinition Width="185"/>
+           <ColumnDefinition Width="142"/>
           </Grid.ColumnDefinitions>
           <StackPanel Grid.Column="0" VerticalAlignment="Center">
-           <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"
+           <TextBlock Text="{Binding DisplayName}" FontWeight="Medium" TextTrimming="CharacterEllipsis"
             ToolTip="{Binding Definition}"/>
            <TextBlock Text="{Binding Range}" Foreground="#627C9D" FontSize="10"/>
           </StackPanel>
@@ -94,7 +114,7 @@
             </TextBox.Style>
            </TextBox>
            <ComboBox ItemsSource="{Binding Choices}" DisplayMemberPath="Label"
-            SelectedValuePath="Value" MinHeight="30"
+            SelectedValuePath="Value" MinHeight="26"
             SelectedValue="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}">
             <ComboBox.Style><Style TargetType="ComboBox">
              <Setter Property="Visibility" Value="Collapsed"/>
@@ -110,22 +130,10 @@
         </DataTemplate>
        </ItemsControl.ItemTemplate>
       </ItemsControl>
-     </StackPanel>
-     <Border Height="1" Background="#E5EBE7" Margin="0,7,0,14"/>
-     <TextBlock Text="发送方式" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-     <TextBlock Text="单发仅发送一次；周期由上位机使用 ECU CAN USB 0x40 定时发送，不调用 KEY CAN 固件广播。实际周期抖动需现场测量。"
-      TextWrapping="Wrap" Foreground="#627C9D" Margin="0,0,0,10"/>
-     <Grid IsEnabled="{Binding CanEditFields}">
-      <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-      <CheckBox Content="周期发送" IsChecked="{Binding IsPeriodic,Mode=TwoWay}"
-       VerticalAlignment="Center" Margin="0,0,18,0"/>
-      <TextBox Grid.Column="1" Width="100" HorizontalAlignment="Left"
-       Text="{Binding PeriodText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-       Padding="7,6"/>
-     </Grid>
-    </StackPanel>
-   </ScrollViewer>
-  </Border>
+     </ScrollViewer>
+    </Grid>
+   </Border>
+  </Grid>
   <DockPanel Grid.Row="2" Margin="0,12,0,0">
    <TextBlock Text="编辑完成后返回列表，勾选报文并点击“启动勾选发送”；行内“单发”始终只发一次。"
     Foreground="#627C9D" FontSize="12" VerticalAlignment="Center"/>
