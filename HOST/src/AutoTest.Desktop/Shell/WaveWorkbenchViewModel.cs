@@ -58,6 +58,7 @@ public sealed partial class WaveWorkbenchViewModel : BindableBase
                 "请选择包含 evidence 或 references 子目录的既有 wave-records 目录，不能把任意文件夹当作有效波形库。");
         _independentWaveRoot = root;
         AbortCaptureForProjectChange();
+        ReloadAvailableSignals(); // no project-bound live choices while browsing an independent archive
         RaisePropertyChanged(nameof(SourceDescription));
         RaisePropertyChanged(nameof(CanEditProjectWaveSettings));
         RefreshCaptureCommands();
@@ -72,6 +73,7 @@ public sealed partial class WaveWorkbenchViewModel : BindableBase
             throw new InvalidOperationException("当前没有 ECU 工程；请先打开工程或选择独立波形目录。");
         _independentWaveRoot = null;
         AbortCaptureForProjectChange();
+        ReloadAvailableSignals(); // restore the live, revision-pinned project DBC choices
         RaisePropertyChanged(nameof(SourceDescription));
         RaisePropertyChanged(nameof(CanEditProjectWaveSettings));
         RefreshCaptureCommands();
