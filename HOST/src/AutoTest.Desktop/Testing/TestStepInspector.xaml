@@ -219,49 +219,7 @@
         Margin="0,0,0,7" TextWrapping="Wrap"/>
        <TextBox x:Name="CanSignalSearch" TextChanged="CanSignalSearch_Changed" ToolTip="搜索信号名称或别名，不改变 DATA" MinHeight="28" Margin="0,0,0,6"/>
        <ScrollViewer MaxHeight="385" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-       <ItemsControl x:Name="SignalGrid" ItemsSource="{Binding SignalValues}">
-        <ItemsControl.ItemTemplate>
-         <DataTemplate>
-          <Grid Margin="0,0,0,5" IsEnabled="{Binding IsEditable}">
-           <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="142"/>
-           </Grid.ColumnDefinitions>
-           <StackPanel Margin="0,0,8,0" VerticalAlignment="Center">
-            <TextBlock Text="{Binding DisplayName}" FontSize="12" Foreground="#354B61" TextWrapping="Wrap" ToolTip="{Binding Definition}"/>
-            <TextBlock Text="{Binding Range}" FontSize="10" Foreground="#627C9D"/>
-           </StackPanel>
-           <Grid Grid.Column="1">
-            <TextBox Text="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-             FontFamily="Consolas" MinHeight="27"
-             ToolTip="{Binding Range}">
-             <TextBox.Style><Style TargetType="TextBox">
-              <Setter Property="Visibility" Value="Visible"/>
-              <Style.Triggers>
-               <DataTrigger Binding="{Binding HasChoices}" Value="True">
-                <Setter Property="Visibility" Value="Collapsed"/>
-               </DataTrigger>
-              </Style.Triggers>
-             </Style></TextBox.Style>
-            </TextBox>
-            <ComboBox ItemsSource="{Binding Choices}" DisplayMemberPath="Label"
-             SelectedValuePath="Value"
-             SelectedValue="{Binding Value,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-             MinHeight="27" ToolTip="{Binding Range}">
-             <ComboBox.Style><Style TargetType="ComboBox">
-              <Setter Property="Visibility" Value="Collapsed"/>
-              <Style.Triggers>
-               <DataTrigger Binding="{Binding HasChoices}" Value="True">
-                <Setter Property="Visibility" Value="Visible"/>
-               </DataTrigger>
-              </Style.Triggers>
-             </Style></ComboBox.Style>
-            </ComboBox>
-           </Grid>
-          </Grid>
-         </DataTemplate>
-        </ItemsControl.ItemTemplate>
-       </ItemsControl>
+       <ItemsControl x:Name="SignalGrid" ItemsSource="{Binding SignalValues}" ItemTemplate="{StaticResource CanSignalEditorRow}"/>
        </ScrollViewer>
       </StackPanel>
      </StackPanel>
