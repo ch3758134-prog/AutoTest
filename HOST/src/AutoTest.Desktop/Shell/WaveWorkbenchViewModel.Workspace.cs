@@ -122,7 +122,6 @@ public sealed partial class WaveWorkbenchViewModel
      "#218DAD", "#746A54", "#A94D85", "#337F4D", "#BC9533",
      "#4977A8", "#A35C34"];
     private bool _isLiveView = true;
-    private bool _pausedDisplay;
     private int _windowSeconds = 10;
     private double _viewOffsetSeconds;
     private bool _historyStepStyle;
