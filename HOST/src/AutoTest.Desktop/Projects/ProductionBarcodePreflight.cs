@@ -17,6 +17,22 @@ public sealed record ProductionBarcodePreflightResult(string Code, string? Model
 /// </summary>
 public static class ProductionBarcodePreflight
 {
+    // The only formal project-owned barcode contract. Legacy overloads below
+    // remain for historical diagnostic tests, never for the production UI.
+    public static ProductionBarcodePreflightResult InspectExpected(string rawBarcode,
+        ProjectDefinition? project)
+    {
+        if (project?.BarcodeExpectation is not { } expectation)
+            return new("SCAN_EXPECTATION_MISSING", null, null, null,
+                "请先编辑并保存工程扫码期望。");
+        var result = expectation.Evaluate(rawBarcode, project.EcuModelCode);
+        return new(result.Accepted ? "SCAN_MODEL_MATCHED" : "SCAN_EXPECTATION_MISMATCH",
+            result.Fields.GetValueOrDefault(ProjectBarcodeExpectation.Model),
+            result.Fields.GetValueOrDefault(ProjectBarcodeExpectation.Serial),
+            result.Fields.GetValueOrDefault(ProjectBarcodeExpectation.Hardware),
+            result.Explanation, result.Fields);
+    }
+
     // Compatibility with existing explicit UT1 checks; NOT fallback inference
     // for an unconfigured scanner in the live production workbench.
     public static ProductionBarcodePreflightResult Inspect(
