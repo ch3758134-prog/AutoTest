@@ -95,7 +95,7 @@
      <Button Content="应用" Command="{Binding ApplyEcuCanBitrateCommand}"
       Margin="7,0,0,0" Padding="8,5"
       ToolTip="空闲工位设置 ECU CAN 波特率并向主控读回确认"/>
-     <TextBlock Text="{Binding EcuCanBitrateStatus}"
+     <TextBlock x:Name="BenchBaudStatusText" Text="{Binding EcuCanBitrateStatus}"
       Foreground="#A45B36" VerticalAlignment="Center" FontSize="10"
       Margin="8,0,0,0" MaxWidth="215" TextWrapping="Wrap"/>
     </StackPanel>
