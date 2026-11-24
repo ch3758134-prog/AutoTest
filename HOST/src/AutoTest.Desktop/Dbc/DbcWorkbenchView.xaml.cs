@@ -260,7 +260,8 @@ public partial class DbcWorkbenchView : UserControl
     private void Overlay_Backdrop(object sender, MouseButtonEventArgs e)
     {
         if (!ReferenceEquals(e.OriginalSource, PropertyOverlay)) return;
-        e.Handled = true; FinishOverlay();
+        // Explicit Apply/Cancel owns the transaction; outside clicks never commit.
+        e.Handled = true;
     }
     private void FinishOverlay_Click(object sender, RoutedEventArgs e) => FinishOverlay();
     private void CancelOverlay_Click(object sender, RoutedEventArgs e) => CloseOverlay();
