@@ -68,7 +68,7 @@ public sealed class DbcSignalRow : BindableBase, IEditableObject
     }
     public void BeginEdit() => IsEditing = true;
     public void EndEdit() => IsEditing = false;
-    public void CancelEdit() { IsEditing = false; Accept(Signal); }
+    public void CancelEdit() { IsEditing = false; if (!Draft.Matches(Signal)) Accept(Signal); }
 }
 
 /// <summary>Signal parameter form draft. Validate all fields in one transaction.</summary>
@@ -383,7 +383,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         : "原始 DBC 存在不支持的结构；只允许安全修改中文别名和可识别 CM_ 注释。原因：" +
           string.Join("、", _session.Document.UnsupportedDirectives.Take(12));
     public bool CanEdit => _session.Document.CanEdit;
-    public bool CanSave => _session.Document.CanSave;
+    public bool CanSave => !IsBusy && _session.Document.CanSave;
     public bool HasPendingSignalDraft => Signals.Any(row => !row.Draft.Matches(row.Signal));
     public bool IsDirty => _session.Document.IsDirty || HasPendingSignalDraft;
     public string MessageAliasText
