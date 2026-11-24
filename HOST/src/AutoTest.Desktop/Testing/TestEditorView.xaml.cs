@@ -152,13 +152,12 @@ public partial class TestEditorView : UserControl
         StepsList.Focus();
     }
 
-    // Match the manual bench overlay: clicking its backdrop is an explicit
-    // finish gesture, not a click-through to a run button or underlying row.
+    // Property editing is a deliberate transaction. Clicking the backdrop
+    // must never implicitly apply, cancel or dismiss edits.
     private void StepPropertyOverlay_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (!ReferenceEquals(e.OriginalSource, StepPropertyOverlay)) return;
-        e.Handled = true;
-        TryDismissPropertyEditor();
+        if (ReferenceEquals(e.OriginalSource, StepPropertyOverlay))
+            e.Handled = true;
     }
 
     private void FinishPropertyOverlay_Click(object sender, RoutedEventArgs e) =>
@@ -545,7 +544,16 @@ public partial class TestEditorView : UserControl
 
     private void StepsList_DoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (_viewModel.SelectedRow?.IsStep != true || e.ChangedButton != MouseButton.Left) return;
+        if (e.ChangedButton != MouseButton.Left || IsPropertyEditorOpen) return;
+        var origin = e.OriginalSource as DependencyObject;
+        // Inline inputs and dedicated action buttons own their gestures.
+        if (origin is null) return;
+        for (var ancestor = origin; ancestor is not null; ancestor = VisualTreeHelper.GetParent(ancestor))
+            if (ancestor is Button or TextBox) return;
+        var container = ItemsControl.ContainerFromElement(StepsList, origin) as ListBoxItem;
+        if (container?.DataContext is not StepRowProjection { IsStep: true } row) return;
+        _viewModel.SelectItem(row.Item);
+        if (StepSelectionKey.Of(_viewModel.SelectedItem) != StepSelectionKey.Of(row.Item)) return;
         if (_viewModel.EditParametersCommand.CanExecute())
         {
             _focusNameOnNextInspector = true;
