@@ -15,7 +15,8 @@ using Prism.Mvvm;
 
 namespace AutoTest.Desktop.Shell;
 
-/// <summary>Formal project KEY action workbench. Each step has only KeyMask + HoldMs.</summary>
+/// <summary>KEY requests persist after each wait and after the final segment.
+/// A wait-only segment explicitly sends no CAN; a zero mask explicitly releases all.</summary>
 public sealed partial class ManualBenchViewModel
 {
     public sealed class KeyActionStepEditor : BindableBase
@@ -23,14 +24,28 @@ public sealed partial class ManualBenchViewModel
         private uint _mask;
         private string _maskHexText;
         private string _holdText;
+        private bool _waitOnly;
         public Guid StepId { get; }
-        public KeyActionStepEditor(Guid id, uint mask, int holdMs)
+        public KeyActionStepEditor(Guid id, uint mask, int holdMs, bool waitOnly = false)
         {
             StepId = id;
             _mask = mask;
             _maskHexText = "0x" + mask.ToString("X5", CultureInfo.InvariantCulture);
             _holdText = holdMs.ToString(CultureInfo.InvariantCulture);
+            _waitOnly = waitOnly;
         }
+        public bool WaitOnly
+        {
+            get => _waitOnly;
+            set
+            {
+                if (!SetProperty(ref _waitOnly, value)) return;
+                if (value) KeyMask = 0; // No KEY frame can accompany a pure wait.
+                RaisePropertyChanged(nameof(CanChangeKeys));
+                RaisePropertyChanged(nameof(Summary));
+            }
+        }
+        public bool CanChangeKeys => !WaitOnly;
         public uint KeyMask
         {
             get => _mask;
@@ -76,17 +91,20 @@ public sealed partial class ManualBenchViewModel
             get => _holdText;
             set { if (SetProperty(ref _holdText, value ?? "")) RaisePropertyChanged(nameof(Summary)); }
         }
-        public string Summary => (KeyMask == 0 ? "全部断开" :
-            string.Join(" + ", Enumerable.Range(1, 20).Where(i => (KeyMask & (1u << (i - 1))) != 0)
-                .Select(i => "K" + i.ToString("00", CultureInfo.InvariantCulture)))) +
-            "   ·   " + HoldMsText + " ms";
+        public string Summary => WaitOnly
+            ? "纯等待 " + HoldMsText + " ms · 不发送 KEY CAN / 不改变保持状态"
+            : (KeyMask == 0 ? "明确全部断开" :
+                string.Join(" + ", Enumerable.Range(1, 20)
+                    .Where(i => (KeyMask & (1u << (i - 1))) != 0)
+                    .Select(i => "K" + i.ToString("00", CultureInfo.InvariantCulture)))) +
+                " · " + HoldMsText + " ms 后进入下一段（不会自动释放）";
         public KeyActionStep Export()
         {
             if (!string.IsNullOrEmpty(MaskError))
                 throw new InvalidOperationException(MaskError);
             if (!int.TryParse(HoldMsText, NumberStyles.None, CultureInfo.InvariantCulture, out var hold))
                 throw new InvalidOperationException("保持时间必须为非负整数毫秒。");
-            return new KeyActionStep(StepId, KeyMask, hold).Validate();
+            return new KeyActionStep(StepId, KeyMask, hold, WaitOnly).Validate();
         }
     }
 
@@ -101,7 +119,7 @@ public sealed partial class ManualBenchViewModel
             _name = name;
         }
         public string Name { get => _name; set => SetProperty(ref _name, value ?? ""); }
-        public string Summary => Steps.Count + " 段 KEY 控制 · " +
+        public string Summary => Steps.Count + " 段操作 · " +
             Steps.Sum(x => int.TryParse(x.HoldMsText, out var ms) ? ms : 0) + " ms";
         public void NotifySummary() => RaisePropertyChanged(nameof(Summary));
         public KeyActionDefinition Export(int order) =>
@@ -192,6 +210,7 @@ public sealed partial class ManualBenchViewModel
     public DelegateCommand DeleteKeyActionCommand { get; private set; } = null!;
     public DelegateCommand SaveKeyActionsCommand { get; private set; } = null!;
     public DelegateCommand AddKeyStepCommand { get; private set; } = null!;
+    public DelegateCommand AddWaitOnlyStepCommand { get; private set; } = null!;
     public DelegateCommand CopyKeyStepCommand { get; private set; } = null!;
     public DelegateCommand DeleteKeyStepCommand { get; private set; } = null!;
     public DelegateCommand MoveKeyStepUpCommand { get; private set; } = null!;
@@ -218,6 +237,8 @@ public sealed partial class ManualBenchViewModel
         SaveKeyActionsCommand = new DelegateCommand(async () => await SaveKeyActionsAsync(),
             () => CanSaveKeyActions);
         AddKeyStepCommand = new DelegateCommand(AddKeyStep,
+            () => CanEditKeyActions && HasSelectedKeyAction);
+        AddWaitOnlyStepCommand = new DelegateCommand(AddWaitOnlyStep,
             () => CanEditKeyActions && HasSelectedKeyAction);
         CopyKeyStepCommand = new DelegateCommand(CopyKeyStep,
             () => CanEditKeyActions && HasSelectedKeyStep);
@@ -250,6 +271,7 @@ public sealed partial class ManualBenchViewModel
         DeleteKeyActionCommand?.RaiseCanExecuteChanged();
         SaveKeyActionsCommand?.RaiseCanExecuteChanged();
         AddKeyStepCommand?.RaiseCanExecuteChanged();
+        AddWaitOnlyStepCommand?.RaiseCanExecuteChanged();
         CopyKeyStepCommand?.RaiseCanExecuteChanged();
         DeleteKeyStepCommand?.RaiseCanExecuteChanged();
         MoveKeyStepUpCommand?.RaiseCanExecuteChanged();
@@ -271,7 +293,7 @@ public sealed partial class ManualBenchViewModel
     private void OnStepKeyChecked(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName != nameof(KeyChoice.Checked) || _syncingActionKeys ||
-            SelectedKeyStep is null || !CanEditKeyActions) return;
+            SelectedKeyStep is null || !CanEditKeyActions || SelectedKeyStep.WaitOnly) return;
         SelectedKeyStep.KeyMask = StepKeys.Aggregate(0u,
             (mask, key) => key.Checked ? mask | key.Mask : mask);
     }
@@ -289,7 +311,8 @@ public sealed partial class ManualBenchViewModel
             finally { _syncingActionKeys = false; }
         }
         if (e.PropertyName is nameof(KeyActionStepEditor.KeyMask) or
-            nameof(KeyActionStepEditor.MaskHexText) or nameof(KeyActionStepEditor.HoldMsText))
+            nameof(KeyActionStepEditor.MaskHexText) or nameof(KeyActionStepEditor.HoldMsText) or
+            nameof(KeyActionStepEditor.WaitOnly))
             MarkKeyDirty();
     }
     private void OnActionEdited(object? sender, PropertyChangedEventArgs e)
@@ -327,7 +350,7 @@ public sealed partial class ManualBenchViewModel
         var action = new KeyActionEditor(Guid.NewGuid(), original.Name + " 副本");
         foreach (var step in original.Steps)
             action.Steps.Add(new KeyActionStepEditor(Guid.NewGuid(), step.KeyMask,
-                int.TryParse(step.HoldMsText, out var ms) ? ms : 100));
+                int.TryParse(step.HoldMsText, out var ms) ? ms : 100, step.WaitOnly));
         WireAction(action);
         KeyActions.Insert(KeyActions.IndexOf(original) + 1, action);
         SelectActionForEdit(action);
@@ -353,11 +376,23 @@ public sealed partial class ManualBenchViewModel
         SelectedKeyStep = step;
         MarkKeyDirty();
     }
+    private void AddWaitOnlyStep()
+    {
+        if (SelectedKeyAction is not { } action) return;
+        var step = new KeyActionStepEditor(Guid.NewGuid(), 0, 1000, waitOnly: true);
+        step.PropertyChanged += OnStepEdited;
+        var idx = SelectedKeyStep is null ? action.Steps.Count :
+            action.Steps.IndexOf(SelectedKeyStep) + 1;
+        action.Steps.Insert(idx, step);
+        SelectedKeyStep = step;
+        MarkKeyDirty();
+    }
+
     private void CopyKeyStep()
     {
         if (SelectedKeyAction is not { } action || SelectedKeyStep is not { } current) return;
         var copy = new KeyActionStepEditor(Guid.NewGuid(), current.KeyMask,
-            int.TryParse(current.HoldMsText, out var ms) ? ms : 100);
+            int.TryParse(current.HoldMsText, out var ms) ? ms : 100, current.WaitOnly);
         copy.PropertyChanged += OnStepEdited;
         action.Steps.Insert(action.Steps.IndexOf(current) + 1, copy);
         SelectedKeyStep = copy;
@@ -429,7 +464,7 @@ public sealed partial class ManualBenchViewModel
                 {
                     var action = new KeyActionEditor(item.ActionId, item.Name);
                     foreach (var step in item.Steps)
-                        action.Steps.Add(new KeyActionStepEditor(step.StepId, step.KeyMask, step.HoldMs));
+                        action.Steps.Add(new KeyActionStepEditor(step.StepId, step.KeyMask, step.HoldMs, step.WaitOnly));
                     WireAction(action);
                     KeyActions.Add(action);
                 }
@@ -499,8 +534,8 @@ public sealed partial class ManualBenchViewModel
        await Execute("执行 KEY 动作", async () =>
        {
         var stop = _keyActionStop ?? throw new InvalidOperationException("KEY 动作取消上下文不存在。");
-        if (!_hardware.IsConnected)
-            throw new IOException("USB 未连接，请先点击顶部“连接”。");
+        if (!_hardware.IsConnected && action.Steps.Any(step => !step.WaitOnly))
+            throw new IOException("此动作需要实际 KEY 输出，请先连接 USB；纯等待不需要连接。");
         stop.Token.ThrowIfCancellationRequested();
         if (_keyCatalogSession is null || KeyActionsDirty)
             throw new InvalidOperationException("动作必须先保存工程资源，且不能有未保存修改。");
@@ -535,58 +570,87 @@ public sealed partial class ManualBenchViewModel
                         " 超出工程已批准的 KEY 组合限制。");
             }
         }
-        var frames = list.Select(step => step.KeyMask == 0
+        // Only actual KEY transitions are authorized. Wait-only segments are
+        // not encoded as zero masks and never cause a physical output change.
+        var frames = list.Where(step => !step.WaitOnly).Select(step => step.KeyMask == 0
             ? KeypadCommandCodec.EncodeReleaseAll() : KeypadCommandCodec.EncodeMask(step.KeyMask)).ToArray();
         var epoch = _hardware.CurrentStationEpoch;
-        if (epoch == 0) throw new InvalidOperationException("USB 未连接。");
+        if (frames.Length > 0 && (epoch == 0 || !_hardware.IsConnected))
+            throw new InvalidOperationException("USB 未连接。");
         var fingerprintText = reopened.FileSha256 + ":" + saved.ActionId + ":" + epoch + ":" +
-            string.Join("|", list.Select(s => s.StepId + ":" + s.KeyMask + ":" + s.HoldMs));
+            string.Join("|", list.Select(s => s.StepId + ":" + s.KeyMask + ":" +
+                s.HoldMs + ":" + s.WaitOnly));
         var sha = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(fingerprintText)))
             .ToLowerInvariant();
         stop.Token.ThrowIfCancellationRequested();
         int completed = 0;
+        int sentFrames = 0;
+        var authorized = false;
         try
         {
-            await _hardware.AuthorizeManualKeyActionAsync(sha, "AUTHORIZE KEY ACTION " + sha,
-                frames, stop.Token);
+            if (frames.Length > 0)
+            {
+                await _hardware.AuthorizeManualKeyActionAsync(sha,
+                    "AUTHORIZE KEY ACTION " + sha, frames, stop.Token);
+                authorized = true;
+            }
             for (var i = 0; i < list.Length; i++)
             {
                 stop.Token.ThrowIfCancellationRequested();
-                if (_hardware.CurrentStationEpoch != epoch)
-                    throw new IOException("USB 已重连；禁止把旧连接的动作继续下发。");
-                KeyActionRunStatus = "步骤 " + (i + 1) + "/" + list.Length +
-                    "  发送 KEY 0x" + list[i].KeyMask.ToString("X5");
-                await _hardware.SendManualKeyStepAsync(frames[i], sha, stop.Token);
+                if (frames.Length > 0 && (!_hardware.IsConnected ||
+                    _hardware.CurrentStationEpoch != epoch))
+                    throw new IOException("USB 已重连或断开；禁止继续使用旧连接授权。");
+                var segment = list[i];
+                if (segment.WaitOnly)
+                {
+                    KeyActionRunStatus = "步骤 " + (i + 1) + "/" + list.Length +
+                        " · 纯等待 " + segment.HoldMs + " ms，不发送 KEY CAN";
+                    Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"),
+                        "KEY SIM", "WAIT", "", "",
+                        saved.Name + " · 纯等待，不改变此前 KEY 请求组合"));
+                }
+                else
+                {
+                    var frame = frames[sentFrames++];
+                    KeyActionRunStatus = "步骤 " + (i + 1) + "/" + list.Length +
+                        " · 发送 KEY " + (segment.KeyMask == 0
+                            ? "全部断开" : "0x" + segment.KeyMask.ToString("X5"));
+                    await _hardware.SendManualKeyStepAsync(frame, sha, stop.Token);
+                    Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"),
+                        "KEY CAN", "TX ACK", "0x730",
+                        Convert.ToHexString(frame.Data.AsSpan()),
+                        saved.Name + " · STEP " + segment.StepId +
+                        " · 主控 ACK（非实际五路电压）"));
+                    KeyActionRunStatus = "步骤 " + (i + 1) + "/" + list.Length +
+                        " · 主控 ACK；等待 " + segment.HoldMs + "ms，组合不会自动释放";
+                }
+                if (segment.HoldMs > 0)
+                    await Task.Delay(segment.HoldMs, stop.Token);
                 completed++;
-                Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"), "KEY CAN",
-                    "TX ACK", "0x730", Convert.ToHexString(frames[i].Data.AsSpan()),
-                    saved.Name + " · Step " + list[i].StepId + " · " +
-                    list[i].HoldMs + "ms；主控 ACK，不是实测电压"));
-                KeyActionRunStatus = "步骤 " + (i + 1) + "/" + list.Length +
-                    " 主控 ACK；保持 " + list[i].HoldMs + "ms";
-                if (list[i].HoldMs > 0) await Task.Delay(list[i].HoldMs, stop.Token);
             }
             KeyActionRunStatus = "完成 " + completed + "/" + list.Length +
-                " 步；最后请求组合仍为 0x" + list[^1].KeyMask.ToString("X5") +
-                "（未自动断开，实物电压未测量）。";
+                " 段；" + _hardware.KeyRequestStatus;
         }
         catch (OperationCanceledException) when (stop.IsCancellationRequested)
         {
-            KeyActionRunStatus = "已停止 " + completed + "/" + list.Length +
-                " 步；实体 KEY 状态 UNKNOWN，没有自动释放。";
+            KeyActionRunStatus = "操作员已停止（" + completed + "/" + list.Length +
+                "）；没有自动释放 KEY。 " + _hardware.KeyRequestStatus;
         }
         catch
         {
-            KeyActionRunStatus = "动作异常中止 " + completed + "/" + list.Length +
-                " 步；实际 KEY 状态 UNKNOWN，未自动释放。";
+            KeyActionRunStatus = "动作异常中止（" + completed + "/" + list.Length +
+                "）；没有自动释放 KEY。 " + _hardware.KeyRequestStatus;
             throw;
         }
         finally
         {
-            try { await _hardware.RevokeManualKeyActionAsync(); }
-            catch (Exception error)
+            if (authorized)
             {
-                KeyActionRunStatus += " 撤销授权异常：" + error.Message;
+                try { await _hardware.RevokeManualKeyActionAsync(); }
+                catch (Exception error)
+                {
+                    KeyActionRunStatus += " 撤销授权异常：" + error.Message;
+                }
             }
         }
        });
