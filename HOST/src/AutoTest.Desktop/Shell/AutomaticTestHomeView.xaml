@@ -85,14 +85,20 @@
     </StackPanel>
    </DockPanel>
   </Border>
-  <Grid Grid.Row="2">
+  <Grid x:Name="OperatorContentGrid" Grid.Row="2">
    <Grid.ColumnDefinitions>
-    <ColumnDefinition Width="196"/><ColumnDefinition Width="8"/>
-    <ColumnDefinition Width="2.2*" MinWidth="460"/><ColumnDefinition Width="8"/>
-    <ColumnDefinition Width="1*" MinWidth="315"/>
+    <ColumnDefinition x:Name="OperatorStageColumn" Width="196"/>
+    <ColumnDefinition x:Name="OperatorStageGapColumn" Width="8"/>
+    <ColumnDefinition x:Name="OperatorTestsColumn" Width="2.2*" MinWidth="460"/>
+    <ColumnDefinition x:Name="OperatorResultsGapColumn" Width="8"/>
+    <ColumnDefinition x:Name="OperatorResultsColumn" Width="1*" MinWidth="315"/>
    </Grid.ColumnDefinitions>
+   <Grid.RowDefinitions>
+    <RowDefinition x:Name="OperatorPrimaryRow" Height="*"/>
+    <RowDefinition x:Name="OperatorResultsRow" Height="0"/>
+   </Grid.RowDefinitions>
    <!-- Operator rail: only real input and actual run state. Physical START is blocked. -->
-   <Border Grid.Column="0" Style="{StaticResource PanelCard}">
+   <Border x:Name="OperatorStagesPanel" Grid.Column="0" Style="{StaticResource PanelCard}">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
      <StackPanel Margin="14,14,10,14">
       <TextBlock Text="工位流程" FontSize="18" FontWeight="Bold" Margin="0,0,0,16"
@@ -124,7 +130,7 @@
      </StackPanel>
     </ScrollViewer>
    </Border>
-   <Border Grid.Column="2" Style="{StaticResource PanelCard}">
+   <Border x:Name="OperatorTestsPanel" Grid.Column="2" Style="{StaticResource PanelCard}">
     <Grid>
      <Grid.RowDefinitions><RowDefinition Height="52"/><RowDefinition Height="42"/><RowDefinition Height="*"/></Grid.RowDefinitions>
      <DockPanel Margin="15,0">
@@ -182,7 +188,7 @@
      </Border>
     </Grid>
    </Border>
-   <Border Grid.Column="4" Style="{StaticResource PanelCard}">
+   <Border x:Name="OperatorResultsPanel" Grid.Column="4" Style="{StaticResource PanelCard}">
     <Grid><Grid.RowDefinitions><RowDefinition Height="52"/><RowDefinition Height="*"/></Grid.RowDefinitions>
      <Border BorderBrush="#CBD5E1" BorderThickness="0,0,0,1" Padding="15,0"><TextBlock Text="检测状态与结果" FontSize="19" FontWeight="Bold" VerticalAlignment="Center"/></Border>
      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
