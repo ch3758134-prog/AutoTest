@@ -256,23 +256,52 @@ public partial class WaveWorkbenchWindow : Window
         if (points.Count > 2400)
             plot = WaveChartAnalysis.InWindow(points, points[0].Seconds,
                 points[^1].Seconds, 2200);
-        var previous = plot[0];
-        var path = new Polyline
+        // A long gap must not be drawn as a continuous measured signal.
+        // Compare/TEST always use unmodified evidence, not this visual projection.
+        var intervals = plot.Zip(plot.Skip(1), (a, b) => b.Seconds - a.Seconds)
+            .Where(d => d > 0 && double.IsFinite(d))
+            .OrderBy(d => d).ToArray();
+        var median = intervals.Length == 0 ? 0 :
+            intervals[intervals.Length / 2];
+        var gapLimit = Math.Max(0.2, median * 8d);
+        Polyline NewSegment() => new()
         {
-            Stroke = Brush(color), StrokeThickness = thickness,
+            Stroke = Brush(color),
+            StrokeThickness = thickness,
             StrokeLineJoin = PenLineJoin.Round,
             StrokeDashArray = dashed ? new DoubleCollection { 6, 4 } : null,
             IsHitTestVisible = false
         };
-        path.Points.Add(new Point(x(previous.Seconds), y(previous.Value)));
+        var previous = plot[0];
+        var segment = NewSegment();
+        segment.Points.Add(new Point(x(previous.Seconds), y(previous.Value)));
         foreach (var current in plot.Skip(1))
         {
+            if (current.Seconds - previous.Seconds > gapLimit)
+            {
+                if (segment.Points.Count > 1) WavePlot.Children.Add(segment);
+                segment = NewSegment();
+                segment.Points.Add(new Point(x(current.Seconds), y(current.Value)));
+                previous = current;
+                continue;
+            }
             if (stepped)
-                path.Points.Add(new Point(x(current.Seconds), y(previous.Value)));
-            path.Points.Add(new Point(x(current.Seconds), y(current.Value)));
+                segment.Points.Add(new Point(x(current.Seconds), y(previous.Value)));
+            segment.Points.Add(new Point(x(current.Seconds), y(current.Value)));
             previous = current;
         }
-        WavePlot.Children.Add(path);
+        if (segment.Points.Count > 1) WavePlot.Children.Add(segment);
+        else if (plot.Count == 1)
+        {
+            var dot = new Ellipse
+            {
+                Width = 5, Height = 5, Fill = Brush(color),
+                IsHitTestVisible = false
+            };
+            Canvas.SetLeft(dot, x(plot[0].Seconds) - 2.5);
+            Canvas.SetTop(dot, y(plot[0].Value) - 2.5);
+            WavePlot.Children.Add(dot);
+        }
     }
 
     private void WavePlot_Click(object sender, MouseButtonEventArgs e)
