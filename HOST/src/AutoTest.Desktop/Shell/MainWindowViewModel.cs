@@ -167,6 +167,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         RedoActiveCommand = new DelegateCommand(RedoActive);
         CheckActiveCommand = new DelegateCommand(CheckActive);
         OpenDbcToolCommand = new DelegateCommand(async () => await OpenDbcToolAsync());
+        OpenIndependentDbcCommand = new DelegateCommand(async () => await OpenIndependentDbcAsync());
         OpenRecordHistoryCommand = new DelegateCommand(OpenRecordHistory);
         OpenFirstTestProjectCommand = new DelegateCommand(async () => await OpenFirstAssetAsync(
             ProjectWorkspaceService.TestProjectKind, CreateTestProjectAsync));
@@ -362,6 +363,7 @@ public sealed partial class MainWindowViewModel : BindableBase
     public DelegateCommand RedoActiveCommand { get; }
     public DelegateCommand CheckActiveCommand { get; }
     public DelegateCommand OpenDbcToolCommand { get; }
+    public DelegateCommand OpenIndependentDbcCommand { get; }
     public DelegateCommand OpenRecordHistoryCommand { get; }
     public DelegateCommand HelpCommand { get; }
     public DelegateCommand OpenFirstTestProjectCommand { get; }
@@ -709,7 +711,7 @@ public sealed partial class MainWindowViewModel : BindableBase
     {
         if (_workspace.Current is null)
         {
-            StatusMessage = "请先打开测试工程，然后导入或编辑 DBC。";
+            await OpenIndependentDbcAsync();
             return;
         }
         if (!SelectedResourceIsDbc)
@@ -2026,6 +2028,64 @@ public sealed partial class MainWindowViewModel : BindableBase
         }
         var opened = await _workspace.OpenDbcEditorAsync(id);
         var editor = new DbcWorkbenchViewModel(_workspace, _dbcDialogs, opened);
+        ShowDbcWindowCore(id.Value, name, editor);
+    }
+
+    /// <summary>
+    /// A raw DBC is a first-class independent tool file, not a hidden ECU
+    /// project. Use the same DBC editor, strict codec and atomic file receipt.
+    /// </summary>
+    private async Task OpenIndependentDbcAsync()
+    {
+        if (_closeGuardActive) return;
+        var picker = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "打开独立 DBC 文件（不修改 ECU 工程）",
+            Filter = "CAN DBC (*.dbc)|*.dbc",
+            CheckFileExists = true, Multiselect = false
+        };
+        if (picker.ShowDialog(global::System.Windows.Application.Current.MainWindow) != true) return;
+        try
+        {
+            var fullPath = Path.GetFullPath(picker.FileName);
+            var existing = _dbcToolWindows.Values.FirstOrDefault(x =>
+                string.Equals(x.Editor.FilePath, fullPath, StringComparison.OrdinalIgnoreCase));
+            if (existing.Window is { IsVisible: true })
+            {
+                existing.Window.Activate();
+                return;
+            }
+            // If the file is already a managed asset, route to its revision-
+            // checked PROJECT editor. Never bypass the project's hash updates.
+            if (_workspace.Current is { } current)
+            {
+                var managed = current.Definition.Assets.FirstOrDefault(asset =>
+                    asset.Kind == ProjectWorkspaceService.DbcKind &&
+                    string.Equals(Path.GetFullPath(Path.Combine(current.RootDirectory, asset.RelativePath)),
+                        fullPath, StringComparison.OrdinalIgnoreCase));
+                if (managed is not null)
+                {
+                    await ShowDbcWindowAsync(managed.Id, managed.Name);
+                    return;
+                }
+            }
+            var loaded = await AutoTest.Projects.Dbc.Editing.DbcDocumentStore.OpenAsync(fullPath);
+            var editor = DbcWorkbenchViewModel.ForIndependentFile(
+                _dbcDialogs, loaded.Document, loaded.Receipt);
+            ShowDbcWindowCore(Guid.NewGuid(), "独立文件 · " + Path.GetFileName(fullPath), editor);
+            StatusMessage = "已打开独立 DBC 文件，修改仅保存到所选文件：" + fullPath;
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or
+            InvalidDataException or ArgumentException or ProjectDataException or
+            NotSupportedException or FormatException)
+        {
+            StatusMessage = "无法打开独立 DBC：" + error.Message;
+            _fileDialogs.ShowError(StatusMessage);
+        }
+    }
+
+    private void ShowDbcWindowCore(Guid windowId, string name, DbcWorkbenchViewModel editor)
+    {
         var availableWidth = Math.Max(480, SystemParameters.WorkArea.Width - 40);
         var availableHeight = Math.Max(360, SystemParameters.WorkArea.Height - 40);
         var window = new Window
@@ -2111,11 +2171,11 @@ public sealed partial class MainWindowViewModel : BindableBase
         window.Closed += (_, _) =>
         {
             timer.Stop();
-            _dbcToolWindows.Remove(id.Value);
+            _dbcToolWindows.Remove(windowId);
         };
         if (_closeGuardActive || global::System.Windows.Application.Current?.Dispatcher.HasShutdownStarted == true)
             throw new InvalidOperationException("主程序正在关闭，DBC 编辑器不会重新显示。");
-        _dbcToolWindows[id.Value] = (window, editor);
+        _dbcToolWindows[windowId] = (window, editor);
         window.Show();
     }
 
