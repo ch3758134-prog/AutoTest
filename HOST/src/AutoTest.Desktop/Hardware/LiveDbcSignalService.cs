@@ -38,6 +38,7 @@ public sealed class LiveDbcSignalService : ITestSignalPort, IWaveSignalSource, I
     private readonly HashSet<Sink> _sinks = new();
     private bool _disposed;
     private long _generation;
+    private string? _boundProjectManifest;
     public event Action<string, TestSignalResult>? SignalReceived;
 
     public LiveDbcSignalService(HardwareConnectionService hardware,
@@ -63,8 +64,21 @@ public sealed class LiveDbcSignalService : ITestSignalPort, IWaveSignalSource, I
 
     private void OnProjectChanged(object? sender, EventArgs e)
     {
+        var current = _projects.Current;
         lock (_gate)
         {
+            // Autosaving an unrelated TEST, configuration or project file must
+            // not tear down the shared, live CAN/DBC subscriptions.
+            if (current is not null && _bindings.Count > 0 &&
+                string.Equals(current.ManifestPath, _boundProjectManifest,
+                    StringComparison.OrdinalIgnoreCase) &&
+                _bindings.Values.All(bound => current.Definition.Assets.Any(asset =>
+                    asset.Id == bound.Mapping.Asset &&
+                    asset.Revision == bound.Mapping.AssetRevision &&
+                    string.Equals(asset.Sha256, bound.Mapping.AssetSha256,
+                        StringComparison.OrdinalIgnoreCase))))
+                return;
+            _boundProjectManifest = null;
             _bindings.Clear();
             _latest.Clear();
             foreach (var sink in _sinks) sink.Channel.Writer.TryComplete();
@@ -113,6 +127,7 @@ public sealed class LiveDbcSignalService : ITestSignalPort, IWaveSignalSource, I
         {
             _bindings.Clear();
             foreach (var item in next) _bindings.Add(item.Key, item.Value);
+            _boundProjectManifest = project.ManifestPath;
             _latest.Clear();
             foreach (var sink in _sinks) sink.Channel.Writer.TryComplete();
             _sinks.Clear();
