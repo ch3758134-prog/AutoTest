@@ -21,7 +21,7 @@ public sealed class PublicFlowEditorView : UserControl
 
     private readonly ProjectWorkspaceService _workspace;
     private PublicFlowEditorSession _session;
-    private readonly StepEditTransaction _transaction;
+    private StepEditTransaction _transaction;
     private readonly TreeView _tree = new();
     private readonly TextBlock _status = new();
     private TestStepInspector? _inspector;
@@ -418,6 +418,34 @@ public sealed class PublicFlowEditorView : UserControl
             return;
         }
         RefreshTree(null);
+    }
+
+    public async Task SynchronizeSavedRevisionAsync()
+    {
+        var context = _workspace.Current;
+        var asset = context?.Definition.Assets.FirstOrDefault(a => a.Id == _session.AssetId);
+        if (_busy || asset is null || context!.Definition.Id != _session.ProjectId ||
+            asset.Revision == _session.AssetRevision) return;
+        if (IsDirty)
+        {
+            _status.Text = "公共流程磁盘修订已变化；草稿仍保留，不得覆盖新版本。";
+            return;
+        }
+        _busy = true;
+        try
+        {
+            _session = await _workspace.OpenPublicFlowEditorAsync(_session.AssetId);
+            var draft = TestDocument.Create(_session.Document.Name);
+            _transaction = new StepEditTransaction(draft with
+            {
+                Phases = draft.Phases.SetItem(TestPhase.Test, _session.Document.Body),
+                Mappings = _session.Document.Mappings
+            });
+            RefreshTree(null);
+            _status.Text = "已读取工程自动更新的公共流程修订。";
+        }
+        catch (Exception error) { _status.Text = "无法读取新修订：" + error.Message; }
+        finally { _busy = false; }
     }
 
     public bool ConfirmClose()
