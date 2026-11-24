@@ -31,7 +31,8 @@ public sealed partial class MainWindowViewModel
     {
         _automaticTestPlans = new AutomaticTestPlanService();
         _automaticTestHome = new AutomaticTestHomeViewModel(_automaticTestPlans, _hardware,
-            _scannerWorkbench, _workspace, () => { _ = ShowDeveloperAsync(); });
+            _scannerWorkbench, _workspace, () => { _ = ShowDeveloperAsync(); },
+            () => IsProductionWorkspace);
         AutomaticTestView = new AutomaticTestHomeView { DataContext = _automaticTestHome };
         ConfigureAutomaticTestCommand = new DelegateCommand(
             async () => await ShowDeveloperAsync());
@@ -50,6 +51,7 @@ public sealed partial class MainWindowViewModel
             StatusMessage = "请切换到工程与调试，并停止当前实体任务，再部署工程。";
             return;
         }
+        if (!await PrepareEditorsForCloseAsync()) return;
         var project = _workspace.Current;
         if (project is null)
         {
