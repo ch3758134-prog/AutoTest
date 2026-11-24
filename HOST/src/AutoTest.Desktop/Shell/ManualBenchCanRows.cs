@@ -89,12 +89,16 @@ public sealed partial class ManualBenchViewModel
         public bool Included { get => _included; set { if (SetProperty(ref _included, value)) Notify(); } }
         public bool CanToggleIncluded => !_batchInProgress || _lockedToAuthorizedBatch;
         public bool CanEditFields => !_batchInProgress;
+        public bool IsTransmitting => _batchInProgress;
+        public string RunLabel => _batchInProgress ? "停止" : "启动";
         public void SetBatchMembership(bool running, bool authorized)
         {
             _batchInProgress = running;
             _lockedToAuthorizedBatch = authorized;
             RaisePropertyChanged(nameof(CanToggleIncluded));
             RaisePropertyChanged(nameof(CanEditFields));
+            RaisePropertyChanged(nameof(IsTransmitting));
+            RaisePropertyChanged(nameof(RunLabel));
         }
         public bool Extended { get => _extended; set { if (SetProperty(ref _extended, value)) Notify(); } }
         public bool IsPeriodic { get => _periodic; set { if (SetProperty(ref _periodic, value)) Notify(); } }
@@ -393,13 +397,10 @@ public sealed partial class ManualBenchViewModel
         }
     }
 
-    private sealed record PreparedCanRow(BenchCanRow Row, CanFrame Frame, int PeriodMs);
-
-    private CancellationTokenSource? _canBatchStop;
-    private Task? _canBatchTask;
+    private sealed record RunningCanRow(CancellationTokenSource Stop, Task Worker);
+    private readonly Dictionary<BenchCanRow, RunningCanRow> _canWorkers = new();
     private string? _activeCanManifest;
     private Guid? _activeCanProjectId;
-    private ManualBenchCanDraftStore.DbcPin[] _activeCanPins = [];
     private bool _canBatchRunning;
     private int _newCanRowNumber;
     private BenchCanRow? _selectedCanRow;
@@ -434,9 +435,9 @@ public sealed partial class ManualBenchViewModel
         get => _canBatchRunning;
         private set { if (SetProperty(ref _canBatchRunning, value)) RaiseCommands(); }
     }
-    public bool CanEditCanRows => !IsBusy && !IsCanBatchRunning;
-    public bool CanStartCanRows => !IsBusy && !IsCanBatchRunning &&
-        CanSendRows.Any(x => x.Included);
+    public bool CanEditCanRows => !IsBusy;
+    public bool CanStartCanRows => !IsBusy &&
+        CanSendRows.Any(x => x.Included && !_canWorkers.ContainsKey(x));
     public bool CanStopCanRows => IsCanBatchRunning;
 
     public DelegateCommand AddCanRowCommand { get; private set; } = null!;
@@ -447,6 +448,7 @@ public sealed partial class ManualBenchViewModel
     public DelegateCommand StartCanRowsCommand { get; private set; } = null!;
     public DelegateCommand StopCanRowsCommand { get; private set; } = null!;
     public DelegateCommand<BenchCanRow> SendCanRowOnceCommand { get; private set; } = null!;
+    public DelegateCommand<BenchCanRow> ToggleCanRowCommand { get; private set; } = null!;
 
     private void InitializeCanRows()
     {
@@ -458,8 +460,9 @@ public sealed partial class ManualBenchViewModel
         StartCanRowsCommand = new DelegateCommand(async () => await StartCanRowsAsync(), () => CanStartCanRows);
         StopCanRowsCommand = new DelegateCommand(async () => await StopCanRowsAsync(), () => CanStopCanRows);
         SendCanRowOnceCommand = new DelegateCommand<BenchCanRow>(
-            async row => await StartCanRowsAsync(row),
-            row => row is not null && !IsBusy && !IsCanBatchRunning);
+            async row => await StartCanRowsAsync(row), row => row is not null && !IsBusy);
+        ToggleCanRowCommand = new DelegateCommand<BenchCanRow>(
+            async row => await ToggleCanRowAsync(row), row => row is not null && !IsBusy);
         AddCanRow();
     }
 
@@ -476,6 +479,7 @@ public sealed partial class ManualBenchViewModel
         StartCanRowsCommand?.RaiseCanExecuteChanged();
         StopCanRowsCommand?.RaiseCanExecuteChanged();
         SendCanRowOnceCommand?.RaiseCanExecuteChanged();
+        ToggleCanRowCommand?.RaiseCanExecuteChanged();
     }
 
     private void OnCanRowEdited()
@@ -511,6 +515,7 @@ public sealed partial class ManualBenchViewModel
     private void DeleteCanRow()
     {
         if (SelectedCanRow is not { } selected) return;
+        if (selected.IsTransmitting) { Status = "请先停止该报文，再删除。"; return; }
         var index = CanSendRows.IndexOf(selected);
         selected.Edited -= OnCanRowEdited;
         CanSendRows.Remove(selected);
@@ -626,42 +631,13 @@ public sealed partial class ManualBenchViewModel
         finally { _canRowsLoading = false; }
     }
 
-    private PreparedCanRow[] PrepareCanRows(BenchCanRow? single = null)
+    private int GetRowPeriod(BenchCanRow row, bool forceSingle = false)
     {
-        if (!string.Equals(_canDraftRoot, _projects.Current?.RootDirectory,
-                StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException(
-                "当前工程已切换，但 CAN 工作配置还没有完成保存/载入，禁止发送旧工程报文。");
-        var chosen = single is null ? CanSendRows.Where(row => row.Included).ToArray() :
-            CanSendRows.Contains(single) ? new[] { single } : Array.Empty<BenchCanRow>();
-        if (chosen.Length is < 1 or > 32)
-            throw new InvalidOperationException("请选择 1～32 条 ECU CAN 报文。");
-        var entries = chosen.Select(row =>
-        {
-            // Host-timed ECU CAN USB 0x40 only. Firmware 0x50 scheduling is KEY CAN.
-            // Every ECU CAN cycle uses the real physical fence, per-write ACK,
-            // cancellation and an exact allowlist scoped to the current connection.
-            var frame = row.BuildFrame();
-            int period = 0;
-            if (row.IsPeriodic && single is null && (!int.TryParse(row.PeriodText, NumberStyles.None,
-                    CultureInfo.InvariantCulture, out period) || period is < 50 or > 60000))
-                throw new InvalidOperationException(row.Name + " 的发送周期必须是 50～60000 ms。");
-            return new PreparedCanRow(row, frame, period);
-        }).ToArray();
-        if (entries.Where(item => item.PeriodMs != 0).Sum(item => 1000d / item.PeriodMs) > 25d)
-            throw new InvalidOperationException("周期发送总负载不得超过 25 帧/秒，请调大周期。");
-        return entries;
-    }
-
-    private static string BatchFingerprint(IEnumerable<PreparedCanRow> plan)
-    {
-        var text = string.Join("\n", plan.Select(item =>
-        {
-            var raw = CanFrameCodec.ToUsbPayload(item.Frame,
-                StationCanWiring.Current);
-            return Convert.ToHexString(raw) + ":" + item.PeriodMs;
-        }));
-        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text))).ToLowerInvariant();
+        if (forceSingle || !row.IsPeriodic) return 0;
+        if (!int.TryParse(row.PeriodText, NumberStyles.None,
+                CultureInfo.InvariantCulture, out var ms) || ms is < 20 or > 60000)
+            throw new ArgumentException(row.Name + " 的周期必须在 20～60000 ms。");
+        return ms;
     }
 
     private async Task VerifyCanRowDbcFreshAsync(BenchCanRow row)
@@ -681,141 +657,159 @@ public sealed partial class ManualBenchViewModel
             throw new InvalidDataException(row.Name + " 对应的 DBC 报文不存在。");
     }
 
-    private async Task StartCanRowsAsync(BenchCanRow? single = null) => await Execute(
-        single is null ? "ECU CAN 多报文" : "ECU CAN 单帧", async () =>
-    {
-        if (!_hardware.IsConnected)
-            throw new IOException("USB 未连接，请先点击顶部“连接”。");
-        if (IsCanBatchRunning)
-            throw new InvalidOperationException("ECU CAN 正在发送，请先停止当前任务。");
-        var project = _projects.Current ?? throw new InvalidOperationException("请先打开工程。");
-        var prepared = PrepareCanRows(single);
-        foreach (var row in prepared) await VerifyCanRowDbcFreshAsync(row.Row);
-        var pins = prepared.Select(x => x.Row.BoundDbcPin).OfType<ManualBenchCanDraftStore.DbcPin>().ToArray();
-        var fingerprint = BatchFingerprint(prepared);
-        await _hardware.AuthorizeManualCanBatchAsync(fingerprint,
-            "AUTHORIZE BENCH CAN " + fingerprint, prepared.Select(item => item.Frame).ToArray(),
-            maxWrites: prepared.Any(item => item.PeriodMs > 0) ? null : prepared.Length);
-        _activeCanManifest = project.ManifestPath;
-        _activeCanProjectId = project.Definition.Id.Value;
-        _activeCanPins = pins;
-        if (!ActiveCanProjectStillValid())
-        {
-            await _hardware.RevokeManualCanBatchAsync();
-            throw new InvalidOperationException("发送准备期间工程或所用 DBC 已变化，请重新启动发送。");
-        }
-        var stop = new CancellationTokenSource();
-        _canBatchStop = stop;
-        var authorized = prepared.Select(x => x.Row).ToHashSet();
-        foreach (var row in CanSendRows) row.SetBatchMembership(true, authorized.Contains(row));
-        foreach (var row in prepared) { row.Row.Sent = 0; row.Row.Result = "运行中"; }
-        IsCanBatchRunning = true;
-        Status = prepared.Any(item => item.PeriodMs > 0) ? "ECU CAN 周期发送中，直至主动停止或连接中断。" : "ECU CAN 单次发送。";
-        _canBatchTask = RunCanRowsAsync(prepared, fingerprint, stop, single is not null);
-    });
-
     private bool ActiveCanProjectStillValid()
     {
         var current = _projects.Current;
-        return current is not null && current.Definition.Id.Value == _activeCanProjectId &&
-            string.Equals(current.ManifestPath, _activeCanManifest, StringComparison.OrdinalIgnoreCase) &&
-            _activeCanPins.All(pin => current.Definition.Assets.Any(asset =>
-                asset.Id.Value == pin.AssetId && asset.Revision == pin.Revision &&
-                string.Equals(asset.Sha256, pin.Sha256, StringComparison.OrdinalIgnoreCase)));
+        if (!IsCanBatchRunning) return true;
+        return string.Equals(_activeCanManifest, current?.ManifestPath,
+                   StringComparison.OrdinalIgnoreCase) &&
+               _activeCanProjectId == current?.Definition.Id.Value;
     }
 
-    private async Task RunCanRowsAsync(PreparedCanRow[] plan, string fingerprint,
-        CancellationTokenSource stop, bool forceSingle)
+    private async Task StartCanRowsAsync(BenchCanRow? single = null) => await Execute(
+        single is null ? "ECU CAN 发送" : "ECU CAN 单发", async () =>
     {
-        string? failure = null;
+        if (!_hardware.IsConnected)
+            throw new IOException("USB 未连接，请先连接主控板。");
+        if (single is not null)
+        {
+            if (!CanSendRows.Contains(single)) throw new InvalidOperationException("报文已删除。");
+            await VerifyCanRowDbcFreshAsync(single);
+            var frame = single.BuildFrame();
+            await _hardware.SendManualBenchCanOnceAsync(frame);
+            single.Sent++;
+            single.Result = "单发完成 · USB ACK";
+            Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"),
+                "ECU CAN", "TX ACK", "0x" + frame.Id.ToString("X"),
+                Convert.ToHexString(frame.Data.AsSpan()), single.Name + "：主控 ACK，不代表 DUT 收到"));
+            return;
+        }
+
+        var selected = CanSendRows.Where(row => row.Included &&
+            !_canWorkers.ContainsKey(row)).ToArray();
+        if (selected.Length == 0)
+        {
+            Status = "没有需要新启动的勾选报文。";
+            return;
+        }
+        foreach (var row in selected) await StartCanRowAsync(row);
+        Status = "已启动勾选报文；各条周期发送可独立停止。";
+    });
+
+    private async Task ToggleCanRowAsync(BenchCanRow? row)
+    {
+        if (row is null || !CanSendRows.Contains(row)) return;
+        if (_canWorkers.TryGetValue(row, out var running))
+        {
+            running.Stop.Cancel();
+            await running.Worker;
+            return;
+        }
+        await Execute("ECU CAN " + row.Name, async () => await StartCanRowAsync(row));
+    }
+
+    private async Task StartCanRowAsync(BenchCanRow row)
+    {
+        if (_canWorkers.ContainsKey(row)) return;
+        if (!_hardware.IsConnected) throw new IOException("USB 未连接。");
+        await VerifyCanRowDbcFreshAsync(row);
+        var frame = row.BuildFrame();
+        var periodMs = GetRowPeriod(row);
+        if (periodMs == 0)
+        {
+            await _hardware.SendManualBenchCanOnceAsync(frame);
+            row.Sent++;
+            row.Result = "单发完成 · USB ACK";
+            return;
+        }
+        var token = await _hardware.AuthorizeManualCanRowAsync(frame);
+        var stop = new CancellationTokenSource();
+        if (_canWorkers.Count == 0)
+        {
+            _activeCanManifest = _projects.Current?.ManifestPath;
+            _activeCanProjectId = _projects.Current?.Definition.Id.Value;
+        }
+        row.Sent = 0;
+        row.Result = "周期发送中";
+        row.SetBatchMembership(true, true);
+        var worker = RunCanRowAsync(row, frame, periodMs, token, stop);
+        _canWorkers.Add(row, new RunningCanRow(stop, worker));
+        IsCanBatchRunning = true;
+        NotifyCanRows();
+    }
+
+    private async Task RunCanRowAsync(BenchCanRow row, CanFrame frame,
+        int periodMs, Guid token, CancellationTokenSource stop)
+    {
+        // Register the worker in the UI first; its first physical send follows.
+        await Task.Yield();
+        var scheduled = System.Diagnostics.Stopwatch.GetTimestamp();
+        var periodTicks = Math.Max(1L, (long)Math.Round(periodMs *
+            (double)System.Diagnostics.Stopwatch.Frequency / 1000d));
+        long skipped = 0;
+        var failed = false;
         try
         {
-            await Task.WhenAll(plan.Select(async entry =>
+            while (!stop.IsCancellationRequested)
             {
-                // A monotonic deadline avoids adding the WinUSB ACK duration
-                // to every requested period. Missed deadlines are skipped, never
-                // compensated by a burst of unapproved catch-up CAN writes.
-                var scheduled = System.Diagnostics.Stopwatch.GetTimestamp();
-                var periodTicks = entry.PeriodMs == 0 ? 0L : Math.Max(1L,
-                    (long)Math.Round(entry.PeriodMs *
-                        (double)System.Diagnostics.Stopwatch.Frequency / 1000d));
-                long skipped = 0;
-                while (!stop.IsCancellationRequested)
-                {
-                    if (!forceSingle && !entry.Row.Included)
-                    {
-                        if (entry.PeriodMs == 0) { entry.Row.Result = "未发送 · 已取消勾选"; break; }
-                        entry.Row.Result = "已暂停 · 本轮不发送";
-                        await Task.Delay(90, stop.Token);
-                        scheduled = System.Diagnostics.Stopwatch.GetTimestamp();
-                        continue;
-                    }
-                    try
-                    {
-                        await _hardware.SendManualBatchCanAsync(entry.Frame, fingerprint, stop.Token);
-                    }
-                    catch
-                    {
-                        // A failure on any row must stop every other periodic sender.
-                        stop.Cancel();
-                        throw;
-                    }
-                    entry.Row.Sent++;
-                    if (entry.Row.Sent == 1 || entry.Row.Sent % 10 == 0)
-                    {
-                        entry.Row.Result = "已发送 " + entry.Row.Sent +
-                            " 次 · USB ACK" + (skipped > 0 ? " · 跳过逾期周期 " + skipped : "");
-                        if (entry.Row.Sent == 1)
-                            Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"),
-                                "ECU CAN", "TX ACK", "0x" + entry.Frame.Id.ToString("X"),
-                                Convert.ToHexString(entry.Frame.Data.AsSpan()),
-                                entry.Row.Name + "：主控 ACK 并非 DUT 应答"));
-                    }
-                    if (entry.PeriodMs == 0) break;
-                    var now = System.Diagnostics.Stopwatch.GetTimestamp();
-                    var deadline = PeriodicCanDeadline.Advance(scheduled, now, periodTicks);
-                    scheduled = deadline.NextTicks;
-                    skipped += deadline.SkippedPeriods;
-                    if (deadline.SkippedPeriods > 0)
-                        entry.Row.Result = "已发送 " + entry.Row.Sent +
-                            " 次 · USB ACK · 跳过逾期周期 " + skipped;
-                    var untilDue = System.Diagnostics.Stopwatch.GetElapsedTime(now, scheduled);
-                    if (untilDue > TimeSpan.Zero)
-                        await Task.Delay(untilDue, stop.Token);
-                }
-            }));
+                await _hardware.SendManualCanRowAsync(frame, token, stop.Token);
+                row.Sent++;
+                if (row.Sent == 1 || row.Sent % 10 == 0)
+                    row.Result = "发送中 · " + row.Sent + " 帧 USB ACK" +
+                        (skipped > 0 ? " · 跳过逾期周期 " + skipped : "");
+                if (row.Sent == 1)
+                    Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"),
+                        "ECU CAN", "TX ACK", "0x" + frame.Id.ToString("X"),
+                        Convert.ToHexString(frame.Data.AsSpan()),
+                        row.Name + "：主控 ACK，非 DUT 收帧证明"));
+                var now = System.Diagnostics.Stopwatch.GetTimestamp();
+                var deadline = PeriodicCanDeadline.Advance(scheduled, now, periodTicks);
+                scheduled = deadline.NextTicks;
+                skipped += deadline.SkippedPeriods;
+                var untilDue = System.Diagnostics.Stopwatch.GetElapsedTime(now, scheduled);
+                if (untilDue > TimeSpan.Zero) await Task.Delay(untilDue, stop.Token);
+            }
         }
         catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
-        catch (Exception ex)
+        catch (Exception error)
         {
-            failure = ex.Message;
-            Status = "ECU CAN 多报文异常终止：" + failure;
+            failed = true;
+            row.Result = "异常停止 · " + error.Message;
+            Status = row.Name + " 周期发送失败：" + error.Message;
             Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"),
-                "ECU CAN", "ERROR", "", "", Status));
-            stop.Cancel();
+                "ECU CAN", "ERROR", "0x" + frame.Id.ToString("X"),
+                Convert.ToHexString(frame.Data.AsSpan()), Status));
         }
         finally
         {
-            try { await _hardware.RevokeManualCanBatchAsync(); }
-            catch (Exception ex)
+            try { await _hardware.RevokeManualCanRowAsync(token); }
+            catch (Exception error)
             {
+                failed = true;
+                row.Result = "撤销发送授权失败 · " + error.Message;
                 Append(new BenchLogEntry(DateTime.Now.ToString("HH:mm:ss.fff"),
-                    "USB", "ERROR", "", "", "撤销 CAN 授权失败：" + ex.Message));
+                    "USB", "ERROR", "", "", row.Result));
             }
-            foreach (var entry in plan)
-                entry.Row.Result = failure is not null ? "异常停止 · " + failure :
-                    entry.Row.Sent > 0 ? (entry.PeriodMs == 0 ? "单发完成 · " : "已停止 · ") +
-                    entry.Row.Sent + " 次 USB ACK" : "未发送";
-            _canBatchStop = null;
-            _activeCanManifest = null;
-            _activeCanProjectId = null;
-            _activeCanPins = [];
-            if (failure is null) Status = !_hardware.IsConnected ? "ECU CAN 已停止：USB 连接中断。" :
-                plan.All(x => x.PeriodMs == 0) ? "ECU CAN 单次发送结束。" : "ECU CAN 周期发送已停止。";
-            foreach (var row in CanSendRows) row.SetBatchMembership(false, false);
-            IsCanBatchRunning = false;
+            _canWorkers.Remove(row);
+            row.SetBatchMembership(false, false);
+            if (!failed) row.Result = "已停止 · " + row.Sent + " 次 USB ACK";
+            if (_canWorkers.Count == 0)
+            {
+                _activeCanManifest = null;
+                _activeCanProjectId = null;
+            }
+            IsCanBatchRunning = _canWorkers.Count != 0;
+            NotifyCanRows();
             stop.Dispose();
         }
+    }
+
+    private async Task StopCanRowsAsync()
+    {
+        var running = _canWorkers.Values.ToArray();
+        foreach (var item in running) item.Stop.Cancel();
+        await Task.WhenAll(running.Select(x => x.Worker));
+        if (running.Length > 0) Status = "全部 ECU CAN 周期任务已停止。";
     }
 
     /// <summary>Window closing waits for all ECU CAN writers to stop and for the fence to revoke.</summary>
