@@ -212,8 +212,7 @@ public sealed partial class ProjectWorkspaceService
             var full = Path.GetFullPath(manifestPath);
             var definition = await ProjectRepository.OpenDefinitionAsync(full, ct).ConfigureAwait(false);
             // An external project must be decodable, not merely a valid manifest.
-            await ProjectBundleContractAudit.ValidateAsync(definition, full, ct,
-                allowStaleReferencesForEditing: true).ConfigureAwait(false);
+            await ProjectBundleContractAudit.ValidateAsync(definition, full, ct).ConfigureAwait(false);
             var hash = await HashFileAsync(full, ct).ConfigureAwait(false);
             return new OpenProjectContext(definition, full, hash);
         }, ct);
