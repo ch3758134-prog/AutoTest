@@ -190,8 +190,10 @@ public sealed partial class ManualBenchViewModel
          pin.AssetId != _loadedControllerAsset || pin.Revision != _loadedControllerRevision ||
          !pin.Sha256.Equals(_loadedControllerSha, StringComparison.OrdinalIgnoreCase));
     public bool CanSaveKeyActions => CanEditKeyActions && (KeyActionsDirty || ControllerBindingNeedsSave);
-    public bool CanRunKeyAction => !IsBusy && !KeyActionsDirty &&
-        _keyCatalogSession is not null && !IsKeyActionRunning;
+    // Buttons execute the last successfully saved document, never editor drafts.
+    // When one KEY action is running another button may request a serialized
+    // transition; non-KEY operations still block a new action.
+    public bool CanRunKeyAction => CanPressKeyPad;
     public string KeyActionRunStatus
     {
         get => _keyActionRunStatus;
@@ -228,8 +230,12 @@ public sealed partial class ManualBenchViewModel
             action => { if (action is not null) SelectActionForEdit(action); },
             _ => CanEditKeyActions);
         ExecuteKeyActionCommand = new DelegateCommand<KeyActionEditor>(
-            action => { if (action is not null) StartKeyAction(action); },
-            _ => CanRunKeyAction);
+            async action =>
+            {
+                if (action is not null) await SwitchSavedKeyActionAsync(action.ActionId);
+            },
+            action => CanRunKeyAction && action is not null &&
+                _keyCatalogSession?.Document.Actions.Any(x => x.ActionId == action.ActionId) == true);
         CopyKeyActionCommand = new DelegateCommand(CopyKeyAction,
             () => CanEditKeyActions && HasSelectedKeyAction);
         DeleteKeyActionCommand = new DelegateCommand(DeleteKeyAction,
@@ -256,6 +262,7 @@ public sealed partial class ManualBenchViewModel
             () => CanEditKeyActions && HasSelectedKeyStep);
         StopKeyActionCommand = new DelegateCommand(async () => await StopKeyActionAsync(),
             () => IsKeyActionRunning);
+        InitializeKeyPad();
     }
     private void NotifyKeyCommands()
     {
@@ -280,6 +287,7 @@ public sealed partial class ManualBenchViewModel
         InvertStepKeysCommand?.RaiseCanExecuteChanged();
         CopyPreviousStepKeysCommand?.RaiseCanExecuteChanged();
         StopKeyActionCommand?.RaiseCanExecuteChanged();
+        NotifyKeyPadCommands();
     }
 
     private void MarkKeyDirty()
@@ -476,7 +484,12 @@ public sealed partial class ManualBenchViewModel
         {
             Status = "按键动作资源加载被拒绝：" + ex.Message;
         }
-        finally { _loadingKeyActions = false; NotifyKeyCommands(); }
+        finally
+        {
+            _loadingKeyActions = false;
+            RefreshSavedKeyPads();
+            NotifyKeyCommands();
+        }
     }
 
     private async Task SaveKeyActionsAsync() => await Execute("保存按键动作", async () =>
@@ -515,39 +528,36 @@ public sealed partial class ManualBenchViewModel
             KeyActionRunStatus = KeyActionsDirty
                 ? "保存了上一个动作库修订；保存期间出现新修改，仍需再次保存。"
                 : "动作库已保存、回读校验通过；没有执行任何硬件动作。";
-            Status = "按键动作库已保存至工程（Revision " + _keyCatalogSession.AssetRevision + "）。";
+            Status = "按键动作库已保存至工程（Revision " + _keyCatalogSession.AssetRevision +
+                "）；快捷按钮现已使用此保存版本。";
+            RefreshSavedKeyPads();
         }
         finally { _savingKeyActions = false; NotifyKeyCommands(); }
     });
 
-    private void StartKeyAction(KeyActionEditor action)
-    {
-        if (!CanRunKeyAction || IsKeyActionRunning || _keyActionTask is { IsCompleted: false }) return;
-        _keyActionStop = new CancellationTokenSource();
-        IsKeyActionRunning = true; // close/stop must work even during resource preflight
-        _keyActionTask = RunKeyActionAsync(action);
-    }
-    private async Task RunKeyActionAsync(KeyActionEditor action)
+    private async Task RunKeyActionAsync(Guid actionId)
     {
       try
       {
        await Execute("执行 KEY 动作", async () =>
        {
         var stop = _keyActionStop ?? throw new InvalidOperationException("KEY 动作取消上下文不存在。");
-        if (!_hardware.IsConnected && action.Steps.Any(step => !step.WaitOnly))
-            throw new IOException("此动作需要实际 KEY 输出，请先连接 USB；纯等待不需要连接。");
+        // Validation and execution refer exclusively to the persisted
+        // engineering action. Dirty drafts cannot alter a live button.
         stop.Token.ThrowIfCancellationRequested();
-        if (_keyCatalogSession is null || KeyActionsDirty)
-            throw new InvalidOperationException("动作必须先保存工程资源，且不能有未保存修改。");
+        if (_keyCatalogSession is null)
+            throw new InvalidOperationException("动作尚未保存到工程，未下发 KEY。");
         var reopened = await _projects.OpenKeyActionsAsync();
         if (reopened.AssetId != _keyCatalogSession.AssetId ||
             reopened.AssetRevision != _keyCatalogSession.AssetRevision ||
             !reopened.FileSha256.Equals(_keyCatalogSession.FileSha256,
                 StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("动作资源已修订或文件变动，请重新打开。");
-        var saved = reopened.Document.Actions.SingleOrDefault(a => a.ActionId == action.ActionId) ??
+        var saved = reopened.Document.Actions.SingleOrDefault(a => a.ActionId == actionId) ??
             throw new InvalidOperationException("该动作已从工程资源移除。");
         var list = saved.Steps.ToArray();
+        if (!_hardware.IsConnected && list.Any(step => !step.WaitOnly))
+            throw new IOException("此动作需要真实 KEY 输出，请先连接主控 USB。");
         // A catalog without a legacy Controller pin is a direct 20 KEY script.
         // A pinned catalog must still satisfy the exact saved hardware policy.
         if (reopened.Document.Controller is { } pin)
@@ -660,6 +670,7 @@ public sealed partial class ManualBenchViewModel
         _keyActionStop?.Dispose();
         _keyActionStop = null;
         IsKeyActionRunning = false;
+        MarkActiveKeyPad(null);
       }
     }
 
@@ -667,14 +678,20 @@ public sealed partial class ManualBenchViewModel
 
     public async Task StopKeyActionAsync()
     {
-        _keyActionStop?.Cancel();
+        // Invalidate queued clicks before requesting stop; no queued action
+        // may silently start after the operator presses Stop or closes the tool.
+        Interlocked.Increment(ref _keyActionRequest);
+        try { _keyActionStop?.Cancel(); }
+        catch (ObjectDisposedException) { }
         var task = _keyActionTask;
         if (task is not null && !task.IsCompleted) await task;
     }
 
     private void DisposeKeyActions()
     {
-        _keyActionStop?.Cancel();
+        Interlocked.Increment(ref _keyActionRequest);
+        try { _keyActionStop?.Cancel(); }
+        catch (ObjectDisposedException) { }
         foreach (var key in StepKeys) key.PropertyChanged -= OnStepKeyChecked;
         foreach (var action in KeyActions) UnwireAction(action);
     }

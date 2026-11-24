@@ -237,26 +237,76 @@ public partial class ManualBenchWindow : Window
         if (_model.SelectedKeyAction is { } action) OpenKeyActionEditor(action);
     }
 
-    private void SelectKeyAction_Click(object sender, RoutedEventArgs e)
+    private void ManageKeyActions_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Button { Tag: ManualBenchViewModel.KeyActionEditor action })
+        if (_model.SelectedKeyAction is { } selected)
+            OpenKeyActionEditor(selected);
+        else if (_model.KeyActions.FirstOrDefault() is { } first)
+            OpenKeyActionEditor(first);
+        else
+            AddKeyAction_Click(sender, e);
+    }
+
+    private ManualBenchViewModel.KeyActionEditor? ActionForPadMenu(object sender)
+    {
+        if (sender is not MenuItem
+            { Tag: ManualBenchViewModel.KeyActionPadItem pad }) return null;
+        return _model.KeyActions.FirstOrDefault(x => x.ActionId == pad.ActionId);
+    }
+
+    private void EditKeyPad_Click(object sender, RoutedEventArgs e)
+    {
+        if (ActionForPadMenu(sender) is { } action)
             OpenKeyActionEditor(action);
     }
 
-    private void EditKeyAction_RightClick(object sender, MouseButtonEventArgs e)
+    private void CopyKeyPad_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Button { Tag: ManualBenchViewModel.KeyActionEditor action })
+        if (ActionForPadMenu(sender) is not { } action) return;
+        if (!_model.CanEditKeyActions)
         {
-            OpenKeyActionEditor(action);
-            e.Handled = true;
+            MessageBox.Show(this, "请先停止当前操作，再复制 KEY 动作。",
+                "KEY 动作编辑", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
         }
+        _model.SelectedKeyAction = action;
+        var copyCommand = (ICommand)_model.CopyKeyActionCommand;
+        if (!copyCommand.CanExecute(null)) return;
+        copyCommand.Execute(null);
+        if (_model.SelectedKeyAction is { } copy)
+            OpenKeyActionEditor(copy);
     }
 
-    private void RunKeyAction_Click(object sender, RoutedEventArgs e)
+    private void PinKeyPad_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is System.Windows.Controls.Button
-            { Tag: ManualBenchViewModel.KeyActionEditor action })
-            _model.ExecuteKeyActionCommand.Execute(action);
+        if (sender is not MenuItem
+            { Tag: ManualBenchViewModel.KeyActionPadItem pad }) return;
+        if (!_model.PinKeyPadCommand.CanExecute(pad))
+        {
+            MessageBox.Show(this,
+                "先保存当前编辑草稿、停止 KEY 任务，再调整已保存按钮的顺序。",
+                "KEY 按钮置顶", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        _model.PinKeyPadCommand.Execute(pad);
+    }
+
+    private void DeleteKeyPad_Click(object sender, RoutedEventArgs e)
+    {
+        if (ActionForPadMenu(sender) is not { } action) return;
+        if (!_model.CanEditKeyActions)
+        {
+            MessageBox.Show(this, "请先停止当前操作，再删除动作。",
+                "KEY 动作管理", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        if (MessageBox.Show(this, "确定删除动作“" + action.Name +
+                "”？删除后还需要保存动作库。",
+                "删除 KEY 动作", MessageBoxButton.YesNo,
+                MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        _model.SelectedKeyAction = action;
+        var deleteCommand = (ICommand)_model.DeleteKeyActionCommand;
+        if (deleteCommand.CanExecute(null)) deleteCommand.Execute(null);
     }
 
     private async void ApplyNamedOperation_Click(object sender, RoutedEventArgs e)

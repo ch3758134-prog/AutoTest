@@ -380,7 +380,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         ReleaseKeysCommand = new DelegateCommand(ReleaseDraftKeys, () => !IsBusy);
         ReleaseAllKeysCommand = new DelegateCommand(
             async () => await ReleaseAllKeysAsync(),
-            () => _hardware.IsConnected && !IsBusy && !IsKeyActionRunning &&
+            () => _hardware.IsConnected && (!IsBusy || IsKeyActionRunning) &&
                 !_hardware.IsTestRunApproved && !_hardware.IsManualCanBatchApproved);
         SendIgnCommand = new DelegateCommand(async () => await ApplyIgnAsync(), () => CanInvokeManualIo);
         ReadIgnCommand = new DelegateCommand(async () => await ReadIgnAsync(), () => CanInvokeManualIo);
@@ -805,15 +805,21 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         Status = "仅清空编辑勾选；尚未发送 KEY。要真正断开请点击“实际全部断开 KEY”。";
     }
 
-    private async Task ReleaseAllKeysAsync() => await Execute(
-        "明确全部断开 KEY", async () =>
+    private async Task ReleaseAllKeysAsync()
     {
+        // Explicit release is a real operator action. First cancel all
+        // remaining segments, then await the previous command fence cleanup.
+        // No hidden release is sent on ordinary Stop.
+        if (IsKeyActionRunning || _keyActionTask is { IsCompleted: false })
+            await StopKeyActionAsync();
+        await Execute("明确全部断开 KEY", async () =>
+        {
         if (!_hardware.IsConnected)
             throw new IOException("主控 USB 未连接；未下发全部断开请求。");
         if (IsKeyActionRunning || _hardware.IsTestRunApproved ||
             _hardware.IsManualCanBatchApproved)
             throw new InvalidOperationException(
-                "KEY、TEST 或 CAN 任务正在运行；请先停止后再明确断开。");
+                "仍有实体操作占用工位，无法交错下发 KEY 全断开。");
         var frame = KeypadCommandCodec.EncodeReleaseAll();
         await _hardware.SendCanOnceAsync(frame, ExpectedConsent(() => frame));
         LastKeyAck = "已明确发送全部断开 KEY，并收到主控 ACK；实际五路电压未测量。";
@@ -821,7 +827,8 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
             "KEY CAN", "TX ACK", "0x730",
             Convert.ToHexString(frame.Data.AsSpan()), LastKeyAck));
         Status = LastKeyAck;
-    });
+        });
+    }
 
     public async Task ApplyIgnSelectionAsync(bool on)
     {
