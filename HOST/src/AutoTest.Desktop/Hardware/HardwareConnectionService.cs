@@ -555,7 +555,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             _link?.RevokeManualKeySequence();
             _manualKeyActionApproved = false;
             _manualKeyActionFingerprint = null;
-            Record("KEY 序列授权撤销；没有自动释放 KEY，实体状态 UNKNOWN。");
+            Record("KEY 序列授权撤销；未发送任何 KEY 释放帧。" + KeyRequestStatus);
         }
         finally { _lifecycle.Release(); }
     }
@@ -1043,6 +1043,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         try
         {
             Interlocked.Exchange(ref _currentEpoch, 0);
+            MarkKeyRequestUnknown();
             Interlocked.Exchange(ref _ledCapabilityEpoch, 0);
             SetObservedEcuCanBaud(0, 0, legacy: false);
             try { ConnectionChanged?.Invoke(0); } catch { }
