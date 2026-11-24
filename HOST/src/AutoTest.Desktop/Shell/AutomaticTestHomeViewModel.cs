@@ -39,9 +39,9 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     private EngineeringTestProjectPreview? _draftPreview;
     private string _draftIssue = "";
     private long _previewVersion;
-    private string _startRequestStatus = "自动连接和真实工程整组实测可用；正式生产放行仍需实体 START 与统一生产记录。";
-    private string _inspectedNode = "点击左侧用例或展开步骤，查看本工程的完整检测结构。";
-    private string _inspectedStatus = "只读结构预览，未执行任何实体检测。";
+    private string _startRequestStatus = "";
+    private string _inspectedNode = "选择用例或步骤";
+    private string _inspectedStatus = "";
     public string InspectedNode { get => _inspectedNode; private set => SetProperty(ref _inspectedNode, value); }
     public string InspectedStatus { get => _inspectedStatus; private set => SetProperty(ref _inspectedStatus, value); }
     public void SelectOperatorNode(object? selected)
@@ -50,17 +50,15 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         {
             case AutomaticTestCase testCase:
                 InspectedNode = testCase.Name;
-                InspectedStatus = "测试用例 · " + testCase.Children.Count +
-                    " 个顶层步骤 · " + testCase.State + "。实际结果仅能由正式执行器产生。";
+                InspectedStatus = testCase.Children.Count + " 个步骤 · " + testCase.State;
                 break;
             case AutomaticTestStep step:
                 InspectedNode = step.Name;
-                InspectedStatus = "步骤 · " + step.State +
-                    "。点击只是查看结构，不会更改工程或发送硬件命令。";
+                InspectedStatus = step.State;
                 break;
             default:
-                InspectedNode = "点击左侧用例或展开步骤，查看本工程的完整检测结构。";
-                InspectedStatus = "只读结构预览，未执行任何实体检测。";
+                InspectedNode = "选择用例或步骤";
+                InspectedStatus = "";
                 break;
         }
     }
@@ -110,7 +108,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     }
     public string PhysicalStartStatus => "正式生产放行待接线";
     public string StartInputHint =>
-        "正式生产放行仍缺实体 START 和统一生产 RECORD；可从本页执行实际工位动作、前置烧录及全部 TEST 的工程整组实测，不计生产统计。";
+        "工程实测可使用软件启动；正式生产放行尚需实体 START 与生产记录验收。";
 
     private void RequestSoftwareStart()
     {
@@ -118,22 +116,19 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         // adapter and durable RunId record are wired, NEVER issue CAN/FLASH,
         // claim a START edge, fabricate progress or return PASS.
         if (_plans.Current is not { } plan)
-            StartRequestStatus = "不能启动：尚未打开 ECU 工程。请进入开发与调试完成配置并保存。";
+            StartRequestStatus = "请先打开 ECU 工程。";
         else if (!plan.ResourceReady)
-            StartRequestStatus = "不能启动：当前工程存在资源或有序用例问题，请先修复相关配置。";
+            StartRequestStatus = "工程未就绪，请检查用例和资源。";
         else if (!_scanner.IsConnected)
-            StartRequestStatus = "不能启动：工位扫码枪尚未建立真实串口会话。";
+            StartRequestStatus = "扫码枪未连接。";
         else if (_prepared is null || string.IsNullOrWhiteSpace(_lastIdentity))
-            StartRequestStatus = "不能启动：尚未接受本次 ECU 的真实扫码并冻结完整工程资源。";
+            StartRequestStatus = "请扫描当前 ECU 编号。";
         else if (!_hardware.IsConnected)
-            StartRequestStatus = "不能启动：USB 主控未连接。";
+            StartRequestStatus = "主控未连接。";
         else if (!_hardware.IsEcuCanBitrateApplied)
-            StartRequestStatus = "不能启动：ECU CAN 波特率尚未确认应用，" +
-                _hardware.EcuCanBitrateStatus;
+            StartRequestStatus = "ECU CAN 波特率待确认：" + _hardware.EcuCanBitrateStatus;
         else
-            StartRequestStatus = "配置与身份已核对，但尚缺真实工位准备、" +
-                "软件/实体 START 仲裁、FLASH→全量 TEST→RECORD 的生产执行适配器。" +
-                "本按钮不会假执行或生成 PASS；请继续在工程与调试中进行真实专项验证。";
+            StartRequestStatus = "工程准备检查通过；正式生产功能尚待验收。";
     }
     public bool IsBusy
     {
@@ -162,11 +157,9 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     public bool ScannerConnected => _scanner.IsConnected;
     public bool CanBitrateReady => _hardware.IsConnected && _hardware.IsEcuCanBitrateApplied;
     public bool IdentityAccepted => _prepared is not null;
-    public string ControllerLabel => MainControllerConnected ? "主控 USB 已连接" :
-        "主控 USB 自动连接中";
-    public string ScannerLabel => ScannerConnected ? "扫码枪已连接" : "扫码枪等待连接";
-    public string CanLabel => !MainControllerConnected ? "CAN 码率待确认" :
-        CanBitrateReady ? "CAN 码率已确认" : "CAN 码率未确认";
+    public string ControllerLabel => MainControllerConnected ? "主控已连接" : "主控连接中";
+    public string ScannerLabel => ScannerConnected ? "扫码已连接" : "扫码未连接";
+    public string CanLabel => CanBitrateReady ? "CAN 已配置" : "CAN 待配置";
     public string ControllerDetail => MainControllerConnected
         ? "USB 协议已连接 · " + (_hardware.ConnectedDeviceIdentity ?? "设备已识别")
         : "主工位自动发现设备并受控重试，无需人工连接";
@@ -175,14 +168,14 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         : "已绑定设备自动重连；首次使用或故障时打开扫码枪设置";
     public string CanDetail => _hardware.EcuCanBitrateStatus +
         " · 此项仅代表主控配置，不代表 ECU 已响应";
-    public string StationReadiness => !_hardware.IsConnected ? "设备准备 · 等待主控 USB" :
-        !_hardware.IsEcuCanBitrateApplied ? "设备准备 · CAN 码率待确认" :
-        !_scanner.IsConnected ? "设备准备 · 扫码枪未连接" :
-        _plans.Current is null ? "检测准备 · 无正式检测工程" :
-        !_plans.Current.ResourceReady ? "检测准备 · 工程资源未就绪" :
-        _prepared is null ? "等待本次 ECU 扫码" :
-        IsOperatorRunning ? "真实工程整组实测执行中" :
-        "工位已就绪 · 可进行真实整组实测（未获正式生产放行）";
+    public string StationReadiness => !_hardware.IsConnected ? "等待主控连接" :
+        !_hardware.IsEcuCanBitrateApplied ? "CAN 波特率待确认" :
+        !_scanner.IsConnected ? "等待扫码枪" :
+        _plans.Current is null ? "请打开工程" :
+        !_plans.Current.ResourceReady ? "工程未就绪" :
+        _prepared is null ? "等待扫码" :
+        IsOperatorRunning ? "检测进行中" :
+        "工程实测已就绪";
     public string IdentityLabel => IdentityAccepted ? "编号已核对" : "编号待核对";
     public string DutSerial => _dutSerial;
     public string ScanStatus => _scanStatus;
