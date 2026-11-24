@@ -242,9 +242,15 @@ public sealed partial class MainWindowViewModel : BindableBase
             RaisePropertyChanged(nameof(TestProjectCount));
             RaisePropertyChanged(nameof(TestProgramCount));
             RaisePropertyChanged(nameof(ConfigurationCount));
-            foreach (var projectTab in OpenEditors)
+            foreach (var projectTab in OpenEditors.ToArray())
+            {
                 if (projectTab.Editor is TestProjectWorkbenchViewModel projectEditor)
                     projectEditor.RefreshReferences();
+                else if (projectTab.Editor is TestEditorViewModel testEditor)
+                    _ = testEditor.SynchronizeSavedRevisionAsync();
+                else if (projectTab.View is PublicFlowEditorView flowEditor)
+                    _ = flowEditor.SynchronizeSavedRevisionAsync();
+            }
             RebuildResourceTree();
             RaiseStartStateChanged();
             StatusMessage = _workspace.Current is { } current
@@ -958,6 +964,10 @@ public sealed partial class MainWindowViewModel : BindableBase
         RaisePropertyChanged(nameof(ActiveEditorTab));
         if (ActiveEditorTab?.Editor is TestProjectWorkbenchViewModel projectEditor)
             projectEditor.RefreshReferences();
+        else if (ActiveEditorTab?.Editor is TestEditorViewModel testEditor)
+            _ = testEditor.SynchronizeSavedRevisionAsync();
+        else if (ActiveEditorTab?.View is PublicFlowEditorView flowEditor)
+            _ = flowEditor.SynchronizeSavedRevisionAsync();
         RaisePropertyChanged(nameof(ActiveEditorView));
         RaisePropertyChanged(nameof(ActiveEditorTitle));
         RaisePropertyChanged(nameof(ActiveEditorInspector));
