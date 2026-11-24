@@ -47,7 +47,7 @@
    <DockPanel>
     <Button DockPanel.Dock="Right" Content="{Binding StateDescription}" Click="ShowPolicy_Click" ToolTip="查看实际可编辑范围" Margin="8,0,0,0"/>
     <WrapPanel VerticalAlignment="Center">
-     <Button Content="保存" Click="Save_Click" MinWidth="65" Margin="0,0,6,0"/>
+     <Button Content="保存" Click="Save_Click" IsEnabled="{Binding CanSave}" MinWidth="65" Margin="0,0,6,0"/>
      <Button Content="撤销" Click="Undo_Click" IsEnabled="{Binding CanUndo}" Margin="0,0,4,0"/>
      <Button Content="重做" Click="Redo_Click" IsEnabled="{Binding CanRedo}" Margin="0,0,12,0"/>
      <Button Content="＋ 报文" Click="AddMessage_Click" IsEnabled="{Binding CanChangeStructure}" ToolTip="{Binding UnsupportedDescription}" Margin="0,0,4,0"/>
@@ -91,7 +91,7 @@
      <StackPanel Margin="12,10,12,8">
       <DockPanel>
        <WrapPanel DockPanel.Dock="Right" VerticalAlignment="Center">
-        <Button Content="报文属性" Command="{Binding EditMessageCommand}" Margin="0,0,5,0"/>
+        <Button Content="报文属性" Click="EditMessage_Click" IsEnabled="{Binding CanEdit}" Margin="0,0,5,0"/>
         <Button Content="名称与注释" Click="MessageNotes_Click"/>
        </WrapPanel>
        <StackPanel>
@@ -106,11 +106,11 @@
       </DockPanel>
       <TextBlock Text="{Binding SelectedMessageDefinition}" MaxHeight="36" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" Foreground="#62778D" FontSize="11" Margin="0,6,0,6" ToolTip="{Binding SelectedMessageDefinition}"/>
       <DockPanel>
-       <WrapPanel DockPanel.Dock="Right"><Button Content="信号说明" Click="SignalNotes_Click" Margin="0,0,4,0"/><Button Content="枚举值" Click="Enums_Click" Margin="0,0,4,0"/><Button Content="完整参数" Click="EditSignal_Click"/></WrapPanel>
+       <WrapPanel DockPanel.Dock="Right"><Button Content="信号说明" Click="SignalNotes_Click" Margin="0,0,4,0"/><Button Content="枚举值" Click="Enums_Click" Margin="0,0,4,0"/><Button Content="完整参数" Click="EditSignal_Click" IsEnabled="{Binding CanEdit}"/></WrapPanel>
        <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Text="信号定义" FontWeight="SemiBold" Margin="0,0,8,0"/><TextBlock Text="{Binding SignalCount,StringFormat='{}{0} 个'}" Foreground="#62778D"/></StackPanel>
       </DockPanel>
      </StackPanel>
-     <DataGrid x:Name="SignalGrid" Grid.Row="1" Style="{StaticResource Matrix}" ItemsSource="{Binding Signals}" SelectedItem="{Binding SelectedSignal,Mode=TwoWay}" SelectionUnit="CellOrRowHeader" FrozenColumnCount="1"
+     <DataGrid x:Name="SignalGrid" Grid.Row="1" Style="{StaticResource Matrix}" ItemsSource="{Binding Signals}" SelectedItem="{Binding SelectedSignal,Mode=TwoWay}" SelectionUnit="FullRow" FrozenColumnCount="1"
        BeginningEdit="Signal_BeginningEdit" CellEditEnding="Signal_CellEditEnding" RowEditEnding="Signal_RowEditEnding" MouseDoubleClick="Signal_DoubleClick">
       <DataGrid.ContextMenu><ContextMenu>
        <MenuItem Header="名称与注释" Click="SignalNotes_Click"/><MenuItem Header="完整参数" Click="EditSignal_Click"/><MenuItem Header="枚举值" Click="Enums_Click"/><MenuItem Header="删除信号" Click="DeleteSignal_Click"/>
