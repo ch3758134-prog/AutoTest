@@ -75,6 +75,33 @@ public partial class WaveWorkbenchWindow : Window
         finally { _toolCloseInProgress = false; }
     }
 
+    private void OpenWaveFolder_Click(object sender, RoutedEventArgs e)
+    {
+        var picker = new Microsoft.Win32.OpenFolderDialog
+        {
+            Title = "选择真实波形归档目录（wave-records）",
+            Multiselect = false
+        };
+        if (picker.ShowDialog(this) != true) return;
+        try { _model.OpenIndependentArchive(picker.FolderName); }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or
+                                       InvalidDataException or ArgumentException or InvalidOperationException)
+        {
+            MessageBox.Show(this, error.Message, "无法打开独立波形目录",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void UseProjectWaveSource_Click(object sender, RoutedEventArgs e)
+    {
+        try { _model.UseProjectArchive(); }
+        catch (InvalidOperationException error)
+        {
+            MessageBox.Show(this, error.Message, "无法切换波形来源",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+    }
+
     private void OpenConfiguration_Click(object sender, RoutedEventArgs e) => _openConfiguration();
     private void ClearCursors_Click(object sender, RoutedEventArgs e)
     {
