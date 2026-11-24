@@ -206,7 +206,21 @@
          Foreground="#506276"/>
        </StackPanel>
        <Border Height="1" Background="#D5DFE9" Margin="0,12"/>
-       <TextBlock Text="工程实测 · 不计生产统计" FontSize="16" FontWeight="Bold"/>
+       <DockPanel Margin="0,0,0,7">
+        <Button DockPanel.Dock="Right" Content="停止工程验证"
+         Command="{Binding StopOperatorVerificationCommand}"
+         Visibility="{Binding IsOperatorRunning,Converter={StaticResource BoolToVisibility}}"
+         Foreground="#B42318" Padding="8,5" MinHeight="30"
+         ToolTip="向真实执行器请求停止；烧录中断后必须核查 ECU"/>
+        <TextBlock Text="工程验证" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
+       </DockPanel>
+       <Expander Header="开发调试操作（非生产）" IsExpanded="False" Margin="0,0,0,8">
+        <StackPanel Margin="0,9,0,5">
+         <Button Content="运行整组工程验证" Command="{Binding StartOperatorVerificationCommand}"
+          Style="{StaticResource AtQuietButton}" Padding="10,7" HorizontalAlignment="Left"
+          ToolTip="需明确确认真实烧录与执行全部测试用例；结果不计正式生产"/>
+        </StackPanel>
+       </Expander>
        <TextBlock Text="{Binding OperatorRunState}" FontSize="17" FontWeight="SemiBold"
         Margin="0,6,0,3" TextWrapping="Wrap" Foreground="#164C86"/>
        <TextBlock Text="{Binding OperatorCurrentCase}" FontSize="14"
