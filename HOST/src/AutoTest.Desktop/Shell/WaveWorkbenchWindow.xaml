@@ -55,31 +55,25 @@
    <DockPanel Margin="14,11" LastChildFill="True">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
      <TextBlock Text="记录时长" Style="{StaticResource WaveLabel}" Margin="12,0,6,0"/>
-     <ComboBox Width="73" Height="35" ItemsSource="{Binding CaptureDurations}"
-      SelectedItem="{Binding CaptureDurationSeconds,Mode=TwoWay}"
-      ToolTip="0 表示手动停止，最长记录 60 分钟">
-      <ComboBox.ItemTemplate>
-       <DataTemplate><TextBlock Text="{Binding}"><TextBlock.Style>
-        <Style TargetType="TextBlock"><Style.Triggers>
-         <DataTrigger Binding="{Binding}" Value="0"><Setter Property="Text" Value="手动"/></DataTrigger>
-        </Style.Triggers></Style>
-       </TextBlock.Style></TextBlock></DataTemplate>
-      </ComboBox.ItemTemplate>
-     </ComboBox>
-     <TextBlock Text="秒" Style="{StaticResource WaveLabel}" Margin="4,0,9,0"/>
+     <ComboBox Width="109" Height="35" ItemsSource="{Binding DurationChoices}"
+      DisplayMemberPath="Label"
+      SelectedItem="{Binding SelectedDuration,Mode=TwoWay}"
+      ToolTip="手动停止最长可记录 60 分钟；其他选项到时自动保存证据"/>
      <TextBlock Text="时间窗" Style="{StaticResource WaveLabel}" Margin="0,0,6,0"/>
-     <ComboBox Width="76" Height="35" ItemsSource="{Binding TimeWindows}"
-      SelectedItem="{Binding TimeWindowSeconds,Mode=TwoWay}"
-      ToolTip="0 表示显示完整历史区间">
-      <ComboBox.ItemTemplate>
-       <DataTemplate><TextBlock Text="{Binding}"><TextBlock.Style>
-        <Style TargetType="TextBlock"><Style.Triggers>
-         <DataTrigger Binding="{Binding}" Value="0"><Setter Property="Text" Value="全部"/></DataTrigger>
-        </Style.Triggers></Style>
-       </TextBlock.Style></TextBlock></DataTemplate>
-      </ComboBox.ItemTemplate>
-     </ComboBox>
-     <TextBlock Text="秒" Style="{StaticResource WaveLabel}" Margin="4,0,0,0"/>
+     <ComboBox Width="89" Height="35" ItemsSource="{Binding WindowChoices}"
+      DisplayMemberPath="Label"
+      SelectedItem="{Binding SelectedWindow,Mode=TwoWay}"
+      ToolTip="全范围显示所有样本；其他选择可以前后浏览"/>
+     <Button Content="◀" Command="{Binding EarlierWindowCommand}"
+      MinHeight="35" Margin="7,0,0,0" Padding="9,4"
+      ToolTip="时间轴向前浏览半个时间窗"/>
+     <Button Content="▶" Command="{Binding LaterWindowCommand}"
+      MinHeight="35" Margin="4,0,0,0" Padding="9,4"
+      ToolTip="时间轴向后浏览半个时间窗"/>
+     <Button Content="最新" Command="{Binding LatestWindowCommand}"
+      MinHeight="35" Margin="4,0,0,0" Padding="8,4"
+      ToolTip="回到最新的信号时间窗口"/>
+
     </StackPanel>
     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
      <Button Content="开始观察" Command="{Binding StartObserveCommand}" Style="{StaticResource AtPrimaryButton}"
