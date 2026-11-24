@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Text;
 using System.Security.Cryptography;
@@ -212,7 +213,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
     private DateTimeOffset _testRunRefreshAt;
     private volatile bool _manualCanBatchApproved;
     private string? _manualBatchFingerprint;
-    private readonly Dictionary<Guid, string> _manualCanRows = new();
+    private readonly ConcurrentDictionary<Guid, string> _manualCanRows = new();
     private volatile bool _manualKeyActionApproved;
     private string? _manualKeyActionFingerprint;
     public bool IsManualKeyActionApproved => _manualKeyActionApproved;
@@ -487,7 +488,11 @@ public sealed class HardwareConnectionService : IAsyncDisposable
             var payload = CanFrameCodec.ToUsbPayload(frame, StationCanWiring.Current);
             var token = Guid.NewGuid();
             _link.AuthorizeManualCanRow(token, payload);
-            _manualCanRows.Add(token, Convert.ToHexString(payload));
+            if (!_manualCanRows.TryAdd(token, Convert.ToHexString(payload)))
+            {
+                _link.RevokeManualCanRow(token);
+                throw new InvalidOperationException("CAN 发送授权标识冲突。");
+            }
             if (!_manualCanBatchApproved)
             {
                 _manualCanBatchApproved = true;
@@ -523,7 +528,7 @@ public sealed class HardwareConnectionService : IAsyncDisposable
         try
         {
             _link?.RevokeManualCanRow(token);
-            _manualCanRows.Remove(token);
+            _manualCanRows.TryRemove(token, out _);
             if (_manualCanRows.Count == 0 && _manualBatchFingerprint is null)
             {
                 _manualCanBatchApproved = false;
