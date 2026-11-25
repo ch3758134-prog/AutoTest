@@ -34,6 +34,7 @@ public sealed partial class ConfiguredStationActionPort : ITestActuationPort, IT
     private EcuControlProfile? _activeProfile;
     private HardwareKeyPolicy? _policy;
     private string? _fingerprint;
+    private long _authorizedStationEpoch;
     private bool _unknown;
     private bool _hasRawKey;
     private uint _rawMask;
@@ -199,6 +200,10 @@ public sealed partial class ConfiguredStationActionPort : ITestActuationPort, IT
         ct.ThrowIfCancellationRequested();
         if (_periodicErrors.TryPeek(out var fault))
             throw new IOException("ECU CAN 周期发送发生通信故障，已停止后续步骤。", fault);
+        if (_fingerprint is not null &&
+            (!_hardware.IsConnected || _authorizedStationEpoch <= 0 ||
+             _authorizedStationEpoch != _hardware.CurrentStationEpoch))
+            throw new IOException("整组测试期间主控 USB 会话已经失效，禁止继续 ECU 物理动作。");
         if (_unknown)
             throw new IOException("KEY_SIM 输出状态 UNKNOWN，停止其他真实硬件操作。");
         return ValueTask.CompletedTask;
@@ -239,6 +244,7 @@ public sealed partial class ConfiguredStationActionPort : ITestActuationPort, IT
             mappings.Any(x => x.Kind == TestTargetKind.Ignition), ct,
             maxWrites: maxWrites);
         _fingerprint = fingerprint;
+        _authorizedStationEpoch = _hardware.CurrentStationEpoch;
     }
 
     /// <summary>One union authorization for an ordered, prevalidated TEST project.
@@ -258,6 +264,7 @@ public sealed partial class ConfiguredStationActionPort : ITestActuationPort, IT
             mappings.Any(x => x.Kind == TestTargetKind.Ignition), ct,
             maxWrites: highRate ? 10000 : 1000);
         _fingerprint = fingerprint;
+        _authorizedStationEpoch = _hardware.CurrentStationEpoch;
     }
 
     public async ValueTask<TestOperationResult> WriteAsync(TestTargetMapping target, string action,
@@ -567,6 +574,7 @@ public sealed partial class ConfiguredStationActionPort : ITestActuationPort, IT
             finally
             {
                 _fingerprint = null;
+                _authorizedStationEpoch = 0;
                 await _hardware.RevokeTestRunAsync();
             }
             if (_periodicErrors.TryDequeue(out var periodicFailure))

@@ -526,6 +526,15 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         // prepared identity; pending async barcode checks are invalidated too.
         void RefreshSession()
         {
+            // A reconnect is a NEW physical session. Cancel ongoing TEST
+            // immediately; do not let a paused or waiting case inherit it.
+            if (IsOperatorRunning)
+            {
+                _operatorStop?.Cancel();
+                _operatorEngine.RequestStop();
+                UpdateConnection();
+                return;
+            }
             if (!IsOperatorRunning &&
                 (_prepared is not null || _dutSerial == "正在核对"))
                 InvalidateScan("主控 USB 会话发生变化；请重新确认 ECU CAN 并扫描本台 ECU。");

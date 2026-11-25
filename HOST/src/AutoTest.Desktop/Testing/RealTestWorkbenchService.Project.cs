@@ -265,7 +265,11 @@ public sealed partial class RealTestWorkbenchService
                 _owner._station.Release();
             }
             await PersistAsync(cleanupError is not null ? "CLEANUP_ERROR" :
-                _markedComplete ? "EXECUTED_NOT_PRODUCTION_RELEASE" : "INTERRUPTED",
+                _markedComplete
+                    ? _cases.Any(x => x.Verdict == nameof(RealTestVerdict.Failed))
+                        ? "FINISHED_WITH_FUNCTIONAL_FAILURE"
+                        : "EXECUTED_NOT_PRODUCTION_RELEASE"
+                    : "INTERRUPTED",
                 CancellationToken.None);
             if (cleanupError is not null)
                 throw new IOException("整组运行授权撤销或周期 CAN 清理失败；实体状态未知。",
