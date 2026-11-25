@@ -37,7 +37,11 @@ public partial class DbcMessageEditDialog : Window
         }
         var name = NameBox.Text.Trim();
         var senderName = TransmitterBox.Text.Trim();
-        if (!Regex.IsMatch(name, @"^\w+$") || !Regex.IsMatch(senderName, @"^\w+$"))
+        // DBC serializer/parser uses ASCII source tokens. A localized display
+        // name must be edited as an alias, not a nonstandard DBC identifier.
+        const string dbcIdentifier = @"^[A-Za-z_][A-Za-z0-9_]*$";
+        if (!Regex.IsMatch(name, dbcIdentifier) ||
+            !Regex.IsMatch(senderName, dbcIdentifier))
         {
             ErrorText.Text = "报文名称和发送节点必须是非空、无空格的 DBC 标识符。";
             return;
