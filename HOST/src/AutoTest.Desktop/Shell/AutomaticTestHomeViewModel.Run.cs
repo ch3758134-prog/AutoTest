@@ -451,8 +451,12 @@ public sealed partial class AutomaticTestHomeViewModel
             Snapshot();
             OperatorRecordState = "已创建工程验证过程记录";
             AddOperatorEvent("软件 START 已明确确认；本次结果不会作为生产放行");
+            // Only this engineer-only, explicitly armed software verification
+            // may deliberately use the saved draft rather than a published
+            // production release. Production preflight defaults to published.
             var validated = await ProductionPreparationService.PrepareAsync(
-                plan.Project, scan.ModelCode, scan.DutSerial, ct);
+                plan.Project, scan.ModelCode, scan.DutSerial, ct,
+                requireProductionDeployment: false);
             if (!validated.ConfigurationReady ||
                 validated.Preparation?.PreparationFingerprint != frozen.PreparationFingerprint)
                 throw new InvalidDataException(
