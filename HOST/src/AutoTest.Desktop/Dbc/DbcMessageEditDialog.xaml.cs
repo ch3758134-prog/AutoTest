@@ -13,6 +13,7 @@ public partial class DbcMessageEditDialog : Window
     public DbcMessageEditDialog(DbcMessage existing, bool allowIdChange = false)
     {
         InitializeComponent();
+        Loaded += (_, _) => AutoTest.Desktop.Shell.DesktopWindowSizing.FitToVisibleWorkspace(this);
         _existing = existing;
         IdBox.Text = "0x" + existing.ArbitrationId.ToString("X");
         IdBox.IsReadOnly = !allowIdChange;
