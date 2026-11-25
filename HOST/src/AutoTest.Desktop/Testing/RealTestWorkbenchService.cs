@@ -49,7 +49,11 @@ public sealed class RealTestWorkbenchService
     public event Action<TestDocumentId, string>? DevelopmentRunFailed;
 
     public PreparedTestPlan Prepare(TestDocument document) =>
-        new PlanCompiler().Prepare(ProjectWorkspaceService.BindCurrentRunResources(document, _projects.Current), allowRealOperations: true);
+        // Preserve the authored DBC/WAVE/TEST mapping SHA and revision.
+        // Runtime must execute exactly the resource closure approved by the
+        // project and production preflight, never opportunistically rebind to
+        // the newest workspace asset while preparing a physical run.
+        new PlanCompiler().Prepare(document, allowRealOperations: true);
 
     public string ExpectedFlashApproval(TestDocument document)
     {
