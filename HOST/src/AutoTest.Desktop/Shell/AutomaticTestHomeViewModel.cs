@@ -147,6 +147,11 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     // Formal station facts do not exist until the physical START and
     // production RECORD adapter are wired. Never project the last development
     // verification into the production operator's active DUT.
+    // The read-only operator must not display fabricated case/measurement
+    // placeholders before a real formal Inspection event source exists.
+    // The production adapter must raise this when formal StepOccurrence
+    // evidence becomes available; engineering verifications do not count.
+    public bool HasFormalExecutionFacts => false;
     public string ProductionCurrentCase => "—";
     public string ProductionCurrentStep => "—";
     public string ProductionStepStatus => "正式检测未开始";
@@ -219,7 +224,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     public bool ScannerConnected => _scanner.IsConnected;
     public bool CanBitrateReady => _hardware.IsConnected && _hardware.IsEcuCanBitrateApplied;
     public bool IdentityAccepted => _prepared is not null;
-    public string ControllerLabel => MainControllerConnected ? "主控已连接" : "主控连接中";
+    public string ControllerLabel => MainControllerConnected ? "主控已连接" : "主控未连接";
     public string ScannerLabel => ScannerConnected ? "扫码已连接" : "扫码未连接";
     public string CanLabel => CanBitrateReady ? "CAN 已配置" : "CAN 待配置";
     public string ControllerDetail => MainControllerConnected
