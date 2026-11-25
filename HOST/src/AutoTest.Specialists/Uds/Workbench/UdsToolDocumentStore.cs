@@ -10,6 +10,12 @@ public sealed record UdsToolProfile(string Name, string EcuIdentity, uint TxId, 
 public sealed record UdsServiceDefinition(string Name, string RequestHex, string ExpectedHex);
 public sealed record UdsToolDocument(int Schema, UdsToolProfile Profile,
     List<UdsServiceDefinition> Services);
+/// <summary>
+/// A validated UDS document and hash derived from the SAME disk read.
+/// The editor uses this hash for external-change protection; a second read
+/// could attach a newer hash to older parsed document contents.
+/// </summary>
+public sealed record UdsToolDocumentSnapshot(UdsToolDocument Document, string Sha256);
 public sealed record UdsCanTraceRow(string Direction, string Hex);
 public sealed record UdsToolExchange(string Source, string RequestHex, string ResponseHex,
     string Outcome, string Nrc, bool? ExpectedMatched, Guid CorrelationId,
@@ -80,16 +86,25 @@ public static class UdsToolDocumentStore
         }
         finally { if (File.Exists(temp)) File.Delete(temp); }
     }
-    public static async Task<UdsToolDocument> LoadAsync(string path, CancellationToken ct = default)
+    public static async Task<UdsToolDocumentSnapshot> LoadSnapshotAsync(
+        string path, CancellationToken ct = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         var file = new FileInfo(path);
-        if (!file.Exists || file.Length > MaxBytes) throw new InvalidDataException("Missing/oversized UDS document.");
-        var document = JsonSerializer.Deserialize<UdsToolDocument>(
-            await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false), JsonOptions)
+        if (!file.Exists || file.Length > MaxBytes)
+            throw new InvalidDataException("Missing/oversized UDS document.");
+        var bytes = await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false);
+        // FileInfo.Length is only a preflight, since files may grow during IO.
+        if (bytes.Length > MaxBytes)
+            throw new InvalidDataException("UDS document exceeds 1 MiB.");
+        var document = JsonSerializer.Deserialize<UdsToolDocument>(bytes, JsonOptions)
             ?? throw new InvalidDataException("Empty UDS document.");
         Validate(document);
-        return document;
+        return new UdsToolDocumentSnapshot(document,
+            Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)));
     }
-}
 
+    public static async Task<UdsToolDocument> LoadAsync(
+        string path, CancellationToken ct = default) =>
+        (await LoadSnapshotAsync(path, ct).ConfigureAwait(false)).Document;
+}
