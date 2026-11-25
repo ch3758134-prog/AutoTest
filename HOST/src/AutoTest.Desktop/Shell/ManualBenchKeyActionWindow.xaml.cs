@@ -18,6 +18,7 @@ public partial class ManualBenchKeyActionWindow : Window
         { Interval = TimeSpan.FromSeconds(7) };
     private DateTime _lastInteractionUtc = DateTime.UtcNow;
     private bool _autosaveBusy;
+    private Task? _autosaveTask;
     private bool _closingForSave;
     private bool _closeApproved;
 
@@ -48,10 +49,17 @@ public partial class ManualBenchKeyActionWindow : Window
             DateTime.UtcNow - _lastInteractionUtc < TimeSpan.FromSeconds(4) ||
             Keyboard.FocusedElement is TextBoxBase) return;
         _autosaveBusy = true;
-        try { await _model.SaveKeyActionsForCloseAsync(); }
+        try
+        {
+            // Closing must await this SAME persistence task, not race it with
+            // a second SaveKeyActionsForCloseAsync against the same revision.
+            var persistence = _model.SaveKeyActionsForCloseAsync();
+            _autosaveTask = persistence;
+            await persistence;
+        }
         catch (Exception error)
         { System.Diagnostics.Trace.TraceWarning("KEY editor autosave failed: " + error); }
-        finally { _autosaveBusy = false; }
+        finally { _autosaveTask = null; _autosaveBusy = false; }
     }
 
     private void SaveAndClose_Click(object sender, RoutedEventArgs e) => Close();
@@ -66,11 +74,16 @@ public partial class ManualBenchKeyActionWindow : Window
         IsEnabled = false;
         try
         {
-            await _model.SaveKeyActionsForCloseAsync();
+            _autosaveTimer.Stop();
+            if (_autosaveTask is { } inFlight) await inFlight;
+            if (_model.KeyActionsDirty)
+                await _model.SaveKeyActionsForCloseAsync();
             if (_model.KeyActionsDirty)
                 throw new InvalidOperationException("动作库仍有未保存修改，请先修正无效字段。");
+            // The original WPF Closing event was cancelled. Close on the
+            // next dispatcher turn, not within the continuation of Closing.
             _closeApproved = true;
-            Close();
+            _ = Dispatcher.BeginInvoke(new Action(Close), DispatcherPriority.Background);
         }
         catch (Exception error)
         {
@@ -80,7 +93,11 @@ public partial class ManualBenchKeyActionWindow : Window
         finally
         {
             _closingForSave = false;
-            if (!_closeApproved) IsEnabled = true;
+            if (!_closeApproved)
+            {
+                IsEnabled = true;
+                if (IsLoaded) _autosaveTimer.Start();
+            }
         }
     }
 }
