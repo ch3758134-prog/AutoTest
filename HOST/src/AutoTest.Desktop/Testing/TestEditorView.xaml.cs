@@ -5,6 +5,7 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using AutoTest.Desktop.Shell;
 
 namespace AutoTest.Desktop.Testing;
 
@@ -25,12 +26,34 @@ public partial class TestEditorView : UserControl
     private StepRowProjection? _activeQuickRow;
     private Point _dragStart;
     private StepRowProjection? _dragSource;
+    private readonly ListCollectionView? _canMonitorRows;
+    private readonly DispatcherTimer _canFollowTimer =
+        new() { Interval = TimeSpan.FromMilliseconds(300) };
+    private bool _canMonitorVisible = true;
     public bool IsPropertyEditorOpen => StepPropertyOverlay.Visibility == Visibility.Visible;
 
-    public TestEditorView(TestEditorViewModel viewModel)
+    public TestEditorView(TestEditorViewModel viewModel,
+        MainWindowViewModel? liveCanSource = null)
     {
         InitializeComponent();
         PaletteCategories.ItemsSource = PaletteGroups;
+        if (liveCanSource is not null)
+        {
+            // The shell already subscribes to the genuine USB CAN observation
+            // stream. This is a separate filtered view, not a second USB
+            // reader, simulator or shared filter of the normal CAN tool.
+            _canMonitorRows = new ListCollectionView(liveCanSource.CanRecords);
+            CanMonitorTable.ItemsSource = _canMonitorRows;
+        }
+        else
+        {
+            _canMonitorVisible = false;
+            SetCanMonitorVisibility(false);
+            ToggleCanMonitorButton.Visibility = Visibility.Collapsed;
+        }
+        _canFollowTimer.Tick += (_, _) => FollowLatestCanObservation();
+        Loaded += (_, _) => _canFollowTimer.Start();
+        Unloaded += (_, _) => _canFollowTimer.Stop();
         _viewModel = viewModel;
         DataContext = viewModel;
         _viewModel.InspectorRequested += ShowInspector;
@@ -265,7 +288,8 @@ public partial class TestEditorView : UserControl
             ["can", "stop-can", "key", "ign", "read", "assert-signal",
              "wait", "if", "loop", "uds", "wave-start", "wave-analyze"];
         var filtered = _paletteActions
-            .Where(x => query.Length > 0
+            .Where(x => _paletteActions.Count == 1 && x.Key == "case" ||
+                query.Length > 0
                 ? (x.Title + " " + x.Group + " " + x.Category + " " + x.Description)
                     .Contains(query, StringComparison.CurrentCultureIgnoreCase)
                 : category == "常用步骤" ? favorites.Contains(x.Key)
@@ -340,6 +364,51 @@ public partial class TestEditorView : UserControl
     {
         e.Handled = true;
         await SaveForCloseAsync();
+    }
+
+    private void InsertAfterRow_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        if (sender is not Button { Tag: StepRowProjection { IsStep: true } row }) return;
+        var expected = StepSelectionKey.Of(row.Item);
+        _viewModel.SelectItem(row.Item);
+        if (StepSelectionKey.Of(_viewModel.SelectedItem) != expected) return;
+        if (_viewModel.AddAfterCommand.CanExecute())
+            _viewModel.AddAfterCommand.Execute();
+    }
+
+    private void CanMonitorFilter_Checked(object sender, RoutedEventArgs e)
+    {
+        if (_canMonitorRows is null || sender is not RadioButton { Tag: string filter })
+            return;
+        _canMonitorRows.Filter = value => value is MainWindowViewModel.CanMonitorRow row &&
+            (filter == "All" ||
+             filter == "Ecu" && row.Port.Contains("ECU", StringComparison.OrdinalIgnoreCase) ||
+             filter == "Key" && row.Port.Contains("KEY", StringComparison.OrdinalIgnoreCase));
+        FollowLatestCanObservation();
+    }
+
+    private void ToggleCanMonitor_Click(object sender, RoutedEventArgs e) =>
+        SetCanMonitorVisibility(!_canMonitorVisible);
+
+    private void SetCanMonitorVisibility(bool visible)
+    {
+        _canMonitorVisible = visible;
+        CanMonitorPanel.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        MonitorDivider.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        MonitorDividerColumn.Width = new GridLength(visible ? 5 : 0);
+        MonitorColumn.Width = new GridLength(visible ? 420 : 0);
+        ToggleCanMonitorButton.Content = visible ? "隐藏 CAN 监视" : "显示 CAN 监视";
+    }
+
+    private void FollowLatestCanObservation()
+    {
+        if (!_canMonitorVisible || CanAutoFollow?.IsChecked != true ||
+            !CanMonitorTable.IsVisible || _canMonitorRows is null ||
+            _canMonitorRows.IsEmpty) return;
+        var tail = _canMonitorRows.Cast<MainWindowViewModel.CanMonitorRow>()
+            .LastOrDefault();
+        if (tail is not null) CanMonitorTable.ScrollIntoView(tail);
     }
 
     private void AddAtRow_Click(object sender, RoutedEventArgs e)
