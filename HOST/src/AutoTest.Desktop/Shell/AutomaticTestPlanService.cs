@@ -128,7 +128,8 @@ public sealed class AutomaticTestPlanService
         return new(project, cases) { ResourceIssues = test.Issues };
     }
 
-    private static IReadOnlyList<AutomaticTestStep> BuildCaseSteps(TestDocument document)
+    // One read-only projection for production and engineering; it never creates execution facts.
+    public static IReadOnlyList<AutomaticTestStep> BuildCaseSteps(TestDocument document)
     {
         // Legacy TEST retains three internal phases. The operator sees one
         // continuous, ordered program without mandatory empty phase headings.
@@ -150,7 +151,10 @@ public sealed class AutomaticTestPlanService
         // Name the IF/ELSE/WHEN/SWITCH/LOOP slot explicitly. Otherwise a
         // read-only operator would see a flat list and mistake alternative
         // branches for sequential unconditional physical actions.
-        foreach (var slot in node.Slots.OrderBy(x => x.Key, StringComparer.Ordinal))
+        foreach (var slot in node.Slots.OrderBy(x => node.Type == "If" ? x.Key switch
+        {
+            "then" => 0, "else" => 1, _ => 2
+        } : 0).ThenBy(x => x.Key, StringComparer.Ordinal))
         {
             for (var i = 0; i < slot.Value.Length; i++)
             {
@@ -161,7 +165,12 @@ public sealed class AutomaticTestPlanService
         }
         var state = StepExecutionPolicy.IsEnabled(node)
             ? "未执行" : "步骤已禁用（不执行）";
-        var label = branch is null ? node.Name : "〔" + branch + "〕 " + node.Name;
+        var branchLabel = branch switch
+        {
+            "then" => "条件成立", "else" => "否则", "body" => "子步骤",
+            "cases" => "条件分派", null => "", _ => branch
+        };
+        var label = branch is null ? node.Name : "〔" + branchLabel + "〕 " + node.Name;
         return new(index, label, state, children, OperatorActionSummary(node, mappings))
         {
             AuthoredStepId = node.Id
@@ -171,6 +180,49 @@ public sealed class AutomaticTestPlanService
     private static string OperatorActionSummary(
         StepNode node, IReadOnlyList<TestTargetMapping> mappings)
     {
+        string Prop(string key) => node.Properties.GetValueOrDefault(key, "");
+        string TargetDescription()
+        {
+            var mapping = mappings.FirstOrDefault(x =>
+                string.Equals(x.Name, Prop("target"), StringComparison.OrdinalIgnoreCase));
+            return mapping?.Kind == TestTargetKind.Signal && !string.IsNullOrWhiteSpace(mapping.SignalName)
+                ? mapping.SignalName + " · 0x" + mapping.CanId.ToString("X")
+                : Prop("target");
+        }
+        // Production must show what each case intends to do, not just its
+        // name and an unreadable expanded tree. This is authoring metadata,
+        // never a claim that the DUT returned a value or passed a condition.
+        switch (node.Type)
+        {
+            case "If":
+                return "IF " + Prop("variable") + " " +
+                    node.Properties.GetValueOrDefault("operator", "==") + " " +
+                    Prop("equals") + " · THEN 或 ELSE";
+            case "Read":
+                return "读取 " + TargetDescription() + " → " + Prop("variable") +
+                    (Prop("mode") == "Latest" ? "（已有有效值）" : "（等待新数据）");
+            case "WaitUntil":
+                return "等待 " + TargetDescription() + " " + Prop("operator") +
+                    " " + Prop("expected") + " · 最多 " + Prop("timeoutMs") + " ms";
+            case "AssertSignal":
+                return "信号判定 " + TargetDescription() + " " + Prop("operator") +
+                    " " + Prop("expected") + " · 最多 " + Prop("timeoutMs") + " ms";
+            case "Expect":
+                return "测试判定 " + Prop("left") + " " + Prop("operator") +
+                    " " + Prop("right");
+            case "Loop":
+                return "循环 " + Prop("count") + " 次";
+            case "SetVariable":
+                return "变量 " + Prop("variable") + " = " + Prop("value");
+            case "Calculate":
+                return "计算 " + Prop("variable") + " = " + Prop("left") +
+                    " " + Prop("operator") + " " + Prop("right");
+            case "WaveCompare":
+                return "波形判定 · " + (Prop("profile").Length == 0
+                    ? Prop("reference") : Prop("profile"));
+            case "Flash":
+                return "烧录操作 · 运行时仍须通过正式资源及 APP 后验检查";
+        }
         if (node.Type == "Wait")
             return "纯等待 " + node.Properties.GetValueOrDefault("milliseconds", "0") +
                 " ms（不改变 KEY 状态）";
