@@ -67,7 +67,8 @@ public partial class ManualBenchKeyActionWindow : Window
 
     private async void OnClosing(object? sender, CancelEventArgs e)
     {
-        if (_closeApproved || !_model.KeyActionsDirty) return;
+        if (_closeApproved) return;
+        if (!_model.KeyActionsDirty && !_autosaveBusy) return;
         e.Cancel = true;
         if (_closingForSave) return;
         _closingForSave = true;
