@@ -60,7 +60,11 @@ public sealed partial class AutomaticTestHomeViewModel
     public string OperatorRunState
     {
         get => _operatorRunState;
-        private set => SetProperty(ref _operatorRunState, value);
+        private set
+        {
+            if (SetProperty(ref _operatorRunState, value))
+                RaisePropertyChanged(nameof(ProductionDisplayStage));
+        }
     }
     public string OperatorCurrentCase
     {
