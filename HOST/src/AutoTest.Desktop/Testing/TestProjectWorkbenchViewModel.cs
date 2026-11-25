@@ -156,6 +156,11 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     private TestProjectEditorSession _session;
     private bool _busy;
     private string _name;
+    private TestProjectEntry? _projectSetup, _projectTeardown;
+    public string ProjectSetupLabel => _projectSetup is null ? "未设置（可选）"
+        : _projectSetup.DisplayName + " · r" + _projectSetup.PackageRevision;
+    public string ProjectTeardownLabel => _projectTeardown is null ? "未设置（可选）"
+        : _projectTeardown.DisplayName + " · r" + _projectTeardown.PackageRevision;
     private string _status = "从右侧选择测试用例并加入执行列表。";
     private TestProjectPackageChoice? _selectedAvailable;
     private TestProjectPackageRow? _selectedPackage;
@@ -209,6 +214,18 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         if (_selection is not null) _selection.Changed += OnNavigationSelectionChanged;
         _name = session.Document.Name;
         AddCommand = new DelegateCommand(Add, () => SelectedAvailable is not null && !IsBusy);
+        SetProjectSetupCommand = new DelegateCommand(() => SetProjectStage(true),
+            () => SelectedAvailable is not null && !IsBusy);
+        SetProjectTeardownCommand = new DelegateCommand(() => SetProjectStage(false),
+            () => SelectedAvailable is not null && !IsBusy);
+        OpenProjectSetupCommand = new DelegateCommand(() => OpenProjectStage(true),
+            () => _projectSetup is not null && !IsBusy);
+        OpenProjectTeardownCommand = new DelegateCommand(() => OpenProjectStage(false),
+            () => _projectTeardown is not null && !IsBusy);
+        RemoveProjectSetupCommand = new DelegateCommand(() => RemoveProjectStage(true),
+            () => _projectSetup is not null && !IsBusy);
+        RemoveProjectTeardownCommand = new DelegateCommand(() => RemoveProjectStage(false),
+            () => _projectTeardown is not null && !IsBusy);
         CreateNewPackageCommand = new DelegateCommand(async () =>
         {
             if (!IsBusy && CreateNewPackageRequested is { } create) await create();
@@ -251,7 +268,9 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     // Dirty detection is valid even while the user is midway through typing a name.
     // Never serialize+validate on each TextBox keystroke.
     public bool IsDirty => !string.Equals(Name, _session.Document.Name, StringComparison.Ordinal) ||
-        !Packages.Select(x => x.ToEntry()).SequenceEqual(_session.Document.Packages);
+        !Packages.Select(x => x.ToEntry()).SequenceEqual(_session.Document.Packages) ||
+        !Equals(_projectSetup, _session.Document.ProjectSetup) ||
+        !Equals(_projectTeardown, _session.Document.ProjectTeardown);
     public TestProjectPackageChoice? SelectedAvailable
     {
         get => _selectedAvailable;
@@ -264,6 +283,12 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     }
 
     public DelegateCommand AddCommand { get; }
+    public DelegateCommand SetProjectSetupCommand { get; }
+    public DelegateCommand SetProjectTeardownCommand { get; }
+    public DelegateCommand OpenProjectSetupCommand { get; }
+    public DelegateCommand OpenProjectTeardownCommand { get; }
+    public DelegateCommand RemoveProjectSetupCommand { get; }
+    public DelegateCommand RemoveProjectTeardownCommand { get; }
     public DelegateCommand CreateNewPackageCommand { get; }
     public DelegateCommand RemoveCommand { get; }
     public DelegateCommand UpCommand { get; }
@@ -295,6 +320,10 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
 
     private void LoadRows(TestProjectDocument doc)
     {
+        _projectSetup = doc.ProjectSetup;
+        _projectTeardown = doc.ProjectTeardown;
+        RaisePropertyChanged(nameof(ProjectSetupLabel));
+        RaisePropertyChanged(nameof(ProjectTeardownLabel));
         foreach (var row in Packages) row.PropertyChanged -= RowChanged;
         Packages.Clear();
         foreach (var item in doc.Packages)
@@ -722,8 +751,48 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     }
 
     private TestProjectDocument Compose() =>
-        new(_session.Document.SchemaVersion, _session.Document.Id, (Name ?? "").Trim(),
-            Packages.Select(x => x.ToEntry()).ToList());
+        new(_projectSetup is not null || _projectTeardown is not null ? 2 :
+            _session.Document.SchemaVersion, _session.Document.Id, (Name ?? "").Trim(),
+            Packages.Select(x => x.ToEntry()).ToList())
+        {
+            ProjectSetup = _projectSetup, ProjectTeardown = _projectTeardown
+        };
+
+    private void SetProjectStage(bool setup)
+    {
+        if (SelectedAvailable is not { } chosen || IsBusy) return;
+        var old = setup ? _projectSetup : _projectTeardown;
+        if (old is null && _session.Document.SchemaVersion == 1 &&
+            !_dialogs.Confirm("启用新版 TEST 项目准备/收尾？历史普通准备用例不会自动迁移。" +
+                " 请确认绑定的是整车测试环境步骤，不是夹具、扫码或前置 FLASH。"))
+            return;
+        var asset = chosen.Asset;
+        var entry = new TestProjectEntry(old?.ItemId ?? Guid.NewGuid(),
+            asset.Id.Value, asset.Revision, asset.Sha256, asset.Name, true);
+        if (setup) _projectSetup = entry; else _projectTeardown = entry;
+        ResetFrozenSelection();
+        RaisePropertyChanged(setup ? nameof(ProjectSetupLabel) : nameof(ProjectTeardownLabel));
+        StatusMessage = (setup ? "项目准备" : "项目收尾") +
+            "已绑定 TEST 定义「" + asset.Name + "」，固定 r" + asset.Revision +
+            "；使用同一 TEST DSL 和真实执行器，不能作为 ECU 产品 PASS 判定。";
+        RefreshCommands();
+    }
+
+    private void OpenProjectStage(bool setup)
+    {
+        var stage = setup ? _projectSetup : _projectTeardown;
+        if (stage is not null) OpenPackageRequested?.Invoke(stage.PackageAssetId);
+    }
+
+    private void RemoveProjectStage(bool setup)
+    {
+        if (IsBusy) return;
+        if (setup) _projectSetup = null; else _projectTeardown = null;
+        ResetFrozenSelection();
+        RaisePropertyChanged(setup ? nameof(ProjectSetupLabel) : nameof(ProjectTeardownLabel));
+        StatusMessage = "项目级阶段调用已从草稿移除；源 TEST 资产未删除。";
+        RefreshCommands();
+    }
 
     private void Add()
     {
@@ -797,7 +866,13 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     {
         RaisePropertyChanged(nameof(IsDirty));
         RaisePropertyChanged(nameof(HasStaleReferences));
-        AddCommand?.RaiseCanExecuteChanged(); CreateNewPackageCommand?.RaiseCanExecuteChanged();
+        AddCommand?.RaiseCanExecuteChanged();
+        SetProjectSetupCommand?.RaiseCanExecuteChanged();
+        SetProjectTeardownCommand?.RaiseCanExecuteChanged();
+        OpenProjectSetupCommand?.RaiseCanExecuteChanged();
+        OpenProjectTeardownCommand?.RaiseCanExecuteChanged();
+        RemoveProjectSetupCommand?.RaiseCanExecuteChanged();
+        RemoveProjectTeardownCommand?.RaiseCanExecuteChanged(); CreateNewPackageCommand?.RaiseCanExecuteChanged();
         RemoveCommand?.RaiseCanExecuteChanged();
         UpCommand?.RaiseCanExecuteChanged(); DownCommand?.RaiseCanExecuteChanged();
         SaveCommand?.RaiseCanExecuteChanged(); ReloadCommand?.RaiseCanExecuteChanged();
