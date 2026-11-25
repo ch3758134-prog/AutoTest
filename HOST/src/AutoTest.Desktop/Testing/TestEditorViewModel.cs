@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Text.Json;
+using System.Windows.Threading;
 using AutoTest.Core;
 using AutoTest.Desktop.Projects;
 using AutoTest.Projects.Project;
@@ -53,6 +54,10 @@ public sealed class TestEditorViewModel : BindableBase
     private readonly TestEditorInteractionState _interaction = new();
     private StepUiChoice _selectedType = StepUiCatalog.Choices[0];
     private bool _isBusy;
+    private readonly DispatcherTimer _autosaveTimer = new() { Interval = TimeSpan.FromMilliseconds(650) };
+    private string? _lastProjectedDocument;
+    // The view suppresses persistence while a property overlay holds uncommitted inputs.
+    public Func<bool>? CanAutoPersist { get; set; }
     private string _status = "请选择阶段或步骤进行编辑。";
 
     public TestEditorViewModel(ProjectWorkspaceService workspace,
@@ -62,6 +67,17 @@ public sealed class TestEditorViewModel : BindableBase
         _workspace = workspace;
         _dialogs = dialogs;
         _realTest = realTest;
+        _autosaveTimer.Tick += async (_, _) =>
+        {
+            _autosaveTimer.Stop();
+            if (IsBusy || HasNewStepDraft || CanAutoPersist?.Invoke() == false)
+            {
+                // Keep pending document edits until the next valid interaction;
+                // never persist a provisional TEST step or a half-edited overlay.
+                return;
+            }
+            if (IsDirty) await SaveAsync();
+        };
         _session = session;
         _transaction = new StepEditTransaction(session.Document);
 
@@ -1171,17 +1187,24 @@ public sealed class TestEditorViewModel : BindableBase
 
     private void RefreshTree(StepId? preferred)
     {
+        var projectedDocument = TestDocumentCodec.Serialize(_transaction.Current);
+        var documentChanged = _lastProjectedDocument is not null &&
+            !string.Equals(_lastProjectedDocument, projectedDocument, StringComparison.Ordinal);
+        _lastProjectedDocument = projectedDocument;
         // Any changed TEST revision makes previous-run StepId evidence stale.
         // Clear it before rebuilding; never display old PASS/error facts against
         // a newly edited document. Historical evidence remains in its own audit.
-        _preparedStationEpoch = 0;
-        _preparedDutIdentity = "";
-        _preparedStepId = null;
-        _preparedRunDocument = null;
-        RunApproval = "";
-        FlashApproval = "";
-        ExpectedFlashApproval = "";
-        if (RunFacts.Count > 0)
+        if (documentChanged)
+        {
+            _preparedStationEpoch = 0;
+            _preparedDutIdentity = "";
+            _preparedStepId = null;
+            _preparedRunDocument = null;
+            RunApproval = "";
+            FlashApproval = "";
+            ExpectedFlashApproval = "";
+        }
+        if (documentChanged && RunFacts.Count > 0)
         {
             RunFacts.Clear();
             RunFactRows.Clear();
@@ -1215,6 +1238,11 @@ public sealed class TestEditorViewModel : BindableBase
         finally { _syncingRowSelection = wasSyncing; }
         RaisePropertyChanged(nameof(ExpectedApproval));
         RefreshCommands();
+        if (!HasNewStepDraft && IsDirty)
+        {
+            _autosaveTimer.Stop();
+            _autosaveTimer.Start();
+        }
     }
 
     public void CommitQuickValue(StepRowProjection row) => TryCommitQuickValue(row);
