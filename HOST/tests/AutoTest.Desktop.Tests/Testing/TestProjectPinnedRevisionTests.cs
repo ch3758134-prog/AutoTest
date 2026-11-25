@@ -43,17 +43,18 @@ public sealed class TestProjectPinnedRevisionTests
     }
 
     [Fact]
-    public void SameRevisionDifferentHashStillRequiresExplicitRebind()
+    public void SameRevisionDifferentHashBlocksUnversionedResourceReplacement()
     {
         var item = new TestProjectEntry(Guid.NewGuid(), Guid.NewGuid(), 4,
             new string('A', 64), "功能检查", true);
         var row = new TestProjectPackageRow(item);
         row.RefreshAvailableRevision(4, new string('B', 64));
-        Assert.True(row.CanAdoptLatest);
-        Assert.Equal(new string('A', 64), row.ToEntry().PackageSha256);
-        row.AdoptCurrentRevision();
+        Assert.True(row.HasReferenceMismatch);
         Assert.False(row.CanAdoptLatest);
-        Assert.Equal(new string('B', 64), row.ToEntry().PackageSha256);
+        Assert.Contains("SHA256 不一致", row.PinStatus);
+        row.AdoptCurrentRevision(); // Explicit rebind cannot bless an unversioned edit.
+        Assert.Equal(4, row.ToEntry().PackageRevision);
+        Assert.Equal(new string('A', 64), row.ToEntry().PackageSha256);
     }
 
     [Fact]
