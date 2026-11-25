@@ -112,6 +112,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     // These are projections of existing project, scanner and station facts.
     // They never infer a physical START, a production RunId or a final PASS.
     public string ProductionHeadline =>
+        _isProductionWorkspace() ? FormalAdmission.Headline :
         IsOperatorRunning ? "真实工程验证进行中（非生产）" :
         _plans.Current is null
             ? _engineering.Current is null ? "工位未配置检测工程" : "检测工程核验未通过" :
@@ -126,6 +127,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         "ECU 已识别 · 正式检测尚不可启动";
 
     public string ProductionDisplayStage =>
+        _isProductionWorkspace() ? FormalAdmission.Stage :
         IsOperatorRunning ? OperatorRunState :
         _plans.Current is null || !_plans.Current.ResourceReady ? "工程预检" :
         !_hardware.IsConnected || !_hardware.IsEcuCanBitrateApplied ||
@@ -136,6 +138,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         _prepared is null ? "扫码识别" : "实体 START 待接线";
 
     public string ProductionGuidance =>
+        _isProductionWorkspace() ? FormalAdmission.Guidance :
         IsOperatorRunning
             ? "仅显示已有工程验证事实；不会计入正式生产结果。"
             : _plans.Current is null
@@ -161,6 +164,47 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
             : _prepared is null
                 ? "使用工位扫码枪扫描条码；不需要鼠标启动。"
                 : "扫码身份及工程资源已核对；实体 START 和正式生产归档尚未接线。";
+
+    /// <summary>
+    /// One authoritative production admission projection. A scanner match,
+    /// USB ACK or test case plan never authorizes a physical START.
+    /// Hardware START and formal RECORD inputs remain false until their
+    /// actual, reviewed physical/durable adapters are wired.
+    /// </summary>
+    private ProductionAdmissionResult FormalAdmission
+    {
+        get
+        {
+            var plan = _plans.Current;
+            var prepared = _prepared;
+            var observed = prepared?.AcceptedScannerObservation;
+            var projectSame = plan is not null && prepared is not null &&
+                plan.Project.Definition.Id.Value == prepared.ProjectId &&
+                string.Equals(plan.Project.ManifestPath, prepared.ManifestPath,
+                    StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(plan.Project.ManifestSha256, prepared.ManifestSha256,
+                    StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(plan.Project.Definition.EcuModelCode, prepared.ModelCode,
+                    StringComparison.Ordinal);
+            return ProductionAdmissionReview.Evaluate(new ProductionAdmissionFacts(
+                plan is not null,
+                plan?.ResourceReady == true,
+                _hardware.IsConnected && _hardware.CurrentStationEpoch > 0,
+                _hardware.IsEcuCanBitrateApplied,
+                _scanner.IsConnected,
+                observed is not null,
+                projectSame,
+                prepared is not null && _acceptedStationEpoch > 0 &&
+                    _acceptedStationEpoch == _hardware.CurrentStationEpoch,
+                observed is not null && string.Equals(observed.ScannerPort,
+                    _scanner.ConnectedPort, StringComparison.OrdinalIgnoreCase),
+                prepared is not null &&
+                    _hardware.ConfirmedEcuCanBitrateKbps == prepared.EcuCanKbps &&
+                    _hardware.RequestedEcuCanBitrateKbps == prepared.EcuCanKbps,
+                TrustedPhysicalStartConnected: false,
+                VerifiedInspectionWriterConnected: false));
+        }
+    }
 
     // Formal station facts do not exist until the physical START and
     // production RECORD adapter are wired. Never project the last development
@@ -199,6 +243,11 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
 
     private void RequestSoftwareStart()
     {
+        if (_isProductionWorkspace())
+        {
+            StartRequestStatus = "正式生产禁止软件 START：必须由可信主控实体 START 事件及正式 Inspection 记录链路发起。";
+            return;
+        }
         // A readiness query is not a START. Until a verified production
         // adapter and durable RunId record are wired, NEVER issue CAN/FLASH,
         // claim a START edge, fabricate progress or return PASS.
@@ -253,7 +302,12 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         _hardware.IsEcuCanBitrateApplied &&
         (_prepared is null ||
          _hardware.ConfirmedEcuCanBitrateKbps == _prepared.EcuCanKbps);
-    public bool IdentityAccepted => _prepared is not null;
+    public bool IdentityAccepted => _prepared?.AcceptedScannerObservation is { } observed &&
+        _scanner.IsConnected &&
+        _hardware.IsConnected && _acceptedStationEpoch > 0 &&
+        _hardware.CurrentStationEpoch == _acceptedStationEpoch &&
+        string.Equals(observed.ScannerPort, _scanner.ConnectedPort,
+            StringComparison.OrdinalIgnoreCase);
     public string ControllerLabel => MainControllerConnected ? "主控已连接" : "主控未连接";
     public string ScannerLabel => ScannerConnected ? "扫码已连接" : "扫码未连接";
     public string CanLabel => CanBitrateReady ? "CAN 已配置" : "CAN 待配置";
@@ -267,7 +321,8 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         (_prepared is not null && _hardware.ConfirmedEcuCanBitrateKbps != _prepared.EcuCanKbps
             ? " · 工程要求 " + _prepared.EcuCanKbps + "k"
             : "") + " · 不代表 ECU 已响应";
-    public string StationReadiness => !_hardware.IsConnected ? "等待主控连接" :
+    public string StationReadiness => _isProductionWorkspace()
+        ? FormalAdmission.Headline : !_hardware.IsConnected ? "等待主控连接" :
         !_hardware.IsEcuCanBitrateApplied ? "CAN 波特率待确认" :
         !_scanner.IsConnected ? "等待扫码枪" :
         _plans.Current is null ? "请打开工程" :

@@ -12,6 +12,7 @@ namespace AutoTest.Desktop.Shell;
 public sealed partial class AutomaticTestHomeViewModel
 {
     private long _scanRevision;
+    private long _acceptedStationEpoch;
     private string _dutSerial = "等待扫码";
     private string _scanStatus = "请使用工位扫码枪扫描 ECU 编号";
     private string? _lastIdentity;
@@ -61,6 +62,7 @@ public sealed partial class AutomaticTestHomeViewModel
     {
         Interlocked.Increment(ref _scanRevision);
         _prepared = null;
+        _acceptedStationEpoch = 0;
         _scanMappedFields = new Dictionary<string, string>(StringComparer.Ordinal);
         _dutSerial = "等待扫码";
         _lastIdentity = null;
@@ -79,6 +81,7 @@ public sealed partial class AutomaticTestHomeViewModel
         if (plan is null || !_scanner.IsConnected || string.IsNullOrWhiteSpace(raw))
             return;
         _prepared = null;
+        _acceptedStationEpoch = 0;
         _scanMappedFields = new Dictionary<string, string>(StringComparer.Ordinal);
         _dutSerial = "正在核对";
         _scanStatus = "正在匹配当前工程的扫码期望与资源。";
@@ -134,6 +137,7 @@ public sealed partial class AutomaticTestHomeViewModel
             // Freeze the project-owned expectation's serialized content and its SHA.
             // This is not yet a formal RECORD fact; no RunId exists until
             // the physical START and production record adapter are ready.
+            _acceptedStationEpoch = initialStationEpoch;
             _prepared = decision.Preparation! with
             {
                 AcceptedScannerObservation = new FrozenScanIdentity(
@@ -162,6 +166,7 @@ public sealed partial class AutomaticTestHomeViewModel
         {
             if (revision != _scanRevision) return;
             _prepared = null;
+            _acceptedStationEpoch = 0;
             _scanMappedFields = new Dictionary<string, string>(StringComparer.Ordinal);
             _dutSerial = "等待扫码";
             _scanStatus = reason;
