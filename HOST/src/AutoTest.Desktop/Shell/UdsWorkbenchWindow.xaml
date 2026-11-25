@@ -128,6 +128,11 @@
    </Border>
    <GridSplitter x:Name="UdsColumnSplitter" Grid.Column="1" Width="7" Background="#E1E7EF"
     ResizeBehavior="PreviousAndNext" ResizeDirection="Columns" HorizontalAlignment="Stretch"/>
+   <GridSplitter x:Name="UdsRowSplitter" Grid.Row="1" Grid.Column="0"
+    Height="6" Background="#DEE7F0" Panel.ZIndex="2"
+    ResizeBehavior="PreviousAndNext" ResizeDirection="Rows"
+    VerticalAlignment="Top" HorizontalAlignment="Stretch" Visibility="Collapsed"
+    ToolTip="拖动调整诊断服务与真实回放明细高度"/>
    <Border x:Name="UdsReplayPanel" Grid.Column="2" Background="White" BorderBrush="#DFE6EF"
     BorderThickness="1" CornerRadius="6">
     <Grid Margin="12">
