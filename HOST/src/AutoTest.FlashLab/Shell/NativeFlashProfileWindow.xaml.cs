@@ -26,7 +26,6 @@ public partial class NativeFlashProfileWindow : Window
     private NativeFlashProfileStore.Snapshot? _saved;
     private NativeFlashProfileDocument _draft;
     private bool _initializing = true;
-    private bool _saving;
     private bool _closing;
     private bool _closeApproved;
 
@@ -143,7 +142,6 @@ public partial class NativeFlashProfileWindow : Window
         // Wait for any in-flight auto-save. Do not mistake a concurrent save
         // for a failure when the user closes the window.
         await _saveGate.WaitAsync();
-        _saving = true;
         _idleSave.Stop();
         try
         {
@@ -173,7 +171,6 @@ public partial class NativeFlashProfileWindow : Window
         }
         finally
         {
-            _saving = false;
             _saveGate.Release();
         }
     }
@@ -339,7 +336,7 @@ public partial class NativeFlashProfileWindow : Window
             // still active. Its initial event is canceled; schedule a distinct
             // dispatcher turn instead of re-entering Window.Close during async
             // closing continuation (which previously raised UI errors).
-            Dispatcher.BeginInvoke(new Action(() =>
+            _ = Dispatcher.BeginInvoke(new Action(() =>
             {
                 if (!IsLoaded) return;
                 _closeApproved = true;
