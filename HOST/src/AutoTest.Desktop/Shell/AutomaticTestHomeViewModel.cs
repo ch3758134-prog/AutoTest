@@ -273,6 +273,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
 
     private void OnPlanChanged(object? sender, EventArgs e)
     {
+        _engineeringVerificationArmed = false;
         InvalidateScan("正式工程加载或更新后，需要重新核对本次 ECU 的真实扫码身份。");
         StartRequestStatus = "当前工程已更新：请重新完成扫码与工位核对；正式执行器尚未接通。";
         RebuildCases();
