@@ -42,8 +42,8 @@ public sealed class TestProjectPackageRow : BindableBase
         !string.IsNullOrWhiteSpace(_latestSha256) &&
         (_latestRevision != Revision ||
          !string.Equals(_latestSha256, Sha256, StringComparison.OrdinalIgnoreCase));
-    public string PinStatus => _latestRevision is null ? "用例资源缺失" :
-        CanAdoptLatest ? "用例有新修订 · 待确认更新" : "修订一致";
+    public string PinStatus => _latestRevision is null ? "资源已移除" :
+        CanAdoptLatest ? "绑定 r" + Revision + " → 当前 r" + _latestRevision + " · 待确认" : "修订一致";
     public string PinDetail => _latestRevision is null ? "当前工程已找不到此 TEST 定义" :
         "项目固定 r" + Revision + " / " + Sha256 +
         "；当前资源 r" + _latestRevision + " / " + _latestSha256;
