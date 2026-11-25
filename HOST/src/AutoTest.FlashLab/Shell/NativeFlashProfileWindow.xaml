@@ -31,7 +31,7 @@
       <TextBlock Text="一、固件 HEX" FontSize="15" FontWeight="SemiBold"
                  Foreground="#20364A" Margin="0,0,0,10"/>
       <DockPanel>
-       <Button DockPanel.Dock="Right" Content="选择 HEX" Click="ImportFirmware_Click"
+       <Button x:Name="FirmwareImportButton" DockPanel.Dock="Right" Content="选择 HEX" Click="ImportFirmware_Click"
                Padding="16,8" Margin="12,0,0,0" MinWidth="110"/>
        <StackPanel VerticalAlignment="Center">
         <TextBlock x:Name="FirmwareLabel" Text="尚未导入固件"
@@ -49,7 +49,7 @@
       <TextBlock Text="二、安全文件" FontSize="15" FontWeight="SemiBold"
                  Foreground="#20364A" Margin="0,0,0,10"/>
       <DockPanel>
-       <Button DockPanel.Dock="Right" Content="选择安全 DLL" Click="ImportSecurity_Click"
+       <Button x:Name="SecurityImportButton" DockPanel.Dock="Right" Content="选择安全 DLL" Click="ImportSecurity_Click"
                Padding="14,8" Margin="12,0,0,0" MinWidth="110"/>
        <StackPanel VerticalAlignment="Center">
         <TextBlock x:Name="SecurityLabel" Text="尚未导入安全算法"
