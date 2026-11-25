@@ -35,6 +35,7 @@ public partial class NativeFlashProfileWindow : Window
         _expectedModel = modelCode ?? "";
         _draft = NativeFlashProfileDocument.CreateDraft(_expectedModel);
         InitializeComponent();
+        Loaded += (_, _) => FlashWindowSizing.Fit(this);
         Closing += OnClosing;
         Loaded += async (_, _) => await LoadAsync();
         Closed += (_, _) => _idleSave.Stop();
