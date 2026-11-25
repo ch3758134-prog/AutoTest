@@ -115,6 +115,10 @@
      <DockPanel Margin="12,10">
       <TextBlock DockPanel.Dock="Right" Text="{Binding CaseCount,StringFormat='{}{0} 个用例'}"
        Foreground="#64788B" FontSize="12"/>
+      <CheckBox x:Name="FollowEngineeringRun" DockPanel.Dock="Right"
+       Content="跟随" IsChecked="True" Margin="0,0,12,0"
+       VerticalAlignment="Center" FontSize="12"
+       ToolTip="跟随当前真实运行的用例和步骤；取消后自由查看历史"/>
       <TextBlock Text="完整 TEST 用例及真实步骤" FontWeight="SemiBold" FontSize="14"/>
      </DockPanel>
      <TreeView x:Name="EngineeringCasesTree" Grid.Row="1"
