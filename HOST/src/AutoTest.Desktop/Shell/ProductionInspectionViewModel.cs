@@ -304,7 +304,7 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
                 _caseIndex.Clear();
                 Selected = null;
                 ProjectName = opened.Definition.Name;
-                ModelCode = opened.Definition.EcuModelCode;
+                ModelCode = opened.Definition.EcuModelCode ?? "—";
                 _loadingCases = false;
                 _setupIssue = "";
                 var caseIndex = 0;
@@ -347,7 +347,7 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
                 _caseIndex.Clear();
                 Selected = null;
                 ProjectName = opened.Definition.Name;
-                ModelCode = opened.Definition.EcuModelCode;
+                ModelCode = opened.Definition.EcuModelCode ?? "—";
                 _loadingCases = false;
                 _setupIssue = error.Message;
                 ProductionReadiness = "测试配置不可用：" + error.Message;
