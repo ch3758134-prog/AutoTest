@@ -1,4 +1,6 @@
+using System.Collections.Specialized;
 using System.Windows;
+using System.Windows.Threading;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Globalization;
@@ -12,11 +14,18 @@ namespace AutoTest.Desktop.Shell;
 public partial class AutomaticTestHomeView : UserControl
 {
     private bool? _compactOperatorLayout;
+    private AutomaticTestHomeViewModel? _observedModel;
 
     public AutomaticTestHomeView()
     {
         InitializeComponent();
-        Loaded += (_, _) => ApplyResponsiveLayout();
+        Loaded += (_, _) =>
+        {
+            ApplyResponsiveLayout();
+            AttachCaseChanges();
+        };
+        Unloaded += (_, _) => DetachCaseChanges();
+        DataContextChanged += (_, _) => AttachCaseChanges();
         SizeChanged += (_, _) => ApplyResponsiveLayout();
     }
 
@@ -53,6 +62,84 @@ public partial class AutomaticTestHomeView : UserControl
             OperatorPrimaryRow.Height = new GridLength(1, GridUnitType.Star);
             OperatorDetailsRow.Height = new GridLength(0);
         }
+    }
+
+    private void AttachCaseChanges()
+    {
+        if (!IsLoaded) return;
+        var next = DataContext as AutomaticTestHomeViewModel;
+        if (ReferenceEquals(_observedModel, next)) return;
+        DetachCaseChanges();
+        _observedModel = next;
+        if (_observedModel is not null)
+            _observedModel.Cases.CollectionChanged += OnCasePresentationChanged;
+    }
+
+    private void DetachCaseChanges()
+    {
+        if (_observedModel is not null)
+            _observedModel.Cases.CollectionChanged -= OnCasePresentationChanged;
+        _observedModel = null;
+    }
+
+    private void OnCasePresentationChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (!IsLoaded || OperatorFollowExecution.IsChecked != true) return;
+        if (e.Action != NotifyCollectionChangedAction.Replace) return;
+        _ = Dispatcher.BeginInvoke(new Action(FollowActualExecution),
+            DispatcherPriority.Loaded);
+    }
+
+    private void FollowActualExecution()
+    {
+        if (!IsLoaded || OperatorFollowExecution.IsChecked != true ||
+            _observedModel is null) return;
+        var active = _observedModel.Cases.FirstOrDefault(
+            item => item.State == "执行中");
+        active ??= _observedModel.Cases.LastOrDefault(item =>
+            item.State is "执行异常" or "已停止" ||
+            item.State.StartsWith("实测", StringComparison.Ordinal) &&
+            item.State != "实测通过");
+        if (active is null) return;
+        if (CasesTree.ItemContainerGenerator.ContainerFromItem(active)
+            is not TreeViewItem caseRow) return;
+        caseRow.IsExpanded = true;
+        caseRow.BringIntoView();
+
+        // The row hierarchy projects real authored StepId states. Only a
+        // currently running step is focused; no result or CAN action occurs.
+        static AutomaticTestStep? FindRunning(IEnumerable<AutomaticTestStep> source)
+        {
+            foreach (var item in source)
+            {
+                if (item.State == "执行中") return item;
+                if (FindRunning(item.Children) is { } nested) return nested;
+            }
+            return null;
+        }
+        var target = FindRunning(active.Children);
+        if (target is null) return;
+        caseRow.UpdateLayout();
+        static bool BringStep(ItemsControl parent,
+            IEnumerable<AutomaticTestStep> children, AutomaticTestStep target)
+        {
+            foreach (var item in children)
+            {
+                var view = parent.ItemContainerGenerator.ContainerFromItem(item) as TreeViewItem;
+                if (view is null) continue;
+                if (ReferenceEquals(item, target))
+                {
+                    view.BringIntoView();
+                    return true;
+                }
+                if (item.Children.Count == 0) continue;
+                view.IsExpanded = true;
+                view.UpdateLayout();
+                if (BringStep(view, item.Children, target)) return true;
+            }
+            return false;
+        }
+        BringStep(caseRow, active.Children, target);
     }
 
     private void CasesTree_SelectedItemChanged(object sender,
