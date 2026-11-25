@@ -152,6 +152,14 @@ public sealed record NativeFlashProfileDocument(
             string.IsNullOrWhiteSpace(SecurityRelativePath))
             throw new FormatException("当前型号必须选择受控固件与受审安全算法。");
 
+        // The physical reference was verified for ONE ECU model only.
+        // A new model code with copied CAN IDs and Flash addresses is NOT
+        // evidence that its bootloader, erase ranges or security match.
+        // Keep other models editable as drafts, but fail closed at freeze.
+        if (!string.Equals(EcuModelCode, "HYDEPB", StringComparison.Ordinal))
+            throw new NotSupportedException(
+                "当前烧录方法仅已验证 HYDEPB ECU；其它型号不能套用 HydEPB 参数执行实体烧录，须先独立验证对应 OEM 方法。");
+
         // Only one proven physical reference profile exists today.
         // Changing these exact endpoints / memory geometry would advertise
         // an unverified OEM programming method and could erase another ECU.
