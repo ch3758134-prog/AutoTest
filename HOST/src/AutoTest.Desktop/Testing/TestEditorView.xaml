@@ -400,8 +400,9 @@
        ToolTip="关闭步骤选择" Margin="12,0,0,0"/>
       <StackPanel>
        <TextBlock Text="添加测试步骤" FontSize="17" FontWeight="SemiBold" Foreground="#2F3C4B"/>
-       <TextBlock x:Name="PaletteHint" Visibility="Collapsed"
-        Text="添加到当前步骤位置" FontSize="12"/>
+       <TextBlock x:Name="PaletteHint" Text="当前插入位置"
+        FontSize="11" Foreground="#61758A" Margin="0,3,0,0"
+        TextTrimming="CharacterEllipsis" ToolTip="根据当前选中的阶段或步骤确定插入位置"/>
       </StackPanel>
      </DockPanel>
      <Border DockPanel.Dock="Top" Background="#F8FAF9" BorderBrush="#DCE5E2"
