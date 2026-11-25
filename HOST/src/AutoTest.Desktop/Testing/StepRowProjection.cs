@@ -227,7 +227,8 @@ public sealed class StepRowProjection : BindableBase
                 ? " · 无法判断，后续测试已阻断"
                 : realFact.Status == RealStepStatus.Completed
                     ? " · 实际 " + realFact.Actual + " → " +
-                      (realFact.Detail.Contains("→ THEN", StringComparison.Ordinal)
+                      (realFact.Detail.Contains("→ THEN", StringComparison.Ordinal) ||
+                       realFact.Detail.Contains("Branch: then", StringComparison.Ordinal)
                           ? "THEN" : "ELSE")
                     : " · " + realFact.Status;
         }

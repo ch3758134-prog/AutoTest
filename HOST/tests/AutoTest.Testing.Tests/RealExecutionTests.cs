@@ -168,6 +168,39 @@ public sealed class RealExecutionTests
     }
 
 
+    [Theory]
+    [InlineData("2", ">=", "THEN")]
+    [InlineData("0", ">=", "ELSE")]
+    [InlineData("1", "==", "THEN")]
+    [InlineData("2", "!=", "THEN")]
+    public async Task IfSelectsExactlyOneBranchAndRetainsMeasuredOperands(
+        string measured, string comparator, string selected)
+    {
+        var tx = new StepEditTransaction(TestDocument.Create("If conditions"));
+        tx.Insert(TestPhase.Test, null, null, 0,
+            N("SetVariable", ("variable", "brakeState"), ("value", measured)));
+        var branch = N("If", ("variable", "brakeState"),
+            ("operator", comparator), ("equals", "1"))
+            .WithSlot("then", N("SetVariable",
+                ("variable", "selectedArm"), ("value", "THEN")))
+            .WithSlot("else", N("SetVariable",
+                ("variable", "selectedArm"), ("value", "ELSE")));
+        tx.Insert(TestPhase.Test, null, null, 1, branch);
+        tx.Insert(TestPhase.Test, null, null, 2,
+            N("Expect", ("left", "$selectedArm"), ("operator", "=="),
+                ("right", selected)));
+        var prepared = new PlanCompiler().Prepare(tx.Current, allowRealOperations: true);
+        Assert.Empty(prepared.Diagnostics);
+        var actual = await new RealRunCoordinator(
+            new SignalPort(new TestSignalResult(TestSignalStatus.NoFrame, null, "no observation requested")),
+            new ActuationPort(), new WavePort()).StartAsync(prepared);
+        Assert.Equal(RealTestVerdict.Passed, actual.Verdict);
+        var fact = Assert.Single(actual.Facts.Where(x => x.Step == branch.Id));
+        Assert.Equal(measured, fact.Actual);
+        Assert.Contains("→ " + selected, fact.Detail);
+        Assert.Equal(selected, actual.Variables["selectedArm"].Value);
+    }
+
     [Fact]
     public async Task UnknownIfAfterInvalidReadBlocksFollowingPhysicalWriteAndStillCleansUp()
     {

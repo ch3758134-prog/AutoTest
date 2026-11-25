@@ -594,7 +594,7 @@ public sealed class TestEditorViewModel : BindableBase
             ? TestVariableFlowValidator.Before(_transaction.Current, original.Id)
                 .Select(x => new TestStepFieldChoice(x.Name,
                     x.Name + "（来自：" + x.Source + "）")).ToArray()
-            : [];
+            : Array.Empty<TestStepFieldChoice>();
         InspectorRequested?.Invoke(new StepInspectorContext(original, initialActionKey,
             choices, _transaction.Current.Mappings.ToArray(), insertion?.RequiresCase == true,
             flowChoices, ifVariables));
