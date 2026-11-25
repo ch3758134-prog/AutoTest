@@ -442,10 +442,18 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     {
         if (IsOperatorRunning)
         {
-            AddOperatorEvent("实体整组验证期间 ECU CAN 目标码率或主控读回状态变化，" +
-                "请求停止；后续 FLASH/TEST 不再继承旧配置。");
-            _operatorStop?.Cancel();
-            _operatorEngine.RequestStop();
+            // A benign repeated 0x43 readback may publish a notification.
+            // Cancel only when the actual frozen rate is no longer satisfied.
+            if (_prepared is not { } pinned ||
+                pinned.EcuCanKbps != targetKbps ||
+                !_hardware.IsEcuCanBitrateApplied ||
+                _hardware.ConfirmedEcuCanBitrateKbps != pinned.EcuCanKbps)
+            {
+                AddOperatorEvent("实体整组验证期间 ECU CAN 配置不再匹配冻结版本，" +
+                    "请求停止；后续 FLASH/TEST 不再继承旧配置。");
+                _operatorStop?.Cancel();
+                _operatorEngine.RequestStop();
+            }
             UpdateConnection();
             return;
         }
