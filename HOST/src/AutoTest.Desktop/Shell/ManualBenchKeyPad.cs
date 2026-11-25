@@ -74,6 +74,9 @@ public sealed partial class ManualBenchViewModel
     public void ReportKeyPadSaveFailure(string reason) =>
         KeyActionRunStatus = "KEY 修改未能保存，未向硬件发送：" + reason;
 
+    public void ReportBenchAutosaveFailure(string reason) =>
+        Status = "手动台架配置自动保存失败，修改保留在编辑器中：" + reason;
+
     private void InitializeKeyPad()
     {
         PressKeyPadCommand = new DelegateCommand<KeyActionPadItem>(
