@@ -61,7 +61,7 @@
       <DataGridTextColumn Header="ECU 编号" Width="*" MinWidth="150" Binding="{Binding DutId}"/>
       <DataGridTextColumn Header="工程来源" Width="130" Binding="{Binding ProjectName}"/>
       <DataGridTextColumn Header="类别" Width="102" Binding="{Binding ModeLabel}"/>
-      <DataGridTextColumn Header="结果" Width="92" Binding="{Binding VerdictLabel}"/>
+      <DataGridTextColumn Header="记录判定" Width="104" Binding="{Binding VerdictLabel}"/>
       <DataGridTextColumn Header="归档状态" Width="105" Binding="{Binding PersistenceLabel}"/>
       <DataGridTextColumn Header="步骤事实" Width="93" Binding="{Binding StepFactCount}"/>
       <DataGridTextColumn Header="失败原因" Width="185" Binding="{Binding FailureReason}"/>
