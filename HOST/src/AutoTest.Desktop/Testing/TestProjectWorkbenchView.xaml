@@ -67,8 +67,7 @@
        <TextBox Width="240" Height="28" VerticalContentAlignment="Center"
         Text="{Binding DutIdentity,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
         ToolTip="开发批量联调可不填 ECU 编号，按未绑定 DUT 的诊断记录归档，不计出厂数量"/>
-       <Button Content="确认所选用例" Command="{Binding PreflightSelectedCommand}"
-        Margin="10,0,5,0"/>
+
        <Button Content="▶ 运行所选" Command="{Binding RunSelectedCommand}"
         Style="{StaticResource AtPrimaryButton}" Margin="0,0,5,0"/>
        <Button Content="■ 停止" Command="{Binding StopSelectedCommand}"/>
@@ -176,7 +175,7 @@
            <StackPanel Orientation="Horizontal" Height="17" ToolTip="{Binding PinDetail}">
             <TextBlock Text="{Binding PinStatus}" FontSize="10" Foreground="#627C9D"
              TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-            <Button Content="恢复历史排除" Tag="{Binding}" Click="RestoreLegacyInclusion_Click"
+            <Button Content="修复旧项目用例" Tag="{Binding}" Click="RestoreLegacyInclusion_Click"
              FontSize="10" Margin="6,0,0,0" Padding="4,0" Height="17"
              MinHeight="0" Foreground="#94651F"
              ToolTip="旧工程存在被排除的实例；恢复并保存后才可以进行完整正式检测">
