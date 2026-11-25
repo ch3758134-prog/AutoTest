@@ -4,6 +4,7 @@ using System.Windows.Threading;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using AutoTest.Core;
 using AutoTest.Devices.Usb;
 using AutoTest.FlashLab.Configuration;
