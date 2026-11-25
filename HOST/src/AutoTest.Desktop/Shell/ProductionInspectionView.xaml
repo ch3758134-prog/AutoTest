@@ -10,7 +10,8 @@
   </Style>
  </UserControl.Resources>
 
- <!-- This is a fixed operator display, not an editor or a selectable test browser. -->
+ <!-- Stage-adaptive read-only operator display. Actual test details appear
+      only when an observed step supplies evidence; idle has no empty rail. -->
  <Grid Margin="11,9,11,10">
   <Grid.RowDefinitions>
    <RowDefinition Height="69"/>
@@ -52,7 +53,7 @@
    <Grid.ColumnDefinitions>
     <ColumnDefinition Width="7*" MinWidth="440"/>
     <ColumnDefinition Width="9"/>
-    <ColumnDefinition Width="3*" MinWidth="315"/>
+    <ColumnDefinition Width="{Binding EvidenceColumnWidth}" MinWidth="0"/>
    </Grid.ColumnDefinitions>
 
    <!-- One dense, read-only, non-navigational execution list. -->
@@ -122,6 +123,7 @@
 
    <!-- Automatically follows the actual executing step: no selection and no disclosures. -->
    <Border Grid.Column="2" CornerRadius="5" Background="White"
+    Visibility="{Binding ShowEvidenceDetails,Converter={StaticResource BoolToVisibility}}"
     BorderBrush="#DDE4EC" BorderThickness="1">
     <Grid>
      <Grid.RowDefinitions>

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
+using System.Windows;
 using System.Security.Cryptography;
 using System.Text;
 using AutoTest.Core;
@@ -149,6 +150,12 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
     public int EnabledCaseCount => Cases.Count;
     public bool HasCases => Cases.Count > 0;
     public bool HasCaseListIssue => Cases.Count == 0;
+    // An unselected or idle station has no truthful actual/expected values
+    // to display. Do not reserve a large empty detail pane until a real
+    // step occurrence or archived observation is being inspected.
+    public bool ShowEvidenceDetails => Selected?.Step is not null;
+    public GridLength EvidenceColumnWidth => ShowEvidenceDetails
+        ? new GridLength(3, GridUnitType.Star) : new GridLength(0);
     // The ordinary operator display never presents the project file's internal
     // name, revision, provenance, debug branch, or reference/trace identifiers.
     public string CurrentCaseName => string.IsNullOrWhiteSpace(_currentCaseName) ? "—" : _currentCaseName;
@@ -222,6 +229,8 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
 
     private void NotifySelectedReadout()
     {
+        RaisePropertyChanged(nameof(ShowEvidenceDetails));
+        RaisePropertyChanged(nameof(EvidenceColumnWidth));
         RaisePropertyChanged(nameof(SelectedName));
         RaisePropertyChanged(nameof(SelectedKind));
         RaisePropertyChanged(nameof(SelectedState));
