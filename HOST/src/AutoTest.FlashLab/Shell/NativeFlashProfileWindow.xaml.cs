@@ -29,9 +29,11 @@ public partial class NativeFlashProfileWindow : Window
     private bool _closing;
     private bool _closeApproved;
     private bool _importBusy;
+    private bool _previewBusy;
 
     private void SetFieldsEditable(bool enabled)
     {
+        enabled &= !_previewBusy && !_importBusy && !_initializing;
         foreach (var input in new TextBox[]
         {
             AppTxBox, AppRxBox, BootTxBox, BootRxBox,
@@ -158,7 +160,7 @@ public partial class NativeFlashProfileWindow : Window
 
     private async Task<bool> SaveAsync()
     {
-        if (_loadFailure || _importBusy) return false;
+        if (_initializing || _loadFailure || _importBusy) return false;
         // Wait for any in-flight auto-save. Do not mistake a concurrent save
         // for a failure when the user closes the window.
         await _saveGate.WaitAsync();
@@ -202,7 +204,7 @@ public partial class NativeFlashProfileWindow : Window
 
     private async void ImportFirmware_Click(object sender, RoutedEventArgs e)
     {
-        if (_loadFailure || _importBusy || _closing) return;
+        if (_initializing || _loadFailure || _importBusy || _previewBusy || _closing) return;
         var dialog = new OpenFileDialog
         {
             Title = "选择当前 ECU 的 HEX 固件",
@@ -328,7 +330,7 @@ public partial class NativeFlashProfileWindow : Window
     /// </summary>
     public async Task<bool> PrepareForParentShutdownAsync()
     {
-        if (_closing || _importBusy) return false;
+        if (_closing || _importBusy || _previewBusy || _initializing) return false;
         if (!IsLoaded) return true;
         _closing = true;
         _idleSave.Stop();
@@ -354,9 +356,9 @@ public partial class NativeFlashProfileWindow : Window
     {
         if (_closeApproved) return;
         e.Cancel = true;
-        if (_importBusy)
+        if (_importBusy || _previewBusy || _initializing)
         {
-            StatusLabel.Text = "固件或安全文件仍在导入；请勿关闭窗口或切换工程。";
+            StatusLabel.Text = "配置仍在加载、导入或校验实际烧录 Job；请在操作结束后关闭窗口。";
             return;
         }
         if (_closing) return;
