@@ -50,6 +50,8 @@
       </StackPanel>
       <DockPanel Margin="0,0,0,8">
        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+        <Button Content="＋ 新建" Command="{Binding CreateProjectSetupCommand}"
+         Margin="0,0,5,0" ToolTip="创建同一 TEST DSL 的新资源，自动绑定并进入步骤编辑"/>
         <Button Content="绑定" Command="{Binding SetProjectSetupCommand}" Margin="0,0,5,0"/>
         <Button Content="编辑步骤" Command="{Binding OpenProjectSetupCommand}" Margin="0,0,5,0"/>
         <Button Content="移除" Command="{Binding RemoveProjectSetupCommand}"/>
@@ -60,6 +62,8 @@
       </DockPanel>
       <DockPanel>
        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+        <Button Content="＋ 新建" Command="{Binding CreateProjectTeardownCommand}"
+         Margin="0,0,5,0" ToolTip="创建并绑定可选项目收尾 TEST 步骤树"/>
         <Button Content="绑定" Command="{Binding SetProjectTeardownCommand}" Margin="0,0,5,0"/>
         <Button Content="编辑步骤" Command="{Binding OpenProjectTeardownCommand}" Margin="0,0,5,0"/>
         <Button Content="移除" Command="{Binding RemoveProjectTeardownCommand}"/>

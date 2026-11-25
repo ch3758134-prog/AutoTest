@@ -214,6 +214,10 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         if (_selection is not null) _selection.Changed += OnNavigationSelectionChanged;
         _name = session.Document.Name;
         AddCommand = new DelegateCommand(Add, () => SelectedAvailable is not null && !IsBusy);
+        CreateProjectSetupCommand = new DelegateCommand(
+            async () => await CreateProjectStageAsync(true), () => !IsBusy);
+        CreateProjectTeardownCommand = new DelegateCommand(
+            async () => await CreateProjectStageAsync(false), () => !IsBusy);
         SetProjectSetupCommand = new DelegateCommand(() => SetProjectStage(true),
             () => SelectedAvailable is not null && !IsBusy);
         SetProjectTeardownCommand = new DelegateCommand(() => SetProjectStage(false),
@@ -283,6 +287,8 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     }
 
     public DelegateCommand AddCommand { get; }
+    public DelegateCommand CreateProjectSetupCommand { get; }
+    public DelegateCommand CreateProjectTeardownCommand { get; }
     public DelegateCommand SetProjectSetupCommand { get; }
     public DelegateCommand SetProjectTeardownCommand { get; }
     public DelegateCommand OpenProjectSetupCommand { get; }
@@ -758,6 +764,51 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
             ProjectSetup = _projectSetup, ProjectTeardown = _projectTeardown
         };
 
+    private async Task CreateProjectStageAsync(bool setup)
+    {
+        if (IsBusy || _realTest?.IsRunning == true || _workspace.Current is null)
+            return;
+        if (IsDirty)
+        {
+            await SaveAsync(silent: true);
+            if (IsDirty)
+            {
+                StatusMessage = "测试项目草稿尚未保存，无法安全创建项目级步骤。";
+                return;
+            }
+        }
+        var prefix = setup ? "项目准备" : "项目收尾";
+        var name = prefix;
+        var suffix = 2;
+        while (_workspace.Current!.Definition.Assets.Any(a =>
+            a.Kind == ProjectWorkspaceService.TestProgramKind &&
+            string.Equals(a.Name, name, StringComparison.OrdinalIgnoreCase)))
+            name = prefix + " " + suffix++;
+        IsBusy = true;
+        try
+        {
+            var asset = await _workspace.CreateTestProgramAsync(name);
+            RefreshAvailable();
+            SelectedAvailable = AvailablePackages.First(x => x.Asset.Id == asset.Id);
+        }
+        catch (Exception error) when (error is IOException or InvalidOperationException or
+            InvalidDataException or ArgumentException or
+            AutoTest.Projects.Project.ProjectDataException)
+        {
+            StatusMessage = "新建项目级 TEST 步骤失败：" + error.Message;
+            return;
+        }
+        finally { IsBusy = false; }
+        SetProjectStage(setup);
+        if (IsDirty) await SaveAsync(silent: true);
+        if (IsDirty)
+        {
+            StatusMessage = "TEST 定义已创建，但项目阶段绑定尚未保存；请修复后重试。";
+            return;
+        }
+        OpenProjectStage(setup);
+    }
+
     private void SetProjectStage(bool setup)
     {
         if (SelectedAvailable is not { } chosen || IsBusy) return;
@@ -867,6 +918,8 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         RaisePropertyChanged(nameof(IsDirty));
         RaisePropertyChanged(nameof(HasStaleReferences));
         AddCommand?.RaiseCanExecuteChanged();
+        CreateProjectSetupCommand?.RaiseCanExecuteChanged();
+        CreateProjectTeardownCommand?.RaiseCanExecuteChanged();
         SetProjectSetupCommand?.RaiseCanExecuteChanged();
         SetProjectTeardownCommand?.RaiseCanExecuteChanged();
         OpenProjectSetupCommand?.RaiseCanExecuteChanged();
