@@ -377,7 +377,9 @@ public partial class WaveWorkbenchWindow : Window
         }
         if (intervals.Count == 0) return 0.2;
         intervals.Sort();
-        return Math.Max(0.2, intervals[intervals.Count / 2] * 8d);
+        // The old hard 200 ms floor hid an 80–150 ms dropout in a 10 ms
+        // ECU signal stream. This is VISUAL continuity only, not TEST quality.
+        return Math.Clamp(intervals[intervals.Count / 2] * 6d, 0.02, 2d);
     }
 
     private static bool TraceHasDiscontinuities(IReadOnlyList<WaveChartPoint> raw)
@@ -388,7 +390,9 @@ public partial class WaveWorkbenchWindow : Window
             var current = raw[i];
             if (!double.IsFinite(current.Value) || !double.IsFinite(current.Seconds))
                 return true;
-            if (i != 0 && current.Seconds - raw[i - 1].Seconds > limit)
+            if (i != 0 &&
+                (current.Seconds <= raw[i - 1].Seconds ||
+                 current.Seconds - raw[i - 1].Seconds > limit))
                 return true;
         }
         return false;
@@ -455,7 +459,7 @@ public partial class WaveWorkbenchWindow : Window
                 continue;
             }
             if (last is { } previous &&
-                (sample.Seconds < previous.Seconds ||
+                (sample.Seconds <= previous.Seconds ||
                  sample.Seconds - previous.Seconds > maxGap))
                 EmitSegment();
             currentSegment.Add(sample);
