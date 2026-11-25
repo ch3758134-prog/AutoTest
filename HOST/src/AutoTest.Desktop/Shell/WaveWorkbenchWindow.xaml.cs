@@ -38,6 +38,13 @@ public partial class WaveWorkbenchWindow : Window
         _openConfiguration = openConfiguration;
         DataContext = model;
         InitializeComponent();
+        Loaded += (_, _) => DesktopWindowSizing.FitToVisibleWorkspace(this);
+        StateChanged += (_, _) =>
+        {
+            if (WindowState == WindowState.Normal)
+                _ = Dispatcher.BeginInvoke(new Action(() =>
+                    DesktopWindowSizing.FitToVisibleWorkspace(this)), DispatcherPriority.Loaded);
+        };
         _model.ChartChanged += OnChartChanged;
         Closing += OnToolClosing;
         _previewTimer.Tick += (_, _) => _model.PollCapturePreview();
