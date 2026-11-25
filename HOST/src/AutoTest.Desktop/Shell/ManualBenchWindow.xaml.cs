@@ -21,6 +21,7 @@ public partial class ManualBenchWindow : Window
     private DateTime _lastInteractionUtc = DateTime.UtcNow;
     private bool _keyAutosaveBusy;
     private bool _propertyOverlayClosing;
+    private ManualBenchKeyActionWindow? _keyActionDialog;
     private bool _benchClosePending;
     private bool _benchCloseScheduled;
     private DispatcherTimer? _keyPadClickTimer;
@@ -272,6 +273,10 @@ public partial class ManualBenchWindow : Window
                 throw new TimeoutException("等待后台自动保存超时，已保留工作台窗口和草稿。");
             await _model.StopKeyActionAsync();
             await _model.StopCanBatchForCloseAsync();
+            if (_keyActionDialog is { IsVisible: true } keyEditor &&
+                !await keyEditor.PrepareForParentShutdownAsync())
+                throw new InvalidOperationException(
+                    "KEY 动作浮窗仍有待保存或正在进行的编辑，不能关闭工位。");
             await _model.SaveCanRowsForCloseAsync();
             if (_model.CanRowsDirty)
                 throw new InvalidOperationException("CAN 报文配置未能持久化，已阻止退出。");
@@ -420,10 +425,23 @@ public partial class ManualBenchWindow : Window
             return;
         }
         _model.SelectedKeyAction = action;
-        _model.IsKeyEditorExpanded = true;
-        var view = new ManualBenchKeyActionView(_model);
-        view.CloseRequested += async (_, _) => await ClosePropertyOverlayAsync();
-        OpenPropertyOverlay(view);
+        if (_keyActionDialog is { IsVisible: true } existing)
+        {
+            existing.Activate();
+            existing.Focus();
+            return;
+        }
+        // The KEY editor is a persistent owned tool window, not a hover
+        // overlay. Double-click and Edit both focus the SAME real editor.
+        var popup = new ManualBenchKeyActionWindow(_model) { Owner = this };
+        _keyActionDialog = popup;
+        popup.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(_keyActionDialog, popup))
+                _keyActionDialog = null;
+        };
+        popup.Show();
+        popup.Activate();
     }
 
     private void AddKeyAction_Click(object sender, RoutedEventArgs e)
