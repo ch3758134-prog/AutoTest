@@ -89,6 +89,15 @@ public sealed partial class MainWindowViewModel
             return;
         }
         if (!await PrepareEditorsForCloseAsync()) return;
+        // Native FLASH is an owned floating editor, not a main document tab.
+        // Commit and close its current draft before computing publication SHA;
+        // otherwise the operator could confirm stale bytes while editing.
+        if (_nativeFlashProfileWindow is { IsVisible: true } profileWindow &&
+            !await profileWindow.PrepareForParentShutdownAsync())
+        {
+            StatusMessage = "原生 FLASH 编辑尚未保存完成，生产确认已取消。";
+            return;
+        }
         var project = _workspace.Current;
         if (project is null)
         {
