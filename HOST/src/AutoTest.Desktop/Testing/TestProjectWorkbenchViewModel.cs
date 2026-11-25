@@ -484,8 +484,12 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         StatusMessage = "已请求停止；当前真实步骤将中止并尝试工位清理。";
     }
 
-    /// <summary>Run each frozen package through the existing physical TEST/RECORD
-    /// service. Each package has its own durable RunId and artifact report.</summary>
+    /// <summary>Engineer RunSelected is a temporary ordered scope. All
+    /// selected functional TEST cases share one real physical grant and CAN
+    /// sender set, with each case retaining its own RunId/CaseAttempt/RECORD.
+    /// A solitary explicit FLASH debug case stays isolated under its original
+    /// destructive authorization; FLASH cannot be mixed with a continuous
+    /// functional batch.</summary>
     private async Task RunSelectedAsync()
     {
         if (IsBusy || IsDirty || _realTest is null || _hardware is null ||
@@ -509,14 +513,34 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
 
         var batch = _frozen.ToArray();
         var fixedFlashApproval = FlashApproval;
+        if (batch.Length > 1 && batch.Any(x => x.FlashConsent.Length > 0))
+        {
+            StatusMessage = "开发勾选范围包含内嵌 FLASH。连续 TEST 不得与编程授权混用；" +
+                "请先以独立工程烧录工艺完成 ECU 编程，再执行纯 TEST 勾选范围。";
+            return;
+        }
         _batchCancellation = new CancellationTokenSource();
         var token = _batchCancellation.Token;
         IsBusy = true;
         StopSelectedCommand.RaiseCanExecuteChanged();
         BatchResults.Clear();
         var index = 0;
+        var functionalFailure = false;
+        RealTestWorkbenchService.ProjectExecutionSession? shared = null;
         try
         {
+            if (batch.All(x => x.FlashConsent.Length == 0))
+            {
+                shared = await _realTest.OpenProjectSessionAsync(
+                    batch.Select(x => x.Document).ToArray(),
+                    Guid.NewGuid(), _frozenDut, token,
+                    allowOrderedSubset: true);
+                BatchResults.Add("开发勾选范围共用一个真实硬件会话：" +
+                    shared.ProjectRunId + "；周期 CAN 将跨用例保持。");
+            }
+            else
+                BatchResults.Add("单用例 FLASH 调试：单独物理许可与清理；不作为正式生产。");
+
             foreach (var item in batch)
             {
                 token.ThrowIfCancellationRequested();
@@ -547,23 +571,39 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
                 RealRunResult result;
                 try
                 {
-                    result = await _realTest.ExecuteAsync(item.Document, item.TestConsent,
-                        item.FlashConsent.Length > 0 ? fixedFlashApproval : "",
-                        _frozenDut, token);
+                    result = shared is not null
+                        ? await shared.ExecuteCaseAsync(item.Document, token)
+                        : await _realTest.ExecuteAsync(item.Document, item.TestConsent,
+                            fixedFlashApproval, _frozenDut, token);
                 }
                 finally { _realTest.StepReported -= OnStep; }
                 BatchResults.Add(index + ". " + item.Entry.DisplayName + " · " +
                     result.Verdict + " · RunId=" + result.Run.Value +
                     (result.EvidencePath is null ? "" : " · HTML=" + result.EvidencePath));
-                if (result.Verdict != RealTestVerdict.Passed)
+                if (result.Verdict == RealTestVerdict.Failed)
                 {
-                    StatusMessage = "批次停止：" + item.Entry.DisplayName + " 的正式记录为 " +
-                        result.Verdict + "，后续用例未执行。";
-                    return;
+                    // A normal function assertion failure never becomes PASS,
+                    // but healthy later cases may collect further diagnosis.
+                    // Prepare/Cleanup failures are not safe to continue.
+                    if (result.Facts.Any(f => f.Type == "PrepareGate" ||
+                        f.Phase is TestPhase.Prepare or TestPhase.Cleanup &&
+                        f.Status is not (RealStepStatus.Completed or RealStepStatus.Skipped)))
+                        throw new InvalidDataException("用例准备/收尾步骤失败，禁止继续：" +
+                            item.Entry.DisplayName);
+                    functionalFailure = true;
+                    BatchResults.Add("功能 FAIL 已保留；继续后续已冻结的调试用例。");
                 }
+                else if (result.Verdict is not (RealTestVerdict.Passed or
+                    RealTestVerdict.CompletedNoAssertion))
+                    throw new InvalidDataException("当前用例数据无效或运行被中止，" +
+                        "不能安全继续后续物理动作：" +
+                        item.Entry.DisplayName + " · " + result.Verdict);
+                if (shared is not null) await shared.Actions.CheckHealthAsync(token);
             }
-            StatusMessage = "批次结束：" + batch.Length +
-                " 个用例均已生成各自的正式开发记录；未计入生产数量。";
+            shared?.MarkCompleted();
+            StatusMessage = functionalFailure
+                ? "勾选范围结束：存在真实功能 FAIL，各用例证据已保留；非生产放行。"
+                : "勾选范围执行完成：每个用例均有独立记录；动作完成不等于 ECU PASS。";
         }
         catch (OperationCanceledException)
         {
@@ -576,6 +616,17 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         }
         finally
         {
+            if (shared is not null)
+            {
+                try { await shared.DisposeAsync(); }
+                catch (Exception cleanupError)
+                {
+                    BatchResults.Add("项目周期发送/物理授权收尾失败：" +
+                        cleanupError.Message);
+                    StatusMessage = "设备清理或跨用例证据存在异常；状态 UNKNOWN，" +
+                        "不能宣称调试/生产通过。";
+                }
+            }
             _batchCancellation?.Dispose();
             _batchCancellation = null;
             IsBusy = false;
