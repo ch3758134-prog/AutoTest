@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO.Compression;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.IO;
@@ -553,7 +554,8 @@ public partial class RecordHistoryWindow : Window
         UpdateBatchExportAvailability();
         IProgress<int> progress = new Progress<int>(done =>
         {
-            if (_batchRunning && !cancellation.IsCancellationRequested)
+            if (_batchRunning && ReferenceEquals(_batchCancellation, cancellation) &&
+                !cancellation.IsCancellationRequested)
                 StatusText.Text = "已处理 " + done + " / " + selected.Length +
                     " 条真实归档记录…";
         });
@@ -567,6 +569,7 @@ public partial class RecordHistoryWindow : Window
                 using (var archive = new ZipArchive(stream, ZipArchiveMode.Create,
                            leaveOpen: true))
                 {
+                    var indexedReports = new List<object>(selected.Length);
                     for (var i = 0; i < selected.Length; i++)
                     {
                         cancellation.Token.ThrowIfCancellationRequested();
@@ -582,13 +585,40 @@ public partial class RecordHistoryWindow : Window
                         var name = (i + 1).ToString("D3") + "_" +
                             SafeArchiveSegment(run.DutId) + "_" +
                             SafeArchiveSegment(run.RunId) + extension;
+                        var bytes = Encoding.UTF8.GetBytes(original);
                         var item = archive.CreateEntry(name, CompressionLevel.Optimal);
                         using (var entry = item.Open())
-                        {
-                            var bytes = Encoding.UTF8.GetBytes(original);
                             await entry.WriteAsync(bytes.AsMemory(), cancellation.Token);
-                        }
+                        // The manifest is an INDEX of the original real reports,
+                        // not a second judgement or production release document.
+                        indexedReports.Add(new
+                        {
+                            file = name,
+                            sha256 = Convert.ToHexString(SHA256.HashData(bytes)),
+                            runId = run.RunId,
+                            dutId = run.DutId,
+                            projectSource = source.ProjectName,
+                            mode = run.Mode,
+                            persistence = run.PersistenceState,
+                            sourceVerdict = run.Verdict,
+                            startedUtc = run.StartedUtc
+                        });
                         progress.Report(i + 1);
+                    }
+                    cancellation.Token.ThrowIfCancellationRequested();
+                    var manifest = archive.CreateEntry("manifest.json", CompressionLevel.Optimal);
+                    using (var entry = manifest.Open())
+                    {
+                        var manifestBytes = JsonSerializer.SerializeToUtf8Bytes(new
+                        {
+                            schema = 1,
+                            createdUtc = DateTimeOffset.UtcNow,
+                            format = isHtml ? "HTML" : "JSON",
+                            reportCount = indexedReports.Count,
+                            note = "本文件为 RECORD 原始归档报告的可核对索引，不是额外生产放行结论。",
+                            reports = indexedReports
+                        }, new JsonSerializerOptions { WriteIndented = true });
+                        await entry.WriteAsync(manifestBytes.AsMemory(), cancellation.Token);
                     }
                 }
                 await stream.FlushAsync(cancellation.Token);
