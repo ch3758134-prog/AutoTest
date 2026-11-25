@@ -48,9 +48,17 @@ public sealed class TestProjectPackageRow : BindableBase
     public string PinDetail => _latestRevision is null ? "当前工程已找不到此 TEST 定义" :
         "项目固定 r" + Revision + " / " + Sha256 +
         "；当前资源 r" + _latestRevision + " / " + _latestSha256;
+    public bool MatchesPinnedRevision(int revision, string? sha256) =>
+        revision == Revision && !string.IsNullOrWhiteSpace(sha256) &&
+        string.Equals(sha256, Sha256, StringComparison.OrdinalIgnoreCase);
 
     public void RefreshAvailableRevision(int? revision, string? sha256)
     {
+        // A background count/metadata refresh must not invalidate an already
+        // prepared physical run when its actual resource revision did not change.
+        if (_latestRevision == revision &&
+            string.Equals(_latestSha256, sha256, StringComparison.OrdinalIgnoreCase))
+            return;
         _latestRevision = revision;
         _latestSha256 = sha256;
         RaisePropertyChanged(nameof(LatestRevision));
@@ -303,6 +311,13 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     }
     private void RowChanged(object? sender, PropertyChangedEventArgs e)
     {
+        // Step counts and derived labels are informational. A late asynchronous
+        // count refresh must NEVER clear a frozen test batch or disable Run.
+        if (e.PropertyName is nameof(TestProjectPackageRow.StepCountLabel) or
+            nameof(TestProjectPackageRow.PinStatus) or
+            nameof(TestProjectPackageRow.PinDetail) or
+            nameof(TestProjectPackageRow.CanAdoptLatest))
+            return;
         if (!IsBusy) ResetFrozenSelection();
         if (e.PropertyName == nameof(TestProjectPackageRow.RunSelected))
         {
@@ -392,7 +407,13 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
                     a.Id.Value == row.AssetId && a.Kind == ProjectWorkspaceService.TestProgramKind);
                 if (asset is null)
                     throw new InvalidDataException("用例文件不存在：" + row.Name);
+                if (!row.MatchesPinnedRevision(asset.Revision, asset.Sha256))
+                    throw new InvalidDataException("测试用例“" + row.Name + "”的固定引用与当前 TEST 资源不一致：" +
+                        "项目 r" + row.Revision + "，当前资源 r" + asset.Revision +
+                        "。请先在用例列表明确核对并更新引用，不能静默运行最新文件。");
                 var opened = await _workspace.OpenTestEditorAsync(AssetId.Create(row.AssetId));
+                if (!row.MatchesPinnedRevision(opened.AssetRevision, opened.FileHash))
+                    throw new IOException("准备时测试用例“" + row.Name + "”的内容或修订已变化，请重新检查。");
                 var plan = _realTest.Prepare(opened.Document);
                 if (!plan.Diagnostics.IsEmpty)
                     throw new InvalidDataException(row.Name + " 步骤预检：" +
@@ -412,7 +433,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
                             "R1 首版一个批次只允许一个 FLASH；请拆为独立批次分别授权。");
                     flashConsent = caseFlash;
                 }
-                prepared.Add(new FrozenSelectedCase(row.ToEntry() with { PackageRevision = opened.AssetRevision, PackageSha256 = opened.FileHash }, runDocument,
+                prepared.Add(new FrozenSelectedCase(row.ToEntry(), runDocument,
                     plan.Fingerprint, RealTestWorkbenchService.ExpectedApproval(plan), caseFlash));
             }
             if (!ReferenceEquals(context, _workspace.Current) ||
