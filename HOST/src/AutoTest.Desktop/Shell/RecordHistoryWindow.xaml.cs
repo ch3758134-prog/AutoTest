@@ -223,7 +223,11 @@ public partial class RecordHistoryWindow : Window
             {
                 try
                 {
-                    var found = await source.QueryAsync(DutSearch.Text, mode, 500);
+                    // The underlying SQLite reader uses short-lived connections.
+                    // Keep all disk/query processing off the WPF dispatcher.
+                    var dut = DutSearch.Text;
+                    var found = await Task.Run(
+                        async () => await source.QueryAsync(dut, mode, 500));
                     rows.AddRange(found.Select(row =>
                         new RecordHistoryDisplayRow(row, ProjectLabel(path), source)));
                 }
@@ -408,8 +412,9 @@ public partial class RecordHistoryWindow : Window
         _detailCancellation = cancellation;
         try
         {
-            var json = await display.RecordSource.ExportFullReportJsonAsync(
-                row.RunId, cancellation.Token);
+            var json = await Task.Run(
+                async () => await display.RecordSource.ExportFullReportJsonAsync(
+                    row.RunId, cancellation.Token), cancellation.Token);
             var parsed = await Task.Run(() => ParseRealReport(json, cancellation.Token),
                 cancellation.Token);
             if (version != _detailRequestRevision || cancellation.IsCancellationRequested ||
@@ -458,7 +463,8 @@ public partial class RecordHistoryWindow : Window
         try
         {
             StatusText.Text = "正在核对证据并生成报告…";
-            var html = await selection.RecordSource.ExportFullReportHtmlAsync(row.RunId);
+            var html = await Task.Run(
+                async () => await selection.RecordSource.ExportFullReportHtmlAsync(row.RunId));
             var folder = Path.Combine(Path.GetTempPath(), "AutoTest", "Reports");
             Directory.CreateDirectory(folder);
             var path = Path.Combine(folder, row.RunId + ".html");
@@ -499,7 +505,10 @@ public partial class RecordHistoryWindow : Window
         _busy = true;
         try
         {
-            await selection.RecordSource.ExportReportAsync(row.RunId, picker.FileName, picker.FilterIndex == 1);
+            var destination = picker.FileName;
+            var isHtml = picker.FilterIndex == 1;
+            await Task.Run(async () => await selection.RecordSource.ExportReportAsync(
+                row.RunId, destination, isHtml));
             StatusText.Text = "报告已导出：" + picker.FileName;
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or
