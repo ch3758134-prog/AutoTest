@@ -51,7 +51,7 @@
      </DataGrid>
      <TextBlock Text="字段按表格顺序解析；型号与硬件版本需要匹配。" TextWrapping="Wrap" Foreground="#62798C" Margin="0,10,0,6"/>
      <DockPanel Margin="0,8,0,0">
-      <Button DockPanel.Dock="Right" Content="保存扫码期望" Click="Save_Click" Padding="14,7"/>
+      <TextBlock DockPanel.Dock="Right" Text="有效修改自动保存" Foreground="#567766" VerticalAlignment="Center" Margin="9,0,0,0" ToolTip="规则保存到当前 ECU 工程；与生产部署是两步不同操作"/>
       <TextBlock x:Name="SaveStatus" TextWrapping="Wrap" VerticalAlignment="Center" Foreground="#345E83" Margin="0,0,10,0"/>
      </DockPanel>
     </StackPanel>
