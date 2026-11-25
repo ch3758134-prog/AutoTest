@@ -234,6 +234,6 @@
   </Grid>
   <TextBlock x:Name="StatusText" Grid.Row="3" TextWrapping="Wrap"
    Foreground="#53677F" Margin="2,11,0,1"
-   Text="序列编辑与实际诊断属于不同操作；当前工具只支持保存序列和读取真实来源的离线回放。"/>
+   Text="实时操作仅允许经单次授权的 0x22 DID；其他 UDS 服务只可编辑和离线回放，未经真机验收不产生正式测试结论。"/>
  </Grid>
 </Window>
