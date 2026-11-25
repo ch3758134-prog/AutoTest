@@ -9,6 +9,95 @@ namespace AutoTest.Desktop.Tests.Projects;
 public sealed class TestProjectPlanWorkflowTests
 {
     [Fact]
+    public void ProjectSetupAndTeardownUsePinnedTestDslAssets_NotExtraTestCases()
+    {
+        var setup = new TestProjectEntry(Guid.NewGuid(), Guid.NewGuid(),
+            2, new string('A', 64), "整车 CAN 准备", true);
+        var apply = new TestProjectEntry(Guid.NewGuid(), Guid.NewGuid(),
+            3, new string('B', 64), "静态驻车", true);
+        var teardown = new TestProjectEntry(Guid.NewGuid(), Guid.NewGuid(),
+            4, new string('C', 64), "停止周期 CAN", true);
+        var project = TestProjectDocument.Create("HydEPB 完整测试") with
+        {
+            ProjectSetup = setup,
+            Packages = [apply],
+            ProjectTeardown = teardown
+        };
+        var loaded = TestProjectCodec.Decode(TestProjectCodec.Encode(project));
+        Assert.Equal(2, loaded.SchemaVersion);
+        Assert.Equal(project.Id, loaded.Id);
+        Assert.Equal(new[] { setup.ItemId, apply.ItemId, teardown.ItemId },
+            loaded.OrderedExecutionEntries().Select(x => x.ItemId).ToArray());
+        Assert.Equal(apply.ItemId, Assert.Single(loaded.AutomaticRunEntries()).ItemId);
+        Assert.Equal(new string('A', 64), loaded.ProjectSetup!.PackageSha256);
+        Assert.Equal(new string('C', 64), loaded.ProjectTeardown!.PackageSha256);
+    }
+
+    [Fact]
+    public void LegacyV1RequiresExplicitAdoptionBeforeAddingProjectStages()
+    {
+        var original = new TestProjectDocument(1, Guid.NewGuid(), "旧正式 TEST", []);
+        var reread = TestProjectCodec.Decode(TestProjectCodec.Encode(original));
+        Assert.Equal(1, reread.SchemaVersion);
+        var stage = new TestProjectEntry(Guid.NewGuid(), Guid.NewGuid(),
+            1, new string('A', 64), "准备", true);
+        Assert.Throws<InvalidDataException>(() =>
+            TestProjectCodec.Encode(reread with { ProjectSetup = stage }));
+    }
+
+    [Fact]
+    public void ProjectStageAndCaseInvocationIdsMustBeUnique()
+    {
+        var identity = Guid.NewGuid();
+        var stage = new TestProjectEntry(identity, Guid.NewGuid(),
+            1, new string('A', 64), "准备", true);
+        var caseEntry = new TestProjectEntry(identity, Guid.NewGuid(),
+            1, new string('B', 64), "驻车", true);
+        Assert.Throws<InvalidDataException>(() =>
+            TestProjectCodec.Encode(TestProjectDocument.Create("异常项目") with
+            {
+                ProjectSetup = stage, Packages = [caseEntry]
+            }));
+    }
+
+    [Fact]
+    public async Task SavedProjectStagesPreserveIdentityAndResourcePins()
+    {
+        var parent = Path.Combine(Path.GetTempPath(), "at-project-stages-" +
+            Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(parent);
+        try
+        {
+            var workspace = new ProjectWorkspaceService();
+            var root = await workspace.CreateAsync("HydEpbStage", parent);
+            var environment = await workspace.CreateTestProgramAsync("整车准备");
+            var parking = await workspace.CreateTestProgramAsync("静态驻车");
+            var finish = await workspace.CreateTestProgramAsync("整车收尾");
+            var project = await workspace.CreateTestProjectAsync("正式 TEST");
+            var opened = await workspace.OpenTestProjectEditorAsync(project.Id);
+            TestProjectEntry Entry(AutoTest.Projects.Resources.AssetEntry asset,
+                string display) => new(Guid.NewGuid(), asset.Id.Value,
+                    asset.Revision, asset.Sha256, display, true);
+            var document = opened.Document with
+            {
+                ProjectSetup = Entry(environment, "整车准备"),
+                Packages = [Entry(parking, "静态驻车")],
+                ProjectTeardown = Entry(finish, "整车收尾")
+            };
+            await workspace.SaveTestProjectEditorAsync(opened, document);
+            var fresh = new ProjectWorkspaceService();
+            await fresh.OpenAsync(root.ManifestPath);
+            var reread = await fresh.OpenTestProjectEditorAsync(project.Id);
+            Assert.Equal(document.ProjectSetup!.ItemId,
+                reread.Document.ProjectSetup!.ItemId);
+            Assert.Equal(document.ProjectTeardown!.PackageSha256,
+                reread.Document.ProjectTeardown!.PackageSha256);
+            Assert.Equal(3, reread.Document.OrderedExecutionEntries().Count);
+        }
+        finally { Directory.Delete(parent, recursive: true); }
+    }
+
+    [Fact]
     public async Task ProjectRefersToOrderedVersionPinnedPackages_AndSurvivesReopen()
     {
         var parent = Path.Combine(Path.GetTempPath(), "at-package-project-" + Guid.NewGuid().ToString("N"));
