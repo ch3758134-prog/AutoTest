@@ -103,6 +103,7 @@ public sealed partial class RealTestWorkbenchService
             }
             if (pending is not null)
             {
+                pending.DetachTimeline();
                 try { await pending.PersistAsync("REJECTED_OR_AUTHORIZATION_FAILED",
                     CancellationToken.None); }
                 catch { /* Failure is still raised; no success may be claimed. */ }
@@ -122,6 +123,9 @@ public sealed partial class RealTestWorkbenchService
         private readonly (TestDocumentId Id, string Sha)[] _pinnedCases;
         private readonly List<ProjectCaseReceipt> _cases = new();
         private readonly SemaphoreSlim _persistGate = new(1, 1);
+        private readonly RealRunEvidenceRecorder _projectTimeline;
+        private string? _projectTimelinePath;
+        private long _timelineDropped;
         private int _next;
         private bool _markedComplete;
         private bool _disposed;
@@ -147,6 +151,7 @@ public sealed partial class RealTestWorkbenchService
             _owner = owner; Actions = actions; _project = project;
             ProjectRunId = projectRunId; _dut = dut; _stationEpoch = epoch;
             ScopeFingerprint = fingerprint; _pinnedCases = pinnedCases.ToArray();
+            _projectTimeline = new RealRunEvidenceRecorder(owner._hardware, owner._signals);
         }
 
         internal void ValidateCase(TestDocument document, string fingerprint, long epoch)
@@ -228,6 +233,8 @@ public sealed partial class RealTestWorkbenchService
                     Cases = _cases.ToArray(),
                     PeriodicCan = Actions.PeriodicEvidenceSnapshot(),
                     PeriodicEvidenceType = "HOST_REQUEST_USB_ACK_NOT_ECU_RX",
+                    ProjectCanTimeline = _projectTimelinePath,
+                    ProjectCanTimelineDropped = _timelineDropped,
                     Utc = DateTimeOffset.UtcNow
                 });
                 try
@@ -248,6 +255,8 @@ public sealed partial class RealTestWorkbenchService
             finally { _persistGate.Release(); }
         }
 
+        internal void DetachTimeline() => _projectTimeline.Dispose();
+
         public async ValueTask DisposeAsync()
         {
             if (_disposed) return;
@@ -263,8 +272,18 @@ public sealed partial class RealTestWorkbenchService
             {
                 _owner._projectSession = null;
                 _owner._station.Release();
+                _projectTimeline.Dispose();
             }
-            await PersistAsync(cleanupError is not null ? "CLEANUP_ERROR" :
+            try
+            {
+                _timelineDropped = _projectTimeline.CaptureHealth().DroppedEvents;
+                _projectTimelinePath = await _projectTimeline.SaveProjectTimelineAsync(
+                    _project.RootDirectory, ProjectRunId, CancellationToken.None);
+                if (_timelineDropped != 0 && cleanupError is null)
+                    cleanupError = new IOException("整组连续 CAN 时间线存在记录溢出或接收丢帧。");
+            }
+            catch (Exception error) { cleanupError ??= error; }
+            await PersistAsync(cleanupError is not null ? "CLEANUP_OR_EVIDENCE_ERROR" :
                 _markedComplete
                     ? _cases.Any(x => x.Verdict == nameof(RealTestVerdict.Failed))
                         ? "FINISHED_WITH_FUNCTIONAL_FAILURE"

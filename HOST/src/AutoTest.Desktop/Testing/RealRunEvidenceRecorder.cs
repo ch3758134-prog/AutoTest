@@ -166,6 +166,56 @@ public sealed class RealRunEvidenceRecorder : IDisposable
         finally { if (File.Exists(temp)) File.Delete(temp); }
     }
 
+    /// <summary>Same physical subscriptions as case evidence, active across
+    /// inter-case gaps. This is a supplementary REAL project timeline, not a
+    /// TEST verdict or a new recording engine.</summary>
+    public async Task<string> SaveProjectTimelineAsync(string root, Guid projectRunId,
+        CancellationToken ct)
+    {
+        if (projectRunId == Guid.Empty)
+            throw new ArgumentException("Missing project RunId.");
+        Line[] events;
+        long dropped, observed;
+        lock (_gate)
+        {
+            events = _records.ToArray();
+            dropped = _dropped + Interlocked.Read(ref _sourceLost);
+            observed = Interlocked.Read(ref _observedFrames);
+        }
+        var folder = Path.Combine(Path.GetFullPath(root),
+            "test-records", "project-runs");
+        Directory.CreateDirectory(folder);
+        var path = Path.Combine(folder, projectRunId.ToString("N") + ".timeline.json");
+        var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            var bytes = JsonSerializer.SerializeToUtf8Bytes(new
+            {
+                SchemaVersion = 1, ProjectRunId = projectRunId,
+                Source = "ACTUAL_USB_CAN_RX_AND_DEVICE_OBSERVATIONS",
+                ContinuousAcrossCaseBoundaries = true,
+                ObservedFrames = observed, DroppedEvents = dropped,
+                EventCount = events.Length, Events = events,
+                SavedUtc = DateTimeOffset.UtcNow
+            });
+            await using (var output = new FileStream(temporary, FileMode.CreateNew,
+                FileAccess.Write, FileShare.None, 65536,
+                FileOptions.Asynchronous | FileOptions.WriteThrough))
+            {
+                await output.WriteAsync(bytes, ct);
+                await output.FlushAsync(ct);
+                output.Flush(flushToDisk: true);
+            }
+            File.Move(temporary, path, overwrite: true);
+            if (!System.Security.Cryptography.SHA256.HashData(
+                    File.ReadAllBytes(path)).AsSpan().SequenceEqual(
+                    System.Security.Cryptography.SHA256.HashData(bytes)))
+                throw new IOException("整组 CAN 时间线归档哈希回读不一致。");
+            return path;
+        }
+        finally { if (File.Exists(temporary)) File.Delete(temporary); }
+    }
+
     public void Dispose()
     {
         _hardware.FrameObserved -= OnFrame;
