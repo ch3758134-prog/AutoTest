@@ -187,8 +187,8 @@ public partial class TestStepInspector : UserControl
     private bool _filteringTargets;
     private bool IsCanSend => _selected?.Key == "can";
     private bool IsDbcSignal => _selected?.TargetCategory == "signal";
-    public double PreferredEditorWidth => IsCanSend ? 1120 : IsDbcSignal || _selected?.TargetCategory == "wave" ? 880 : 620;
-    public double PreferredEditorHeight => IsCanSend ? 680 : IsDbcSignal || _selected?.TargetCategory == "wave" ? 620 : 500;
+    public double PreferredEditorWidth => IsCanSend ? 970 : IsDbcSignal || _selected?.TargetCategory == "wave" ? 880 : 620;
+    public double PreferredEditorHeight => IsCanSend ? 600 : IsDbcSignal || _selected?.TargetCategory == "wave" ? 620 : 500;
     private ComboBox ActiveTargetPicker => IsCanSend ? CanTargetPicker : TargetPicker;
     private uint _selectedMask;
     private readonly CheckBox[] _rawKeys = new CheckBox[20];
