@@ -918,7 +918,7 @@ public sealed class TestEditorViewModel : BindableBase
                     " 项问题；首项：" + plan.Diagnostics[0];
                 return;
             }
-            StatusMessage = "运行前检查通过；保存后可确认并运行此用例。";
+            StatusMessage = "运行前检查通过；可以直接运行当前用例，系统会先保存有效修改并冻结运行版本。";
         }
         catch (Exception error)
         {
@@ -1284,7 +1284,7 @@ public sealed class TestEditorViewModel : BindableBase
         var coords = target.Item.CoordinatesForSibling();
         Mutate(() => _transaction.Move(moving.Id, target.Item.Phase, coords.ParentId,
             coords.Slot, coords.Index), moving.Id,
-            "步骤已移动；可通过 Ctrl+Z 撤销，Ctrl+S 保存。");
+            "步骤已移动；修改将自动保存，可通过 Ctrl+Z 撤销。");
     }
 
     public void ToggleBreakpoint()
@@ -1304,7 +1304,7 @@ public sealed class TestEditorViewModel : BindableBase
             StatusMessage = "步骤名称不能为空且不能超过 120 字符。";
             return;
         }
-        Mutate(() => _transaction.Rename(step.Id, name.Trim()), step.Id, "步骤已重命名；保存后写入正式资源。");
+        Mutate(() => _transaction.Rename(step.Id, name.Trim()), step.Id, "步骤已重命名；修改将自动保存。");
     }
 
     private void RefreshRows()
