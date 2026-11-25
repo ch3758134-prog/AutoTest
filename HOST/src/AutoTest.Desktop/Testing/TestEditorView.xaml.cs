@@ -44,6 +44,9 @@ public partial class TestEditorView : UserControl
             // reader, simulator or shared filter of the normal CAN tool.
             _canMonitorRows = new ListCollectionView(liveCanSource.CanRecords);
             CanMonitorTable.ItemsSource = _canMonitorRows;
+            CanMonitorFeedStatus.DataContext = liveCanSource;
+            CanMonitorFeedStatus.SetBinding(TextBlock.TextProperty,
+                new Binding(nameof(MainWindowViewModel.CanMonitorDisplayStatus)));
         }
         else
         {

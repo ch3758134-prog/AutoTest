@@ -521,7 +521,7 @@
    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
     <RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
    <DockPanel Grid.Row="0" Margin="12,12,10,7">
-    <TextBlock DockPanel.Dock="Right" Text="真实接收" Foreground="#406B51" FontSize="12"
+    <TextBlock x:Name="CanMonitorFeedStatus" DockPanel.Dock="Right" Text="CAN 实时监视" Foreground="#406B51" FontSize="11"
      VerticalAlignment="Center"/>
     <TextBlock Text="CAN 实时监视" FontSize="15" FontWeight="SemiBold"
      Foreground="#203C55" VerticalAlignment="Center"/>

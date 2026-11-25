@@ -7,6 +7,7 @@
      <TextBlock Text="CAN 实时监视" FontSize="18" FontWeight="SemiBold"/>
      <TextBlock Text="真实 CAN RX 和主控 TX-ACK：ECU CAN（A1/A12）、KEY CAN（B1/B11）；TX-ACK 不证明 ECU 已收到。"
                 Foreground="{StaticResource Subtle}" TextWrapping="Wrap" Margin="0,5,0,0"/>
+     <TextBlock Text="{Binding CanMonitorDisplayStatus}" Foreground="{StaticResource Subtle}" Margin="0,4,0,0"/>
    </StackPanel>
    <Border DockPanel.Dock="Top" Background="{StaticResource MutedSurface}"
            BorderBrush="{StaticResource Line}" BorderThickness="1" Padding="10" Margin="0,0,0,10">
@@ -41,7 +42,7 @@
        <DataGrid ItemsSource="{Binding DecodedCanRecords}" Height="168"
                  AutoGenerateColumns="False" IsReadOnly="True"
                  HeadersVisibility="Column" RowHeaderWidth="0"
-                 CanUserAddRows="False" VirtualizingPanel.IsVirtualizing="True">
+                 CanUserAddRows="False" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
          <DataGrid.Columns>
            <DataGridTextColumn Header="时间" Binding="{Binding Time}" Width="115"/>
            <DataGridTextColumn Header="映射信号" Binding="{Binding Target}" Width="*"/>
@@ -57,7 +58,7 @@
              CanUserAddRows="False" RowHeaderWidth="0"
              GridLinesVisibility="Horizontal"
              ScrollViewer.CanContentScroll="True"
-             VirtualizingPanel.IsVirtualizing="True">
+             VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
      <DataGrid.Columns>
        <DataGridTextColumn Header="到达时间" Binding="{Binding Time}" Width="150"/>
        <DataGridTextColumn Header="方向" Binding="{Binding Direction}" Width="75"/>

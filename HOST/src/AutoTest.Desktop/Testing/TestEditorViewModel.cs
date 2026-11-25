@@ -41,7 +41,7 @@ public sealed class TestEditorViewModel : BindableBase
     private StepId? _preparedStepId;
     private TestDocument? _preparedRunDocument;
     private CancellationTokenSource? _singleRunCancellation;
-    private string _runSummary = "未运行真实测试";
+    private string _runSummary = "尚未执行";
     private readonly StepDescriptorCatalog _catalog = StepDescriptorCatalog.Builtins();
     private OpenProjectContext? _choiceContext;
     private AssetId? _choiceTcf;

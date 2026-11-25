@@ -25,7 +25,7 @@ public sealed partial class AutomaticTestHomeViewModel
     private RealTestWorkbenchService _operatorEngine = null!;
     private CancellationTokenSource? _operatorStop;
     private bool _operatorRunning;
-    private string _operatorRunState = "未运行真实整组实测";
+    private string _operatorRunState = "尚未开始工程整组验证";
     private string _operatorCurrentCase = "—";
     private string _operatorCurrentStep = "—";
     private string _operatorRunEvidence = "";

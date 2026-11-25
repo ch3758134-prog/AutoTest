@@ -212,37 +212,8 @@ public sealed partial class MainWindowViewModel : BindableBase
                 HardwareStatus = line;
                 StatusMessage = line;
             }));
-        _liveSignals.SignalReceived += (name, value) =>
-            global::System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() =>
-            {
-                var time = value.Observation?.Time.Utc.ToLocalTime().ToString("HH:mm:ss.fff") ?? "";
-                var reading = value.Observation?.Value?.ToString("R", CultureInfo.InvariantCulture) ?? "";
-                DecodedCanRecords.Add(new DecodedCanRow(time, name, reading,
-                    value.Observation?.Unit ?? "", value.Status.ToString()));
-                if (DecodedCanRecords.Count > 500) DecodedCanRecords.RemoveAt(0);
-            }));
-        _hardware.FrameObserved += frame =>
-            global::System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() =>
-            {
-                var f = frame.Frame;
-                CanRecords.Add(new CanMonitorRow(
-                    frame.Time.Utc.ToLocalTime().ToString("HH:mm:ss.fff"),
-                    f.Role == BusRole.DutCan ? StationCanWiring.DutDisplayName : StationCanWiring.KeypadDisplayName,
-                    "0x" + f.Id.ToString("X"), f.ExtendedId ? "扩展" : "标准",
-                    f.Dlc, Convert.ToHexString(f.Data.ToArray()), frame.LostFrames));
-                if (CanRecords.Count > 500) CanRecords.RemoveAt(0);
-            }));
-        _hardware.FrameTransmitAcknowledged += frame =>
-            global::System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() =>
-            {
-                CanRecords.Add(new CanMonitorRow(
-                    DateTimeOffset.Now.ToString("HH:mm:ss.fff"),
-                    frame.Role == BusRole.DutCan ? StationCanWiring.DutDisplayName : StationCanWiring.KeypadDisplayName,
-                    "0x" + frame.Id.ToString("X"), frame.ExtendedId ? "扩展" : "标准",
-                    frame.Dlc, Convert.ToHexString(frame.Data.ToArray()), 0,
-                    "TX-ACK"));
-                if (CanRecords.Count > 500) CanRecords.RemoveAt(0);
-            }));
+        // CAN UI uses one bounded, fixed-rate dispatcher batch; never queue one WPF job per frame.
+        InitializeCanMonitorUi();
         _workspace.CurrentChanged += (_, _) =>
         {
             RaisePropertyChanged(nameof(SelectedConfigurationSummary));
@@ -291,8 +262,8 @@ public sealed partial class MainWindowViewModel : BindableBase
         byte Dlc, string Data, long Lost, string Direction = "RX");
     public sealed record DecodedCanRow(string Time, string Target, string Value,
         string Unit, string Status);
-    public ObservableCollection<CanMonitorRow> CanRecords { get; } = new();
-    public ObservableCollection<DecodedCanRow> DecodedCanRecords { get; } = new();
+    public MonitorDisplayCollection<CanMonitorRow> CanRecords { get; } = new();
+    public MonitorDisplayCollection<DecodedCanRow> DecodedCanRecords { get; } = new();
     public ObservableCollection<ResourceTreeNode> ResourceNodes { get; } = new();
     public string HardwareStatus
     {
@@ -987,6 +958,7 @@ public sealed partial class MainWindowViewModel : BindableBase
     public async Task ShutdownAsync()
     {
         StopAutomaticUsbConnection();
+        StopCanMonitorUi();
         await _automaticTestHome.StopOperatorForShutdownAsync();
         _hardware.EcuCanBitrateSelectionChanged -= OnSelectedEcuCanRateChanged;
         _automaticTestHome.Dispose();
