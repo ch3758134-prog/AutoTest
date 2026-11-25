@@ -56,6 +56,7 @@ public partial class UdsWorkbenchWindow : Window
     {
         _loading = true;
         InitializeComponent();
+        Loaded += (_, _) => AutoTest.Desktop.Shell.DesktopWindowSizing.FitToVisibleWorkspace(this);
         DataContext = this;
         P2Input.Text = "50";
         P2StarInput.Text = "5000";
