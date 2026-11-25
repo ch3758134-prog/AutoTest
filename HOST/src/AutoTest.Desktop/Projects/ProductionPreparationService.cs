@@ -45,6 +45,8 @@ public sealed record FrozenProductionPreparation(
     string SecuritySha256, int EcuCanKbps, string PreparationFingerprint,
     CanToolFlashJob Job)
 {
+    public FrozenProductionCase? ProjectSetup { get; init; }
+    public FrozenProductionCase? ProjectTeardown { get; init; }
     public Guid FixtureAssetId { get; init; }
     public string FixtureContentSha256 { get; init; } = "";
     public FrozenStationProcedure? Fixture { get; init; }
@@ -139,9 +141,14 @@ public static class ProductionPreparationService
             .ConfigureAwait(false);
         resolved.RequireExecutable();
         var testAsset = resolved.TestProjectAsset;
-        var frozenCases = resolved.Cases.Select(item =>
-            new FrozenProductionCase(item.Entry.ItemId, item.Asset.Id.Value,
-                item.Entry.DisplayName, item.Asset.Revision, item.ContentSha256)).ToList();
+        static FrozenProductionCase FreezeInvocation(AutomaticTestCaseBinding item) =>
+            new(item.Entry.ItemId, item.Asset.Id.Value, item.Entry.DisplayName,
+                item.Asset.Revision, item.ContentSha256);
+        var frozenCases = resolved.Cases.Select(FreezeInvocation).ToList();
+        var frozenSetup = resolved.ProjectSetup is null ? null :
+            FreezeInvocation(resolved.ProjectSetup);
+        var frozenTeardown = resolved.ProjectTeardown is null ? null :
+            FreezeInvocation(resolved.ProjectTeardown);
         // Freeze this model's explicit station procedure, never an implicit
         // clamp/IGN operation hidden in a UI or duplicated TEST script.
         var fixtureAssets = actual.Assets.Where(x =>
@@ -193,6 +200,12 @@ public static class ProductionPreparationService
             modelCode, dutSerial, actual.Id.Value.ToString("D"), manifestSha,
             testAsset.Id.Value.ToString("D"), testAsset.Sha256,
             profileSha, frozenJob.Fingerprint,
+            "PROJECT_SETUP:" + (frozenSetup is null ? "NONE" :
+                frozenSetup.EntryId + ":" + frozenSetup.TestAssetId + ":" +
+                frozenSetup.Revision + ":" + frozenSetup.Sha256),
+            "PROJECT_TEARDOWN:" + (frozenTeardown is null ? "NONE" :
+                frozenTeardown.EntryId + ":" + frozenTeardown.TestAssetId + ":" +
+                frozenTeardown.Revision + ":" + frozenTeardown.Sha256),
             "FIXTURE:" + (fixtureAsset is null
                 ? "NO_EXTRA_ACTIONS:" + StationDeploymentStore.NoProcedureSha256
                 : fixtureAsset.Id.Value.ToString("D") + ":" + fixtureAsset.Revision +
@@ -213,6 +226,8 @@ public static class ProductionPreparationService
             frozenJob.FirmwareSha256, frozenJob.SecuritySha256,
             profile.EcuCanKbps, fingerprint, frozenJob)
         {
+            ProjectSetup = frozenSetup,
+            ProjectTeardown = frozenTeardown,
             FixtureAssetId = fixtureAsset?.Id.Value ?? Guid.Empty,
             FixtureContentSha256 = fixtureAsset?.Sha256 ??
                 StationDeploymentStore.NoProcedureSha256,
