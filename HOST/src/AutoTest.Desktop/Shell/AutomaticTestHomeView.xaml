@@ -300,10 +300,9 @@
       <Border Height="1" Background="#E5EBF1" Margin="0,13,0,10"/>
       <TextBlock Text="{Binding ProductionResultLabel}" FontSize="14"
        FontWeight="SemiBold" Foreground="#A3651D"/>
-      <TextBlock Text="{Binding ScanStatus}" Foreground="#64778B"
-       FontSize="12" TextWrapping="Wrap" Margin="0,7,0,3"/>
-      <TextBlock Text="{Binding StartRequestStatus}" Foreground="#A3651D"
-       FontSize="12" TextWrapping="Wrap"/>
+      <TextBlock Text="{Binding ProductionAlert}" Foreground="#A12D27"
+       FontSize="12" FontWeight="SemiBold"
+       TextWrapping="Wrap" Margin="0,7,0,2"/>
      </StackPanel>
     </ScrollViewer>
    </Border>
