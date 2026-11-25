@@ -317,6 +317,9 @@ public partial class NativeFlashProfileWindow : Window
             if (!await SaveAsync()) return;
             var source = await NativeFlashProfileStore.LoadAsync(_root)
                 ?? throw new InvalidDataException("原生烧录配置尚未保存，无法生成冻结 Job。");
+            if (_saved is null || !string.Equals(source.ProfileSha256,
+                    _saved.ProfileSha256, StringComparison.OrdinalIgnoreCase))
+                throw new IOException("烧录配置在冻结前被外部修改；请重新打开配置进行核对。");
             var job = await Task.Run(() =>
                 NativeFlashJobBuilder.Freeze(source.Profile, _root));
             JobDetailsLabel.Text = FormatFrozenJob(job);
