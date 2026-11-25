@@ -69,12 +69,12 @@ public partial class ManualBenchWindow : Window
             return;
         // One click means execute the CURRENT edit, not silently execute an
         // earlier saved KEY mask while the operator's latest changes are pending.
-        if (_model.KeyActionsDirty)
+        if (_model.KeyActionsDirty || _model.ControllerBindingNeedsSave)
         {
             try
             {
                 await _model.SaveKeyActionsForCloseAsync();
-                if (_model.KeyActionsDirty)
+                if (_model.KeyActionsDirty || _model.ControllerBindingNeedsSave)
                 {
                     _model.ReportKeyPadSaveFailure("保存期间还有新的修改，请重试。");
                     return;
@@ -87,7 +87,8 @@ public partial class ManualBenchWindow : Window
             }
         }
         if (intent != _keyPadIntentGeneration || _benchClosePending ||
-            _benchCloseScheduled || !IsLoaded || _model.KeyActionsDirty) return;
+            _benchCloseScheduled || !IsLoaded || _model.KeyActionsDirty ||
+            _model.ControllerBindingNeedsSave) return;
         var command = _model.PressKeyPadCommand;
         if (command.CanExecute(pad)) command.Execute(pad);
         else _model.ReportKeyPadUnavailable();
