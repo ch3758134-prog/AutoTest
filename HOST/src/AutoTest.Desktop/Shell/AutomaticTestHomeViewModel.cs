@@ -362,11 +362,21 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     private void OnKeyRequestStateChanged() => OnUi(() =>
         RaisePropertyChanged(nameof(KeyRequestStatus)));
 
-    private void OnConnectionChanged(long _)
+    private void OnConnectionChanged(long sessionEpoch)
     {
+        // A barcode is an observation from ONE station session. A new USB
+        // epoch (including reconnect) must never inherit the previous ECU's
+        // prepared identity; pending async barcode checks are invalidated too.
+        void RefreshSession()
+        {
+            if (!IsOperatorRunning &&
+                (_prepared is not null || _dutSerial == "正在核对"))
+                InvalidateScan("主控 USB 会话发生变化；请重新确认 ECU CAN 并扫描本台 ECU。");
+            UpdateConnection();
+        }
         var dispatcher = global::System.Windows.Application.Current?.Dispatcher;
-        if (dispatcher is null || dispatcher.CheckAccess()) UpdateConnection();
-        else dispatcher.BeginInvoke(new Action(UpdateConnection));
+        if (dispatcher is null || dispatcher.CheckAccess()) RefreshSession();
+        else dispatcher.BeginInvoke(new Action(RefreshSession));
     }
 
     private void UpdateConnection()
