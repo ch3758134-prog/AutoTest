@@ -20,7 +20,23 @@ public sealed record TestProjectEntry(Guid ItemId, Guid PackageAssetId,
 public sealed record TestProjectDocument(int SchemaVersion, Guid Id, string Name,
     List<TestProjectEntry> Packages)
 {
-    public static TestProjectDocument Create(string name) => new(1, Guid.NewGuid(), name, []);
+    /// <summary>Optional project-wide vehicle-environment stages. Each stage
+    /// is a pinned invocation of the SAME TestDocument DSL/RealRunCoordinator.
+    /// No scanner, fixture, FLASH or new test-program language is introduced.
+    /// Separate stages are not ordinary product-judgement cases.</summary>
+    public TestProjectEntry? ProjectSetup { get; init; }
+    public TestProjectEntry? ProjectTeardown { get; init; }
+
+    public static TestProjectDocument Create(string name) => new(2, Guid.NewGuid(), name, []);
+
+    public IReadOnlyList<TestProjectEntry> OrderedExecutionEntries()
+    {
+        var stages = new List<TestProjectEntry>(Packages.Count + 2);
+        if (ProjectSetup is not null) stages.Add(ProjectSetup);
+        stages.AddRange(Packages);
+        if (ProjectTeardown is not null) stages.Add(ProjectTeardown);
+        return stages;
+    }
 
     /// <summary>
     /// The ONE authoritative production scope is the COMPLETE ordered entry
@@ -35,11 +51,13 @@ public sealed record TestProjectDocument(int SchemaVersion, Guid Id, string Name
 
     public void Validate()
     {
-        if (SchemaVersion != 1 || Id == Guid.Empty || string.IsNullOrWhiteSpace(Name) ||
+        if (SchemaVersion is not (1 or 2) || Id == Guid.Empty ||
+            (SchemaVersion == 1 && (ProjectSetup is not null || ProjectTeardown is not null)) ||
+            string.IsNullOrWhiteSpace(Name) ||
             Name.Length > 120 || Packages is null || Packages.Count > 1000)
             throw new InvalidDataException("测试项目身份或用例数量无效。");
         var itemIds = new HashSet<Guid>();
-        foreach (var item in Packages)
+        foreach (var item in OrderedExecutionEntries())
         {
             if (item is null || item.ItemId == Guid.Empty || item.PackageAssetId == Guid.Empty ||
                 !itemIds.Add(item.ItemId) || item.PackageRevision <= 0 ||
