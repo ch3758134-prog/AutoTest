@@ -348,6 +348,9 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
     {
         if (!_mayEdit()) { Status = "工位正在运行，禁止修改生产配置。"; return false; }
         if (_busy) return false;
+        // Idempotent save: publishing an unchanged draft must not silently
+        // increment its revision or invalidate an accepted product identity.
+        if (!_dirty && _lastSaved is not null) return true;
         _autosave.Stop();
         _busy = true;
         var generation = _editGeneration;
@@ -427,10 +430,27 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
                   " · TEST " + x.OrderedCaseNames.Count + " 个（" +
                   string.Join("、", x.OrderedCaseNames.Take(6)) + "）"));
         var issues = StationProductionConfigurationStore.InspectRules(BuildDraft());
+        if (published is null)
+            issues = issues.Concat(["尚未发布工位编码与产品工程的完整配置。"]).ToArray();
         IssueSummary = issues.Count == 0
             ? "编码规则与样例静态检查无冲突。仍需项目发布指纹校验及工位真实输入验收。"
             : string.Join("\n", issues.Take(8));
         StationBlockerSummary = string.Join("\n", Fixture.ToModel().PhysicalBlockers());
+        if (published is not null)
+        {
+            PublicationOverview += "\n规则与产品适用范围：" +
+                string.Join("；", published.Configuration.Rules.Where(x => x.Enabled)
+                    .Select(x => x.Name + " v" + x.Revision +
+                        " [" + x.Format + "] → " +
+                        (published.Configuration.Mode == StationProductionConfiguration.FixedStation
+                            ? published.Configuration.FixedModel :
+                         published.Configuration.Mode == StationProductionConfiguration.BarcodeModel
+                            ? "编码型号字段" : "受控编号映射表")));
+            PublicationOverview += "\n工位：" + published.Configuration.Fixture.StationSlotId +
+                " · 扫码设备：" + (_scanner?.IsConnected == true
+                    ? _scanner.ConnectedPort : "未连接") +
+                " · START/STOP/机械到位：仅已登记输入来源，未完成真实电气验证";
+        }
     }
 
     private async void Refresh_Click(object sender, RoutedEventArgs e)

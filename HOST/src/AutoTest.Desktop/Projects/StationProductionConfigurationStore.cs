@@ -27,7 +27,7 @@ public static class StationProductionConfigurationStore
     {
         if (!File.Exists(DraftPath)) return StationProductionConfiguration.New();
         var bytes = await File.ReadAllBytesAsync(DraftPath, ct).ConfigureAwait(false);
-        if (bytes.Length is < 1 or > 4_000_000)
+        if (bytes.Length is < 1 or > 24_000_000)
             throw new InvalidDataException("生产配置草稿文件缺失或超出限制。");
         return JsonSerializer.Deserialize<StationProductionConfiguration>(bytes, Json)
             ?? throw new InvalidDataException("生产配置草稿为空。");
