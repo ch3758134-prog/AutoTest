@@ -72,7 +72,8 @@ public static class StationDeploymentStore
                 !string.Equals(source.ManifestSha256, fresh.ManifestSha256,
                     StringComparison.OrdinalIgnoreCase))
                 throw new IOException("部署前工程发生变更；请保存并重新核对。");
-            RequireBarcodeExpectation(fresh.Definition);
+            // Legacy ProjectBarcodeExpectation is not a formal admission gate.
+            // Station publication is checked for each accepted real scan.
             var snapshot = await AutomaticTestResourceContract.ResolveAsync(fresh, ct)
                 .ConfigureAwait(false);
             snapshot.RequireExecutable();
@@ -145,13 +146,6 @@ public static class StationDeploymentStore
         return matches[0];
     }
 
-    private static void RequireBarcodeExpectation(ProjectDefinition project)
-    {
-        if (project.BarcodeExpectation is null)
-            throw new InvalidDataException("请先在工程检测准备中配置扫码期望并保存；旧工位规则不能代替工程匹配。");
-        project.BarcodeExpectation.Validate(project.EcuModelCode);
-    }
-
     public static async Task<Verified> VerifyAsync(Deployment pin, CancellationToken ct)
     {
         if (pin.SchemaVersion != 1 || pin.ProjectId == Guid.Empty ||
@@ -170,7 +164,7 @@ public static class StationDeploymentStore
                 StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException(
                 "已部署的 ECU 工程发生改变；开发草稿不会自动替换现场部署，请重新确认部署。");
-        RequireBarcodeExpectation(current.Definition);
+        // Production identity is solely station-owned; no legacy project scanner gate.
         var test = await AutomaticTestResourceContract.ResolveAsync(current, ct)
             .ConfigureAwait(false);
         test.RequireExecutable();

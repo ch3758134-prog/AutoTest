@@ -308,18 +308,23 @@ public static class ProductionIdentityResolver
     }
 
     public static async Task<ProductionIdentityDecision> ResolvePublishedAsync(
+        string raw, CancellationToken ct = default) =>
+        (await ResolvePublishedSnapshotAsync(raw, ct).ConfigureAwait(false)).Decision;
+
+    public static async Task<(PublishedStationProductionConfiguration? Publication,
+        ProductionIdentityDecision Decision)> ResolvePublishedSnapshotAsync(
         string raw, CancellationToken ct = default)
     {
         var published = await StationProductionConfigurationStore.LoadPublishedAsync(ct)
             .ConfigureAwait(false);
         if (published is null)
-            return new("STATION_PUBLICATION_MISSING",
+            return (null, new("STATION_PUBLICATION_MISSING",
                 "尚未发布生产准备配置；旧扫码配方不能替代。",
-                raw, "", 0, "", "", "", "", "", null);
+                raw, "", 0, "", "", "", "", "", null));
         var selected = Resolve(published, raw);
-        if (!selected.Accepted) return selected;
+        if (!selected.Accepted) return (published, selected);
         await StationProductionConfigurationStore.VerifyProductAsync(selected.Project!, ct)
             .ConfigureAwait(false);
-        return selected;
+        return (published, selected);
     }
 }

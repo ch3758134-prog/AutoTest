@@ -84,7 +84,7 @@ public sealed partial class AutomaticTestHomeViewModel
         _acceptedStationEpoch = 0;
         _scanMappedFields = new Dictionary<string, string>(StringComparer.Ordinal);
         _dutSerial = "正在核对";
-        _scanStatus = "正在匹配当前工程的扫码期望与资源。";
+        _scanStatus = "正在使用已发布编码形制和唯一工程清单核对身份。";
         Notify();
         try
         {
@@ -96,26 +96,31 @@ public sealed partial class AutomaticTestHomeViewModel
                 Reject("主控 USB 尚未连接；本次扫码不能绑定真实工位会话，请连接主控后重新扫描。");
                 return;
             }
-            var expectation = plan.Project.Definition.BarcodeExpectation;
-            if (expectation is null)
+            // One published station identity model. Legacy scanner recipes and
+            // project barcode expectations cannot select physical TEST resources.
+            var resolved = await ProductionIdentityResolver.ResolvePublishedSnapshotAsync(raw);
+            var release = resolved.Publication;
+            var identity = resolved.Decision;
+            if (!identity.Accepted || release is null)
             {
-                Reject("当前工程缺少扫码期望；请先在检测准备编辑并保存。");
+                Reject("本次扫码不符合发布的生产编码配置：" + identity.Detail);
                 return;
             }
-            var ruleJson = System.Text.Json.JsonSerializer.Serialize(expectation);
+            if (identity.Project!.ProjectId != plan.Project.Definition.Id.Value ||
+                !string.Equals(identity.Project.ManifestPath, plan.Project.ManifestPath,
+                    StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(identity.Project.ManifestSha256, plan.Project.ManifestSha256,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                Reject("此编号匹配另一份已发布 ECU 工程；须在工位空闲时切换，不能使用当前 TEST/FLASH。");
+                return;
+            }
+            var rule = release.Configuration.Rules.Single(x => x.RuleId == identity.RuleId);
+            var ruleJson = System.Text.Json.JsonSerializer.Serialize(rule);
             var ruleSha = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
                 System.Text.Encoding.UTF8.GetBytes(ruleJson)));
-            var parsed = ProductionBarcodePreflight.InspectExpected(
-                raw, plan.Project.Definition);
-            if (!parsed.IdentityMatched ||
-                string.IsNullOrWhiteSpace(parsed.ModelCode) ||
-                string.IsNullOrWhiteSpace(parsed.DutSerial))
-            {
-                Reject("本次扫码身份未被接受：" + parsed.Explanation);
-                return;
-            }
             var decision = await ProductionPreparationService.PrepareAsync(
-                plan.Project, parsed.ModelCode, parsed.DutSerial,
+                plan.Project, identity.Model, identity.Serial,
                 requireProductionDeployment: _isProductionWorkspace());
             if (!decision.ConfigurationReady)
             {
@@ -133,16 +138,19 @@ public sealed partial class AutomaticTestHomeViewModel
                 Reject("扫码预检期间主控会话或 ECU CAN 目标码率改变；请重新扫码。");
                 return;
             }
-            var identity = parsed.DutSerial;
-            var repeated = string.Equals(_lastIdentity, identity,
+            var repeated = string.Equals(_lastIdentity, identity.Serial,
                 StringComparison.Ordinal);
-            _lastIdentity = identity;
-            _dutSerial = parsed.DutSerial;
-            _scanMappedFields = parsed.MappedFields is null
-                ? new Dictionary<string, string>(StringComparer.Ordinal)
-                : parsed.MappedFields.ToDictionary(x => x.Key, x => x.Value,
-                    StringComparer.Ordinal);
-            // Freeze the project-owned expectation's serialized content and its SHA.
+            _lastIdentity = identity.Serial;
+            _dutSerial = identity.Serial;
+            _scanMappedFields = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["DutSerial"] = identity.Serial,
+                ["ModelCode"] = identity.Model,
+                ["HardwareCode"] = identity.Hardware,
+                ["BarcodeRule"] = identity.RuleId,
+                ["ModelBasis"] = identity.ModelBasis
+            };
+            // Freeze the published station rule and its exact SHA.
             // This is not yet a formal RECORD fact; no RunId exists until
             // the physical START and production record adapter are ready.
             _acceptedStationEpoch = initialStationEpoch;
@@ -151,9 +159,17 @@ public sealed partial class AutomaticTestHomeViewModel
                 AcceptedScannerObservation = new FrozenScanIdentity(
                     Guid.NewGuid(), scannedAt, scannerPort, raw,
                     ruleJson, ruleSha,
-                    parsed.ModelCode, parsed.DutSerial, parsed.HardwareCode,
+                    identity.Model, identity.Serial, identity.Hardware,
                     _scanMappedFields.ToDictionary(x => x.Key, x => x.Value,
                         StringComparer.Ordinal))
+                {
+                    PublishedConfigurationSha256 = release.ConfigurationSha256,
+                    PublicationId = release.PublicationId,
+                    BarcodeRuleId = identity.RuleId,
+                    BarcodeRuleRevision = identity.RuleRevision,
+                    ModelDecisionBasis = identity.ModelBasis,
+                    StationSlotId = release.Configuration.Fixture.StationSlotId
+                }
             };
             _scanStatus = repeated
                 ? "同一 ECU 编号再次扫码：仅更新真实观察，不计新增 DUT，也不触发复检。"

@@ -26,7 +26,15 @@ public sealed record FrozenScanIdentity(
     Guid ObservationId, DateTimeOffset CapturedAtUtc,
     string ScannerPort, string RawBarcode, string RuleJson,
     string RuleSha256, string ModelCode, string DutSerial,
-    string? HardwareCode, IReadOnlyDictionary<string, string> MappedFields);
+    string? HardwareCode, IReadOnlyDictionary<string, string> MappedFields)
+{
+    public string PublishedConfigurationSha256 { get; init; } = "";
+    public Guid PublicationId { get; init; }
+    public string BarcodeRuleId { get; init; } = "";
+    public int BarcodeRuleRevision { get; init; }
+    public string ModelDecisionBasis { get; init; } = "";
+    public string StationSlotId { get; init; } = "";
+}
 
 public sealed record FrozenProductionPreparation(
     string ModelCode, string DutSerial, Guid ProjectId, string ManifestPath,
