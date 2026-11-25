@@ -24,8 +24,9 @@ public sealed record ProjectBarcodeExpectation(string Separator,
     {
         void Bad(string message) => throw new ProjectDataException("PROJECT_SCAN_EXPECTATION", message);
         if (Separator is null || Separator.Length != 1 ||
-            Separator[0] is < '!' or > '~' || char.IsLetterOrDigit(Separator[0]))
-            Bad("分隔符必须为一个可打印的非字母数字字符。");
+            Separator[0] is < '!' or > '~' || char.IsLetterOrDigit(Separator[0])) 
+            throw new ProjectDataException("PROJECT_SCAN_EXPECTATION",
+                "分隔符必须为一个可打印的非字母数字字符。");
         if (Fields.IsDefault || Fields.Length is < 3 or > 32)
             Bad("请配置 3～32 个有序字段。");
         var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
