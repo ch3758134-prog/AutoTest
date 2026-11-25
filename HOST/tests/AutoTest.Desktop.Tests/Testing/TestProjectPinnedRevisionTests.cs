@@ -81,4 +81,32 @@ public sealed class TestProjectPinnedRevisionTests
         Assert.Equal(8, row.ToEntry().PackageRevision);
         Assert.Equal(new string('E', 64), row.ToEntry().PackageSha256);
     }
+
+    [Fact]
+    public void PinnedProjectCaseRejectsLatestResourceUntilExplicitlyAdopted()
+    {
+        var row = new TestProjectPackageRow(new TestProjectEntry(
+            Guid.NewGuid(), Guid.NewGuid(), 7, new string('A', 64), "原测试", true));
+        row.RefreshAvailableRevision(8, new string('B', 64));
+
+        // A test project cannot silently freeze the newer source and claim its
+        // old pinned SHA still represents what will be executed.
+        Assert.False(row.MatchesPinnedRevision(8, new string('B', 64)));
+        Assert.True(row.MatchesPinnedRevision(7, new string('a', 64)));
+        row.AdoptCurrentRevision();
+        Assert.True(row.MatchesPinnedRevision(8, new string('B', 64)));
+        Assert.False(row.MatchesPinnedRevision(7, new string('A', 64)));
+    }
+
+    [Fact]
+    public void RefreshOfUnchangedAvailableRevisionDoesNotRaiseChangeEvents()
+    {
+        var row = new TestProjectPackageRow(new TestProjectEntry(
+            Guid.NewGuid(), Guid.NewGuid(), 3, new string('C', 64), "原测试", true));
+        row.RefreshAvailableRevision(3, new string('C', 64));
+        var raised = 0;
+        row.PropertyChanged += (_, _) => raised++;
+        row.RefreshAvailableRevision(3, new string('c', 64));
+        Assert.Equal(0, raised);
+    }
 }
