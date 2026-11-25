@@ -15,6 +15,7 @@ public sealed class TestProjectPinnedRevisionTests
         row.RefreshAvailableRevision(2, new string('B', 64));
 
         Assert.True(row.CanAdoptLatest);
+        Assert.True(row.HasReferenceMismatch);
         Assert.Contains("绑定 r1 → 当前 r2", row.PinStatus);
         Assert.Equal(item.PackageSha256, row.ToEntry().PackageSha256);
         Assert.Equal(1, row.ToEntry().PackageRevision);
@@ -22,6 +23,7 @@ public sealed class TestProjectPinnedRevisionTests
 
         row.AdoptCurrentRevision();
         Assert.False(row.CanAdoptLatest);
+        Assert.False(row.HasReferenceMismatch);
         Assert.Equal(2, row.ToEntry().PackageRevision);
         Assert.Equal(new string('B', 64), row.ToEntry().PackageSha256);
         Assert.True(row.ToEntry().Enabled);
@@ -36,6 +38,7 @@ public sealed class TestProjectPinnedRevisionTests
         var row = new TestProjectPackageRow(item);
         row.RefreshAvailableRevision(null, null);
         Assert.Equal("资源已移除", row.PinStatus);
+        Assert.True(row.HasReferenceMismatch);
         Assert.False(row.CanAdoptLatest);
         row.AdoptCurrentRevision();
         Assert.Equal(3, row.Revision);
@@ -76,6 +79,7 @@ public sealed class TestProjectPinnedRevisionTests
             new string('E', 64), "驻车检查", true);
         var row = new TestProjectPackageRow(item);
         row.RefreshAvailableRevision(6, new string('F', 64));
+        Assert.True(row.HasReferenceMismatch);
         Assert.False(row.CanAdoptLatest);
         Assert.Contains("修订倒退", row.PinStatus);
         row.AdoptCurrentRevision();
