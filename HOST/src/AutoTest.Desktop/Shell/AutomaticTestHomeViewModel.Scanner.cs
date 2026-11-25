@@ -88,6 +88,14 @@ public sealed partial class AutomaticTestHomeViewModel
         Notify();
         try
         {
+            // A production scan requires a real, current USB station epoch.
+            // An offline parser observation cannot authorize a later session.
+            if (_isProductionWorkspace() &&
+                (!_hardware.IsConnected || initialStationEpoch <= 0))
+            {
+                Reject("主控 USB 尚未连接；本次扫码不能绑定真实工位会话，请连接主控后重新扫描。");
+                return;
+            }
             var expectation = plan.Project.Definition.BarcodeExpectation;
             if (expectation is null)
             {

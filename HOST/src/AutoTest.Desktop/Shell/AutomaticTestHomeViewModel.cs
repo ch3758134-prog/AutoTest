@@ -322,7 +322,8 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
             ? " · 工程要求 " + _prepared.EcuCanKbps + "k"
             : "") + " · 不代表 ECU 已响应";
     public string StationReadiness => _isProductionWorkspace()
-        ? FormalAdmission.Headline : !_hardware.IsConnected ? "等待主控连接" :
+        ? "生产准入检查 " + FormalAdmission.SatisfiedChecks + "/" +
+          FormalAdmission.TotalChecks + " · 尚未授权实体 START" : !_hardware.IsConnected ? "等待主控连接" :
         !_hardware.IsEcuCanBitrateApplied ? "CAN 波特率待确认" :
         !_scanner.IsConnected ? "等待扫码枪" :
         _plans.Current is null ? "请打开工程" :
