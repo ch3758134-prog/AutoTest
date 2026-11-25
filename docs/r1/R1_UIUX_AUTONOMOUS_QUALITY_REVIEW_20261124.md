@@ -14,7 +14,7 @@
 
 ## 1. 最终结论先行
 
-**初始 46/100 → 第二轮 63/100 → 第三轮 66/100 → 第四轮 69/100 → 第五轮 73/100 → 第六轮 76/100 → 第七轮 77/100。** 全部为静态审查评分；不把源码改动自动等同于实际改善，不设没有依据的满分。最终 UI 设计交付门槛 90 分**未达到**；生产物理 START、完整生产真实 Inspection/证据/报告及部分独立专业工具后端仍阻断。任何阶段均不得记作 UI_PASS、PRODUCTION_PASS 或 GATE_PASS。
+**初始 46/100 → 第二轮 63/100 → 第三轮 66/100 → 第四轮 69/100 → 第五轮 73/100 → 第六轮 76/100 → 第七轮 77/100 → 第八轮 79/100。** 全部为静态审查评分；不把源码改动自动等同于实际改善，不设没有依据的满分。最终 UI 设计交付门槛 90 分**未达到**；生产物理 START、完整生产真实 Inspection/证据/报告及部分独立专业工具后端仍阻断。任何阶段均不得记作 UI_PASS、PRODUCTION_PASS 或 GATE_PASS。
 
 发生实质变化的项目：生产页面不再列出 COM 配置、独立工程验证及软件 START；将完整 TEST 树作为核心监视；开发整组实测从生产入口移入工程工具菜单，重新经过真实扫码/硬件冻结；对现有 RealStepFact 使用正式 StepId 做 UI 投影而不是用日志名字猜测；主控自动预检和流程/测量更清楚；FlashLab/Wave 及部分手动台架的高 DPI/密度问题进行实际 XAML 修复。未实现的正式执行状态不显示 PASS、进度、真实数据或隐含完成。
 
@@ -238,7 +238,7 @@
 
 ## 10. 质量准出判断与继续规则
 
-- **最新第七轮静态评分：77/100，等级：基本可用候选（仅源码层）。** 不是设计交付候选，不符合 90 分目标，也不等于 Windows 运行通过。
+- **最新第八轮静态评分：79/100，等级：基本可用候选（仅源码层）。** 不是设计交付候选，不符合 90 分目标，也不等于 Windows 运行通过。
 - **准出检查：FAIL/BLOCKED。** 已触发“核心产线真实路径未完成”“未接线专业工具”“未经过 WPF 常见 DPI 验证”“正式记录缺闭环”等多个否决项。
 - **代码与验证：R1 源码已提交；BUILD=NOT_RUN；WPF_HANDS_ON=NOT_RUN；USB/CAN/ECU=NOT_RUN；CI=NOT_RUN。** 不把静态无错、代码 commit、Gate 历史记录当作本轮通过。
 - **后续自主迭代顺序：**（1）本地 Windows UI-01/02/03 等真实证据→消灭编译与控件实际问题；（2）完成剩余 UI/状态接线及单页高频操作→再盲测；（3）等待正式生产物理与 RECORD 合同接通后，重新校准生产 UX，达到 90+ 并完成独立验收。不可依靠主观提分。
@@ -389,3 +389,60 @@
 - 相对第三轮末 e199b565da77eea332389d59feb4998f541b7fd1，最后一次 GitHub compare 核查显示 **63 次后续提交、34 个变更文件**（其中包含报告），未修改 main。所有确认来自 GitHub API 的真实提交与文件内容回读，不是本地编译结论。
 - 追加反向修复：RECORD 单次报告打开/导出完成后更新批量导出启用状态，Ctrl 多选时不给空选择误导；底部失败长文本通过省略与 ToolTip 保留全文，不抢掉批量按钮。打包进度回调在取消/成功后不再覆盖最终导出状态。
 - **本轮准出决定保持原样：77/100，BLOCKED。** 与其在没有 Windows 运行和产线物理闭环的条件下宣布 90 分，不如保留可复现的界面静态问题清单以及 UI-01 至 UI-18 的真实验证路径。
+
+
+## 18. 第八轮：真实证据、跨 ECU 烧录限制与保存竞态（79/100）
+
+**时间、范围：** 2026-11-24。以第七轮 R1@412c1b340cdd7abad314740df2f1bc764450043f 为起点，第八轮代码复审时 R1@3d469d0d3b2178979bb37e01ec580245e7cae4c8。GitHub compare 显示从该起点新增 24 个提交，变更 13 个文件（报告后续另计）。所有更改只在 R1；main、Project_Management、真实固件均未修改。**未运行编译、任何 CI、WPF/Windows 键鼠测试或实体 USB/CAN/ECU 测试。**
+
+### 18.1 重新审查时独立发现的问题与修复
+
+**WAVE：画线的连续性不等于采样连续性，更不等于判定有效。**
+
+- 旧 WPF 曲线把 10 ms 周期信号中的 80～150 ms 采样断点连接成连续线：原因是原显示断线策略的固定 200 ms 最小阈值过大。修正为基于原始采样时间中位间隔的显示分段。
+- 反向复查又发现重复或逆序时间戳会让曲线降采样拒绝数据，或让游标基于乱序二分搜索给出错误 Δy/极值。当前绘制按原始时间分段，非有限数值、重复/逆序时间、采样缺口显式断开。游标选择跨无效值、断点、非单调时钟或超出当前信号真实范围、只有一个实际样本的区间时不再给出数值测量。
+- 再次反查发现一个阈值上限不合理：正常 5 秒周期慢速信号不能被一律判为断线。移除了固定 2 秒上限，仍保留相对采样频率的检测。
+- 将纯视觉连续性策略抽到新文件 AutoTest.Specialists/Wave/WaveDisplayContinuity.cs；WaveWorkbenchWindow.xaml.cs 只调用此策略，并确保后台真实采样事件触发的绘图 UI 操作经过 Dispatcher。没有修改原始 wave 证据、参考版本或 WaveComparator。
+- 新增 WaveLabAnalysisTests：10 ms 短暂采样中断、重复/逆序时间戳、NaN、正常连续样本、慢速合法采样和游标越界的测试用例。**仅已提交测试源码，未执行测试。**
+
+**UDS：读取内容与并发保存校验的哈希必须来自同一次文件读取。**
+
+- UdsWorkbenchWindow.xaml.cs 原来先读取验证 UdsToolDocument，再第二次读取文件计算 SHA。外部程序若在两次读取之间改变文件，可能造成“旧界面数据关联新文件 SHA”，后续覆盖防护失真。
+- UdsToolDocumentStore.cs 新增单次读取并验证的 UdsToolDocumentSnapshot（文档+该次原始字节 SHA256）。编辑器打开、保存后回读均使用同一快照，不再双读；保存后核对完整 Profile、Schema 与有序服务内容，不只检查服务数量。
+- Ctrl+N、打开其他文档、载入回放和父窗口退出前，先尝试提交正在输入的 DataGrid 单元格；未提交成功禁止放弃/切换。在线加载回放时限制额外清除动作，以免重入修改状态。
+- UdsReplayWorkspace.cs 的离线回放文件没有录制的 CorrelationId，却原来用 Guid.NewGuid() 为每次回放新造一个关联身份。改为 Guid.Empty（未知/未记录），避免把假的追踪身份混入真实 ECU 事件印象。回放文件长度实际读取再次检查 8 MiB 上限。
+- 新增/扩充 UdsWorkbenchTests 中的同源哈希和回放相关 ID 检查。未接入实体 ECU UDS 实时诊断，不能据此宣称完成 UDS 工具。
+
+**FLASH：同 CAN ID 和地址不等于验证了另一个 ECU。**
+
+- 重要安全缺口：NativeFlashProfileDocument.ValidateForFreeze 原仅严格核对已验证 HydEPB 的 CAN 端点、Flash 几何/块长等参数，没有强制 EcuModelCode 等于 HYDEPB。其它型号即使复制一套 HydEPB 参数也可能进入可执行 Flash Job 冻结。
+- 已补加明确的 fail-closed 车型检查：此 R1 物理烧录工艺**只对 HYDEPB**有效，其它 ECU 可以建立并保存参数草稿，但不能使用未经 OEM 验证的方法生成可执行的烧录 Job。完善 NativeFlashProfileTests 对跨车型配置复制的拒绝用例；不改变真正经过验证的 HYDEPB 行为。
+- NativeFlashProfileWindow.xaml(.cs) 对非 HYDEPB 型号显示明确、简短的“仅可离线配置、不允许套用当前烧录方法”说明；从实际加载的 Profile 型号而非启动参数派生显示。
+- 发现保存/导入完成后离线 Freeze 仍在后台进行时，用户可以更改界面参数，造成“显示的冻结计划不是当前草稿”的风险。增加 PreviewBusy 输入互锁、加载中/导入中/校验中关闭保护、冻结前的原生 Profile SHA 修订比对。只有同一份已保存文件才能展示冻结结果；不修改任何实际 USB/UDS/Flash 发送逻辑。
+
+**RECORD：数据库的 Verdict 是来源判定，不自动证明完整生产放行。**
+
+- 多库历史“Production + Pass + Committed”原显示为“检测通过”，容易掩盖没有确认完整采集和证据归档事实的问题。现在显示为“判定通过”，表头改“记录判定”，详情必须另查看 CaptureHealth、EvidenceArchiveIncomplete 等独立证据质量。
+- 缺少 evidenceArchiveIncomplete 布尔字段的老记录必须判为完整性 UNKNOWN，而不能当成“未发现缺失”。采集完整标记非 true 时明确提示不得从记录 Pass 推断生产放行。
+- 批量真实报告 ZIP 增加 manifest.json，逐项保留原始 RunId、ECU ID、工程来源、模式、原始 Verdict/提交状态、时间与每份导出文件 SHA256。清单是归档索引，不是第二套 TEST 判定，也不为未结案记录签发生产结果。取消、未完成临时包、已存在目标文件均按 fail-closed 操作。
+
+### 18.2 本轮静态评分
+
+| 维度 | 七轮 | 八轮 | 变化说明 |
+|---|---:|---:|---|
+| 信息架构（20） | 14 | 14 | 产线正式执行状态机及分车型 OEM 方法仍缺真实实体合同 |
+| 操作效率（20） | 15 | 15 | 保存/编辑边界修复，仍无实际场景计时 |
+| 信息与状态（15） | 12 | 13 | +1：判定/放行分离、采样断点和游标质量判别、ZIP 可审计哈希索引 |
+| 空间布局（15） | 13 | 13 | 无新的 Windows 截图，不提分 |
+| 视觉一致性（10） | 7 | 7 | 工具风格、DPI 现场验收尚未到位 |
+| 编辑与交互（10） | 8 | 8 | 没有实际输入法、焦点和回归录像 |
+| 异常恢复（10） | 8 | 9 | +1：跨车型 Flash Freeze 限制、原生配置并发校验、UDS 单次哈希快照 |
+| **总分（100）** | **77** | **79** | **BLOCKED：不是产品设计/整机准出** |
+
+该评分只评价当前已核对的 R1 源码静态候选，不代表通过 Windows 构建，更不代表真实 DUT 验收。硬门槛仍包括实体 START、夹具确认、每次正式前置 FLASH、完整 TEST、正式 Inspection/RECORD/报告与扫码实体绑定闭环；UDS 独立工具实体收发、WAVE 真实采样质量、R1 全窗口实际操作截图/焦点/恢复和多型号真实 FLASH 方法也仍未验收。
+
+### 18.3 本轮独立静态交叉复核
+
+本轮完成 GitHub HEAD 上 13 个变更文件的二次结构读取：含 RecordHistoryWindow.xaml(.cs)、UdsWorkbenchWindow.xaml.cs、WaveWorkbenchWindow.xaml.cs、NativeFlashProfileDocument.cs、NativeFlashProfileWindow.xaml(.cs)、UdsReplayWorkspace.cs、UdsToolDocumentStore.cs、WaveDisplayContinuity.cs，以及三份对应测试。简单 C# 代码括号扫描与 XAML 标签/事件处理方法名检查没有找到闭合或处理函数缺失问题。此仅是辅助静态检查；不是 MSBuild 的 C# 编译、WPF XAML 资源类型/编译检查，更不是自动化测试结果。
+
+**八轮决定：79/100｜UI_DESIGN_GATE=BLOCKED｜PRODUCTION_GATE=BLOCKED｜BUILD=NOT_RUN｜TESTS=NOT_RUN｜WPF_HANDS_ON=NOT_RUN｜HARDWARE=NOT_RUN｜CI=NOT_RUN。**
