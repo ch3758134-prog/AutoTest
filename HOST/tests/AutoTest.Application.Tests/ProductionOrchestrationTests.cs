@@ -308,6 +308,36 @@ public sealed class ProductionOrchestrationTests
             ValueTask.CompletedTask;
     }
 
+    [Fact]
+    public async Task NondurableFlashAdmissionFactPreventsAnyDestructiveExecutorCall()
+    {
+        var configuration = Config(flash: true);
+        var session = Matched(configuration);
+        session.Confirm(configuration, new RuleRevision(_hash),
+            new ProjectRevision(1), Station(false, AuthorizationScope.Programming).Station,
+            isMock: false);
+        var executor = new CountingProductionStageExecutor();
+        var result = await new ProductionWorkflow(executor,
+            new ProductionResultCoordinator(new FlashAdmissionRejectSink()),
+            new ProductionPreflight()).ExecuteAsync(session, CancellationToken.None);
+        Assert.Equal("FLASH_START_FACT_NOT_DURABLE", result.Code);
+        Assert.Equal(ProductionState.Unknown, result.State);
+        Assert.False(result.PhysicalReleaseAllowed);
+        Assert.Equal(0, executor.Commands);
+    }
+
+    private sealed class FlashAdmissionRejectSink : IRunFactSink
+    {
+        public ValueTask<RecordWriteReceipt> AppendAsync(RunFact fact, CancellationToken ct)
+        {
+            var durable = fact.Description != "FLASH_STAGE_ENTERED_EFFECT_UNKNOWN";
+            return ValueTask.FromResult(new RecordWriteReceipt(
+                fact.Run, fact.EventId, durable, durable ? "DURABLE" : "DISK_FAILURE"));
+        }
+        public ValueTask<RecordCommitReceipt> CommitAsync(RunId run, CancellationToken ct) =>
+            throw new InvalidOperationException("No verdict is permitted.");
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -328,6 +358,8 @@ public sealed class ProductionOrchestrationTests
             ProductionState.Unknown, result.State);
         Assert.False(result.PhysicalReleaseAllowed);
         Assert.Equal(0, executor.TestCalls);
+        Assert.Contains(sink.Facts, f =>
+            f.Description == "FLASH_STAGE_ENTERED_EFFECT_UNKNOWN");
         Assert.Contains(sink.Facts, f => f.Description ==
             (operatorCancelled ? "RUN_CANCELLED_AT_FLASH" :
                 "RUN_EXCEPTION_AT_FLASH"));
