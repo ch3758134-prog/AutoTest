@@ -54,6 +54,18 @@ public sealed class ProductionWorkflow
             if (job.Configuration.RequiresFlash)
             {
                 stage = "FLASH";
+                // Persist a pre-side-effect intent before any destructive ECU
+                // programming. It is NOT proof that a byte was transferred.
+                var flashStarted = await _records.AppendAsync(job,
+                    "FLASH_STAGE_ENTERED_EFFECT_UNKNOWN",
+                    RunFactKind.Request, EvidenceQuality.HostObserved, ct)
+                    .ConfigureAwait(false);
+                if (flashStarted.Outcome != Outcome.Accepted)
+                {
+                    session.Mark(ProductionState.Unknown, "FLASH_START_FACT_NOT_DURABLE");
+                    return new(job.Run, ProductionState.Unknown, Verdict.Inconclusive,
+                        false, false, "FLASH_START_FACT_NOT_DURABLE");
+                }
                 var flash = await _executor.ExecuteFlashAsync(job, ct).ConfigureAwait(false);
                 // FLASH is destructive. A simulated stage, missing physical
                 // evidence or a non-durable fact can NEVER authorize TEST.
@@ -81,6 +93,15 @@ public sealed class ProductionWorkflow
                 }
             }
             stage = "TEST";
+            var testStarted = await _records.AppendAsync(job,
+                "TEST_STAGE_ENTERED", RunFactKind.Request,
+                EvidenceQuality.HostObserved, ct).ConfigureAwait(false);
+            if (testStarted.Outcome != Outcome.Accepted)
+            {
+                session.Mark(ProductionState.Unknown, "TEST_START_FACT_NOT_DURABLE");
+                return new(job.Run, ProductionState.Unknown, Verdict.Inconclusive,
+                    false, false, "TEST_START_FACT_NOT_DURABLE");
+            }
             var test = await _executor.ExecuteTestAsync(job, ct).ConfigureAwait(false);
             // A development/simulation judgement must not enter a physical
             // production result path. The caller still gets an explicit fact.
