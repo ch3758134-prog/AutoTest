@@ -58,10 +58,14 @@ public sealed partial class MainWindowViewModel
             return false;
         }
         if (!await PrepareEditorsForCloseAsync()) return false;
-        if (!await PrepareDbcWindowsForCloseAsync()) return false;
+        // A scan switches only the managed ECU project. Independent DBC
+        // windows retain their own files; live wave evidence must finish
+        // finalization before the project / USB ownership can change.
+        if (!await PrepareDbcWindowsForCloseAsync(exitingApplication: false)) return false;
+        if (_waveWorkbenchWindow is { IsVisible: true } wave &&
+            !await wave.PrepareForParentShutdownAsync()) return false;
         try
         {
-            if (_waveWorkbenchWindow is { IsVisible: true } wave) wave.Close();
             await _workspace.OpenAsync(manifestPath);
             StatusMessage = "已明确切换到扫码型号的工程：" +
                 _workspace.Current?.Definition.Name + "；仍未执行设备动作。";
