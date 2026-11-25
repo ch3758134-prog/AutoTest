@@ -331,6 +331,141 @@ public partial class UdsWorkbenchWindow : Window
         finally { SetEditorInputsEnabled(true); _busy = false; }
     }
 
+    private bool TryGetDidScope(out UdsEndpointProfile endpoint,
+        out ushort did, out string confirmation)
+    {
+        endpoint = null!;
+        did = 0;
+        confirmation = "";
+        if (SelectedRow is not { } selected) return false;
+        try
+        {
+            var pdu = UdsHex.Parse(selected.RequestHex);
+            if (pdu.Length != 3 || pdu[0] != 0x22) return false;
+            var tx = ParseHexCanId(RequestCanId.Text, "请求 CAN ID");
+            var rx = ParseHexCanId(ResponseCanId.Text, "响应 CAN ID");
+            if (!int.TryParse(P2Input.Text, NumberStyles.None,
+                    CultureInfo.InvariantCulture, out var p2) ||
+                !int.TryParse(P2StarInput.Text, NumberStyles.None,
+                    CultureInfo.InvariantCulture, out var p2Star)) return false;
+            endpoint = UdsToolDocumentStore.ToEndpoint(new UdsToolProfile(
+                SequenceName.Text.Trim(), EcuIdentity.Text.Trim(),
+                tx, rx, p2, p2Star));
+            did = (ushort)((pdu[1] << 8) | pdu[2]);
+            confirmation = PhysicalCommandFence.ReadDidConfirmation(tx, rx, did);
+            return true;
+        }
+        catch (Exception error) when (error is FormatException or InvalidDataException or
+            ArgumentException or NotSupportedException) { return false; }
+    }
+
+    private void UpdateDidScope()
+    {
+        // XAML TextChanged may run during InitializeComponent before these
+        // named controls have been constructed.
+        if (DidScopeText is null || DidConsentInput is null || ReadDidButton is null) return;
+        if (!TryGetDidScope(out _, out _, out var confirmation))
+        {
+            DidScopeText.Text = "仅支持选中 22 HH LL，请设置合法的 ECU CAN 请求/响应 ID 和 P2 超时。";
+            ReadDidButton.IsEnabled = false;
+            return;
+        }
+        DidScopeText.Text = confirmation;
+        ReadDidButton.IsEnabled = !_busy && _didCancel is null &&
+            _hardware.IsConnected && _hardware.IsEcuCanBitrateApplied &&
+            string.Equals(DidConsentInput.Text, confirmation, StringComparison.Ordinal);
+    }
+
+    private void DidConsentChanged(object sender, TextChangedEventArgs e) => UpdateDidScope();
+
+    private async void ReadDid_Click(object sender, RoutedEventArgs e)
+    {
+        if (_busy || _didCancel is not null || !FinishGrid() ||
+            !TryGetDidScope(out var endpoint, out var did, out var authorization))
+        {
+            StatusText.Text = "请选择合法的单次只读 22 HH LL 服务和 ECU CAN 端点。";
+            return;
+        }
+        if (!string.Equals(DidConsentInput.Text, authorization, StringComparison.Ordinal))
+        {
+            StatusText.Text = "实体 DID 读取需要完整输入本次端点和 DID 的授权文本。";
+            return;
+        }
+        if (!_hardware.IsConnected || !_hardware.IsEcuCanBitrateApplied)
+        {
+            StatusText.Text = "先在主窗口连接真实主控、应用并读回 ECU CAN 码率。";
+            return;
+        }
+        var expectedHex = SelectedRow?.ExpectedHex ?? "";
+        _busy = true;
+        _didCancel = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        SetEditorInputsEnabled(false);
+        DidConsentInput.IsEnabled = false;
+        ReadDidButton.IsEnabled = false;
+        CancelDidButton.IsEnabled = true;
+        DidFrames.ItemsSource = null;
+        DidResponseText.Text = "";
+        DidOutcomeText.Text = "正在经真实 USB / ECU CAN 读取 DID 0x" +
+            did.ToString("X4", CultureInfo.InvariantCulture) + "…";
+        StatusText.Text = "物理授权仅涵盖本次 0x22 DID 与真实 ECU 响应流控；没有发送其他 UDS 服务。";
+        try
+        {
+            var observed = await _hardware.ReadOnlyDidAsync(
+                endpoint, did, authorization, _didCancel.Token);
+            var exchange = observed.Exchange;
+            DidFrames.ItemsSource = observed.CanFrames;
+            DidResponseText.Text = "请求  " + UdsHex.Format(exchange.RequestPdu) +
+                "\n响应  " + (exchange.ResponsePdu.IsDefaultOrEmpty
+                    ? "（未取得可确认的 ECU 响应）" : UdsHex.Format(exchange.ResponsePdu));
+            var expectedMatch = string.IsNullOrWhiteSpace(expectedHex)
+                ? (bool?)null : exchange.ResponsePdu.AsSpan().SequenceEqual(UdsHex.Parse(expectedHex));
+            var detail = exchange.Outcome switch
+            {
+                Outcome.Accepted => "真实 ECU 正响应（不是正式检测 PASS）",
+                Outcome.Rejected => "真实 ECU 拒绝 / NRC 0x" +
+                    (exchange.NegativeResponseCode?.ToString("X2", CultureInfo.InvariantCulture) ?? "??"),
+                _ => "结果不确定，不能认定 DID 读取成功"
+            };
+            DidOutcomeText.Text = "DID 0x" + did.ToString("X4", CultureInfo.InvariantCulture) +
+                " · " + detail +
+                (expectedMatch is null ? " · 未设置期望响应" :
+                    expectedMatch.Value ? " · 与编辑期望相符" : " · 与编辑期望不符") +
+                (string.IsNullOrWhiteSpace(observed.Error) ? "" : " · " + observed.Error);
+            StatusText.Text = "已结束单次真实 DID 交换；收发记录来自当前主控会话，不生成生产 PASS。";
+            _showReplayInCompact = true;
+            ApplyCompactTab();
+        }
+        catch (OperationCanceledException)
+        {
+            DidOutcomeText.Text = "操作员停止或 30 秒安全期限到期；不能判定 ECU 已回复。";
+            StatusText.Text = "DID 读取取消。物理授权已撤销；如有迟到报文不会作为本次成功。";
+        }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            DidOutcomeText.Text = "实体 DID 读取失败：" + error.Message;
+            StatusText.Text = "未形成可信诊断结果；请检查 USB/ECU CAN、端点、P2 与实体授权。";
+        }
+        finally
+        {
+            _didCancel?.Dispose();
+            _didCancel = null;
+            _busy = false;
+            SetEditorInputsEnabled(true);
+            DidConsentInput.IsEnabled = true;
+            DidConsentInput.Clear(); // A second physical request requires new consent.
+            CancelDidButton.IsEnabled = false;
+            UpdateDidScope();
+        }
+    }
+
+    private void CancelDid_Click(object sender, RoutedEventArgs e)
+    {
+        if (_didCancel is null) return;
+        CancelDidButton.IsEnabled = false;
+        StatusText.Text = "正在取消实体 DID 交换并撤销授权…";
+        _didCancel.Cancel();
+    }
+
     private static uint ParseHexCanId(string text, string name)
     {
         var raw = text.Trim();
