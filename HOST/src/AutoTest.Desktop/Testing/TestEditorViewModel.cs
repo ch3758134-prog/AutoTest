@@ -1411,7 +1411,7 @@ public sealed class TestEditorViewModel : BindableBase
         try
         {
             _session = await _workspace.SaveTestEditorAsync(_session, _transaction.Current);
-            _transaction = new StepEditTransaction(_session.Document);
+            // Persistence is not an Undo boundary; retain transaction history.
             RefreshMappings();
             RefreshTree(_selectedItem?.Step?.Id);
             RaisePropertyChanged(nameof(AssetRevision));
