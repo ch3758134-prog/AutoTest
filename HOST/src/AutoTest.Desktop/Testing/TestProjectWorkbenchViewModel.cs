@@ -165,7 +165,8 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
             _autosaveTimer.Stop();
             // Invalid or transient user input must remain visible; never create
             // an unwanted project revision while the operator is still typing.
-            if (IsBusy || !IsDirty || string.IsNullOrWhiteSpace(Name)) return;
+            if (IsBusy || !IsDirty || _realTest?.IsRunning == true ||
+                _hardware?.IsTestRunApproved == true || string.IsNullOrWhiteSpace(Name)) return;
             await SaveAsync(silent: true);
         };
         _selection = selection; _realTest = realTest; _hardware = hardware;
