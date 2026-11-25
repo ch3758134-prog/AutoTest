@@ -126,7 +126,7 @@
     <!-- CAN remains an exact byte editor; DBC is an automatically attached
          helper, with a compact optional picker for changing definitions. -->
     <Grid x:Name="CanSendPanel" Visibility="Collapsed" Margin="0,0,0,12">
-     <Grid.ColumnDefinitions><ColumnDefinition Width="370"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+     <Grid.ColumnDefinitions><ColumnDefinition Width="1*" MinWidth="335"/><ColumnDefinition Width="12"/><ColumnDefinition Width="1.15*" MinWidth="330"/></Grid.ColumnDefinitions>
      <StackPanel Grid.Column="0">
      <Border x:Name="CanDataCard" Background="White" BorderBrush="#E2E8E5"
       BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,11">
