@@ -56,12 +56,12 @@
     <Border Background="White" BorderBrush="#DEE7EF" BorderThickness="1" CornerRadius="8" Padding="14">
      <StackPanel>
       <TextBlock Text="设备接收诊断" FontSize="15" FontWeight="SemiBold" Foreground="#20364A" Margin="0,0,0,12"/>
-      <TextBlock Text="产品条码规则在工程的「检测准备」中设置。" Foreground="#62798C" TextWrapping="Wrap" Margin="0,0,0,12"/>
+      <TextBlock Text="编码形制及型号匹配只在「生产准备」发布；此处仅负责真实串口设备连接与原始输入诊断。" Foreground="#62798C" TextWrapping="Wrap" Margin="0,0,0,12"/>
       <TextBlock Text="最近完整原始文本" Foreground="#64798C"/>
       <TextBox Text="{Binding LastRaw,Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" Padding="8,6" Margin="0,4,0,12"/>
       <TextBlock Text="原始帧 HEX" Foreground="#64798C"/>
       <TextBox Text="{Binding LastHex,Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" Padding="8,6" Margin="0,4,0,12"/>
-      <TextBlock Text="当前开发工程的已保存期望（只读预览）" FontWeight="SemiBold" Foreground="#20364A"/>
+      <TextBlock Text="当前扫码设备诊断（不是正式生产匹配结果）" FontWeight="SemiBold" Foreground="#20364A"/>
       <TextBlock Text="{Binding ProjectName}" FontWeight="SemiBold" Foreground="#345E83" Margin="0,6,0,4"/>
       <TextBlock Text="{Binding LastMappedFields}" TextWrapping="Wrap" Foreground="#355C76"/>
       <TextBlock Text="{Binding LastDecision}" Foreground="#657D90" Margin="0,6,0,0"/>

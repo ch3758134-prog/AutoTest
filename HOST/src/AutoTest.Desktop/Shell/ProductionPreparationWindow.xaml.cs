@@ -223,6 +223,9 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
         _publishProject = publishProject;
         InitializeComponent();
         DataContext = this;
+        ProductionScannerDeviceHost.Content = scanner is null
+            ? new TextBlock { Text = "真实扫码设备尚未初始化。", Margin = new Thickness(10) }
+            : new SerialScannerSetupView { DataContext = scanner };
         // No hidden combo-box entries: these are identity SOURCE modes.
         ModeBox.ItemsSource = new[]
         {

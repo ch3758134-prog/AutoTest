@@ -249,6 +249,11 @@
    <TabItem Header="4  工位与夹具">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
      <StackPanel Margin="19" MaxWidth="940">
+      <TextBlock Text="工位扫码设备 · 真实 USB COM" Style="{StaticResource Section}"/>
+      <TextBlock Style="{StaticResource Help}"
+       Text="这里只绑定实际扫码设备、串口参数和查看原始输入；编码形制在第二阶段配置，扫码不能直接触发夹紧或 TEST。"/>
+      <ContentControl x:Name="ProductionScannerDeviceHost" Height="330"
+       Margin="0,0,0,12" HorizontalContentAlignment="Stretch"/>
       <TextBlock Text="一个 ECU 检测位置 · 两路夹具输出" Style="{StaticResource Section}"/>
       <TextBlock Style="{StaticResource Help}"
        Text="Clamp1 与 Clamp2 是同一工位可选的两路输出，不是两台 ECU。实际通道固定为 MCU PTB1、PTC2；不能在软件中随意改接线。"/>
