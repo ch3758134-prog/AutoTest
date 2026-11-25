@@ -202,13 +202,15 @@ public partial class NativeFlashProfileWindow : Window
 
     private async void ImportFirmware_Click(object sender, RoutedEventArgs e)
     {
-        if (_loadFailure) return;
+        if (_loadFailure || _importBusy || _closing) return;
         var dialog = new OpenFileDialog
         {
             Title = "选择当前 ECU 的 HEX 固件",
             Filter = "Intel HEX 固件|*.hex;*.h86"
         };
         if (dialog.ShowDialog(this) != true) return;
+        _importBusy = true;
+        SetFieldsEditable(false);
         try
         {
             var next = ReadFields();
@@ -221,38 +223,55 @@ public partial class NativeFlashProfileWindow : Window
             };
             FirmwareLabel.Text = imported.RelativePath;
             JobDetailsLabel.Text = "固件已更换，原 Job 预览失效，请重新校验。";
-            await SaveAsync();
+            _importBusy = false;
+            if (!await SaveAsync())
+                StatusLabel.Text = "固件已经导入但配置尚未持久保存；请处理错误后再退出。";
         }
         catch (Exception error) when (error is IOException or FormatException or InvalidDataException
                                       or NotSupportedException or UnauthorizedAccessException or JsonException)
         { StatusLabel.Text = "固件导入失败：" + error.Message; }
+        finally
+        {
+            _importBusy = false;
+            SetFieldsEditable(!_loadFailure);
+        }
     }
 
     private async void ImportSecurity_Click(object sender, RoutedEventArgs e)
     {
-        if (_loadFailure) return;
+        if (_loadFailure || _importBusy || _closing) return;
         var dialog = new OpenFileDialog
         {
             Title = "选择已审查 SafetyFile.dll",
             Filter = "DLL|*.dll"
         };
         if (dialog.ShowDialog(this) != true) return;
+        _importBusy = true;
+        SetFieldsEditable(false);
         try
         {
+            var next = ReadFields();
             var imported = await NativeFlashProfileStore.ImportSecurityAsync(
                 _root, dialog.FileName);
-            _draft = ReadFields() with
+            _draft = next with
             {
                 SecurityRelativePath = imported.RelativePath,
                 SecuritySha256 = imported.Sha256
             };
             SecurityLabel.Text = imported.RelativePath;
             JobDetailsLabel.Text = "安全文件已更换，原 Job 预览失效，请重新校验。";
-            await SaveAsync();
+            _importBusy = false;
+            if (!await SaveAsync())
+                StatusLabel.Text = "安全文件已导入但配置尚未持久保存；请处理错误后再退出。";
         }
         catch (Exception error) when (error is IOException or FormatException or InvalidDataException
                                       or NotSupportedException or UnauthorizedAccessException or JsonException)
         { StatusLabel.Text = "安全文件导入失败：" + error.Message; }
+        finally
+        {
+            _importBusy = false;
+            SetFieldsEditable(!_loadFailure);
+        }
     }
 
     private static string FormatFrozenJob(CanToolFlashJob job)
@@ -309,7 +328,7 @@ public partial class NativeFlashProfileWindow : Window
     /// </summary>
     public async Task<bool> PrepareForParentShutdownAsync()
     {
-        if (_closing) return false;
+        if (_closing || _importBusy) return false;
         if (!IsLoaded) return true;
         _closing = true;
         _idleSave.Stop();
@@ -335,6 +354,11 @@ public partial class NativeFlashProfileWindow : Window
     {
         if (_closeApproved) return;
         e.Cancel = true;
+        if (_importBusy)
+        {
+            StatusLabel.Text = "固件或安全文件仍在导入；请勿关闭窗口或切换工程。";
+            return;
+        }
         if (_closing) return;
         _closing = true;
         _idleSave.Stop();
