@@ -14,6 +14,7 @@ public partial class ManualBenchCanPropertiesWindow : Window
         _model = model;
         DataContext = model;
         InitializeComponent();
+        Loaded += (_, _) => AutoTest.Desktop.Shell.DesktopWindowSizing.FitToVisibleWorkspace(this);
         model.SelectedCanRow.AttachUniqueMatchingDbc();
         BenchDbcPicker.SetBenchChoices(model.DbcMessages, model.SelectedCanRow.DbcMessage);
     }
