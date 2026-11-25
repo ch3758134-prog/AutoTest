@@ -5,6 +5,8 @@ using AutoTest.Desktop.Testing;
 
 namespace AutoTest.Desktop.Shell;
 
+public sealed record ManualBenchCanEditorContext(ManualBenchViewModel.BenchCanRow SelectedCanRow);
+
 /// <summary>
 /// Shared detailed CAN editor, pinned to ONE specific row. The source row must
 /// never silently switch merely because the engineer clicks another row in
@@ -12,7 +14,6 @@ namespace AutoTest.Desktop.Shell;
 /// </summary>
 public partial class ManualBenchCanPropertiesView : UserControl
 {
-    private sealed record EditorContext(ManualBenchViewModel.BenchCanRow SelectedCanRow);
     private readonly ManualBenchViewModel _model;
     private readonly ManualBenchViewModel.BenchCanRow _editedRow;
     public event EventHandler? CloseRequested;
@@ -23,7 +24,7 @@ public partial class ManualBenchCanPropertiesView : UserControl
         _model = model ?? throw new ArgumentNullException(nameof(model));
         _editedRow = editedRow ?? model.SelectedCanRow ??
             throw new InvalidOperationException("请先选择 CAN 报文。");
-        DataContext = new EditorContext(_editedRow);
+        DataContext = new ManualBenchCanEditorContext(_editedRow);
         InitializeComponent();
         _editedRow.AttachUniqueMatchingDbc();
         BenchDbcPicker.SetBenchChoices(_model.DbcMessages, _editedRow.DbcMessage);
