@@ -48,7 +48,7 @@
 
 | 目标 | 现有可复用资产 | 真实差异与下一步 | 状态 |
 |---|---|---|---|
-| 原生项目准备→唯一树→项目收尾 | TestProjectDocument v1、TestDocument DSL、连续物理 Scope | v1 仍只有 Packages，无原生可编辑、预检、执行及 RECORD 的项目级步骤树 | P0 未完成 |
+| 原生项目准备→唯一树→项目收尾 | TEST 项目 v2 ProjectSetup/ProjectTeardown、同一 TEST DSL 与连续物理 Scope | 编辑、资源冻结与真实整组执行源码已接通；旧 v1 只能显式迁移，现场未验收 | SOURCE_STATIC 已接通 |
 | IF/WHEN/SWITCH/LOOP/TRY 可正式执行 | StepNode、PlanCompiler、RealRunCoordinator | 必须分别审计有效性、新鲜度、未知态、异常分支和 StepOccurrence；未接线类型不能装作可用 | P0 未完成 |
 | 公共流程输入/输出/局部作用域 | PublicFlowDocument 和版本引用 | 参数、返回、递归安全、冻结调用栈、单步调试需真执行及归档证据 | 未完成 |
 | 各开发运行入口同一物理生命期 | 已有 ProjectExecutionSession/CAN/KEY/IGN/PhysicalCommandFence | 本轮修正勾选范围；单步及所有工具场景仍需审查前置环境/停止规则；ACK 不代表 ECU 接收 | 代码已改，待 Windows/总线 |
@@ -71,3 +71,14 @@ D4：逐页落实原型 WPF 编辑体验和独立工具，不新增第二份业�
 D5：Windows build/GUI/DPI、实物扫码枪、WinUSB/ECU CAN、独立 CAN 分析仪 65ms 周期、KEY_SIM、夹具/安全互锁、FLASH/UDS、HydEPB 驻车释放和报告复检全链路。
 
 **最终结论**：设计原型已完成两轮并达设计分 92；真实 WPF 仅第一组 SOURCE_STATIC 变更；Windows 未验、真机未验、生产始终 NO-GO。不能把 D1 DEMO 或代码提交当成成熟产品通过。
+
+
+## 7. 本轮 D2 第二次源码审查补记（更新，优先于上面旧状态）
+
+2026-11-25：新加入原生 TEST 项目准备/收尾。TestProjectDocument v2 各有可选稳定调用 ID、资产 Revision/SHA；旧 v1 只可按原义读取，不能暗自把旧“准备”功能用例改写成项目级阶段。TestProjectWorkbenchViewModel 和 TestProjectWorkbenchView.xaml 允许工程师绑定/编辑/移除已存在的 TEST 定义，日常自动保存保留阶段身份。AutomaticTestResourceContract 对两个阶段执行固定 TEST 资源、DBC、波形与重复 FLASH 风险预检；ProductionPreparationService 把两阶段固定资源加入预检指纹。AutomaticTestHomeViewModel.Run 在同一 ProjectExecutionSession 运行 项目准备→有序功能用例→项目收尾；项目阶段各自写真实 Run/CaseAttempt 及 StepOccurrence，不宣称产品功能 PASS。工程师选择范围继续保持只执行其冻结有序子集，而非暗中执行未选择阶段。
+
+新增主动发现：整组物理授权、CAN/KEY 和 DBC 映射原来依赖本地显示 Name 作为全局键。不同 TEST 用例可合法复用显示名称，但指向不同 CAN ID 或 DBC 资源。已将 RealTestWorkbenchService.Project、ConfiguredStationActionPort、LiveDbcSignalService 的跨用例绑定改为完整 TestTargetMapping 及其冻结资源的值身份，防止把另一个用例的同名信号当作观测来源；物理发送仍受既有 PhysicalCommandFence 和 CAN ID 白名单、USB 连接世代约束。
+
+回归源码：TestProjectPlanWorkflowTests 新增 v2 阶段序列化/重开、v1 未显式升级拒绝、用例与阶段重复调用 ID 拒绝等测试（NOT_RUN）。已有项目资源和设备实测未由本轮执行。
+
+下一阶段差异：条件分支与公共流程参数/返回值/递归的完整真实能力矩阵仍未准出；项目阶段 WPF 调试状态与报告优先级需 Windows 验证；实体 START、工装机械反馈/互锁、正式 InspectionAttempt 的 FLASH→TEST→收尾事实链依然 P0 阻断。因此本轮产品原型 D1 设计仍自评 92/100，**绝不能据此给 R1 实际生产产品或 WPF 验收评 92 分**。正式状态 PRODUCTION NO-GO。

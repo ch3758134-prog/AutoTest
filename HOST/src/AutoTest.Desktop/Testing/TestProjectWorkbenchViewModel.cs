@@ -872,7 +872,8 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         OpenProjectSetupCommand?.RaiseCanExecuteChanged();
         OpenProjectTeardownCommand?.RaiseCanExecuteChanged();
         RemoveProjectSetupCommand?.RaiseCanExecuteChanged();
-        RemoveProjectTeardownCommand?.RaiseCanExecuteChanged(); CreateNewPackageCommand?.RaiseCanExecuteChanged();
+        RemoveProjectTeardownCommand?.RaiseCanExecuteChanged();
+        CreateNewPackageCommand?.RaiseCanExecuteChanged();
         RemoveCommand?.RaiseCanExecuteChanged();
         UpCommand?.RaiseCanExecuteChanged(); DownCommand?.RaiseCanExecuteChanged();
         SaveCommand?.RaiseCanExecuteChanged(); ReloadCommand?.RaiseCanExecuteChanged();
