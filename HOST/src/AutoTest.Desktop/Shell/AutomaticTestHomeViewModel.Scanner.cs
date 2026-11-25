@@ -101,6 +101,27 @@ public sealed partial class AutomaticTestHomeViewModel
             }
             // One published station identity model. Legacy scanner recipes and
             // project barcode expectations cannot select physical TEST resources.
+            string scannerPnp = "";
+            if (_isProductionWorkspace)
+            {
+                // Real production identity is accepted only from the station\'s
+                // explicitly bound USB scanner, not any manually selected COM.
+                // Registry enumeration stays off the WPF UI thread.
+                var boundScanner = await Task.Run(() =>
+                {
+                    var saved = StationScannerDeviceBinding.Load();
+                    return saved is null ? null :
+                        StationScannerDeviceBinding.Match(saved);
+                });
+                if (boundScanner is null ||
+                    !string.Equals(boundScanner.PortName, scannerPort,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    Reject("当前扫码枪并非唯一绑定的工位 USB 设备；请先在生产准备中验证 COM 并绑定扫码枪。");
+                    return;
+                }
+                scannerPnp = boundScanner.PnpInstanceId;
+            }
             var resolved = await ProductionIdentityResolver.ResolvePublishedSnapshotAsync(raw);
             var release = resolved.Publication;
             var identity = resolved.Decision;
@@ -171,7 +192,8 @@ public sealed partial class AutomaticTestHomeViewModel
                     BarcodeRuleId = identity.RuleId,
                     BarcodeRuleRevision = identity.RuleRevision,
                     ModelDecisionBasis = identity.ModelBasis,
-                    StationSlotId = release.Configuration.Fixture.StationSlotId
+                    StationSlotId = release.Configuration.Fixture.StationSlotId,
+                    ScannerPnpInstanceId = scannerPnp
                 }
             };
             _scanStatus = repeated

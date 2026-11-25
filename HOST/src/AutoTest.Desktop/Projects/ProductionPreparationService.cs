@@ -34,6 +34,7 @@ public sealed record FrozenScanIdentity(
     public int BarcodeRuleRevision { get; init; }
     public string ModelDecisionBasis { get; init; } = "";
     public string StationSlotId { get; init; } = "";
+    public string ScannerPnpInstanceId { get; init; } = "";
 }
 
 public sealed record FrozenProductionPreparation(
