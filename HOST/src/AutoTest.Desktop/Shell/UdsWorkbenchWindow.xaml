@@ -148,9 +148,15 @@
           Foreground="#486780" Margin="0,3,0,4"/>
         </StackPanel>
        </DockPanel>
-       <TextBox x:Name="DidConsentInput" MinHeight="29" Padding="6,4" FontFamily="Consolas"
-        ToolTip="粘贴上方完整的 AUTHORIZE DID 授权文字；仅授权当前一次 0x22 读取"
-        TextChanged="DidConsentChanged" Margin="0,4,0,0"/>
+       <DockPanel Margin="0,5,0,0">
+        <Button Content="复制授权" Click="CopyDidAuthorization_Click"
+         DockPanel.Dock="Right" Style="{StaticResource UdsAction}"
+         ToolTip="复制当前选中 DID 与 ECU CAN 请求/响应 ID 对应的唯一授权文本"
+         Margin="7,0,0,0"/>
+        <TextBox x:Name="DidConsentInput" MinHeight="29" Padding="6,4"
+         FontFamily="Consolas" TextChanged="DidConsentChanged"
+         ToolTip="粘贴完整的 AUTHORIZE DID 授权文本；每次实体读取均需重新确认"/>
+       </DockPanel>
       </StackPanel>
      </Border>
      <DataGrid x:Name="ServiceGrid" Grid.Row="2" AutoGenerateColumns="False"
