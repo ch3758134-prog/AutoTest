@@ -113,7 +113,8 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     // They never infer a physical START, a production RunId or a final PASS.
     public string ProductionHeadline =>
         IsOperatorRunning ? "真实工程验证进行中（非生产）" :
-        _plans.Current is null ? "工位未配置检测工程" :
+        _plans.Current is null
+            ? _engineering.Current is null ? "工位未配置检测工程" : "检测工程核验未通过" :
         !_plans.Current.ResourceReady ? "检测工程资源未就绪" :
         !_hardware.IsConnected ? "等待主控连接" :
         !_hardware.IsEcuCanBitrateApplied ? "ECU CAN 码率未确认" :
@@ -132,9 +133,13 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         IsOperatorRunning
             ? "仅显示已有工程验证事实；不会计入正式生产结果。"
             : _plans.Current is null
-                ? "请由工程人员建立并保存对应型号的 ECU 检测工程。"
+                ? _engineering.Current is null
+                    ? "请由工程人员建立并保存对应型号的 ECU 检测工程。"
+                    : "工程不能用于生产：" + _plans.Issue
             : !_plans.Current.ResourceReady
-                ? "当前用例或烧录资源未通过检查，需工程人员修正。"
+                ? "工程资源阻断：" +
+                    (_plans.Current.ResourceIssues.FirstOrDefault() ??
+                     "请工程人员修正 TEST、DBC、波形或烧录资源。")
             : !_hardware.IsConnected
                 ? "主控 USB 未连接，工位暂不可投入检测。"
             : !_hardware.IsEcuCanBitrateApplied
