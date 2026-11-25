@@ -385,8 +385,8 @@
   <!-- Wide grouped palette: common actions visible together, one click inserts a formal TEST draft. -->
   <Popup x:Name="ActionPalette" Placement="Center"
    PlacementTarget="{Binding ElementName=StepsList}" StaysOpen="False" AllowsTransparency="True">
-   <Border x:Name="PaletteSurface" Width="810" MaxHeight="540" Background="White"
-    CornerRadius="10" BorderBrush="#DFE5E4" BorderThickness="1" Padding="16,13">
+   <Border x:Name="PaletteSurface" Width="690" MaxHeight="560" Background="White"
+    CornerRadius="8" BorderBrush="#DFE5E4" BorderThickness="1" Padding="12,11">
     <Border.Effect><DropShadowEffect BlurRadius="22" ShadowDepth="5" Opacity="0.24"/></Border.Effect>
     <DockPanel LastChildFill="True">
      <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
@@ -395,8 +395,8 @@
        ToolTip="关闭步骤选择" Margin="12,0,0,0"/>
       <StackPanel>
        <TextBlock Text="添加测试步骤" FontSize="17" FontWeight="SemiBold" Foreground="#2F3C4B"/>
-       <TextBlock x:Name="PaletteHint" Text="单击选项即插入，随后打开属性浮窗"
-        FontSize="14" Foreground="#64758C" Margin="0,5,0,0"/>
+       <TextBlock x:Name="PaletteHint" Visibility="Collapsed"
+        Text="添加到当前步骤位置" FontSize="12"/>
       </StackPanel>
      </DockPanel>
      <Border DockPanel.Dock="Top" Background="#F8FAF9" BorderBrush="#DCE5E2"
@@ -410,14 +410,10 @@
         VerticalContentAlignment="Center" Padding="5,3"/>
       </DockPanel>
      </Border>
-     <DockPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
-      <Button DockPanel.Dock="Right" Content="关闭" Click="PaletteCancel_Click"
-       MinWidth="72" HorizontalAlignment="Right"/>
-      <TextBlock Text="单击即插入列表、打开属性浮窗  ·  Enter 添加  ·  Esc 关闭"
-       Foreground="#7A8EA6" FontSize="14" VerticalAlignment="Center"/>
-     </DockPanel>
+     <TextBlock DockPanel.Dock="Bottom" Text="Enter 添加  ·  Esc 关闭"
+      Foreground="#7A8EA6" FontSize="11" Margin="0,8,0,0"/>
      <DockPanel>
-      <ListBox x:Name="PaletteCategories" DockPanel.Dock="Top" Height="42"
+      <ListBox x:Name="PaletteCategories" DockPanel.Dock="Top" Height="36"
        SelectionChanged="PaletteCategory_Changed" Background="#F6F8FA"
        BorderBrush="#E1E7E5" BorderThickness="1" FontSize="14"
        ScrollViewer.HorizontalScrollBarVisibility="Auto"
@@ -440,7 +436,7 @@
         </Style>
        </ListBox.ItemContainerStyle>
       </ListBox>
-      <ListBox x:Name="PaletteList" MinHeight="165" MaxHeight="320"
+      <ListBox x:Name="PaletteList" MinHeight="165" MaxHeight="390"
        MouseDoubleClick="PaletteList_DoubleClick" KeyDown="PaletteList_KeyDown"
        PreviewMouseLeftButtonUp="PaletteList_PreviewMouseLeftButtonUp"
        ScrollViewer.HorizontalScrollBarVisibility="Disabled"
@@ -451,9 +447,9 @@
        </ListBox.ItemsPanel>
        <ListBox.ItemContainerStyle>
         <Style TargetType="{x:Type ListBoxItem}">
-         <Setter Property="MinHeight" Value="49"/>
-         <Setter Property="Margin" Value="4,3"/>
-         <Setter Property="Padding" Value="10,8"/>
+         <Setter Property="MinHeight" Value="38"/>
+         <Setter Property="Margin" Value="3,2"/>
+         <Setter Property="Padding" Value="10,7"/>
          <Setter Property="Background" Value="#FBFCFD"/>
          <Setter Property="BorderBrush" Value="#DEE6E8"/>
          <Setter Property="BorderThickness" Value="1"/>
@@ -472,12 +468,9 @@
        </ListBox.ItemContainerStyle>
        <ListBox.ItemTemplate>
         <DataTemplate>
-         <StackPanel>
-          <TextBlock Text="{Binding Title}" FontWeight="SemiBold"
-           Foreground="#273B50" FontSize="12" TextTrimming="CharacterEllipsis"/>
-          <TextBlock Text="{Binding Description}" FontSize="12"
-           Foreground="#6B7F94" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"/>
-         </StackPanel>
+         <TextBlock Text="{Binding Title}" ToolTip="{Binding Description}"
+          FontWeight="SemiBold" Foreground="#273B50" FontSize="13"
+          VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
         </DataTemplate>
        </ListBox.ItemTemplate>
       </ListBox>
