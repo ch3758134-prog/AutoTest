@@ -275,7 +275,9 @@ public partial class DbcWorkbenchView : UserControl
     private void Overlay_Backdrop(object sender, MouseButtonEventArgs e)
     {
         if (!ReferenceEquals(e.OriginalSource, PropertyOverlay)) return;
-        // Explicit Apply/Cancel owns the transaction; outside clicks never commit.
+        // Commit valid notes/enumeration edits on outside click; invalid input
+        // stays visible with an inline error and never reaches the DBC file.
+        FinishOverlay();
         e.Handled = true;
     }
     private void FinishOverlay_Click(object sender, RoutedEventArgs e) => FinishOverlay();
