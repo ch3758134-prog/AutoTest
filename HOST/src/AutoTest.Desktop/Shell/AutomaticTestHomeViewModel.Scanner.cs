@@ -35,7 +35,8 @@ public sealed partial class AutomaticTestHomeViewModel
     }
 
     private void OnCompleteBarcodeReceived(string raw) =>
-        OnUi(() => { if (_isProductionWorkspace() && !IsOperatorRunning) _ = InspectRealBarcodeAsync(raw); });
+        OnUi(() => { if (!IsOperatorRunning && (_isProductionWorkspace() || _engineeringVerificationArmed))
+            _ = InspectRealBarcodeAsync(raw); });
 
     private static void OnUi(Action action)
     {
@@ -96,7 +97,8 @@ public sealed partial class AutomaticTestHomeViewModel
                 return;
             }
             if (revision != _scanRevision || !_scanner.IsConnected ||
-                !_isProductionWorkspace() || !ReferenceEquals(_plans.Current, plan)) return;
+                (!_isProductionWorkspace() && !_engineeringVerificationArmed) ||
+                !ReferenceEquals(_plans.Current, plan)) return;
             var identity = parsed.DutSerial;
             var repeated = string.Equals(_lastIdentity, identity,
                 StringComparison.Ordinal);
