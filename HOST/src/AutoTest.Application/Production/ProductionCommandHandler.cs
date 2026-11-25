@@ -63,8 +63,10 @@ public sealed class ProductionCommandHandler
             _startGate.Arm(confirmed.Value!.Run);
             LastStartSource = null;
             if (!autoStart) return Feedback("READY_FOR_START", Verdict.Inconclusive);
-            // Compatibility for legacy callers; operator scan flow must use
-            // autoStart=false and await an explicit START from either source.
+            // Legacy auto-start is only for explicit simulation contract tests.
+            // Never turn a REAL physical scan into a software START.
+            if (!confirmed.Value!.IsMock)
+                return Feedback("REAL_PRODUCTION_PHYSICAL_START_REQUIRED", Verdict.Inconclusive);
             return await StartPreparedInternalAsync(ProductionStartSource.Software, false, ct)
                 .ConfigureAwait(false);
         }
@@ -79,6 +81,11 @@ public sealed class ProductionCommandHandler
     {
         if (source != ProductionStartSource.Software)
             return Feedback("PHYSICAL_START_REQUIRES_VERIFIED_INPUT", Verdict.Inconclusive);
+        // Software START exists for isolated domain simulation and the
+        // separate engineering execution workflow, never as the formal
+        // physical station's START substitute.
+        if (_session.Job is { IsMock: false })
+            return Feedback("REAL_PRODUCTION_PHYSICAL_START_REQUIRED", Verdict.Inconclusive);
         if (Interlocked.CompareExchange(ref _handling, 1, 0) != 0)
             return Feedback("STATION_BUSY", Verdict.Inconclusive);
         try
@@ -97,6 +104,12 @@ public sealed class ProductionCommandHandler
     public async Task<ProductionCommandFeedback> PhysicalStartSignalAsync(bool pressed,
         CancellationToken ct)
     {
+        // No authenticated USB START-frame source exists in the firmware
+        // contract. A public bool could be forged by UI/test code. Until the
+        // physical adapter supplies a trusted, epoch-bound event, refuse this
+        // legacy entry point for all REAL stations.
+        if (_session.Job is { IsMock: false })
+            return Feedback("PHYSICAL_START_SOURCE_NOT_CONNECTED", Verdict.Inconclusive);
         if (_session.Job is not { } job || _session.State != ProductionState.Ready)
             return Feedback("RUN_NOT_READY", Verdict.Inconclusive);
         if (!pressed)
