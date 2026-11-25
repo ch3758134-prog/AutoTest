@@ -242,12 +242,12 @@
        Margin="0,0,0,11">
        <StackPanel>
         <TextBlock Text="当前用例" Style="{StaticResource OperatorCaption}"/>
-        <TextBlock Text="{Binding OperatorCurrentCase}" Style="{StaticResource OperatorFact}"
+        <TextBlock Text="{Binding ProductionCurrentCase}" Style="{StaticResource OperatorFact}"
          FontWeight="SemiBold" Margin="0,3,0,7"/>
         <TextBlock Text="当前步骤" Style="{StaticResource OperatorCaption}"/>
-        <TextBlock Text="{Binding OperatorCurrentStep}" Style="{StaticResource OperatorFact}"
+        <TextBlock Text="{Binding ProductionCurrentStep}" Style="{StaticResource OperatorFact}"
          Margin="0,3,0,4"/>
-        <TextBlock Text="{Binding OperatorStepStatus}" FontWeight="SemiBold"
+        <TextBlock Text="{Binding ProductionStepStatus}" FontWeight="SemiBold"
          Foreground="#2F668F" FontSize="12" TextWrapping="Wrap"/>
        </StackPanel>
       </Border>
@@ -258,16 +258,16 @@
        </Grid.ColumnDefinitions>
        <StackPanel Margin="0,0,8,0">
         <TextBlock Text="实际测量" Style="{StaticResource OperatorCaption}"/>
-        <TextBlock Text="{Binding OperatorActual}" FontSize="16"
+        <TextBlock Text="{Binding ProductionMeasuredValue}" FontSize="16"
          FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,4,0,0"/>
        </StackPanel>
        <StackPanel Grid.Column="1">
         <TextBlock Text="期望 / 判据" Style="{StaticResource OperatorCaption}"/>
-        <TextBlock Text="{Binding OperatorExpected}" FontSize="14"
+        <TextBlock Text="{Binding ProductionExpectedValue}" FontSize="14"
          TextWrapping="Wrap" Margin="0,4,0,0"/>
        </StackPanel>
       </Grid>
-      <TextBlock Text="{Binding OperatorFailure}" Foreground="#A12D27"
+      <TextBlock Text="{Binding ProductionFailure}" Foreground="#A12D27"
        TextWrapping="Wrap" FontSize="13" Margin="0,0,0,9"/>
       <Border Height="1" Background="#E5EBF1" Margin="0,4,0,11"/>
       <TextBlock Text="工位阶段" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,9"/>
@@ -288,13 +288,13 @@
        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding PhysicalStartStatus}"
         Foreground="#A3651D" TextWrapping="Wrap" Margin="0,0,0,7"/>
        <TextBlock Grid.Row="3" Text="烧录" Style="{StaticResource OperatorCaption}" Margin="0,0,0,7"/>
-       <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding OperatorFlashState}"
+       <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding ProductionFlashState}"
         Foreground="#53687B" TextWrapping="Wrap" Margin="0,0,0,7"/>
        <TextBlock Grid.Row="4" Text="TEST" Style="{StaticResource OperatorCaption}" Margin="0,0,0,7"/>
-       <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding OperatorRunState}"
+       <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding ProductionTestState}"
         Foreground="#53687B" TextWrapping="Wrap" Margin="0,0,0,7"/>
        <TextBlock Grid.Row="5" Text="记录" Style="{StaticResource OperatorCaption}"/>
-       <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding OperatorRecordState}"
+       <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding ProductionRecordState}"
         Foreground="#53687B" TextWrapping="Wrap"/>
       </Grid>
       <Border Height="1" Background="#E5EBF1" Margin="0,13,0,10"/>
@@ -304,17 +304,6 @@
        FontSize="12" TextWrapping="Wrap" Margin="0,7,0,3"/>
       <TextBlock Text="{Binding StartRequestStatus}" Foreground="#A3651D"
        FontSize="12" TextWrapping="Wrap"/>
-      <Expander Header="真实工程验证事件（非生产记录）"
-       Margin="0,14,0,0" IsExpanded="False">
-       <ItemsControl ItemsSource="{Binding OperatorEvents}" Margin="0,8,0,0">
-        <ItemsControl.ItemTemplate>
-         <DataTemplate>
-          <TextBlock Text="{Binding}" FontSize="11" Foreground="#5D7184"
-           TextWrapping="Wrap" Margin="0,2"/>
-         </DataTemplate>
-        </ItemsControl.ItemTemplate>
-       </ItemsControl>
-      </Expander>
      </StackPanel>
     </ScrollViewer>
    </Border>
