@@ -38,12 +38,16 @@ public sealed class TestProjectPackageRow : BindableBase
     public string Sha256 { get => _sha256; private set => SetProperty(ref _sha256, value); }
     public int? LatestRevision => _latestRevision;
     public string? LatestSha256 => _latestSha256;
-    public bool CanAdoptLatest => _latestRevision is > 0 &&
-        _latestRevision >= Revision && !string.IsNullOrWhiteSpace(_latestSha256) &&
-        (_latestRevision > Revision ||
-         !string.Equals(_latestSha256, Sha256, StringComparison.OrdinalIgnoreCase));
+    // Only strictly newer revisions can be adopted by the formal project.
+    // An unchanged revision with a different SHA256 is a broken provenance.
+    public bool CanAdoptLatest => _latestRevision > Revision &&
+        !string.IsNullOrWhiteSpace(_latestSha256);
+    public bool HasReferenceMismatch => _latestRevision is null ||
+        !MatchesPinnedRevision(_latestRevision.Value, _latestSha256);
     public string PinStatus => _latestRevision is null ? "资源已移除" :
         _latestRevision < Revision ? "资源修订倒退 · 禁止自动回退" :
+        _latestRevision == Revision && !MatchesPinnedRevision(_latestRevision.Value, _latestSha256)
+            ? "同修订 SHA256 不一致 · 需修复" :
         CanAdoptLatest ? "绑定 r" + Revision + " → 当前 r" + _latestRevision + " · 待确认" : "修订一致";
     public string PinDetail => _latestRevision is null ? "当前工程已找不到此 TEST 定义" :
         "项目固定 r" + Revision + " / " + Sha256 +
@@ -64,6 +68,7 @@ public sealed class TestProjectPackageRow : BindableBase
         RaisePropertyChanged(nameof(LatestRevision));
         RaisePropertyChanged(nameof(LatestSha256));
         RaisePropertyChanged(nameof(CanAdoptLatest));
+        RaisePropertyChanged(nameof(HasReferenceMismatch));
         RaisePropertyChanged(nameof(PinStatus));
         RaisePropertyChanged(nameof(PinDetail));
     }
@@ -75,6 +80,7 @@ public sealed class TestProjectPackageRow : BindableBase
         Revision = revision;
         Sha256 = _latestSha256;
         RaisePropertyChanged(nameof(CanAdoptLatest));
+        RaisePropertyChanged(nameof(HasReferenceMismatch));
         RaisePropertyChanged(nameof(PinStatus));
         RaisePropertyChanged(nameof(PinDetail));
     }
@@ -316,7 +322,8 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         if (e.PropertyName is nameof(TestProjectPackageRow.StepCountLabel) or
             nameof(TestProjectPackageRow.PinStatus) or
             nameof(TestProjectPackageRow.PinDetail) or
-            nameof(TestProjectPackageRow.CanAdoptLatest))
+            nameof(TestProjectPackageRow.CanAdoptLatest) or
+            nameof(TestProjectPackageRow.HasReferenceMismatch))
             return;
         if (!IsBusy) ResetFrozenSelection();
         if (e.PropertyName == nameof(TestProjectPackageRow.RunSelected))
@@ -594,7 +601,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         _ = RefreshStepCountsAsync();
     }
 
-    public bool HasStaleReferences => Packages.Any(x => x.CanAdoptLatest);
+    public bool HasStaleReferences => Packages.Any(x => x.HasReferenceMismatch);
 
     public AssetEntry? CurrentAssetFor(TestProjectPackageRow row) =>
         _workspace.Current?.Definition.Assets.FirstOrDefault(x =>
