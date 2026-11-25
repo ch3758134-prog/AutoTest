@@ -600,7 +600,45 @@ public sealed class TestEditorViewModel : BindableBase
         {
             if (!_inspectorAdding && _selectedItem.Step is { } original)
             {
-                _transaction.ReplaceWithMapping(original.Id, result.Step, result.Mapping);
+                var existing = result.Mapping is null ? null :
+                    _transaction.Current.Mappings.FirstOrDefault(x =>
+                        string.Equals(x.Name, result.Mapping.Name,
+                            StringComparison.OrdinalIgnoreCase));
+                var approvedRebind = existing is not null && existing != result.Mapping;
+                if (approvedRebind)
+                {
+                    if (!StepEditTransaction.CanRebindSamePhysicalIdentity(
+                            existing!, result.Mapping!))
+                    {
+                        StatusMessage = "当前 DBC 操作对象与旧绑定不是同一硬件身份。" +
+                            "本次未改动旧映射；请新建独立绑定，不能自动兼容不同 CAN ID 或资源。";
+                        return false;
+                    }
+                    var affected = _transaction.Current.Walk().Count(step =>
+                        string.Equals(step.Properties.GetValueOrDefault("target",
+                            step.Properties.GetValueOrDefault("profile", "")),
+                            result.Mapping!.Name, StringComparison.OrdinalIgnoreCase));
+                    var oldHash = existing!.AssetSha256;
+                    var newHash = result.Mapping!.AssetSha256;
+                    if (!_dialogs.Confirm(
+                            "此 CAN/DBC 操作对象仍使用旧修订，不能直接保存以免静默更换生产资源。" +
+                            "\n\n操作对象：" + result.Mapping.Name +
+                            "\n原固定版本：r" + existing.AssetRevision + " / " +
+                            oldHash[..Math.Min(oldHash.Length, 12)] +
+                            "\n新选中版本：r" + result.Mapping.AssetRevision + " / " +
+                            newHash[..Math.Min(newHash.Length, 12)] +
+                            "\n受影响步骤：" + affected +
+                            "\n\n是否明确将这个操作对象的所有引用更新到新修订？" +
+                            "\n这是一笔可撤销的工程编辑事务；保存工程后仍须进行全量预检。"))
+                    {
+                        StatusMessage = "已取消重新绑定，旧修订与所有步骤均保持不变。";
+                        return false;
+                    }
+                    _transaction.ReplaceWithExplicitRebind(
+                        original.Id, result.Step, result.Mapping);
+                }
+                else
+                    _transaction.ReplaceWithMapping(original.Id, result.Step, result.Mapping);
                 if (_newDraftId == original.Id)
                 {
                     _newDraftId = null;
@@ -610,7 +648,9 @@ public sealed class TestEditorViewModel : BindableBase
                 }
                 RefreshMappings();
                 RefreshTree(original.Id);
-                StatusMessage = "步骤属性已更新。";
+                StatusMessage = approvedRebind
+                    ? "已明确更新同名 DBC 操作对象的固定修订；请核对全部受影响步骤并执行运行前检查。"
+                    : "步骤属性已更新。";
             }
             else
             {
