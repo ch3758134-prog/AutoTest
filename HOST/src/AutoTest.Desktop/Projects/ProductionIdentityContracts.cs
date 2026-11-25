@@ -195,7 +195,10 @@ public sealed record ProductionFixtureConfiguration(
 
     public IReadOnlyList<string> PhysicalBlockers()
     {
-        var issues = new List<string>();
+        var issues = new List<string>
+        {
+            "工位输入配置只登记来源，不构成机械到位、实体 START 或互锁的实测证据；正式生产需可信固件/传感器适配和现场确认"
+        };
         if (StartInput == "NOT_WIRED") issues.Add("实体 START 输入未接入并验证");
         if (StopInput == "NOT_WIRED") issues.Add("实体 STOP 输入未接入并验证");
         if (InterlockInput == "NOT_WIRED") issues.Add("安全互锁输入未接入并验证");

@@ -240,13 +240,16 @@ public sealed partial class MainWindowViewModel
 
             try
             {
-                var expectation = project.Definition.BarcodeExpectation;
-                expectation?.Validate(project.Definition.EcuModelCode);
-                scan = expectation is null
-                    ? "尚未保存工程扫码期望；可离线编辑，不需要连接扫码枪"
-                    : "工程扫码期望已保存 · " + expectation.Fields.Length +
-                      " 个字段；型号与硬件版本精确匹配 · " +
-                      (_scannerWorkbench.IsConnected ? "串口已连接" : "串口未连接（不影响编辑）");
+                var published = await StationProductionConfigurationStore.LoadPublishedAsync();
+                var draft = await StationProductionConfigurationStore.LoadDraftAsync();
+                scan = published is null
+                    ? "工位编码配置草稿：" + draft.Rules.Count + " 条规则；尚未发布。" +
+                      "请在“生产准备”中绑定型号与工程、批量试扫并发布。"
+                    : "已发布工位编码规则 " +
+                      published.Configuration.Rules.Count(x => x.Enabled) +
+                      " 条，关联完整工程 " + published.Projects.Count + " 个；" +
+                      (_scannerWorkbench.IsConnected ? "真实 COM 已连接" :
+                       "COM 未连接（不妨碍离线试扫）。");
             }
             catch (Exception error) when (error is IOException or InvalidDataException or
                 UnauthorizedAccessException or ArgumentException or FormatException or

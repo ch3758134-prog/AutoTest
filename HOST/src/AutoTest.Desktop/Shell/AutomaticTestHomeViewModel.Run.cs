@@ -475,6 +475,23 @@ public sealed partial class AutomaticTestHomeViewModel
             Snapshot();
             OperatorRecordState = "已创建工程验证过程记录";
             AddOperatorEvent("软件 START 已明确确认；本次结果不会作为生产放行");
+            // Any published code/product change invalidates the accepted
+            // identity BEFORE the first fixture, FLASH, or TEST physical write.
+            var currentPublication = await StationProductionConfigurationStore.LoadPublishedAsync(ct)
+                ?? throw new InvalidDataException("当前工位正式编码发布已撤销。");
+            if (currentPublication.PublicationId != scan.PublicationId ||
+                !string.Equals(currentPublication.ConfigurationSha256,
+                    scan.PublishedConfigurationSha256, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("扫码后生产发布配置已被修改；必须重新扫码。");
+            var rechecked = ProductionIdentityResolver.Resolve(
+                currentPublication, scan.RawBarcode);
+            if (!rechecked.Accepted || rechecked.RuleId != scan.BarcodeRuleId ||
+                rechecked.RuleRevision != scan.BarcodeRuleRevision ||
+                rechecked.Model != scan.ModelCode || rechecked.Serial != scan.DutSerial ||
+                rechecked.Hardware != (scan.HardwareCode ?? "") ||
+                rechecked.Project!.ProjectId != frozen.ProjectId)
+                throw new InvalidDataException("扫码身份的原始规则、型号或已发布工程已改变。");
+            await StationProductionConfigurationStore.VerifyProductAsync(rechecked.Project, ct);
             // Only this engineer-only, explicitly armed software verification
             // may deliberately use the saved draft rather than a published
             // production release. Production preflight defaults to published.
