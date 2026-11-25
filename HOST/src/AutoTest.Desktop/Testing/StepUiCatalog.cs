@@ -98,7 +98,7 @@ public static class StepUiCatalog
         "left" => "左操作数（$变量 或数值）",
         "right" => "右操作数（$变量 或数值）",
         "captureKey" => "采集名称",
-        "durationMs" => "持续时间（毫秒；0 表示运行结束时停止）",
+        "durationMs" => "周期持续时长（ms；0＝直到显式停止或运行作用域结束）",
         "periodMs" => "CAN 发送周期（毫秒；0 表示单次）",
         "reference" => "已建立的参考波形名称（非普通证据）",
         "dbcMessage" => "CAN 报文",

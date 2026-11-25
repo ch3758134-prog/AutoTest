@@ -44,8 +44,8 @@ public sealed partial class RealTestWorkbenchService
                     throw new InvalidDataException(source.Name + " 的运行前检查失败：" +
                         string.Join("；", plan.Diagnostics));
                 var doc = plan.RestoreDocument();
-                if (pinned.Any(x => x.Id == doc.Id))
-                    throw new InvalidDataException("整组存在重复的 TEST 文档身份。");
+                // The project may intentionally invoke one TEST asset more than once;
+                // separate CaseAttempt/RunIds still identify each invocation.
                 if (ConfiguredRealTestFlashPort.FreezeJobs(
                     doc, project.RootDirectory).Count > 0)
                     throw new InvalidDataException("连续 TEST 不能包含互斥的 FLASH 步骤；" +
@@ -156,6 +156,21 @@ public sealed partial class RealTestWorkbenchService
         {
             ValidateCase(doc, _owner.Prepare(doc).Fingerprint,
                 _owner._hardware.CurrentStationEpoch);
+            // Re-verify real on-disk project closure before each new case.
+            // An out-of-process DBC/TEST edit must invalidate this session even
+            // if the UI did not publish a CurrentChanged event.
+            var bytes = await File.ReadAllBytesAsync(_project.ManifestPath, ct);
+            if (!string.Equals(Convert.ToHexString(SHA256.HashData(bytes)),
+                _project.ManifestSha256, StringComparison.OrdinalIgnoreCase))
+                throw new IOException("整组运行期间工程清单被外部修改。");
+            var actual = await AutomaticTestResourceContract.ResolveAsync(_project, ct);
+            actual.RequireExecutable();
+            if (actual.Cases.Count != _pinnedCases.Length ||
+                actual.Cases.Where((entry, i) =>
+                    entry.Program.Id != _pinnedCases[i].Id ||
+                    !string.Equals(_owner.Prepare(entry.Program).Fingerprint,
+                        _pinnedCases[i].Sha, StringComparison.OrdinalIgnoreCase)).Any())
+                throw new IOException("整组用例或 DBC/波形/TEST 资源版本在运行中发生变化。");
             await Actions.CheckHealthAsync(ct);
             var result = await _owner.ExecuteAsync(doc, "", "", _dut, ct,
                 projectSession: this);
@@ -194,7 +209,10 @@ public sealed partial class RealTestWorkbenchService
                     CompletedCases = _next, PlannedCases = _pinnedCases.Length,
                     PinnedCases = _pinnedCases.Select(x => new
                         { TestDocumentId = x.Id.ToString(), Fingerprint = x.Sha }).ToArray(),
-                    Cases = _cases.ToArray(), Utc = DateTimeOffset.UtcNow
+                    Cases = _cases.ToArray(),
+                    PeriodicCan = Actions.PeriodicEvidenceSnapshot(),
+                    PeriodicEvidenceType = "HOST_REQUEST_USB_ACK_NOT_ECU_RX",
+                    Utc = DateTimeOffset.UtcNow
                 });
                 try
                 {

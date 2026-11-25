@@ -98,6 +98,8 @@ public sealed partial class ConfiguredStationActionPort
 
     private PeriodicTracker BeginPeriodicEvidence(CanFrame frame, int period, int duration)
     {
+        if (_periodicHistory.Count >= 4000)
+            throw new InvalidOperationException("周期 CAN 任务创建/替换次数超出证据容量；终止整组，不得丢弃追溯记录。");
         var meter = new PeriodicTracker(frame, period, duration,
             _currentCaseId, _currentStepId, _currentStepOccurrence);
         _periodicHistory.Add(meter);
