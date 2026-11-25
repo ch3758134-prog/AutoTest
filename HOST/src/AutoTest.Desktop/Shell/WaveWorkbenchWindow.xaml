@@ -32,74 +32,87 @@
  </Window.Resources>
  <Grid>
   <Grid.RowDefinitions>
-   <RowDefinition Height="65"/>
-   <RowDefinition Height="63"/>
+   <RowDefinition Height="Auto"/>
+   <RowDefinition Height="Auto"/>
    <RowDefinition Height="*"/>
    <RowDefinition Height="36"/>
   </Grid.RowDefinitions>
-  <Border Background="White" BorderBrush="#CBD5E1" BorderThickness="0,0,0,1">
-   <DockPanel Margin="18,9">
-    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-     <TextBlock Text="{Binding ToolUsbStatus}" FontSize="12" Foreground="#43556A"
-      VerticalAlignment="Center" Margin="0,0,10,0" MaxWidth="250" TextTrimming="CharacterEllipsis"/>
-     <Button Content="连接 USB" Command="{Binding ConnectToolUsbCommand}" Style="{StaticResource WaveButton}"/>
-     <Button Content="断开 USB" Command="{Binding DisconnectToolUsbCommand}" Style="{StaticResource WaveButton}"/>
-     <Button Content="刷新历史记录" Command="{Binding RefreshCommand}" Style="{StaticResource WaveButton}"/>
-     <Menu VerticalAlignment="Center" Background="White" Foreground="#253C54" Margin="0,0,7,0">
-      <MenuItem Header="波形来源">
+  <Border Grid.Row="0" Background="White" BorderBrush="#CBD5E1"
+   BorderThickness="0,0,0,1" Padding="14,7">
+   <Grid>
+    <Grid.RowDefinitions>
+     <RowDefinition Height="Auto"/>
+     <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+    <DockPanel Grid.Row="0" LastChildFill="True">
+     <TextBlock DockPanel.Dock="Right" Text="{Binding ToolUsbStatus}" FontSize="12"
+      Foreground="#52677D" VerticalAlignment="Center" MaxWidth="280"
+      TextTrimming="CharacterEllipsis" Margin="9,0,0,0"
+      ToolTip="{Binding ToolUsbStatus}"/>
+     <StackPanel>
+      <TextBlock Text="波形分析" FontSize="19" FontWeight="SemiBold"
+       Foreground="#1E3E5B"/>
+      <TextBlock Text="{Binding SourceDescription}" FontSize="11" Foreground="#5B7188"
+       TextTrimming="CharacterEllipsis" ToolTip="{Binding SourceDescription}"/>
+     </StackPanel>
+    </DockPanel>
+    <WrapPanel Grid.Row="1" VerticalAlignment="Center" Margin="0,6,0,0">
+     <Button Content="连接 USB" Command="{Binding ConnectToolUsbCommand}"
+      Style="{StaticResource WaveButton}"/>
+     <Button Content="断开" Command="{Binding DisconnectToolUsbCommand}"
+      Style="{StaticResource WaveButton}"/>
+     <Menu Background="White" VerticalAlignment="Center" Margin="0,0,7,0">
+      <MenuItem Header="波形来源 ▾">
        <MenuItem Header="打开独立波形目录…" Click="OpenWaveFolder_Click"/>
-       <MenuItem Header="使用当前工程波形" IsEnabled="{Binding HasEcuProject}" Click="UseProjectWaveSource_Click"/>
+       <MenuItem Header="使用当前工程波形"
+        IsEnabled="{Binding HasEcuProject}" Click="UseProjectWaveSource_Click"/>
       </MenuItem>
      </Menu>
-     <Button Content="波形判定配置" Click="OpenConfiguration_Click"
+     <Button Content="刷新记录" Command="{Binding RefreshCommand}"
+      Style="{StaticResource WaveButton}"/>
+     <Button Content="判定配置" Click="OpenConfiguration_Click"
       IsEnabled="{Binding CanEditProjectWaveSettings}"
-      Style="{StaticResource WaveButton}" ToolTip="编辑 TEST 使用的参考、容差与判定条件"/>
-    </StackPanel>
-    <StackPanel>
-     <TextBlock Text="ECU 信号波形工作台" FontWeight="Bold" FontSize="21" Foreground="#173A59"/>
-     <TextBlock Text="{Binding SourceDescription}" FontSize="11" Foreground="#52677D"
-      Margin="0,3,0,0" MaxWidth="400" TextTrimming="CharacterEllipsis"
-      ToolTip="{Binding SourceDescription}"/>
-    </StackPanel>
-   </DockPanel>
+      Style="{StaticResource WaveButton}"
+      ToolTip="编辑工程中的 TEST 波形判定条件"/>
+    </WrapPanel>
+   </Grid>
   </Border>
-  <Border Grid.Row="1" Background="#F9FBFD" BorderBrush="#CBD5E1" BorderThickness="0,0,0,1">
-   <DockPanel Margin="14,11" LastChildFill="True">
-    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-     <TextBlock Text="记录时长" Style="{StaticResource WaveLabel}" Margin="12,0,6,0"/>
-     <ComboBox Width="109" Height="35" ItemsSource="{Binding DurationChoices}"
-      DisplayMemberPath="Label"
-      SelectedItem="{Binding SelectedDuration,Mode=TwoWay}"
-      ToolTip="手动停止最长可记录 60 分钟；其他选项到时自动保存证据"/>
-     <TextBlock Text="时间窗" Style="{StaticResource WaveLabel}" Margin="0,0,6,0"/>
-     <ComboBox Width="89" Height="35" ItemsSource="{Binding WindowChoices}"
-      DisplayMemberPath="Label"
-      SelectedItem="{Binding SelectedWindow,Mode=TwoWay}"
-      ToolTip="全范围显示所有样本；其他选择可以前后浏览"/>
-     <Button Content="◀" Command="{Binding EarlierWindowCommand}"
-      MinHeight="35" Margin="7,0,0,0" Padding="9,4"
-      ToolTip="时间轴向前浏览半个时间窗"/>
-     <Button Content="▶" Command="{Binding LaterWindowCommand}"
-      MinHeight="35" Margin="4,0,0,0" Padding="9,4"
-      ToolTip="时间轴向后浏览半个时间窗"/>
-     <Button Content="最新" Command="{Binding LatestWindowCommand}"
-      MinHeight="35" Margin="4,0,0,0" Padding="8,4"
-      ToolTip="回到最新的信号时间窗口"/>
-
-    </StackPanel>
-    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-     <Button Content="开始观察" Command="{Binding StartObserveCommand}" Style="{StaticResource AtPrimaryButton}"
-      MinHeight="36" Padding="14,6" Margin="0,0,7,0"
-      ToolTip="持续观察所选 DBC 信号；并不会自动保存为测试证据"/>
-     <Button Content="停止观察" Command="{Binding StopObserveCommand}" Style="{StaticResource WaveButton}"/>
-     <Border Background="#D9E4EE" Width="1" Margin="3,0,10,0"/>
-     <Button Content="开始记录" Command="{Binding StartCaptureCommand}" Style="{StaticResource WaveButton}"
-      ToolTip="同时记录已选择的所有信号；每条信号分别保存真实、可验证的采样证据"/>
-     <Button Content="停止记录" Command="{Binding StopCaptureCommand}" Style="{StaticResource WaveButton}"/>
+  <Border Grid.Row="1" Background="#FAFBFD" BorderBrush="#CBD5E1"
+   BorderThickness="0,0,0,1" Padding="12,7">
+   <Grid>
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <WrapPanel Grid.Row="0" VerticalAlignment="Center">
+     <Button Content="开始观察" Command="{Binding StartObserveCommand}"
+      Style="{StaticResource AtPrimaryButton}" MinHeight="33" Padding="12,5"
+      Margin="0,0,7,0" ToolTip="观察真实接收信号，不自动保存为证据"/>
+     <Button Content="停止观察" Command="{Binding StopObserveCommand}"
+      Style="{StaticResource WaveButton}"/>
+     <Button Content="开始记录" Command="{Binding StartCaptureCommand}"
+      Style="{StaticResource WaveButton}" ToolTip="采集真实时间序列并生成证据"/>
+     <Button Content="停止记录" Command="{Binding StopCaptureCommand}"
+      Style="{StaticResource WaveButton}"/>
      <Button Content="{Binding PauseLabel}" Command="{Binding PausePreviewCommand}"
-      Style="{StaticResource WaveButton}" ToolTip="仅暂停画面；原始采集不会被暂停"/>
-    </StackPanel>
-   </DockPanel>
+      Style="{StaticResource WaveButton}" ToolTip="只暂停画面，不停止证据采集"/>
+    </WrapPanel>
+    <WrapPanel Grid.Row="1" VerticalAlignment="Center" Margin="0,4,0,0">
+     <TextBlock Text="记录时长" Style="{StaticResource WaveLabel}" Margin="0,0,5,0"/>
+     <ComboBox Width="118" Height="31" ItemsSource="{Binding DurationChoices}"
+      DisplayMemberPath="Label" SelectedItem="{Binding SelectedDuration,Mode=TwoWay}"
+      ToolTip="到时自动保存证据；手动停止最长 60 分钟" Margin="0,0,14,0"/>
+     <TextBlock Text="时间窗" Style="{StaticResource WaveLabel}" Margin="0,0,5,0"/>
+     <ComboBox Width="104" Height="31" ItemsSource="{Binding WindowChoices}"
+      DisplayMemberPath="Label" SelectedItem="{Binding SelectedWindow,Mode=TwoWay}"
+      Margin="0,0,9,0"/>
+     <Button Content="◀" Command="{Binding EarlierWindowCommand}"
+      MinHeight="30" Padding="8,3" Margin="0,0,5,0"
+      ToolTip="向前浏览半个时间窗"/>
+     <Button Content="▶" Command="{Binding LaterWindowCommand}"
+      MinHeight="30" Padding="8,3" Margin="0,0,5,0"
+      ToolTip="向后浏览半个时间窗"/>
+     <Button Content="最新" Command="{Binding LatestWindowCommand}"
+      MinHeight="30" Padding="9,3" ToolTip="回到最新样本"/>
+    </WrapPanel>
+   </Grid>
   </Border>
   <Grid Grid.Row="2" Margin="12,12,12,10">
    <Grid.ColumnDefinitions>
