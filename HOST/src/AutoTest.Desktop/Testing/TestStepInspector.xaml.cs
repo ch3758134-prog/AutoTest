@@ -221,13 +221,13 @@ public partial class TestStepInspector : UserControl
     }
 
     public void ShowPendingWarning() =>
-        ErrorText.Text = "请先应用或取消当前属性浮窗，再执行其他操作。";
+        ErrorText.Text = "请完成当前字段；有效修改将自动保存，输入有误时会保留本窗口。";
 
     private void MarkDraftChanged()
     {
         if (!_trackEdits) return;
         HasPendingEdits = true;
-        ErrorText.Text = "属性已修改，尚未应用到测试程序。";
+        ErrorText.Text = "";
     }
 
     private void Cancel_Click(object sender, RoutedEventArgs e)
