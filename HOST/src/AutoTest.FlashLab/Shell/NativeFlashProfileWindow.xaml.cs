@@ -305,20 +305,33 @@ public partial class NativeFlashProfileWindow : Window
 
     private async void Preview_Click(object sender, RoutedEventArgs e)
     {
-        if (!await SaveAsync()) return;
+        if (_previewBusy || _importBusy || _initializing || _closing) return;
+        _previewBusy = true;
+        SetFieldsEditable(false);
         try
         {
-            var source = (await NativeFlashProfileStore.LoadAsync(_root))!;
-            var job = await Task.Run(() => NativeFlashJobBuilder.Freeze(source.Profile, _root));
+            // Saving, loading and freezing are one UI transaction. New edits
+            // cannot silently invalidate the displayed frozen firmware plan.
+            if (!await SaveAsync()) return;
+            var source = await NativeFlashProfileStore.LoadAsync(_root)
+                ?? throw new InvalidDataException("原生烧录配置尚未保存，无法生成冻结 Job。");
+            var job = await Task.Run(() =>
+                NativeFlashJobBuilder.Freeze(source.Profile, _root));
             JobDetailsLabel.Text = FormatFrozenJob(job);
             StatusLabel.Text = $"离线冻结成功：{job.Blocks.Length} 个块，" +
                 $"计划 {job.PlannedBytes:N0} 字节，任务 SHA {job.Fingerprint[..12]}…；没有发送任何 CAN。";
         }
         catch (Exception error) when (error is IOException or FormatException or InvalidDataException
-                                      or NotSupportedException or UnauthorizedAccessException or JsonException)
+                                      or NotSupportedException or UnauthorizedAccessException or
+                                      JsonException or ArgumentException)
         {
             JobDetailsLabel.Text = "未获得有效的冻结 Job：" + error.Message;
             StatusLabel.Text = "原生烧录预检拒绝：" + error.Message;
+        }
+        finally
+        {
+            _previewBusy = false;
+            SetFieldsEditable(!_loadFailure);
         }
     }
 
