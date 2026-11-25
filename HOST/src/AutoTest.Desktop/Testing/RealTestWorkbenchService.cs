@@ -21,13 +21,14 @@ namespace AutoTest.Desktop.Testing;
 /// No mock fallback. Real writes are permitted only after an operator enters the
 /// exact fingerprint confirmation for this prepared TEST snapshot.
 /// </summary>
-public sealed class RealTestWorkbenchService
+public sealed partial class RealTestWorkbenchService
 {
     private readonly HardwareConnectionService _hardware;
     private readonly ProjectWorkspaceService _projects;
     private readonly LiveDbcSignalService _signals;
     private readonly SemaphoreSlim _station = new(1, 1);
     private RealRunCoordinator? _running;
+    private ProjectExecutionSession? _projectSession;
 
     public RealTestWorkbenchService(HardwareConnectionService hardware,
         ProjectWorkspaceService projects, LiveDbcSignalService signals)
@@ -37,7 +38,7 @@ public sealed class RealTestWorkbenchService
         _signals = signals;
     }
 
-    public bool IsRunning => _running?.IsRunning ?? false;
+    public bool IsRunning => _projectSession is not null || (_running?.IsRunning ?? false);
     public bool IsHardwareConnected => _hardware.IsConnected;
     public string KeyRequestStatus => _hardware.KeyRequestStatus;
     public long ConnectedStationEpoch => _hardware.CurrentStationEpoch;
@@ -74,9 +75,10 @@ public sealed class RealTestWorkbenchService
 
     public async Task<RealRunResult> ExecuteAsync(TestDocument document, string confirmation,
         string flashConfirmation = "", string dutIdentity = "", CancellationToken ct = default,
-        bool isolatedStep = false)
+        bool isolatedStep = false, ProjectExecutionSession? projectSession = null)
     {
-        if (!await _station.WaitAsync(0, ct))
+        bool ownsStation = projectSession is null;
+        if (ownsStation && !await _station.WaitAsync(0, ct))
             throw new InvalidOperationException("Another test is already running.");
         ConfiguredStationActionPort? actions = null;
         RealRunEvidenceRecorder? evidence = null;
@@ -88,6 +90,7 @@ public sealed class RealTestWorkbenchService
                 throw new InvalidOperationException("真实测试要求 USB 主控已经连接并建立有效会话。");
             _hardware.RequireConfiguredEcuCanBitrate();
             var plan = Prepare(document);
+            projectSession?.ValidateCase(document, plan.Fingerprint, openingEpoch);
             if (!plan.Diagnostics.IsEmpty)
                 throw new InvalidOperationException(string.Join(Environment.NewLine, plan.Diagnostics));
             document = plan.RestoreDocument();
@@ -110,18 +113,19 @@ public sealed class RealTestWorkbenchService
                  dutIdentity.Any(char.IsControl)))
                 throw new InvalidDataException("ECU 编号如填写，必须是不含控制字符且无首尾空格的真实编号。");
             await _signals.BindAsync(mappings, ct);
-            actions = new ConfiguredStationActionPort(_hardware, _projects);
-            await actions.PrepareAsync(mappings, ct);
-            // Validate literal actions/DBC encoding before requesting physical
-            // consent; avoid discovering malformed frames after earlier steps
-            // have already changed the DUT.
-            actions.ValidateRunSteps(document);
+            actions = projectSession?.Actions ??
+                new ConfiguredStationActionPort(_hardware, _projects);
+            if (ownsStation)
+            {
+                await actions.PrepareAsync(mappings, ct);
+                actions.ValidateRunSteps(document);
+            }
             var wave = new ConfiguredWavePort(_projects, _signals);
             await wave.FreezeProfileReferencesAsync(mappings, ct);
             if (!_hardware.IsConnected ||
                 _hardware.CurrentStationEpoch != openingEpoch)
                 throw new IOException("测试预检期间主控会话已切换；拒绝使用旧授权执行。");
-            if (HasPhysicalWrites(document))
+            if (ownsStation && HasPhysicalWrites(document))
                 await actions.AuthorizeAsync(plan.Fingerprint, confirmation, mappings,
                     document, ct);
             if (!_hardware.IsConnected ||
@@ -135,6 +139,9 @@ public sealed class RealTestWorkbenchService
                 new ConfiguredRealTestFlashPort(_hardware, actions, document,
                     mappings, jobs, project.RootDirectory, plan.Fingerprint,
                     confirmation, flashConfirmation, evidence);
+            if (projectSession is not null && jobs.Count > 0)
+                throw new InvalidOperationException(
+                    "连续整组不允许在已授权 TEST 中嵌入互斥的 FLASH；必须使用项目级前置烧录。");
             var run = new RealRunCoordinator(_signals, actions, wave, flash);
             run.StepStarted += (step, name, phase) =>
             {
@@ -168,7 +175,8 @@ public sealed class RealTestWorkbenchService
             try { DevelopmentRunStarted?.Invoke(document.Id, document.Name); }
             catch { /* UI observer cannot veto execution after authorization. */ }
             var finished = await session.ExecuteAsync(run, plan,
-                Path.Combine(project.RootDirectory, "test-records", "reports"), ct);
+                Path.Combine(project.RootDirectory, "test-records", "reports"), ct,
+                retainProjectActuation: projectSession is not null);
             var summary = await reports.ExportSummaryAsync(finished.Result.Run, ct);
             var formalVerdict = summary.Header.Verdict switch
             {
@@ -177,6 +185,10 @@ public sealed class RealTestWorkbenchService
                 Verdict.Error => RealTestVerdict.Error,
                 _ => RealTestVerdict.Inconclusive
             };
+            if (projectSession is not null &&
+                finished.Result.Verdict == RealTestVerdict.CompletedNoAssertion &&
+                formalVerdict == RealTestVerdict.Inconclusive)
+                formalVerdict = RealTestVerdict.CompletedNoAssertion;
             var reported = finished.Result with
             {
                 Verdict = formalVerdict,
@@ -200,13 +212,16 @@ public sealed class RealTestWorkbenchService
             _running = null;
             evidence?.Dispose();
             // Guard against exceptions before the interpreter began its own finally.
-            if (actions is not null)
+            if (ownsStation)
             {
-                using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(6));
-                try { await actions.CleanupAsync(cleanup.Token); }
-                catch { /* Preserve the original run exception; device state may be unknown. */ }
+                if (actions is not null)
+                {
+                    using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(6));
+                    try { await actions.CleanupAsync(cleanup.Token); }
+                    catch { /* Preserve original run exception; device state may be unknown. */ }
+                }
+                _station.Release();
             }
-            _station.Release();
         }
     }
 
