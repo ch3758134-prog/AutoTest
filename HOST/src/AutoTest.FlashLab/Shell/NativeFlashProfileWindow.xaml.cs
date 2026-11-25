@@ -28,6 +28,20 @@ public partial class NativeFlashProfileWindow : Window
     private bool _initializing = true;
     private bool _closing;
     private bool _closeApproved;
+    private bool _importBusy;
+
+    private void SetFieldsEditable(bool enabled)
+    {
+        foreach (var input in new TextBox[]
+        {
+            AppTxBox, AppRxBox, BootTxBox, BootRxBox,
+            VersionIdBox, DiagnosticsIdBox, BootFeatureBox, AppFeatureBox,
+            StartBox, EndBox
+        }) input.IsEnabled = enabled;
+        BaudBox.IsEnabled = enabled;
+        FirmwareImportButton.IsEnabled = enabled;
+        SecurityImportButton.IsEnabled = enabled;
+    }
 
     public NativeFlashProfileWindow(string projectRoot, string? modelCode)
     {
@@ -49,6 +63,7 @@ public partial class NativeFlashProfileWindow : Window
     private async Task LoadAsync()
     {
         _initializing = true;
+        SetFieldsEditable(false);
         try
         {
             _saved = await NativeFlashProfileStore.EnsureHydEpbReferenceAsync(
@@ -85,7 +100,11 @@ public partial class NativeFlashProfileWindow : Window
             _saved = null;
             _loadFailure = true;
         }
-        finally { _initializing = false; }
+        finally
+        {
+            _initializing = false;
+            SetFieldsEditable(!_loadFailure);
+        }
     }
 
     private bool _loadFailure;
@@ -139,11 +158,12 @@ public partial class NativeFlashProfileWindow : Window
 
     private async Task<bool> SaveAsync()
     {
-        if (_loadFailure) return false;
+        if (_loadFailure || _importBusy) return false;
         // Wait for any in-flight auto-save. Do not mistake a concurrent save
         // for a failure when the user closes the window.
         await _saveGate.WaitAsync();
         _idleSave.Stop();
+        SetFieldsEditable(false);
         try
         {
             var next = ReadFields();
@@ -172,6 +192,7 @@ public partial class NativeFlashProfileWindow : Window
         }
         finally
         {
+            SetFieldsEditable(!_loadFailure && !_importBusy);
             _saveGate.Release();
         }
     }
