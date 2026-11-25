@@ -17,7 +17,7 @@ namespace AutoTest.Desktop.Hardware;
 /// Only read-only USB ping and CAN receiving are activated on connect.
 /// No mock fallback, automatic CAN transmit, or physical actuation.
 /// </summary>
-public sealed class HardwareConnectionService : IAsyncDisposable
+public sealed partial class HardwareConnectionService : IAsyncDisposable
 {
 
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
