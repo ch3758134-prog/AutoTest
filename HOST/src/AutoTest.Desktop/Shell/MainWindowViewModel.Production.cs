@@ -115,12 +115,15 @@ public sealed partial class MainWindowViewModel
     /// no implicit project/firmware fallback and no controller disconnect.</summary>
     private async Task<string> ActivatePublishedProjectAsync(ProductionPublishedProduct pin)
     {
-        if (!IsEngineerWorkspace || _realTest.IsRunning ||
-            _automaticTestHome.IsOperatorRunning ||
+        if (!IsEngineerWorkspace || _hardwareBusy || _ecuCanBaudApplying ||
+            _realTest.IsRunning || _automaticTestHome.IsOperatorRunning ||
+            _hardware.IsTestRunApproved ||
+            _hardware.HasManualCanRowLeases ||
             _hardware.IsFlashSecuritySensitive ||
             _hardware.IsManualCanBatchApproved ||
             _hardware.IsManualKeyActionApproved)
-            throw new InvalidOperationException("只有工位空闲时才能切换已发布型号。");
+            throw new InvalidOperationException(
+                "当前存在 CAN 周期任务、烧录、TEST 或其它实体动作；必须确认工位空闲后才能切换已发布型号。");
         await StationProductionConfigurationStore.VerifyProductAsync(pin);
         if (!await PrepareEditorsForCloseAsync())
             throw new IOException("工程编辑尚未保存，工位切换取消。");

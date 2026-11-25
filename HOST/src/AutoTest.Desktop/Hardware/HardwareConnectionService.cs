@@ -315,6 +315,9 @@ public sealed partial class HardwareConnectionService : IAsyncDisposable
     private string? _manualKeyActionFingerprint;
     public bool IsManualKeyActionApproved => _manualKeyActionApproved;
     public bool IsManualCanBatchApproved => _manualCanBatchApproved;
+    /// <summary>Outstanding manual CAN row leases belong to the actual bench;
+    /// model/bitrate changes must wait until each lease is released.</summary>
+    public bool HasManualCanRowLeases => !_manualCanRows.IsEmpty;
     public event Action<bool>? ManualCanBatchChanged;
     private void AnnounceManualBatch(bool active)
     {
