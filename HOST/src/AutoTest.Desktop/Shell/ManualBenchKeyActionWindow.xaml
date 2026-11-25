@@ -95,7 +95,7 @@
        <Button Content="反选" Command="{Binding InvertStepKeysCommand}" Padding="7,5" Margin="0,0,5,5"/>
        <Button Content="复制上一段" Command="{Binding CopyPreviousStepKeysCommand}" Padding="7,5" Margin="0,0,5,5"/>
       </WrapPanel>
-      <Grid Margin="0,3,0,6" IsEnabled="{Binding SelectedKeyStep.CanChangeKeys}">
+      <Grid Margin="0,3,0,6">
        <Grid.ColumnDefinitions>
         <ColumnDefinition Width="Auto"/><ColumnDefinition Width="105"/>
         <ColumnDefinition Width="10"/><ColumnDefinition Width="Auto"/>
@@ -103,7 +103,7 @@
        </Grid.ColumnDefinitions>
        <TextBlock Grid.Column="0" Text="掩码" VerticalAlignment="Center" Margin="0,0,6,0"/>
        <TextBox Grid.Column="1" Text="{Binding SelectedKeyStep.MaskHexText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-        Padding="6,5" ToolTip="掩码 0x00000～0xFFFFF；同步勾选 20 KEY"/>
+        IsEnabled="{Binding SelectedKeyStep.CanChangeKeys}" Padding="6,5" ToolTip="掩码 0x00000～0xFFFFF；同步勾选 20 KEY"/>
        <TextBlock Grid.Column="3" Text="保持" VerticalAlignment="Center" Margin="0,0,6,0"/>
        <TextBox Grid.Column="4" Text="{Binding SelectedKeyStep.HoldMsText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
         Padding="6,5" MinHeight="28"/>
