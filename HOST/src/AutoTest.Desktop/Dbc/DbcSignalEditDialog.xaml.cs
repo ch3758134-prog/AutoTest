@@ -10,6 +10,12 @@ public partial class DbcSignalEditDialog : Window
     private readonly DbcSignal _existing;
     public DbcSignal? Result { get; private set; }
 
+    // Round-trip persistence uses the ORIGINAL binary value for unchanged
+    // fields; G12 is a readable editing projection, not an implicit reformat
+    // of DBC factor/offset/limits on every unrelated signal edit.
+    private static string Readable(double value) =>
+        value.ToString("G12", CultureInfo.InvariantCulture);
+
     public DbcSignalEditDialog(DbcSignal signal, bool protectName = false)
     {
         InitializeComponent();
@@ -20,10 +26,10 @@ public partial class DbcSignalEditDialog : Window
         NameBox.ToolTip = protectName ? "原文保护或已有值表引用；可通过中文别名修改显示名称。" : "DBC 原始信号标识符。";
         StartBitBox.Text = signal.StartBit.ToString(CultureInfo.InvariantCulture);
         BitLengthBox.Text = signal.BitLength.ToString(CultureInfo.InvariantCulture);
-        FactorBox.Text = signal.Factor.ToString("R", CultureInfo.InvariantCulture);
-        OffsetBox.Text = signal.Offset.ToString("R", CultureInfo.InvariantCulture);
-        MinimumBox.Text = signal.Minimum.ToString("R", CultureInfo.InvariantCulture);
-        MaximumBox.Text = signal.Maximum.ToString("R", CultureInfo.InvariantCulture);
+        FactorBox.Text = Readable(signal.Factor);
+        OffsetBox.Text = Readable(signal.Offset);
+        MinimumBox.Text = Readable(signal.Minimum);
+        MaximumBox.Text = Readable(signal.Maximum);
         UnitBox.Text = signal.Unit;
         ReceiverBox.Text = signal.Receiver;
         MultiplexerBox.Text = signal.Multiplexer ?? "";
@@ -67,6 +73,17 @@ public partial class DbcSignalEditDialog : Window
                 return;
             }
         }
+        var originalNumbers = new[]
+        {
+            _existing.Factor, _existing.Offset, _existing.Minimum, _existing.Maximum
+        };
+        for (var i = 0; i < numeric.Length; i++)
+        {
+            if (string.Equals(numbers[i].Trim(), Readable(originalNumbers[i]),
+                    StringComparison.Ordinal))
+                numeric[i] = originalNumbers[i];
+        }
+
         if (!int.TryParse(StartBitBox.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var start) ||
             !int.TryParse(BitLengthBox.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var bits) ||
             start is < 0 or > 63 || bits is < 1 or > 64 ||
