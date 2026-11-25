@@ -1511,7 +1511,7 @@ public partial class TestStepInspector : UserControl
     {
         if (_selected is null)
         {
-            ErrorText.Text = "请选择有效的步骤操作类型，然后重试保存。";
+            ErrorText.Text = "请选择有效的步骤操作类型。";
             return false;
         }
         try
