@@ -207,18 +207,21 @@ public partial class TestEditorView : UserControl
         var shell = Window.GetWindow(this);
         var width = shell?.ActualWidth > 0 ? shell.ActualWidth : SystemParameters.WorkArea.Width;
         var height = shell?.ActualHeight > 0 ? shell.ActualHeight : SystemParameters.WorkArea.Height;
-        // Compact two-column operation picker, not a near-fullscreen legacy grid.
-        PaletteSurface.Width = Math.Min(840, Math.Max(550, width - 68));
-        PaletteSurface.MaxHeight = Math.Min(520, Math.Max(310, height - 100));
-        PaletteList.MaxHeight = Math.Max(140, PaletteSurface.MaxHeight - 190);
+        // Respect actual available editor DIPs and Windows work area.
+        // The chooser must stay wholly reachable on 1366x768 at 150% DPI.
+        PaletteSurface.Width = Math.Clamp(
+            Math.Min(width - 50, Math.Max(400, ActualWidth - 18)), 400, 690);
+        PaletteSurface.MaxHeight = Math.Clamp(
+            Math.Min(height - 85, SystemParameters.WorkArea.Height - 65), 280, 530);
+        PaletteList.MaxHeight = Math.Max(165, PaletteSurface.MaxHeight - 175);
         _paletteActions = TestStepInspector.PaletteActions(caseOnly);
         PaletteCategories.SelectedIndex = caseOnly ? 5 : 0;
         var target = _viewModel.SelectedItem;
         PaletteHint.Text = caseOnly
-            ? "插入位置：SWITCH / CASE 分支 · 仅允许插入 CASE"
-            : "插入位置：" + (target is null ? "未选择，需先选中阶段或分支" :
-                  StepUiCatalog.PhaseLabel(target.Phase) + " / " + target.Label) +
-              " · 单击即插入可撤销草稿，打开属性浮窗";
+            ? "当前插入位置：SWITCH / CASE 分支"
+            : target is null ? "先选择目标阶段或流程分支"
+            : "当前插入位置：" + StepUiCatalog.PhaseLabel(target.Phase) +
+              " / " + target.Label;
         PaletteSearch.Text = "";
         RefreshPaletteItems("");
         PaletteList.SelectedItem = _paletteActions.FirstOrDefault();
