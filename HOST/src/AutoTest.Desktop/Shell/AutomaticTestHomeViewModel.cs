@@ -86,6 +86,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         RequestSoftwareStartCommand = new DelegateCommand(RequestSoftwareStart);
         _plans.Changed += OnPlanChanged;
         _hardware.ConnectionChanged += OnConnectionChanged;
+        _hardware.EcuCanBitrateSelectionChanged += OnEcuCanBitrateChanged;
         _hardware.KeyRequestStateChanged += OnKeyRequestStateChanged;
         _scanner.PropertyChanged += OnScannerPropertyChanged;
         _scanner.CompleteBarcodeReceived += OnCompleteBarcodeReceived;
@@ -328,6 +329,24 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
                 _operatorEngine.RequestStop();
                 return;
             }
+            // A persisted project edit can occur without switching the
+            // operator screen. The previously scanned and frozen test/flash
+            // assets must not survive a new manifest revision.
+            var previous = _plans.Current?.Project;
+            var actual = _engineering.Current;
+            if (previous is not null && actual is not null &&
+                (!string.Equals(previous.ManifestPath, actual.ManifestPath,
+                    StringComparison.OrdinalIgnoreCase) ||
+                 !string.Equals(previous.ManifestSha256, actual.ManifestSha256,
+                    StringComparison.OrdinalIgnoreCase)))
+            {
+                InvalidateScan("工程资源已更新，旧扫码与烧录/TEST 冻结失效；请重新校验并扫码。");
+                StartRequestStatus = "工程变更后必须重新完成正式资源检查与扫码。";
+                _ = RestoreAsync();
+                return;
+            }
+            if (previous is not null && actual is null)
+                InvalidateScan("ECU 工程已关闭，原扫码及生产准备失效。");
             _ = RefreshDraftPreviewAsync();
         });
 
@@ -383,6 +402,14 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
 
     private void OnKeyRequestStateChanged() => OnUi(() =>
         RaisePropertyChanged(nameof(KeyRequestStatus)));
+
+    private void OnEcuCanBitrateChanged(int targetKbps) => OnUi(() =>
+    {
+        if (!IsOperatorRunning && _prepared is { } prepared &&
+            (prepared.EcuCanKbps != targetKbps || !_hardware.IsEcuCanBitrateApplied))
+            InvalidateScan("ECU CAN 配置在扫码后变化；旧测试准备已失效，请确认码率并重新扫码。");
+        UpdateConnection();
+    });
 
     private void OnConnectionChanged(long sessionEpoch)
     {
@@ -453,6 +480,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         DisposeOperatorExecution();
         _plans.Changed -= OnPlanChanged;
         _hardware.ConnectionChanged -= OnConnectionChanged;
+        _hardware.EcuCanBitrateSelectionChanged -= OnEcuCanBitrateChanged;
         _hardware.KeyRequestStateChanged -= OnKeyRequestStateChanged;
         _scanner.PropertyChanged -= OnScannerPropertyChanged;
         _scanner.CompleteBarcodeReceived -= OnCompleteBarcodeReceived;
