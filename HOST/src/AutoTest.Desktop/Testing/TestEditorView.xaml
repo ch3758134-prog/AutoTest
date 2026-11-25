@@ -489,7 +489,7 @@
    <Border x:Name="StepPropertyCard" MaxWidth="1120" MaxHeight="760" Margin="18" Background="#FAFBFC" BorderBrush="#DDE6ED" BorderThickness="1" CornerRadius="9" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
     <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
      <DockPanel Margin="14,10,14,6">
-      <Button DockPanel.Dock="Right" Content="应用并关闭" Click="FinishPropertyOverlay_Click" Padding="10,4" ToolTip="确认并保存有效的步骤修改；取消请使用属性编辑器的取消操作"/>
+      <TextBlock DockPanel.Dock="Right" Text="有效修改自动保存 · 点击外部完成" Foreground="#687680" FontSize="12" VerticalAlignment="Center"/>
       <TextBlock Text="步骤属性" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="#34475C"/>
      </DockPanel>
      <ContentControl x:Name="StepPropertyHost" Grid.Row="1" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
