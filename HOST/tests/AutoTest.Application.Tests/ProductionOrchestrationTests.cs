@@ -308,6 +308,62 @@ public sealed class ProductionOrchestrationTests
             ValueTask.CompletedTask;
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TerminalFlashFailureRecordsActualInterruptedStageWithoutRunningTest(
+        bool operatorCancelled)
+    {
+        var configuration = Config(flash: true);
+        var session = Matched(configuration);
+        session.Confirm(configuration, new RuleRevision(_hash),
+            new ProjectRevision(1), Station(false, AuthorizationScope.Programming).Station,
+            isMock: false);
+        var sink = new CapturingFactSink();
+        var executor = new ThrowingFlashExecutor(operatorCancelled);
+        var result = await new ProductionWorkflow(executor,
+            new ProductionResultCoordinator(sink), new ProductionPreflight())
+            .ExecuteAsync(session, CancellationToken.None);
+        Assert.Equal(operatorCancelled ? ProductionState.Aborted :
+            ProductionState.Unknown, result.State);
+        Assert.False(result.PhysicalReleaseAllowed);
+        Assert.Equal(0, executor.TestCalls);
+        Assert.Contains(sink.Facts, f => f.Description ==
+            (operatorCancelled ? "RUN_CANCELLED_AT_FLASH" :
+                "RUN_EXCEPTION_AT_FLASH"));
+    }
+
+    private sealed class ThrowingFlashExecutor(bool cancelled) : IProductionStageExecutor
+    {
+        public int TestCalls { get; private set; }
+        public ValueTask<ProductionStageResult> ExecuteFlashAsync(
+            ProductionJobSnapshot job, CancellationToken ct) =>
+            throw cancelled
+                ? new OperationCanceledException("Operator stop during FLASH")
+                : new IOException("Real FLASH transport failure");
+        public ValueTask<ProductionStageResult> ExecuteTestAsync(
+            ProductionJobSnapshot job, CancellationToken ct)
+        {
+            TestCalls++;
+            throw new InvalidOperationException("No TEST after uncertain FLASH.");
+        }
+        public ValueTask RequestStopAsync(RunId run, CancellationToken ct) =>
+            ValueTask.CompletedTask;
+    }
+
+    private sealed class CapturingFactSink : IRunFactSink
+    {
+        public List<RunFact> Facts { get; } = [];
+        public ValueTask<RecordWriteReceipt> AppendAsync(RunFact fact, CancellationToken ct)
+        {
+            Facts.Add(fact);
+            return ValueTask.FromResult(
+                new RecordWriteReceipt(fact.Run, fact.EventId, true, "DURABLE"));
+        }
+        public ValueTask<RecordCommitReceipt> CommitAsync(RunId run, CancellationToken ct) =>
+            ValueTask.FromResult(new RecordCommitReceipt(run, true, "DURABLE"));
+    }
+
     private sealed class FlashProofExecutor(bool simulated) : IProductionStageExecutor
     {
         public int TestCalls { get; private set; }
