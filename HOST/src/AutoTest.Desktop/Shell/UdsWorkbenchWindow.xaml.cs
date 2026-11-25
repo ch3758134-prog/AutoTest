@@ -63,6 +63,7 @@ public partial class UdsWorkbenchWindow : Window
     public UdsWorkbenchWindow(HardwareConnectionService hardware)
     {
         _hardware = hardware ?? throw new ArgumentNullException(nameof(hardware));
+        _hardware.ConnectionChanged += OnDidStationChanged;
         _loading = true;
         InitializeComponent();
         Loaded += (_, _) => AutoTest.Desktop.Shell.DesktopWindowSizing.FitToVisibleWorkspace(this);
@@ -82,6 +83,7 @@ public partial class UdsWorkbenchWindow : Window
         Closing += ClosingGuard;
         Closed += (_, _) =>
         {
+            _hardware.ConnectionChanged -= OnDidStationChanged;
             _didCancel?.Cancel();
             _autosave.Stop();
         };
@@ -377,6 +379,17 @@ public partial class UdsWorkbenchWindow : Window
     }
 
     private void DidConsentChanged(object sender, TextChangedEventArgs e) => UpdateDidScope();
+
+    private void OnDidStationChanged(long stationEpoch)
+    {
+        if (Dispatcher.HasShutdownStarted) return;
+        _ = Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (!IsLoaded) return;
+            if (stationEpoch == 0) _didCancel?.Cancel();
+            UpdateDidScope();
+        }));
+    }
 
     private void CopyDidAuthorization_Click(object sender, RoutedEventArgs e)
     {
