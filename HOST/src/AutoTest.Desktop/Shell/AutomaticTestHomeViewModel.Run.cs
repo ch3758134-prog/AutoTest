@@ -278,7 +278,8 @@ public sealed partial class AutomaticTestHomeViewModel
 
     private static async Task ApplyStationActionsAsync(
         IReadOnlyList<InspectionStationAction> actions,
-        HardwareConnectionService hardware, CancellationToken ct)
+        HardwareConnectionService hardware, CancellationToken ct,
+        Action<string>? observe = null)
     {
         foreach (var action in actions)
         {
@@ -309,6 +310,10 @@ public sealed partial class AutomaticTestHomeViewModel
             }
             if (action.WaitAfterMilliseconds > 0)
                 await Task.Delay(action.WaitAfterMilliseconds, ct);
+            observe?.Invoke(action.Kind == "Wait"
+                ? "工位纯等待 " + action.WaitAfterMilliseconds + "ms 已结束"
+                : "工位动作 " + action.Kind + "：USB ACK 与主控 GPIO 回读一致。" +
+                  "实际夹具到位或 IGN 负载电压仍未测量。");
         }
     }
 
@@ -348,19 +353,32 @@ public sealed partial class AutomaticTestHomeViewModel
         string ScannerPort, string ProjectPath, string PreparationFingerprint,
         string FirmwareSha256, string UsbIdentity, long UsbEpoch,
         string FlashState, IReadOnlyList<RealOperatorCaseEvidence> Cases,
-        string Outcome, string? Error);
+        string Outcome, string? Error, IReadOnlyList<string> ObservedEvents);
 
     private static void SaveOperatorReceipt(string root, RealOperatorRunReceipt receipt)
     {
         var folder = Path.Combine(root, "test-records", "operator-verifications");
         Directory.CreateDirectory(folder);
         var file = Path.Combine(folder, receipt.VerificationId.ToString("N") + ".json");
-        var temp = file + ".tmp";
+        var temp = file + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
-            File.WriteAllBytes(temp, JsonSerializer.SerializeToUtf8Bytes(receipt,
-                new JsonSerializerOptions { WriteIndented = true }));
-            File.Move(temp, file, true);
+            var bytes = JsonSerializer.SerializeToUtf8Bytes(receipt,
+                new JsonSerializerOptions { WriteIndented = true });
+            using (var stream = new FileStream(temp, FileMode.CreateNew,
+                FileAccess.Write, FileShare.None, 65536,
+                FileOptions.WriteThrough))
+            {
+                stream.Write(bytes);
+                stream.Flush(flushToDisk: true);
+            }
+            // Each revision replaces this attempt's last coherent snapshot;
+            // a power loss leaves an incomplete/Running state, never PASS.
+            File.Move(temp, file, overwrite: true);
+            if (!System.Security.Cryptography.SHA256.HashData(
+                    File.ReadAllBytes(file)).AsSpan().SequenceEqual(
+                        System.Security.Cryptography.SHA256.HashData(bytes)))
+                throw new IOException("本次工程实测汇总写入后 SHA256 回读不一致。");
         }
         finally { if (File.Exists(temp)) File.Delete(temp); }
     }
@@ -423,7 +441,8 @@ public sealed partial class AutomaticTestHomeViewModel
                 scan.DutSerial, scan.ObservationId, scan.RuleSha256,
                 scan.ScannerPort, opened.ManifestPath, frozen.PreparationFingerprint,
                 frozen.FirmwareSha256, _hardware.ConnectedDeviceIdentity ?? "UNKNOWN",
-                sessionEpoch, flashState, results.ToArray(), outcome, failure));
+                sessionEpoch, flashState, results.ToArray(), outcome, failure,
+                OperatorEvents.ToArray()));
         }
 
         try
@@ -466,7 +485,8 @@ public sealed partial class AutomaticTestHomeViewModel
             stationOperationsMayHaveStarted = true;
             OperatorRunState = "准备工位 · 执行工程已保存的夹具/IGN 动作";
             await ApplyStationActionsAsync(
-                frozen.Fixture?.BeforeStart ?? [], _hardware, ct);
+                frozen.Fixture?.BeforeStart ?? [], _hardware, ct,
+                AddOperatorEvent);
             AddOperatorEvent("工位前置动作 USB ACK；夹具实际到位仍需真实传感器验证");
 
             OperatorRunState = "前置烧录 · 正在擦写 ECU";
@@ -574,7 +594,8 @@ public sealed partial class AutomaticTestHomeViewModel
                     OperatorRunState += " · 工位收尾";
                     using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(12));
                     await ApplyStationActionsAsync(
-                        frozen.Fixture?.AfterFinish ?? [], _hardware, cleanup.Token);
+                        frozen.Fixture?.AfterFinish ?? [], _hardware, cleanup.Token,
+                    AddOperatorEvent);
                     AddOperatorEvent("工程配置的后置工位动作已发送；现场实际状态仍需确认");
                 }
                 else
