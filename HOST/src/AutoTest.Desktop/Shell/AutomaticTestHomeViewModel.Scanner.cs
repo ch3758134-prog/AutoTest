@@ -72,6 +72,8 @@ public sealed partial class AutomaticTestHomeViewModel
         var revision = Interlocked.Increment(ref _scanRevision);
         var scannedAt = DateTimeOffset.UtcNow;
         var scannerPort = _scanner.ConnectedPort;
+        var initialCanTarget = _hardware.RequestedEcuCanBitrateKbps;
+        var initialStationEpoch = _hardware.CurrentStationEpoch;
         var plan = _plans.Current;
         if (plan is null || !_scanner.IsConnected || string.IsNullOrWhiteSpace(raw))
             return;
@@ -112,6 +114,12 @@ public sealed partial class AutomaticTestHomeViewModel
                     StringComparison.OrdinalIgnoreCase) ||
                 (!_isProductionWorkspace() && !_engineeringVerificationArmed) ||
                 !ReferenceEquals(_plans.Current, plan)) return;
+            if (_hardware.CurrentStationEpoch != initialStationEpoch ||
+                _hardware.RequestedEcuCanBitrateKbps != initialCanTarget)
+            {
+                Reject("扫码预检期间主控会话或 ECU CAN 目标码率改变；请重新扫码。");
+                return;
+            }
             var identity = parsed.DutSerial;
             var repeated = string.Equals(_lastIdentity, identity,
                 StringComparison.Ordinal);
