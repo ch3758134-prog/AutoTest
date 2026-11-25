@@ -216,6 +216,7 @@ public sealed partial class MainWindowViewModel
         var station = _hardware.IsConnected
             ? "主控 USB 已连接；夹具机械状态和 START 尚未现场验证"
             : "主控未连接；可先编辑配置与测试用例";
+        var productionPin = "尚未确认本工位的生产版本";
         UpdateSetupStatuses(model, test, scan, flash, station,
             "读取正式工程与工位配置中；不会触发任何实体动作。");
 
@@ -264,8 +265,19 @@ public sealed partial class MainWindowViewModel
                     flash = "烧录型号与工程不符，不能正式运行";
                 else
                 {
-                    _ = await Task.Run(() => NativeFlashJobBuilder.Freeze(saved.Profile, project.RootDirectory));
-                    flash = "当前烧录配置预检通过；真实 ECU 烧录与 APP 后验仍待实测";
+                    var draftJob = await Task.Run(() =>
+                        NativeFlashJobBuilder.Freeze(saved.Profile, project.RootDirectory));
+                    var published = await NativeFlashPublicationStore.LoadPublishedAsync(
+                        project.RootDirectory);
+                    flash = published is null
+                        ? "烧录草稿校验通过；尚未确认用于生产。"
+                        : string.Equals(published.ProfileSha256, saved.ProfileSha256,
+                              StringComparison.OrdinalIgnoreCase) &&
+                          string.Equals(published.JobFingerprint, draftJob.Fingerprint,
+                              StringComparison.OrdinalIgnoreCase)
+                            ? "烧录草稿与已发布工艺一致；仍需现场 ECU/APP 后验。"
+                            : "烧录草稿已更改，与已发布生产工艺不同；" +
+                              "旧版生产仍固定使用已发布版本，确认后新草稿才生效。";
                 }
             }
             catch (Exception error) when (error is IOException or InvalidDataException or
@@ -273,6 +285,26 @@ public sealed partial class MainWindowViewModel
                 NotSupportedException or System.Text.Json.JsonException)
             {
                 flash = "原生烧录配置待修复：" + error.Message;
+            }
+
+            try
+            {
+                var verified = await StationDeploymentStore.RestoreAsync();
+                productionPin = verified is null
+                    ? "当前工程尚未确认用于正式生产；请核对后点击确认。"
+                    : string.Equals(verified.Project.ManifestPath, project.ManifestPath,
+                          StringComparison.OrdinalIgnoreCase) &&
+                      string.Equals(verified.Project.ManifestSha256, project.ManifestSha256,
+                          StringComparison.OrdinalIgnoreCase)
+                        ? "此 ECU 工程及发布工艺已经本工位锁定；" +
+                          "实体 START、实际夹具到位和生产 RECORD 仍未验收。"
+                        : "工位绑定的是另一版 ECU 工程；请核对当前工程后重新确认。";
+            }
+            catch (Exception error) when (error is IOException or InvalidDataException or
+                UnauthorizedAccessException or ArgumentException or NotSupportedException or
+                ProjectDataException or FormatException or System.Text.Json.JsonException)
+            {
+                productionPin = "当前生产配置已失效：" + error.Message;
             }
         }
         finally
@@ -282,7 +314,7 @@ public sealed partial class MainWindowViewModel
                 string.Equals(project.ManifestPath, _workspace.Current?.ManifestPath,
                     StringComparison.OrdinalIgnoreCase))
                 UpdateSetupStatuses(model, test, scan, flash, station,
-                    "工程配置已更新。正式生产运行仍需完成工位验收。");
+                    productionPin);
         }
     }
 }
