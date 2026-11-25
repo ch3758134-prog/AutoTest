@@ -89,6 +89,7 @@ public partial class ManualBenchWindow : Window
         _model = model ?? throw new ArgumentNullException(nameof(model));
         DataContext = model;
         InitializeComponent();
+        Loaded += (_, _) => AutoTest.Desktop.Shell.DesktopWindowSizing.FitToVisibleWorkspace(this);
         SizeChanged += (_, _) => ApplyBenchAdaptiveLayout();
         Loaded += (_, _) => ApplyBenchAdaptiveLayout();
         Closing += OnClosing;
