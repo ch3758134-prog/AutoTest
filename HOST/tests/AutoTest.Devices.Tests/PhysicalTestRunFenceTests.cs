@@ -7,6 +7,41 @@ namespace AutoTest.Devices.Tests;
 public sealed class PhysicalTestRunFenceTests
 {
     [Fact]
+    public void ProjectScopeRenewalCannotWidenCanIdentifiersOrSurviveNewUsbEpoch()
+    {
+        var fence = new PhysicalCommandFence();
+        var fingerprint = new string('a', 64);
+        const long epoch = 15;
+        static byte[] Request(uint id)
+        {
+            var payload = new byte[15];
+            payload[0] = StationCanWiring.DutPort;
+            payload[1] = 0; // Classic standard CAN
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(
+                payload.AsSpan(2, 4), id);
+            payload[6] = 8;
+            return UsbWireCodec.EncodeRequest(3, MainControllerCodec.CanSend, payload);
+        }
+        fence.AuthorizePhysicalRun(fingerprint,
+            "AUTHORIZE TEST RUN " + fingerprint,
+            [(StationCanWiring.DutPort, false, 0x160),
+             (StationCanWiring.DutPort, false, 0x161)],
+            false, epoch, maxWrites: 1);
+        fence.AssertAllowedAndConsume(Request(0x160), epoch);
+        Assert.Throws<UnauthorizedAccessException>(() =>
+            fence.AssertAllowedAndConsume(Request(0x161), epoch));
+        fence.RefreshPhysicalRun(fingerprint, epoch, maxWrites: 3);
+        fence.AssertAllowedAndConsume(Request(0x161), epoch);
+        Assert.Throws<UnauthorizedAccessException>(() =>
+            fence.AssertAllowedAndConsume(Request(0x162), epoch));
+        Assert.Throws<UnauthorizedAccessException>(() =>
+            fence.AssertAllowedAndConsume(Request(0x160), epoch + 1));
+        fence.RevokePhysicalRun();
+        Assert.Throws<UnauthorizedAccessException>(() =>
+            fence.AssertAllowedAndConsume(Request(0x161), epoch));
+    }
+
+    [Fact]
     public void RunAuthorization_IsExplicitBoundedAndScopedToCanIds()
     {
         var fence = new PhysicalCommandFence();

@@ -36,6 +36,8 @@ public sealed record RealRunResult(RunId Run, string PlanFingerprint, RealTestVe
     ImmutableArray<RealStepFact> Facts, IReadOnlyDictionary<string, TestDatum> Variables)
 {
     public string? EvidencePath { get; init; }
+    // Links the actual RECORD CaseAttemptId into the parent ProjectRun receipt.
+    public Guid CaseAttemptId { get; init; }
 }
 
 /// <summary>

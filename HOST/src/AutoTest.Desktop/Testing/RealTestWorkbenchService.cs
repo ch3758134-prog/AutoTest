@@ -194,7 +194,8 @@ public sealed partial class RealTestWorkbenchService
             var reported = finished.Result with
             {
                 Verdict = formalVerdict,
-                EvidencePath = finished.Reports.HtmlPath
+                EvidencePath = finished.Reports.HtmlPath,
+                CaseAttemptId = session.CaseAttemptId
             };
             try { DevelopmentRunCompleted?.Invoke(document.Id, reported); }
             catch { /* Production workbench is an observer, not a RECORD sink. */ }

@@ -94,6 +94,10 @@ public sealed partial class RealTestWorkbenchService
                 using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(6));
                 try { await actions.CleanupAsync(stop.Token); }
                 catch { /* A failed transport cannot be presented as safe cleanup. */ }
+                // Even a partially acknowledged grant must be revoked.
+                // Otherwise the next run could inherit an unowned USB fence.
+                try { await _hardware.RevokeTestRunAsync(); }
+                catch { /* Disconnect is UNKNOWN; preserve original failure. */ }
             }
             _projectSession = null;
             _station.Release();
@@ -116,7 +120,7 @@ public sealed partial class RealTestWorkbenchService
 
         private sealed record ProjectCaseReceipt(
             int Sequence, string TestDocumentId, Guid CaseRunId,
-            string PlanFingerprint, string Verdict, string? EvidencePath,
+            Guid CaseAttemptId, string PlanFingerprint, string Verdict, string? EvidencePath,
             DateTimeOffset CompletedUtc);
 
         internal ConfiguredStationActionPort Actions { get; }
@@ -176,7 +180,8 @@ public sealed partial class RealTestWorkbenchService
             var result = await _owner.ExecuteAsync(doc, "", "", _dut, ct,
                 projectSession: this);
             _cases.Add(new ProjectCaseReceipt(_next + 1, doc.Id.ToString(),
-                result.Run.Value, result.PlanFingerprint, result.Verdict.ToString(),
+                result.Run.Value, result.CaseAttemptId,
+                result.PlanFingerprint, result.Verdict.ToString(),
                 result.EvidencePath, DateTimeOffset.UtcNow));
             _next++;
             await PersistAsync("RUNNING", CancellationToken.None);
