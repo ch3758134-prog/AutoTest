@@ -35,6 +35,7 @@ public sealed partial class AutomaticTestHomeViewModel
     private string _operatorActual = "—";
     private string _operatorExpected = "—";
     private string _operatorFailure = "";
+    private bool _engineeringVerificationArmed;
     private int _operatorActiveCaseIndex = -1;
     private StepId? _operatorActiveStepId;
     private Guid _operatorRunId;
@@ -92,9 +93,23 @@ public sealed partial class AutomaticTestHomeViewModel
         get => _operatorRecordState;
         private set => SetProperty(ref _operatorRecordState, value);
     }
+    /// <summary>
+    /// Engineer-only explicit arming of the existing full-project real
+    /// verification. Production cannot expose its software START.
+    /// A fresh real scan is required for every armed attempt.
+    /// </summary>
+    public void ArmEngineeringVerification()
+    {
+        if (_isProductionWorkspace() || IsOperatorRunning) return;
+        _engineeringVerificationArmed = true;
+        InvalidateScan("工程整组验证已准备：请用工位串口扫码枪扫描本台 ECU。");
+        StartRequestStatus = "工程整组验证待扫码；验证资源后由工程师再次明确启动。";
+        RefreshOperatorCommands();
+    }
+
     public bool CanStartOperatorVerification =>
         !_operatorRunning && !_busy &&
-        _isProductionWorkspace() &&
+        !_isProductionWorkspace() && _engineeringVerificationArmed &&
         _plans.Current is { ResourceReady: true } &&
         _prepared?.AcceptedScannerObservation is { } scan &&
         !string.IsNullOrWhiteSpace(scan.DutSerial) &&
@@ -497,6 +512,7 @@ public sealed partial class AutomaticTestHomeViewModel
             }
             _operatorStop?.Dispose();
             _operatorStop = null;
+            _engineeringVerificationArmed = false;
             _operatorActiveCaseIndex = -1;
             _operatorActiveStepId = null;
             IsOperatorRunning = false;
