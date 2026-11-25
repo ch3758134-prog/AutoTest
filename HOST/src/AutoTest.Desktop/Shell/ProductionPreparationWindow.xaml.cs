@@ -143,6 +143,8 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
     private readonly SerialScannerWorkbenchViewModel? _scanner;
     private readonly Action? _onPublished;
     private readonly Func<ProductionPublishedProduct, Task<string>>? _activateProject;
+    private readonly Func<Task<string>>? _publishProject;
+    private long _editGeneration;
     private readonly Func<bool> _mayEdit;
     private readonly DispatcherTimer _autosave = new()
         { Interval = TimeSpan.FromMilliseconds(850) };
@@ -210,13 +212,15 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
 
     public ProductionPreparationWindow(ProjectWorkspaceService workspace, Func<bool> mayEdit,
         SerialScannerWorkbenchViewModel? scanner = null, Action? onPublished = null,
-        Func<ProductionPublishedProduct, Task<string>>? activateProject = null)
+        Func<ProductionPublishedProduct, Task<string>>? activateProject = null,
+        Func<Task<string>>? publishProject = null)
     {
         _workspace = workspace;
         _mayEdit = mayEdit;
         _scanner = scanner;
         _onPublished = onPublished;
         _activateProject = activateProject;
+        _publishProject = publishProject;
         InitializeComponent();
         DataContext = this;
         // No hidden combo-box entries: these are identity SOURCE modes.
@@ -322,8 +326,10 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
 
     private void MarkDirty()
     {
-        if (!_ready || _busy) return;
+        if (!_ready) return;
+        _editGeneration++;
         _dirty = true;
+        if (_busy) return;
         Status = "草稿已修改 · 即将自动保存（未发布）";
         _autosave.Stop();
         _autosave.Start();
@@ -341,14 +347,17 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
         if (_busy) return false;
         _autosave.Stop();
         _busy = true;
+        var generation = _editGeneration;
         try
         {
             var data = BuildDraft();
             await StationProductionConfigurationStore.SaveDraftAsync(data);
             _lastSaved = data;
             _revision = data.Revision;
-            _dirty = false;
-            Status = "生产配置草稿已保存（尚未发布）";
+            _dirty = generation != _editGeneration;
+            if (_dirty) _autosave.Start();
+            Status = _dirty ? "保存期间有后续修改，继续保存新草稿。" :
+                "生产配置草稿已保存（尚未发布）";
             await RefreshOverviewAsync();
             return true;
         }
@@ -362,6 +371,14 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
     }
 
     private async void Save_Click(object sender, RoutedEventArgs e) => await SaveAsync();
+
+    private async void PublishProject_Click(object sender, RoutedEventArgs e)
+    {
+        if (_publishProject is null) { Status = "工程发布入口尚未接入。"; return; }
+        if (!await SaveAsync()) return;
+        try { Status = await _publishProject(); await RefreshOverviewAsync(); }
+        catch (Exception error) { Status = "工程发布未完成：" + error.Message; }
+    }
 
     private async void Publish_Click(object sender, RoutedEventArgs e)
     {

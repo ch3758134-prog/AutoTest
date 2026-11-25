@@ -93,7 +93,12 @@ public sealed partial class MainWindowViewModel
                 !_hardware.IsManualCanBatchApproved &&
                 !_hardware.IsManualKeyActionApproved,
             _scannerWorkbench, () => _automaticTestHome.OnPublishedConfigurationChanged(),
-            ActivatePublishedProjectAsync)
+            ActivatePublishedProjectAsync,
+            async () =>
+            {
+                await ConfirmProductionConfigurationAsync();
+                return StatusMessage;
+            })
         { Owner = global::System.Windows.Application.Current?.MainWindow };
         _productionPreparationWindow = window;
         window.Closed += (_, _) =>

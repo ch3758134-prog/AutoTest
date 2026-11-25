@@ -39,6 +39,7 @@
    CornerRadius="7" Padding="15,12" Margin="0,0,0,10">
    <DockPanel>
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+     <Button Content="发布当前 ECU 工程" Click="PublishProject_Click" Padding="13,8" Margin="0,0,9,0"/>
      <Button Content="保存草稿" Click="Save_Click" Padding="13,8" Margin="0,0,9,0"/>
      <Button Content="核对并发布配置" Click="Publish_Click"
       Padding="17,8" Background="#2469B3" Foreground="White" Margin="0,0,9,0"/>
