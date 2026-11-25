@@ -21,48 +21,37 @@ public partial class AutomaticTestHomeView : UserControl
     }
 
     /// <summary>
-    /// At 125/150% DPI, a rigid three-column layout hides the very TEST
-    /// steps an operator needs. Preserve all real bound controls and place
-    /// status beneath the central list; never replace missing space with a
-    /// mock progress card or silently hide the current DUT.
+    /// Production is a TEST monitor, not a fixed multi-panel dashboard.
+    /// Under 980 effective pixels, retain the full ordered step list and move
+    /// factual details beneath it. WPF grid lengths use DIPs, not device pixels.
     /// </summary>
     private void ApplyResponsiveLayout()
     {
-        if (!IsLoaded) return;
-        var compact = ActualWidth < 1120;
+        if (!IsLoaded || ActualWidth <= 0) return;
+        var compact = ActualWidth < 980;
         if (_compactOperatorLayout == compact) return;
         _compactOperatorLayout = compact;
         if (compact)
         {
-            OperatorStageColumn.Width = new GridLength(164);
-            OperatorStageGapColumn.Width = new GridLength(7);
-            OperatorTestsColumn.MinWidth = 280;
-            OperatorTestsColumn.Width = new GridLength(1, GridUnitType.Star);
-            OperatorResultsGapColumn.Width = new GridLength(0);
-            OperatorResultsColumn.MinWidth = 0;
-            OperatorResultsColumn.Width = new GridLength(0);
-            OperatorPrimaryRow.Height = new GridLength(2, GridUnitType.Star);
-            OperatorResultsRow.Height = new GridLength(1, GridUnitType.Star);
-            Grid.SetRow(OperatorStagesPanel, 0);
-            Grid.SetRowSpan(OperatorStagesPanel, 2);
-            Grid.SetRow(OperatorTestsPanel, 0);
-            Grid.SetRow(OperatorResultsPanel, 1);
-            Grid.SetColumn(OperatorResultsPanel, 2);
+            OperatorCasesColumn.Width = new GridLength(1, GridUnitType.Star);
+            OperatorGapColumn.Width = new GridLength(0);
+            OperatorDetailsColumn.Width = new GridLength(0);
+            OperatorPrimaryRow.Height = new GridLength(1.75, GridUnitType.Star);
+            OperatorDetailsRow.Height = new GridLength(1, GridUnitType.Star);
+            Grid.SetColumn(OperatorDetailsPanel, 0);
+            Grid.SetRow(OperatorDetailsPanel, 1);
+            OperatorDetailsPanel.Margin = new Thickness(0, 8, 0, 0);
         }
         else
         {
-            Grid.SetRowSpan(OperatorStagesPanel, 1);
-            Grid.SetRow(OperatorResultsPanel, 0);
-            Grid.SetColumn(OperatorResultsPanel, 4);
-            OperatorStageColumn.Width = new GridLength(196);
-            OperatorStageGapColumn.Width = new GridLength(8);
-            OperatorTestsColumn.MinWidth = 460;
-            OperatorTestsColumn.Width = new GridLength(2.2, GridUnitType.Star);
-            OperatorResultsGapColumn.Width = new GridLength(8);
-            OperatorResultsColumn.MinWidth = 315;
-            OperatorResultsColumn.Width = new GridLength(1, GridUnitType.Star);
+            Grid.SetColumn(OperatorDetailsPanel, 2);
+            Grid.SetRow(OperatorDetailsPanel, 0);
+            OperatorDetailsPanel.Margin = new Thickness(0);
+            OperatorCasesColumn.Width = new GridLength(1, GridUnitType.Star);
+            OperatorGapColumn.Width = new GridLength(10);
+            OperatorDetailsColumn.Width = new GridLength(360);
             OperatorPrimaryRow.Height = new GridLength(1, GridUnitType.Star);
-            OperatorResultsRow.Height = new GridLength(0);
+            OperatorDetailsRow.Height = new GridLength(0);
         }
     }
 
