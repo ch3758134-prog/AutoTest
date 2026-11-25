@@ -35,6 +35,7 @@ public partial class TestEditorView : UserControl
         _viewModel.InspectorLoading += ShowInspectorLoading;
         _viewModel.ActionPaletteRequested += OpenActionPalette;
         _viewModel.AllowEditorAction = TryLeaveInspector;
+        _viewModel.CanAutoPersist = () => !IsPropertyEditorOpen;
         Loaded += (_, _) =>
         {
             // A document tab can be unloaded/reloaded whenever the user switches
@@ -150,6 +151,7 @@ public partial class TestEditorView : UserControl
         StepPropertyHost.Content = null;
         _inspector = null;
         _focusNameOnNextInspector = false;
+        _viewModel.QueueAutoSave();
         StepsList.Focus();
     }
 
