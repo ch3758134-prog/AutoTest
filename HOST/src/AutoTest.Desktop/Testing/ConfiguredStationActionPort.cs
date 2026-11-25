@@ -241,6 +241,25 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
         _fingerprint = fingerprint;
     }
 
+    /// <summary>One union authorization for an ordered, prevalidated TEST project.
+    /// The frozen CAN ID/format/IGN scope cannot grow when the next case begins.</summary>
+    public async Task AuthorizeProjectAsync(string fingerprint, string confirmation,
+        IReadOnlyList<TestTargetMapping> mappings, IReadOnlyList<TestDocument> cases,
+        CancellationToken ct)
+    {
+        if (_fingerprint is not null || cases.Count == 0)
+            throw new InvalidOperationException("Project TEST station is already active or empty.");
+        var highRate = cases.Any(doc => TestRunStepScope.EnabledSteps(doc).Any(node =>
+            node.Type == "Loop" || node.Type == "Write" &&
+            int.TryParse(node.Properties.GetValueOrDefault("periodMs", "0"),
+                NumberStyles.None, CultureInfo.InvariantCulture, out var period) && period > 0));
+        await _hardware.AuthorizeTestRunAsync(fingerprint, confirmation,
+            AuthorizedCanFrames(mappings),
+            mappings.Any(x => x.Kind == TestTargetKind.Ignition), ct,
+            maxWrites: highRate ? 10000 : 1000);
+        _fingerprint = fingerprint;
+    }
+
     public async ValueTask<TestOperationResult> WriteAsync(TestTargetMapping target, string action,
         CancellationToken ct)
     {

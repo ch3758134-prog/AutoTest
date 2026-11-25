@@ -97,7 +97,8 @@ public sealed class RealTestRecordSession : IRealRunEventSink
     /// A run failing to persist never starts the interpreter.
     /// </summary>
     public async Task<RealTestRecordOutcome> ExecuteAsync(RealRunCoordinator runner,
-        PreparedTestPlan prepared, string reportDirectory, CancellationToken ct = default)
+        PreparedTestPlan prepared, string reportDirectory, CancellationToken ct = default,
+        bool retainProjectActuation = false)
     {
         ArgumentNullException.ThrowIfNull(runner);
         ArgumentNullException.ThrowIfNull(prepared);
@@ -149,7 +150,8 @@ public sealed class RealTestRecordSession : IRealRunEventSink
                     preparedPlanSha256 = prepared.Fingerprint
                 }), EvidenceQuality.HostObserved, ImmutableArray<EvidenceRef>.Empty,
                 ct).ConfigureAwait(false);
-            result = await runner.StartAsync(prepared, RunId, this, ct).ConfigureAwait(false);
+            result = await runner.StartAsync(prepared, RunId, this, ct,
+                retainProjectActuation).ConfigureAwait(false);
         }
         catch (Exception runtimeException)
         {

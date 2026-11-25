@@ -9,7 +9,7 @@ using AutoTest.Testing.Preparation;
 namespace AutoTest.Testing.Runtime;
 
 public enum RealStepStatus { Completed, Skipped, ConditionFalse, NoData, Timeout, InvalidData, DeviceError, Cancelled }
-public enum RealTestVerdict { Passed, Failed, Inconclusive, Error, Aborted }
+public enum RealTestVerdict { Passed, Failed, Inconclusive, Error, Aborted, CompletedNoAssertion }
 
 public sealed record RealStepFact(StepId Step, string Type, RealStepStatus Status,
     string Expected, string Actual, string Detail, DateTimeOffset At, string? Evidence = null)
@@ -142,7 +142,8 @@ public sealed class RealRunCoordinator
 
     /// <summary>RunId must match an already begun RunRecord before any DUT write.</summary>
     public async Task<RealRunResult> StartAsync(PreparedTestPlan prepared, RunId run,
-        IRealRunEventSink? events, CancellationToken external = default)
+        IRealRunEventSink? events, CancellationToken external = default,
+        bool retainProjectActuation = false)
     {
         if (run.Value == Guid.Empty) throw new ArgumentException("Invalid RunId.", nameof(run));
         if (!prepared.ValidateFingerprint() || !prepared.Diagnostics.IsEmpty)
@@ -829,10 +830,12 @@ public sealed class RealRunCoordinator
                             "", "", ex.Message, DateTimeOffset.UtcNow));
                     }
                 }
-                // Physical KEY release and CAN sender cancellation must have their
-                // own timeout budget, even when a scripted cleanup step stalled.
-                using (var stationCleanup = new CancellationTokenSource(TimeSpan.FromSeconds(6)))
+                // A project's physical scope outlives each independently recorded
+                // case. Authored Cleanup steps ran above; only the project owner
+                // can stop shared CAN tasks and revoke the physical USB fence.
+                if (!retainProjectActuation)
                 {
+                    using var stationCleanup = new CancellationTokenSource(TimeSpan.FromSeconds(6));
                     try { await _actions.CleanupAsync(stationCleanup.Token); }
                     catch (Exception ex)
                     {
@@ -855,7 +858,9 @@ public sealed class RealRunCoordinator
             verdict = aborted ? RealTestVerdict.Aborted :
                 error ? RealTestVerdict.Error :
                 failed ? RealTestVerdict.Failed :
-                asserted && !incomplete ? RealTestVerdict.Passed : RealTestVerdict.Inconclusive;
+                asserted && !incomplete ? RealTestVerdict.Passed :
+                retainProjectActuation && !incomplete ? RealTestVerdict.CompletedNoAssertion :
+                RealTestVerdict.Inconclusive;
         }
         finally
         {
