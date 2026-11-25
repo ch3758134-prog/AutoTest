@@ -1086,8 +1086,12 @@ public partial class TestStepInspector : UserControl
         CanOnceMode.IsChecked = !hasPeriod;
         CanPeriodicMode.IsChecked = hasPeriod;
         CanPeriodInput.Text = hasPeriod ? period.ToString(CultureInfo.InvariantCulture) : "100";
-        CanTimedStop.IsChecked = hasDuration;
-        CanUntilStopped.IsChecked = !hasDuration;
+        // Newly inserted steps default to a bounded 5-second sender rather
+        // than an unbounded periodic worker. Existing saved duration=0 is
+        // preserved verbatim as explicit "stop by later step".
+        var savedStopMode = _editing?.Properties.ContainsKey("durationMs") == true;
+        CanTimedStop.IsChecked = hasDuration || !savedStopMode;
+        CanUntilStopped.IsChecked = savedStopMode && !hasDuration;
         CanDurationInput.Text = hasDuration ? duration.ToString(CultureInfo.InvariantCulture) : "5000";
         UpdateCanSendingMode();
     }
@@ -1110,6 +1114,10 @@ public partial class TestStepInspector : UserControl
             ? Visibility.Visible : Visibility.Collapsed;
         CanTimedDurationPanel.Visibility = CanPeriodicMode.IsChecked == true &&
             CanTimedStop.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        if (CanPeriodicMeaning is not null)
+            CanPeriodicMeaning.Text = CanTimedStop.IsChecked == true
+                ? "启动时立即发送第一帧；后台继续按设定周期发送。到达指定时长后自动停止；后续测试步骤不会等待它。"
+                : "启动时立即发送第一帧；后台持续发送，后续测试步骤照常执行。需另加“停止全部周期 CAN”步骤；运行停止或用例结束时也会自动清理。";
     }
 
     private MappingChoice[] CurrentCanRebindCandidates()
