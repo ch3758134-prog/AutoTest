@@ -18,9 +18,12 @@
     <TextBlock Text="当前工程型号：" Foreground="#5D7184" VerticalAlignment="Center"/>
     <TextBox x:Name="ModelBox" Width="150" Padding="6,4" IsReadOnly="True"
              Background="#EEF3F7" BorderThickness="0" TextChanged="EditorChanged"/>
-    <TextBlock Text="烧录方法：CanTool-HydEPB-v1（内部固定）" Margin="20,0,0,0"
+    <TextBlock Text="烧录方法：CanTool-HydEPB-v1（仅验证 HYDEPB）" Margin="20,0,0,0"
                Foreground="#5D7184" VerticalAlignment="Center"/>
    </StackPanel>
+   <TextBlock x:Name="MethodScopeNotice" Foreground="#9B5E16" FontWeight="SemiBold"
+     Visibility="Collapsed" FontSize="12" TextWrapping="Wrap" Margin="0,8,0,0"
+     Text="当前型号没有独立验证的烧录方法：只能保存参数草稿，不能执行 HydEPB 烧录。"/>
   </StackPanel>
   <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
                 HorizontalScrollBarVisibility="Disabled">
