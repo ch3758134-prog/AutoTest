@@ -60,6 +60,8 @@
       ToolTip="仅在接受本次扫码且所有项目/码率/硬件预检通过时启用；开始前再次确认真机 FLASH"/>
      <Button Content="停止" Command="{Binding StopOperatorVerificationCommand}"
       Padding="12,7" Margin="0,0,7,0" ToolTip="请求停止并执行真实工位收尾，不擅自重试 FLASH"/>
+     <Button Content="记录与报告" Click="OpenReports_Click" Padding="12,7" Margin="0,0,7,0"
+      ToolTip="查询真实已经归档的运行证据和报告；进行中的步骤不会被视为已归档"/>
      <Button Content="关闭监视" Click="Close_Click" Padding="12,7"/>
     </StackPanel>
     <StackPanel>
