@@ -187,17 +187,17 @@
        </WrapPanel>
        <StackPanel x:Name="CanPeriodicPanel" Visibility="Collapsed">
         <WrapPanel VerticalAlignment="Center" Margin="0,0,0,5">
-         <TextBlock Text="停止" VerticalAlignment="Center" Foreground="#526B84" Margin="0,0,9,0"/>
-         <RadioButton x:Name="CanUntilStopped" Content="直到停止" GroupName="CanSendStop" Checked="CanStopMode_Changed" VerticalAlignment="Center" Margin="0,0,12,0"/>
-         <RadioButton x:Name="CanTimedStop" Content="定时" GroupName="CanSendStop" Checked="CanStopMode_Changed" VerticalAlignment="Center" Margin="0,0,7,0"/>
+         <TextBlock Text="结束条件" VerticalAlignment="Center" Foreground="#526B84" Margin="0,0,9,0"/>
+         <RadioButton x:Name="CanUntilStopped" Content="由后续停止步骤结束" GroupName="CanSendStop" Checked="CanStopMode_Changed" VerticalAlignment="Center" Margin="0,0,12,0"/>
+         <RadioButton x:Name="CanTimedStop" Content="发送指定时长后自动停止" GroupName="CanSendStop" Checked="CanStopMode_Changed" VerticalAlignment="Center" Margin="0,0,7,0"/>
          <StackPanel x:Name="CanTimedDurationPanel" Visibility="Collapsed" Orientation="Horizontal" VerticalAlignment="Center">
           <TextBox x:Name="CanDurationInput" Width="70" MinHeight="34" ToolTip="持续时间（毫秒）"/>
           <TextBlock Text="ms" VerticalAlignment="Center" Margin="4,0,0,0"/>
          </StackPanel>
         </WrapPanel>
-        <TextBlock Text="后台周期发送；后续测试步骤继续执行"
-         FontSize="13" Foreground="#526B84" Margin="0,6,0,0"
-         TextWrapping="Wrap"/>
+        <TextBlock x:Name="CanPeriodicMeaning" FontSize="13"
+         Foreground="#365873" Margin="0,8,0,0" TextWrapping="Wrap"
+         Text="启动后立即发送首帧；后续在后台按周期发送，测试流程继续执行。"/>
        </StackPanel>
       </StackPanel>
      </Border>
