@@ -415,7 +415,7 @@ public partial class UdsWorkbenchWindow : Window
             if (await SaveCurrentAsync(_documentPath))
             {
                 _closeApproved = true;
-                Dispatcher.BeginInvoke(new Action(Close), DispatcherPriority.Background);
+                _ = Dispatcher.BeginInvoke(new Action(Close), DispatcherPriority.Background);
             }
         }
         finally { _closing = false; }
