@@ -81,6 +81,19 @@
    <Setter Property="MinHeight" Value="32"/>
    <Setter Property="Padding" Value="9,5"/>
   </Style>
+  <Style TargetType="DataGrid">
+   <Setter Property="FontSize" Value="13"/>
+   <Setter Property="Foreground" Value="#263849"/>
+   <Setter Property="Background" Value="White"/>
+   <Setter Property="RowBackground" Value="White"/>
+   <Setter Property="AlternatingRowBackground" Value="#F8FAFC"/>
+   <Setter Property="RowHeaderWidth" Value="0"/>
+   <Setter Property="RowHeight" Value="36"/>
+   <Setter Property="ColumnHeaderHeight" Value="38"/>
+   <Setter Property="EnableRowVirtualization" Value="True"/>
+   <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+   <Setter Property="HorizontalGridLinesBrush" Value="#E4EAF1"/>
+  </Style>
   <Style TargetType="DataGridColumnHeader">
    <Setter Property="Background" Value="#F4F7F5"/>
    <Setter Property="Foreground" Value="#475668"/>
