@@ -17,7 +17,7 @@ public partial class ManualBenchWindow : Window
 {
     private readonly ManualBenchViewModel _model;
     private bool _closeAfterCanStopped;
-    private readonly DispatcherTimer _keyAutosaveTimer = new() { Interval = TimeSpan.FromSeconds(7) };
+    private readonly DispatcherTimer _keyAutosaveTimer = new() { Interval = TimeSpan.FromSeconds(2) };
     private DateTime _lastInteractionUtc = DateTime.UtcNow;
     private bool _keyAutosaveBusy;
     private ManualBenchKeyActionWindow? _keyActionDialog;
@@ -265,7 +265,7 @@ public partial class ManualBenchWindow : Window
     private async void OnKeyAutosaveTick(object? sender, EventArgs e)
     {
         if (_keyAutosaveBusy || !IsActive || !IsEnabled || _benchClosePending || _closeAfterCanStopped ||
-            DateTime.UtcNow - _lastInteractionUtc < TimeSpan.FromSeconds(4)) return;
+            DateTime.UtcNow - _lastInteractionUtc < TimeSpan.FromSeconds(2)) return;
         if (!_model.CanRowsDirty && !_model.CanSaveKeyActions) return;
         _keyAutosaveBusy = true;
         try
