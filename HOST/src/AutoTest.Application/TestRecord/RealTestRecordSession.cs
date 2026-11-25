@@ -515,6 +515,9 @@ public sealed class RealTestRecordSession : IRealRunEventSink
                 }), EvidenceQuality.Unknown, ImmutableArray<EvidenceRef>.Empty, ct)
                 .ConfigureAwait(false);
 
+        var actionOnlyComplete = completed.Verdict == RealTestVerdict.CompletedNoAssertion &&
+            capture.RecordingComplete && capture.DroppedEvents == 0 &&
+            orphaned.Length == 0 && !corrupt;
         await AppendAuditAsync(Guid.NewGuid(),
             completed.Verdict is RealTestVerdict.Passed or RealTestVerdict.Failed
                 ? RunFactKind.Judgement : RunFactKind.Uncertainty,
@@ -525,6 +528,7 @@ public sealed class RealTestRecordSession : IRealRunEventSink
             ? RunState.Unknown : completed.Verdict switch
         {
             RealTestVerdict.Passed => RunState.Completed,
+            RealTestVerdict.CompletedNoAssertion when actionOnlyComplete => RunState.Completed,
             RealTestVerdict.Failed => RunState.Failed,
             RealTestVerdict.Aborted => RunState.Aborted,
             _ => RunState.Unknown
@@ -541,6 +545,9 @@ public sealed class RealTestRecordSession : IRealRunEventSink
             ? "EVIDENCE_GATE_NOT_MET" : completed.Verdict switch
         {
             RealTestVerdict.Passed => null,
+            RealTestVerdict.CompletedNoAssertion when actionOnlyComplete =>
+                "TEST_ACTIONS_COMPLETED_WITHOUT_PRODUCT_ASSERTION",
+            RealTestVerdict.CompletedNoAssertion => "TEST_ACTION_EVIDENCE_INCOMPLETE",
             RealTestVerdict.Failed => "TEST_ASSERTION_FAILED",
             RealTestVerdict.Aborted => "TEST_OPERATOR_ABORTED",
             RealTestVerdict.Error => "TEST_EXECUTION_ERROR",

@@ -189,7 +189,8 @@ public sealed partial class RealTestWorkbenchService
             };
             if (projectSession is not null &&
                 finished.Result.Verdict == RealTestVerdict.CompletedNoAssertion &&
-                formalVerdict == RealTestVerdict.Inconclusive)
+                formalVerdict == RealTestVerdict.Inconclusive &&
+                summary.Header.TerminalState == RunState.Completed)
                 formalVerdict = RealTestVerdict.CompletedNoAssertion;
             var reported = finished.Result with
             {
