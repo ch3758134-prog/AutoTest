@@ -311,7 +311,7 @@ public partial class WaveWorkbenchWindow : Window
                 // Reference and its tolerance envelope share exactly this lane's unit.
                 if (visibleReference.Length > 0)
                 {
-                    if (lane.Tolerance is { } band && band >= 0 &&
+                    if (lane.Tolerance is { } band && double.IsFinite(band) && band >= 0 &&
                         visibleReference.Length >= 2 &&
                         !TraceHasDiscontinuities(visibleReferenceRaw))
                     {
@@ -332,9 +332,14 @@ public partial class WaveWorkbenchWindow : Window
                     AtText("参考", width - 73, sectionTop + 8, 11, "#60758B");
                 }
                 if (visibleActual.Length > 0)
+                {
                     DrawTrace(visibleActualRaw, X, Y, lane.Color, 2.3, false, lane.StepStyle);
+                    if (TraceHasDiscontinuities(visibleActualRaw))
+                        AtText("存在采样缺口 · 已断线显示", width - 235,
+                            sectionTop + 26, 11, "#9B5D1A", false, 210);
+                }
                 else
-                    AtText("无真实采样（当前信号尚未更新）",
+                    AtText("无有效真实采样（信号未更新或数值无效）",
                         LeftMargin + 15, sectionTop + 71, 13, "#60758B");
                 Line(LeftMargin, sectionTop + LaneHeight - 1,
                     width - RightMargin, sectionTop + LaneHeight - 1, "#CBD6E3");
