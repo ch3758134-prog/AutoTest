@@ -14,13 +14,13 @@
 
 ## 1. 最终结论先行
 
-**初始 46/100（不合格）→ 第二轮 63/100（研发可用候选）→ 第三轮 66/100（研发可用候选）。** 三轮均为静态审查评分；不把源码改动自动等同于实际改善，不设没有依据的满分。最终 UI 设计交付门槛 90 分**未达到**；生产物理 START、完整生产真实 Inspection/证据/报告及部分独立专业工具后端仍阻断。任何阶段均不得记作 UI_PASS、PRODUCTION_PASS 或 GATE_PASS。
+**初始 46/100 → 第二轮 63/100 → 第三轮 66/100 → 第四轮 69/100 → 第五轮 73/100 → 第六轮 76/100。** 全部为静态审查评分；不把源码改动自动等同于实际改善，不设没有依据的满分。最终 UI 设计交付门槛 90 分**未达到**；生产物理 START、完整生产真实 Inspection/证据/报告及部分独立专业工具后端仍阻断。任何阶段均不得记作 UI_PASS、PRODUCTION_PASS 或 GATE_PASS。
 
 发生实质变化的项目：生产页面不再列出 COM 配置、独立工程验证及软件 START；将完整 TEST 树作为核心监视；开发整组实测从生产入口移入工程工具菜单，重新经过真实扫码/硬件冻结；对现有 RealStepFact 使用正式 StepId 做 UI 投影而不是用日志名字猜测；主控自动预检和流程/测量更清楚；FlashLab/Wave 及部分手动台架的高 DPI/密度问题进行实际 XAML 修复。未实现的正式执行状态不显示 PASS、进度、真实数据或隐含完成。
 
 ## 2. 统一 100 分尺度
 
-| 维度 | 权重 | 初始 | 二轮 | 三轮 | 终轮扣分与剩余必要措施 |
+| 维度 | 权重 | 初始 | 二轮 | 三轮（历史基线） | 截至三轮扣分 |
 |---|---:|---:|---:|---:|---|
 | 产品信息架构 | 20 | 8 | 12 | 13 | -7：生产正式业务链未接通；ProductionInspectionView 等历史平行呈现仍待受控合并/删除；工程配置部分页面旧入口尚存 |
 | 操作流程效率 | 20 | 8 | 12 | 12 | -8：全套工具仍有历史配置、重复编辑与项目/文件操作；UDS 真机调试未接通；大量业务路径没有真实键鼠测时 |
@@ -238,7 +238,7 @@
 
 ## 10. 质量准出判断与继续规则
 
-- **最终评分：66/100，等级：研发可用候选。** 不是设计交付候选，不符合 90 分目标。
+- **最新第六轮静态评分：76/100，等级：基本可用候选（仅源码层）。** 不是设计交付候选，不符合 90 分目标，也不等于 Windows 运行通过。
 - **准出检查：FAIL/BLOCKED。** 已触发“核心产线真实路径未完成”“未接线专业工具”“未经过 WPF 常见 DPI 验证”“正式记录缺闭环”等多个否决项。
 - **代码与验证：R1 源码已提交；BUILD=NOT_RUN；WPF_HANDS_ON=NOT_RUN；USB/CAN/ECU=NOT_RUN；CI=NOT_RUN。** 不把静态无错、代码 commit、Gate 历史记录当作本轮通过。
 - **后续自主迭代顺序：**（1）本地 Windows UI-01/02/03 等真实证据→消灭编译与控件实际问题；（2）完成剩余 UI/状态接线及单页高频操作→再盲测；（3）等待正式生产物理与 RECORD 合同接通后，重新校准生产 UX，达到 90+ 并完成独立验收。不可依靠主观提分。
@@ -255,4 +255,90 @@
 - **附加静态验收：** 在最终相关 R1 源码上重新扫描 AutomaticTestHomeView、TestEditorView、TestProjectWorkbenchView、WaveWorkbenchWindow、ManualBenchWindow、FlashLabWindow、ProjectConfigurationOverviewView、MainWindow 八个主要 XAML：所检查标签嵌套未报闭合错误，XAML 声明的代码事件处理函数未发现缺失。**这不是 WPF XAML 编译**；ResourceDictionary、程序集引用、Binding 类型及实际键鼠操作仍需 UI-01 等 Windows 项目复测。
 - **改动规模：** 本节形成时，自基线 99618d180bc3b5aa35bc579d2281cfdaea8f13f8 起已提交 37 个源码/报告提交，GitHub compare 显示 19 个 .cs/.xaml 源码文件和本报告，共 20 文件；最后的报告附录更新会产生一个额外文档提交。只能以最后实际 R1 HEAD 及 diff 追溯改动数量。
 
-复评仍为 **66/100；DESIGN_GATE=BLOCKED；BUILD/WPF/HARDWARE=NOT_RUN**。静态检查本身不能代替 1366×768/150% 的实际工业操作体验，也不会因新一轮小修补而自动涨分。
+第三轮历史复评为 **66/100；当时 DESIGN_GATE=BLOCKED；BUILD/WPF/HARDWARE=NOT_RUN**。静态检查本身不能代替 1366×768/150% 的实际工业操作体验，也不会因新一轮小修补而自动涨分。
+
+
+## 12. 第四至第六轮（2026-11-24）自主延续整改
+
+本章节承接第三轮末 R1 源码 HEAD e199b565da77eea332389d59feb4998f541b7fd1。完成代码审查时 HEAD 70caa2edd730de49602da99bf471ea5089d0bf23，GitHub 比较显示随后 50 次提交涉及 30 个文件；报告自身更新还会增加一次提交。所有修改仍只在 R1，未触碰 main / Project_Management 或固件、TEST、FLASH、DEVICE、SCAN、RECORD 既定底层合同。
+
+### 12.1 同样的七维评分尺度
+
+| 维度 | 权重 | 第三轮 | 第四轮 | 第五轮 | 第六轮 | 第六轮扣分原因 |
+|---|---:|---:|---:|---:|---:|---|
+| 产品信息架构 | 20 | 13 | 13 | 13 | 14 | -6：正式生产状态机缺真实事件；工程与旧研究界面仍有部分重复 |
+| 操作流程效率 | 20 | 12 | 13 | 14 | 14 | -6：专业 UDS 无实时诊断；高频任务无键鼠耗时和跳转统计实测 |
+| 信息表达与状态反馈 | 15 | 10 | 11 | 11 | 12 | -3：原始记录/证据/波形断线可视化提高；仍无真实生产结案事件 |
+| 空间与布局 | 15 | 10 | 10 | 12 | 13 | -2：已调整窗口 DIP 约束、任务分屏；缺 1366×768/150% WPF 截图 |
+| 视觉规范与一致性 | 10 | 7 | 7 | 7 | 7 | -3：局部历史工具窗口覆盖 Style；缺实机对比，未主观提分 |
+| 编辑与交互细节 | 10 | 7 | 7 | 8 | 8 | -2：UDS/Flash 保存冲突与键盘操作改善，但输入法/焦点未真实复查 |
+| 异常与恢复体验 | 10 | 7 | 8 | 8 | 8 | -2：冲突保护/异步互锁已接；磁盘/USB/人工中断测试未运行 |
+| **总分** | **100** | **66** | **69** | **73** | **76** | **最终 90 分门槛未达到** |
+
+以上是严格静态证据评分，任何代码提交都不自动获得加分。第四轮提升 3 分，第五轮提升 4 分，第六轮提升 3 分，均对应可核对的窗口/状态改动；没有 Windows 验证就不能补足尚缺分值。
+
+### 12.2 第四轮：RECORD 追溯与状态真值（69/100）
+
+**新发现：** RecordHistoryWindow.xaml(.cs) 只显示运行摘要和导出 HTML。单 ECU 多次尝试的真实失败 StepOccurrence、实际/期望测量、原始事件及证据完整性不能在窗口内定位；此外 Writing / Interrupted 归档可因带有 Pass verdict 字符串而被显示成最终“通过”。
+
+**代码整改：** 在现有多 SQLite 真实源查询列表下增加可调高的三个只读页签：逐步骤事实、原始事件、证据完整性。通过 IRecordHistoryToolSource 的已有 ExportFullReportJsonAsync 获取真实 RunReportExporter 事实，不创造第二套 RECORD，回读 canonical path、disposition、actual、expected、时间戳、occurrenceId、evidenceId、异常码、采集质量。切换选中记录时取消旧请求，限制每类 UI 预览 1200 行并整体设置 DataGrid.ItemsSource，避免大量 UI 通知；完整真实报告仍可打开。多库查询、报告导出移至后台线程，避免压住 WPF Dispatcher。
+
+**反向修复：** 检查 ReportCaptureHealth 的实际 JSON 属性大小写；明确已归档与未结案、生产/开发/诊断 verdict，不将开发 Pass 表述成正式生产合格。未归档记录的查看和导出均有“未结案”提示。
+
+**验证与扣分：** 仅 GitHub 源码、实际导出接口静态关联；没有真实大体量 SQLite 和 HTML/JSON 比较运行日志。保留未验扣分。
+
+### 12.3 第五轮：全系统高 DPI 和工具编辑（73/100）
+
+**新发现：** 主窗 MinWidth 原固定 1220 WPF DIP，独立 DBC/KEY/扫码/原生烧录等窗口最小高度多为 560–625 DIP，1366×768/150% 可能不能看到底部操作；FlashLab/UDS/手动台架固定多栏在窄屏挤占核心数据。UDS 异步保存过程中允许继续输入，新编辑可能被之前的保存回调误标“已保存”。
+
+**代码整改：**
+
+- MainWindow.xaml(.cs)、MainWindowViewModel.Production.cs：主窗 MinWidth 820、MinHeight 455 DIP；窄屏隐藏重复的工程工具栏但菜单始终保留，短高屏默认折叠自动展开的观察区，工程树实际可收缩至 230 DIP。
+- DesktopWindowSizing.cs / FlashWindowSizing.cs：新建仅用于视图的 WPF 可用区域尺寸辅助；相关 Desktop 各种独立窗口和 FlashLab/原生配置在启动或恢复时按 WPF DIP 限制到可见区域，不改变后续用户手动缩放。
+- UdsWorkbenchWindow.xaml(.cs)：先改传统左右/上下布局；反向复审发现上下同时显示在短高屏依然不可用，于是改为窄屏全高度“服务序列/回放与响应”视图切换，宽屏保留并排。支持 Ctrl+N/O/S、Ctrl+Shift+S、Ctrl+D、Insert/Delete；真实文件读取/保存期间锁定输入。服务序列修改后之前装入的真实回放匹配自动失效，避免旧响应被当作新请求的验证。
+- ManualBenchWindow.xaml(.cs)：宽屏 CAN/KEY/RX 三栏；中屏 CAN/KEY + 下方监视；窄屏全宽 CAN、KEY/工位、CAN 监视任务切换，不停止真实周期 CAN 或保持 KEY。ManualBenchCanPropertiesView.xaml 改成 RAW CAN 字节主导与 DBC 辅助弹性宽度，去掉多余说明并显示参数校验。
+- DbcWorkbenchView.xaml：信号连续表格为主、位布局按需展开；将“点击外部即可完成”误导性文字改为应用/取消明确收尾。
+- NativeFlashProfileWindow.xaml(.cs)：给 HEX/安全文件异步导入、原生配置读取及保存增加输入互锁和导入中关闭拦截，不再在未提交的编辑仍可变化时称旧文件已保存。未变更烧录工艺、固件/密钥文件语义和硬件处理。
+
+**验证与扣分：** 新窗口所用 DPI helper 在正确 WPF 项目自动纳入源代码；启动/恢复的边界仍待 Windows 1920×1080、1366×768 100/125/150% 的键鼠与实际位置验证。
+
+### 12.4 第六轮：生产真值、WAVE 可视数据质量、异常逆向审查（76/100）
+
+**新发现：** 生产工作区没有任何正式 production StepOccurrence，却一直显示“当前用例 — / 步骤 — / 期望 — / 实际 —”等空信息；进入工程整组软件 START 后再切生产可能遗留已冻结扫码身份。WaveWorkbenchWindow 的原始采样被视觉降采样之后才进行缺口判断；原始采集掉帧会有被“补线”误读的可能。NaN/Infinity 也可能使整图渲染失败。RECORD 的开发 Pass 与正式检测 Pass 同名有误解风险。
+
+**代码整改：**
+
+- AutomaticTestHomeViewModel.cs、AutomaticTestHomeView.xaml：生产必须由正式真实 StepOccurrence 证据来源才显示测量/步骤卡片；后端尚未接时不再填充长期不可用的“—”数据占据空间，当前扫码和工位阶段继续反映真实状态，未接线不假定成功。断线主控状态为“未连接”而不是“连接中”。
+- AutomaticTestHomeViewModel.Run.cs、MainWindowViewModel.Production.cs：返回生产时撤销开发整组验证的软件 START 准备、强制重新扫码核对 DUT 身份。开发调试仍在工程工作区完成。
+- WaveWorkbenchWindow.xaml.cs 的 RenderWave、VisualGapLimit、TraceHasDiscontinuities、DrawTrace：先按原始观察间隔与非有限样本分段，再对每段做纯视觉采样抽稀；参考容差带不跨不连续时间；发现真实缺口时有可见警示；不更改信号原始证据、参考冻结资源或 WAVE 算法判定。
+- RecordHistoryWindow.xaml.cs：区分“检测通过”“调试通过”“诊断通过”；区分“归档报告”与“未结案资料”，不把中断和 Writing 报告误当正式放行。
+- MainWindow.xaml(.cs)：小屏、高 DPI 的 TEST 主编辑区优先，不让自动观察栏抢掉当前步骤的操作空间。
+
+**新增独立复核：** 逐一回读 AutomaticTestHomeView、ManualBenchWindow、UdsWorkbenchWindow、RecordHistoryWindow、WaveWorkbenchWindow、NativeFlashProfileWindow、DbcWorkbenchView、MainWindow 八个实际核心 XAML 及其 code-behind，简单 XML 标签栈未发现闭合不平衡，XAML 声明的事件处理函数未发现缺失。**这不是 XAML 编译、资源绑定检查、Windows 键鼠录屏或实物测试。**
+
+### 12.5 各主要场景重新评分（只是场景诊断分，非七维总分）
+
+| 场景 | 第三轮 | 第六轮 | 仍不通过的真实原因 |
+|---|---:|---:|---|
+| 生产检测 | 59 | 62 | 实体 START、夹具到位事实、正式全流程 Inspection/Record 尚未闭环 |
+| ECU 工程与 TEST | 64 | 68 | 空间和快捷键改善；长流程编辑、运行失败定位和自动保存未 WPF 验证 |
+| 手动台架 | 61 | 73 | 全宽 CAN/KEY/RX 新布局；真实周期 CAN、保持/停发和设备回读未实测 |
+| DBC | 58 | 63 | 信号矩阵及浮窗显隐合理；大量实际 DBC 操作及回读尚未验证 |
+| UDS | 32 | 43 | 独立序列和回放可编辑，但实体 ECU UDS 会话没有安全接线 |
+| FLASH | 55 | 68 | 原生配置编辑/导入的异步一致性改进；没有真实 ECU 烧录验收 |
+| WAVE | 56 | 66 | 原始采样缺口不再被可视线段跨接，参考与真机采样质量仍待验 |
+| RECORD | 54 | 70 | 真实步骤/事件/质量/报告关联可钻取；批量生产索引和正式结案不完整 |
+
+### 12.6 第四至第六轮变更文件、证据等级与准出门槛
+
+以 R1 上一个 66 分候选 HEAD e199b565da77eea332389d59feb4998f541b7fd1 对比，新增代码提交期间 GitHub compare 显示约 50 个提交、30 个变更文件（后续报告落档不计入这 50 次）。完整变更以 GitHub compare 为准。主要是：
+
+- Desktop Shell：RecordHistoryWindow.xaml(.cs)、UdsWorkbenchWindow.xaml(.cs)、ManualBenchWindow.xaml(.cs)、ManualBenchCanPropertiesView.xaml、MainWindow.xaml(.cs)、MainWindowViewModel.Production.cs、AutomaticTestHomeView.xaml、AutomaticTestHomeViewModel.cs/.Run.cs、WaveWorkbenchWindow.xaml.cs、DesktopWindowSizing.cs（新）
+- Desktop DBC：DbcWorkbenchView.xaml、DbcMessageEditDialog.xaml.cs、DbcSignalEditDialog.xaml.cs
+- Desktop Configuration / Projects：KeyMaskPickerDialog.xaml.cs、WaveReferencePickerDialog.xaml.cs、WaveSignalPickerDialog.xaml.cs、NewProjectDialog.xaml.cs、ResourceNameDialog.xaml.cs
+- Desktop 工具弹窗：ManualBenchCanPropertiesWindow.xaml.cs、ManualBenchKeyActionWindow.xaml.cs、SerialScannerWindow.xaml.cs
+- FlashLab：FlashWindowSizing.cs（新）、FlashLabWindow.xaml.cs、NativeFlashProfileWindow.xaml(.cs)
+
+**仍阻断准出：** 正式产线实体 START/夹具/每次前置烧录/全部 TEST/正式 RECORD 尚未有可用整机闭环；UDS 独立实体实时操作未接通；WAVE 无工程在线源和采样质量尚未按真实 DUT 验证；跨工程生产结果发现和单台批量报告缺实体事实；Windows 构建/运行/DPI/焦点/关闭未测。
+
+**截至第六轮：76/100（仅静态审查，基本可用候选）｜DESIGN_GATE=BLOCKED｜BUILD=NOT_RUN｜WPF_HANDS_ON=NOT_RUN｜HARDWARE=NOT_RUN｜CI=NOT_RUN。** 不得因源码提交和自身评分直接标记 90+ 或验收通过，后续本地 Windows 验证清单仍按第 8 节 UI-01 至 UI-18 执行。
