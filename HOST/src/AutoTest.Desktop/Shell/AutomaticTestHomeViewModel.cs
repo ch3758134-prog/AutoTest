@@ -119,6 +119,9 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         !_hardware.IsConnected ? "等待主控连接" :
         !_hardware.IsEcuCanBitrateApplied ? "ECU CAN 码率未确认" :
         !_scanner.IsConnected ? "等待扫码枪连接" :
+        _prepared is not null &&
+        _hardware.ConfirmedEcuCanBitrateKbps != _prepared.EcuCanKbps
+            ? "ECU CAN 与工程烧录配置不一致" :
         _prepared is null ? "等待 ECU 扫码" :
         "ECU 已识别 · 正式检测尚不可启动";
 
@@ -146,6 +149,12 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
                 ? "ECU CAN 波特率尚未完成主控回读确认。"
             : !_scanner.IsConnected
                 ? "扫码枪未连接，工位不能接收 ECU 编号。"
+            : _prepared is not null &&
+                _hardware.ConfirmedEcuCanBitrateKbps != _prepared.EcuCanKbps
+                ? "已冻结工程要求 ECU CAN " + _prepared.EcuCanKbps +
+                  " kbit/s，主控当前 " +
+                  _hardware.ConfirmedEcuCanBitrateKbps +
+                  " kbit/s；工程师须核对并应用目标码率后重新扫码。"
             : _prepared is null
                 ? "使用工位扫码枪扫描条码；不需要鼠标启动。"
                 : "扫码身份及工程资源已核对；实体 START 和正式生产归档尚未接线。";
@@ -228,7 +237,10 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     public bool MainControllerConnected => _hardware.IsConnected;
     public string KeyRequestStatus => _hardware.KeyRequestStatus;
     public bool ScannerConnected => _scanner.IsConnected;
-    public bool CanBitrateReady => _hardware.IsConnected && _hardware.IsEcuCanBitrateApplied;
+    public bool CanBitrateReady => _hardware.IsConnected &&
+        _hardware.IsEcuCanBitrateApplied &&
+        (_prepared is null ||
+         _hardware.ConfirmedEcuCanBitrateKbps == _prepared.EcuCanKbps);
     public bool IdentityAccepted => _prepared is not null;
     public string ControllerLabel => MainControllerConnected ? "主控已连接" : "主控未连接";
     public string ScannerLabel => ScannerConnected ? "扫码已连接" : "扫码未连接";
@@ -240,13 +252,17 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         ? "实际端口：" + _scanner.ConnectedPort + " · 等待扫码"
         : "已绑定设备自动重连；首次使用或故障时打开扫码枪设置";
     public string CanDetail => _hardware.EcuCanBitrateStatus +
-        " · 此项仅代表主控配置，不代表 ECU 已响应";
+        (_prepared is not null && _hardware.ConfirmedEcuCanBitrateKbps != _prepared.EcuCanKbps
+            ? " · 工程要求 " + _prepared.EcuCanKbps + "k"
+            : "") + " · 不代表 ECU 已响应";
     public string StationReadiness => !_hardware.IsConnected ? "等待主控连接" :
         !_hardware.IsEcuCanBitrateApplied ? "CAN 波特率待确认" :
         !_scanner.IsConnected ? "等待扫码枪" :
         _plans.Current is null ? "请打开工程" :
         !_plans.Current.ResourceReady ? "工程未就绪" :
         _prepared is null ? "等待扫码" :
+        _hardware.ConfirmedEcuCanBitrateKbps != _prepared.EcuCanKbps
+            ? "工程/ECU CAN 速率不符" :
         IsOperatorRunning ? "工程实测进行中" :
         _isProductionWorkspace() ? "已核对扫码；实体 START 未接线" :
         "工程实测可启动";
