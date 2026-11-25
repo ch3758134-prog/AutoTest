@@ -166,22 +166,24 @@ public sealed partial class AutomaticTestHomeViewModel
                 AddOperatorEvent("步骤开始 · " + phase + " · " + name);
         });
 
+    private static string ActualStepStateLabel(RealStepStatus status) => status switch
+    {
+        RealStepStatus.Completed => "执行完成（非单独 PASS）",
+        RealStepStatus.Skipped => "已跳过",
+        RealStepStatus.ConditionFalse => "条件不成立",
+        RealStepStatus.NoData => "无数据",
+        RealStepStatus.Timeout => "超时",
+        RealStepStatus.InvalidData => "数据无效",
+        RealStepStatus.DeviceError => "设备异常",
+        RealStepStatus.Cancelled => "已取消",
+        _ => "状态未知"
+    };
+
     private void OnOperatorStepCompleted(RealStepFact fact) =>
         OnUi(() =>
         {
             if (!IsOperatorRunning) return;
-            var state = fact.Status switch
-            {
-                RealStepStatus.Completed => "执行完成（非单独 PASS）",
-                RealStepStatus.Skipped => "已跳过",
-                RealStepStatus.ConditionFalse => "条件不成立",
-                RealStepStatus.NoData => "无数据",
-                RealStepStatus.Timeout => "超时",
-                RealStepStatus.InvalidData => "数据无效",
-                RealStepStatus.DeviceError => "设备异常",
-                RealStepStatus.Cancelled => "已取消",
-                _ => "状态未知"
-            };
+            var state = ActualStepStateLabel(fact.Status);
             ChangeStepState(fact.Step, state);
             if (_operatorActiveStepId == fact.Step)
             {
@@ -454,6 +456,26 @@ public sealed partial class AutomaticTestHomeViewModel
                 var confirmation = RealTestWorkbenchService.ExpectedApproval(prepared);
                 var run = await _operatorEngine.ExecuteAsync(
                     item.Program, confirmation, "", scan.DutSerial, ct);
+                // Close the event/UI dispatch race using the executor's
+                // immutable final facts. UI callbacks can be queued when the
+                // engine finishes on a non-UI thread; never lose the last
+                // real step solely because the run has already transitioned.
+                foreach (var fact in run.Facts)
+                    ChangeStepState(fact.Step, ActualStepStateLabel(fact.Status));
+                var lastMeasured = run.Facts.LastOrDefault(fact =>
+                    !string.IsNullOrWhiteSpace(fact.Actual) ||
+                    !string.IsNullOrWhiteSpace(fact.Expected));
+                if (lastMeasured is not null)
+                {
+                    OperatorStepStatus = ActualStepStateLabel(lastMeasured.Status);
+                    OperatorActual = string.IsNullOrWhiteSpace(lastMeasured.Actual)
+                        ? "—" : lastMeasured.Actual;
+                    OperatorExpected = string.IsNullOrWhiteSpace(lastMeasured.Expected)
+                        ? "—" : lastMeasured.Expected;
+                    if (lastMeasured.Status is not (RealStepStatus.Completed or
+                        RealStepStatus.Skipped or RealStepStatus.ConditionFalse))
+                        OperatorFailure = lastMeasured.Detail;
+                }
                 results.Add(new RealOperatorCaseEvidence(item.Entry.DisplayName,
                     run.Run.Value, run.Verdict.ToString(), run.EvidencePath ?? ""));
                 ChangeCaseState(i, run.Verdict == RealTestVerdict.Passed ? "实测通过" :
