@@ -272,8 +272,8 @@ public partial class UdsWorkbenchWindow : Window
         try
         {
             var source = Path.GetFullPath(picker.FileName);
-            var loaded = await UdsToolDocumentStore.LoadAsync(source);
-            var bytes = await File.ReadAllBytesAsync(source);
+            var snapshot = await UdsToolDocumentStore.LoadSnapshotAsync(source);
+            var loaded = snapshot.Document;
             _loading = true;
             try
             {
@@ -287,7 +287,7 @@ public partial class UdsWorkbenchWindow : Window
                 P2Input.Text = loaded.Profile.P2Ms.ToString(CultureInfo.InvariantCulture);
                 P2StarInput.Text = loaded.Profile.P2StarMs.ToString(CultureInfo.InvariantCulture);
                 _documentPath = source;
-                _loadedSha = Hash(bytes);
+                _loadedSha = snapshot.Sha256;
                 _dirty = false;
                 SourceLabel.Text = source + " · 独立序列";
                 ClearReplay();
@@ -358,10 +358,12 @@ public partial class UdsWorkbenchWindow : Window
                      string.Equals(_documentPath, absolute, StringComparison.OrdinalIgnoreCase))
                 throw new FileNotFoundException("已打开的序列文件已被移走，不能静默重建。", absolute);
             await UdsToolDocumentStore.SaveAsync(absolute, document);
-            var verified = await UdsToolDocumentStore.LoadAsync(absolute);
-            if (verified.Services.Count != document.Services.Count)
-                throw new InvalidDataException("UDS 序列保存后回读不一致。");
-            _loadedSha = Hash(await File.ReadAllBytesAsync(absolute));
+            var verified = await UdsToolDocumentStore.LoadSnapshotAsync(absolute);
+            if (!Equals(verified.Document, document) &&
+                (verified.Document.Profile != document.Profile ||
+                 !verified.Document.Services.SequenceEqual(document.Services)))
+                throw new InvalidDataException("UDS 序列保存后回读内容不一致。");
+            _loadedSha = verified.Sha256;
             _documentPath = absolute;
             _dirty = false;
             SourceLabel.Text = absolute + " · 独立序列";
