@@ -144,6 +144,7 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
     private readonly Action? _onPublished;
     private readonly Func<ProductionPublishedProduct, Task<string>>? _activateProject;
     private readonly Func<Task<string>>? _publishProject;
+    private readonly Action? _openSpecialProcedure;
     private long _editGeneration;
     private readonly Func<bool> _mayEdit;
     private readonly DispatcherTimer _autosave = new()
@@ -213,7 +214,8 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
     public ProductionPreparationWindow(ProjectWorkspaceService workspace, Func<bool> mayEdit,
         SerialScannerWorkbenchViewModel? scanner = null, Action? onPublished = null,
         Func<ProductionPublishedProduct, Task<string>>? activateProject = null,
-        Func<Task<string>>? publishProject = null)
+        Func<Task<string>>? publishProject = null,
+        Action? openSpecialProcedure = null)
     {
         _workspace = workspace;
         _mayEdit = mayEdit;
@@ -221,7 +223,9 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
         _onPublished = onPublished;
         _activateProject = activateProject;
         _publishProject = publishProject;
+        _openSpecialProcedure = openSpecialProcedure;
         InitializeComponent();
+        ConfigureProductPreparationWorkspace();
         DataContext = this;
         ProductionScannerDeviceHost.Content = scanner is null
             ? new TextBlock { Text = "真实扫码设备尚未初始化。", Margin = new Thickness(10) }
@@ -265,7 +269,7 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
             PreviewInput.AppendText((PreviewInput.Text.Length > 0 &&
                 !PreviewInput.Text.EndsWith("\n", StringComparison.Ordinal) ? "\n" : "") +
                 raw + "\n");
-            PreparationTabs.SelectedIndex = 4;
+            PreparationTabs.SelectedIndex = 3;
             Preview_Click(this, new RoutedEventArgs());
         }));
     }

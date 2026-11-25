@@ -34,7 +34,7 @@ public sealed partial class MainWindowViewModel
     public bool IsProductionWorkspace => _productionWorkspace;
     public bool IsEngineerWorkspace => !_productionWorkspace;
     public string WindowTitle => IsProductionWorkspace
-        ? "AutoTest · 自动测试" : "AutoTest · 开发与调试";
+        ? "AutoTest · 生产检测" : "AutoTest · 工程开发";
     public DelegateCommand ShowProductionWorkspaceCommand { get; private set; } = null!;
     public DelegateCommand ShowEngineerWorkspaceCommand { get; private set; } = null!;
     public DelegateCommand ConfigureAutomaticTestCommand { get; private set; } = null!;
@@ -114,7 +114,8 @@ public sealed partial class MainWindowViewModel
             {
                 await ConfirmProductionConfigurationAsync();
                 return StatusMessage;
-            })
+            },
+            () => OpenProjectConfigurationOverviewCommand.Execute())
         { Owner = global::System.Windows.Application.Current?.MainWindow };
         _productionPreparationWindow = window;
         window.Closed += (_, _) =>
