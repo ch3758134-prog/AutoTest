@@ -588,7 +588,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         row.RefreshAvailableRevision(current.Revision, current.Sha256);
         row.AdoptCurrentRevision();
         StatusMessage = "已选择采用测试用例最新修订 r" + current.Revision +
-            "。保存测试项目后才会正式更新固定引用；历史运行记录不会改变。";
+            "。该引用将随项目自动保存；历史运行记录不会改变。";
         RefreshCommands();
         _ = RefreshStepCountsAsync();
     }
