@@ -128,6 +128,20 @@
    </DockPanel>
   </Border>
 
+  <Grid Grid.Row="1">
+   <Grid.RowDefinitions>
+    <RowDefinition Height="Auto"/>
+    <RowDefinition Height="*"/>
+   </Grid.RowDefinitions>
+   <StackPanel x:Name="BenchCompactNavigation" Grid.Row="0"
+    Orientation="Horizontal" Visibility="Collapsed" Margin="12,8,12,0">
+    <Button x:Name="BenchShowCanTab" Content="CAN 发送"
+     Click="BenchShowCanTab_Click" Margin="0,0,7,0" Padding="12,6"/>
+    <Button x:Name="BenchShowKeyTab" Content="KEY 与工位"
+     Click="BenchShowKeyTab_Click" Margin="0,0,7,0" Padding="12,6"/>
+    <Button x:Name="BenchShowMonitorTab" Content="CAN 监视"
+     Click="BenchShowMonitorTab_Click" Padding="12,6"/>
+   </StackPanel>
   <Grid x:Name="BenchWorkGrid" Grid.Row="1" Margin="12,12,12,10">
    <Grid.RowDefinitions>
     <RowDefinition x:Name="BenchPrimaryRow" Height="*"/>
@@ -513,6 +527,7 @@
      </Expander>
     </Grid>
    </Border>
+  </Grid>
   </Grid>
   <Border Grid.Row="2" Background="{StaticResource ToolbarSurface}" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Padding="14,8">
    <TextBlock Text="{Binding Status}" Foreground="{StaticResource Ink}" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
