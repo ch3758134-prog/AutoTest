@@ -71,6 +71,9 @@ public sealed partial class ManualBenchViewModel
             : "当前工位尚不可执行该 KEY 动作；可双击编辑或在主窗口查看连接状态。";
     }
 
+    public void ReportKeyPadSaveFailure(string reason) =>
+        KeyActionRunStatus = "KEY 修改未能保存，未向硬件发送：" + reason;
+
     private void InitializeKeyPad()
     {
         PressKeyPadCommand = new DelegateCommand<KeyActionPadItem>(
