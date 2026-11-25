@@ -226,19 +226,26 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         }
     }
     public bool HasPlan => _plans.Current is not null ||
-        _draftPreview is { HasTestProject: true };
+        (!_isProductionWorkspace() && _draftPreview is { HasTestProject: true });
     public bool NeedsSetup => Cases.Count == 0;
-    public string SetupIssue => _plans.Current is not null ? _plans.Issue :
-        _draftPreview is not null
-            ? "工程可编辑，检测配置待完善：" + _draftPreview.Description
-            : string.IsNullOrWhiteSpace(_draftIssue)
-                ? "尚未打开检测工程。进入开发与调试创建或打开 ECU 工程。"
-                : _draftIssue;
-    public string ModelCode => (_plans.Current?.Project.Definition.EcuModelCode ??
-            _draftPreview?.Project.Definition.EcuModelCode) is { Length: > 0 } code
-        ? code : "未设置";
+    public string SetupIssue => _isProductionWorkspace()
+        ? _plans.Current is not null ? _plans.Issue :
+            string.IsNullOrWhiteSpace(_plans.Issue)
+                ? "当前工程尚未确认用于正式生产。"
+                : _plans.Issue
+        : _plans.Current is not null ? _plans.Issue :
+            _draftPreview is not null
+                ? "工程可编辑，检测配置待完善：" + _draftPreview.Description
+                : string.IsNullOrWhiteSpace(_draftIssue)
+                    ? "尚未打开检测工程。进入开发与调试创建或打开 ECU 工程。"
+                    : _draftIssue;
+    public string ModelCode =>
+        (_plans.Current?.Project.Definition.EcuModelCode ??
+         (_isProductionWorkspace() ? null : _draftPreview?.Project.Definition.EcuModelCode))
+        is { Length: > 0 } code ? code : "未确认";
     public string ProjectName => _plans.Current?.Project.Definition.Name ??
-        _draftPreview?.Project.Definition.Name ?? "未打开工程";
+        (_isProductionWorkspace() ? "正式检测工程未确认" :
+            _draftPreview?.Project.Definition.Name ?? "未打开工程");
     public bool MainControllerConnected => _hardware.IsConnected;
     public string KeyRequestStatus => _hardware.KeyRequestStatus;
     public bool ScannerConnected => _scanner.IsConnected;
@@ -276,10 +283,12 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     public string ScanStatus => _scanStatus;
     public string Status => _status;
     public string DeploymentStatus => _plans.Current is null
-        ? _draftPreview is null
-            ? "当前没有可用工程，请进入开发与调试"
-            : "当前工程 · 检测配置待完善"
-        : "使用当前工程 · 实体工位与完整执行待接线";
+        ? _isProductionWorkspace()
+            ? "生产工程未确认：请进入开发与调试的运行前检查"
+            : _draftPreview is null
+                ? "当前没有可用工程，请进入开发与调试"
+                : "当前工程 · 检测配置待完善"
+        : "使用已确认工程 · 实体 START/RECORD 尚待接入";
     public int CaseCount => Cases.Count;
     public string DeviceStatus => (_hardware.IsConnected ? "主控已连接" : "主控未连接") +
         " · " + (_scanner.IsConnected ? "扫码枪已连接" : "扫码枪未连接");
@@ -289,10 +298,9 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     public string ExpectedValue => "—";
     public string FailureReason => "—";
     public string ExecutionNotice => _plans.Current is null
-        ? _draftPreview is null ? _plans.Issue
-            : "已显示当前编辑工程的用例（不会发送硬件指令）。" +
-              _draftPreview.Description +
-              "需要完成前置烧录等检测配置才能进入正式检测。"
+        ? _isProductionWorkspace() || _draftPreview is null ? _plans.Issue
+            : "仅供工程师预览：当前尚未确认正式生产工程。" +
+              _draftPreview.Description
         : _plans.Current.ResourceIssues.Count != 0
             ? "当前工程有 " + _plans.Current.ResourceIssues.Count +
               " 项运行资源问题；请进入开发与调试定位。"
@@ -414,7 +422,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         {
             foreach (var item in deployed.Cases) Cases.Add(item);
         }
-        else if (_draftPreview is { } draft)
+        else if (!_isProductionWorkspace() && _draftPreview is { } draft)
         {
             for (var i = 0; i < draft.Cases.Count; i++)
             {
