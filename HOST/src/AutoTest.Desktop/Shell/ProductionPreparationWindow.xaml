@@ -87,7 +87,9 @@
          <Button Content="绑定当前打开工程" Click="AddCurrentProject_Click"
           Padding="12,7" Margin="0,0,7,0"/>
          <Button Content="添加工程文件" Click="AddManifest_Click" Padding="12,7" Margin="0,0,7,0"/>
-         <Button Content="移除选中绑定" Click="RemoveProject_Click" Padding="12,7"/>
+         <Button Content="移除选中绑定" Click="RemoveProject_Click" Padding="12,7" Margin="0,0,7,0"/>
+         <Button Content="安全切换到选中型号" Click="ActivateProject_Click" Padding="12,7"
+          ToolTip="工位空闲时校验已发布资源，切换活动型号并对 ECU CAN 码率进行真实回读；不断开 USB"/>
         </StackPanel>
         <TextBlock Text="型号及硬件版本 → 一份已发布工程" FontWeight="SemiBold" VerticalAlignment="Center"/>
        </DockPanel>

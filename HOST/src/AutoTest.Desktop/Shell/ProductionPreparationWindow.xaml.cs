@@ -142,6 +142,7 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
     private readonly ProjectWorkspaceService _workspace;
     private readonly SerialScannerWorkbenchViewModel? _scanner;
     private readonly Action? _onPublished;
+    private readonly Func<ProductionPublishedProduct, Task<string>>? _activateProject;
     private readonly Func<bool> _mayEdit;
     private readonly DispatcherTimer _autosave = new()
         { Interval = TimeSpan.FromMilliseconds(850) };
@@ -208,12 +209,14 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
         new PropertyChangedEventArgs(name));
 
     public ProductionPreparationWindow(ProjectWorkspaceService workspace, Func<bool> mayEdit,
-        SerialScannerWorkbenchViewModel? scanner = null, Action? onPublished = null)
+        SerialScannerWorkbenchViewModel? scanner = null, Action? onPublished = null,
+        Func<ProductionPublishedProduct, Task<string>>? activateProject = null)
     {
         _workspace = workspace;
         _mayEdit = mayEdit;
         _scanner = scanner;
         _onPublished = onPublished;
+        _activateProject = activateProject;
         InitializeComponent();
         DataContext = this;
         // No hidden combo-box entries: these are identity SOURCE modes.
@@ -452,6 +455,27 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
         if (ProductsGrid.SelectedItem is ProductRow selected)
         { Products.Remove(selected); MarkDirty(); }
     }
+    private async void ActivateProject_Click(object sender, RoutedEventArgs e)
+    {
+        if (_activateProject is null || ProductsGrid.SelectedItem is not ProductRow selected)
+        { Status = "请选中一条已发布产品工程绑定。"; return; }
+        if (_dirty) { Status = "请先保存并发布当前修改，再切换工位型号。"; return; }
+        try
+        {
+            var publication = await StationProductionConfigurationStore.LoadPublishedAsync()
+                ?? throw new InvalidDataException("工位尚未发布产品配置。");
+            var pin = publication.Projects.SingleOrDefault(x =>
+                x.ModelCode == selected.ModelCode &&
+                x.HardwareCode == selected.HardwareCode &&
+                string.Equals(x.ManifestPath, selected.ManifestPath,
+                    StringComparison.OrdinalIgnoreCase))
+                ?? throw new InvalidDataException("选中的工程没有对应的已发布固定版本。");
+            Status = await _activateProject(pin);
+            await RefreshOverviewAsync();
+        }
+        catch (Exception error) { Status = "工位切换被拒绝：" + error.Message; }
+    }
+
     private void AddRule_Click(object sender, RoutedEventArgs e)
     {
         var rule = RuleRow.From(ProductionBarcodeRule.NewSerial());

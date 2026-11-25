@@ -92,7 +92,8 @@ public sealed partial class MainWindowViewModel
                 !_hardware.IsFlashSecuritySensitive &&
                 !_hardware.IsManualCanBatchApproved &&
                 !_hardware.IsManualKeyActionApproved,
-            _scannerWorkbench, () => _automaticTestHome.OnPublishedConfigurationChanged())
+            _scannerWorkbench, () => _automaticTestHome.OnPublishedConfigurationChanged(),
+            ActivatePublishedProjectAsync)
         { Owner = global::System.Windows.Application.Current?.MainWindow };
         _productionPreparationWindow = window;
         window.Closed += (_, _) =>
@@ -102,6 +103,45 @@ public sealed partial class MainWindowViewModel
             _ = RefreshEngineeringSetupAsync();
         };
         window.Show(); window.Activate();
+    }
+
+    /// <summary>Switch only an explicitly published exact product at an IDLE
+    /// engineering station. Changing ECU bitrate requires actual USB readback;
+    /// no implicit project/firmware fallback and no controller disconnect.</summary>
+    private async Task<string> ActivatePublishedProjectAsync(ProductionPublishedProduct pin)
+    {
+        if (!IsEngineerWorkspace || _realTest.IsRunning ||
+            _automaticTestHome.IsOperatorRunning ||
+            _hardware.IsFlashSecuritySensitive ||
+            _hardware.IsManualCanBatchApproved ||
+            _hardware.IsManualKeyActionApproved)
+            throw new InvalidOperationException("只有工位空闲时才能切换已发布型号。");
+        await StationProductionConfigurationStore.VerifyProductAsync(pin);
+        if (!await PrepareEditorsForCloseAsync())
+            throw new IOException("工程编辑尚未保存，工位切换取消。");
+        if (!await PrepareDbcWindowsForCloseAsync(exitingApplication: false))
+            throw new IOException("DBC 编辑器仍有待完成修改。");
+        if (_hardware.IsConnected)
+        {
+            _hardware.SelectRequestedEcuCanBitrate(pin.EcuCanKbps);
+            var confirmed = await _hardware.ApplyRequestedEcuCanBitrateAsync();
+            if (confirmed != pin.EcuCanKbps)
+                throw new IOException("ECU CAN 实际回读码率与目标已发布版本不符。");
+        }
+        await _workspace.OpenAsync(pin.ManifestPath);
+        var project = _workspace.Current ?? throw new IOException("目标工程未打开。");
+        if (project.Definition.Id.Value != pin.ProjectId ||
+            !string.Equals(project.ManifestSha256, pin.ManifestSha256,
+                StringComparison.OrdinalIgnoreCase))
+            throw new IOException("目标工程的发布身份/内容指纹已改变。");
+        var deployed = await StationDeploymentStore.DeployAsync(project);
+        _automaticTestHome.OnPublishedConfigurationChanged();
+        await _automaticTestHome.RestoreAsync();
+        return "工位已切换到已发布型号：" + pin.ModelCode +
+            (pin.HardwareCode.Length == 0 ? "" : " / " + pin.HardwareCode) +
+            " · TEST " + deployed.Test.Cases.Count + " 个；" +
+            (_hardware.IsConnected ? "ECU CAN 已真实回读确认 " + pin.EcuCanKbps + " kbit/s。" :
+                "主控当前未连接，后续连接必须重新应用并回读 CAN 码率。");
     }
 
     /// <summary>
