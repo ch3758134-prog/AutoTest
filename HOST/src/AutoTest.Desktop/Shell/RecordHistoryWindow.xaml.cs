@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Text.Json;
 using System.IO;
@@ -77,15 +76,14 @@ public partial class RecordHistoryWindow : Window
     private bool _busy;
     private int _detailRequestRevision;
     private CancellationTokenSource? _detailCancellation;
-    private readonly ObservableCollection<ArchivedStepDisplayRow> _archivedSteps = new();
-    private readonly ObservableCollection<ArchivedEventDisplayRow> _archivedEvents = new();
+ 
 
     public RecordHistoryWindow(string? projectRoot)
     {
         InitializeComponent();
         Loaded += (_, _) => AutoTest.Desktop.Shell.DesktopWindowSizing.FitToVisibleWorkspace(this);
-        StepFactsGrid.ItemsSource = _archivedSteps;
-        EventFactsGrid.ItemsSource = _archivedEvents;
+        StepFactsGrid.ItemsSource = null;
+        EventFactsGrid.ItemsSource = null;
         if (!string.IsNullOrWhiteSpace(projectRoot))
         {
             var candidate = Path.Combine(projectRoot, "test-records", "r1-records.sqlite");
@@ -275,8 +273,8 @@ public partial class RecordHistoryWindow : Window
         _detailRequestRevision++;
         _detailCancellation?.Cancel();
         _detailCancellation = null;
-        _archivedSteps.Clear();
-        _archivedEvents.Clear();
+        StepFactsGrid.ItemsSource = null;
+        EventFactsGrid.ItemsSource = null;
         DetailsStatus.Text = "选择一次运行，查看真实步骤、测量、事件和证据";
         StepDetailText.Text = "选择一个步骤可查看 Occurrence、证据 ID 和失败说明";
         EvidenceIntegrity.Text = "尚未选择记录；不能从空白或未结案记录推断测试通过。";
@@ -284,9 +282,15 @@ public partial class RecordHistoryWindow : Window
 
     private static string JsonField(JsonElement row, string key)
     {
-        if (row.ValueKind != JsonValueKind.Object ||
-            !row.TryGetProperty(key, out var value) ||
-            value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+        if (row.ValueKind != JsonValueKind.Object) return "";
+        if (!row.TryGetProperty(key, out var value))
+        {
+            // Exporter anonymous rows use camelCase, but strong RECORD DTOs
+            // like ReportCaptureHealth serialize as PascalCase by default.
+            var pascal = char.ToUpperInvariant(key[0]) + key[1..];
+            if (!row.TryGetProperty(pascal, out value)) return "";
+        }
+        if (value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
             return "";
         return value.ValueKind == JsonValueKind.String ? value.GetString() ?? "" : value.ToString();
     }
@@ -410,8 +414,10 @@ public partial class RecordHistoryWindow : Window
                 cancellation.Token);
             if (version != _detailRequestRevision || cancellation.IsCancellationRequested ||
                 !ReferenceEquals(HistoryGrid.SelectedItem, display)) return;
-            foreach (var step in parsed.Steps) _archivedSteps.Add(step);
-            foreach (var entry in parsed.Events) _archivedEvents.Add(entry);
+            // One immutable virtualized ItemsSource replacement rather than
+            // up to 2,400 collection notifications on a selected run.
+            StepFactsGrid.ItemsSource = parsed.Steps;
+            EventFactsGrid.ItemsSource = parsed.Events;
             EvidenceIntegrity.Text = parsed.IntegrityText;
             DetailsStatus.Text = parsed.Summary;
         }
