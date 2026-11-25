@@ -172,6 +172,20 @@
            <StackPanel Orientation="Horizontal" Height="17" ToolTip="{Binding PinDetail}">
             <TextBlock Text="{Binding PinStatus}" FontSize="10" Foreground="#627C9D"
              TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+            <Button Content="更新引用…" Tag="{Binding}" Click="AdoptCurrentRevision_Click"
+             FontSize="10" Margin="6,0,0,0" Padding="4,0" Height="17" MinHeight="0"
+             ToolTip="先核对当前 TEST 资源的版本与哈希，再只更新本条正式调用实例">
+             <Button.Style>
+              <Style TargetType="{x:Type Button}" BasedOn="{StaticResource AtQuietButton}">
+               <Setter Property="Visibility" Value="Collapsed"/>
+               <Style.Triggers>
+                <DataTrigger Binding="{Binding CanAdoptLatest}" Value="True">
+                 <Setter Property="Visibility" Value="Visible"/>
+                </DataTrigger>
+               </Style.Triggers>
+              </Style>
+             </Button.Style>
+            </Button>
             <Button Content="修复旧项目用例" Tag="{Binding}" Click="RestoreLegacyInclusion_Click"
              FontSize="10" Margin="6,0,0,0" Padding="4,0" Height="17"
              MinHeight="0" Foreground="#94651F"
