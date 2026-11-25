@@ -58,6 +58,12 @@ public sealed class TestEditorViewModel : BindableBase
     private string? _lastProjectedDocument;
     // The view suppresses persistence while a property overlay holds uncommitted inputs.
     public Func<bool>? CanAutoPersist { get; set; }
+    public void QueueAutoSave()
+    {
+        if (HasNewStepDraft || !IsDirty) return;
+        _autosaveTimer.Stop();
+        _autosaveTimer.Start();
+    }
     private string _status = "请选择阶段或步骤进行编辑。";
 
     public TestEditorViewModel(ProjectWorkspaceService workspace,
@@ -1238,11 +1244,7 @@ public sealed class TestEditorViewModel : BindableBase
         finally { _syncingRowSelection = wasSyncing; }
         RaisePropertyChanged(nameof(ExpectedApproval));
         RefreshCommands();
-        if (!HasNewStepDraft && IsDirty)
-        {
-            _autosaveTimer.Stop();
-            _autosaveTimer.Start();
-        }
+        QueueAutoSave();
     }
 
     public void CommitQuickValue(StepRowProjection row) => TryCommitQuickValue(row);
