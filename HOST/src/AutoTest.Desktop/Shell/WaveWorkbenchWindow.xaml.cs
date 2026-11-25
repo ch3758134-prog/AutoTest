@@ -468,6 +468,33 @@ public partial class WaveWorkbenchWindow : Window
         EmitSegment();
     }
 
+    // A cursor is an engineering observation, not a TEST verdict. Never
+    // display numerical extrema for a time interval crossing missing samples.
+    // Validate the complete order because WaveChartAnalysis.Nearest uses a
+    // binary search and assumes monotonically increasing time coordinates.
+    private static bool HasReliableCursorInterval(
+        IReadOnlyList<WaveChartPoint> raw, double first, double second)
+    {
+        if (raw.Count == 0 || !double.IsFinite(first) || !double.IsFinite(second))
+            return false;
+        var left = Math.Min(first, second);
+        var right = Math.Max(first, second);
+        var maximumGap = VisualGapLimit(raw);
+        for (var i = 0; i < raw.Count; i++)
+        {
+            var current = raw[i];
+            if (!double.IsFinite(current.Seconds) || !double.IsFinite(current.Value))
+                return false;
+            if (i == 0) continue;
+            var previous = raw[i - 1];
+            if (current.Seconds <= previous.Seconds) return false;
+            if (previous.Seconds <= right && current.Seconds >= left &&
+                current.Seconds - previous.Seconds > maximumGap)
+                return false;
+        }
+        return true;
+    }
+
     private void WavePlot_Click(object sender, MouseButtonEventArgs e)
     {
         var lanes = _model.GetPlotLanes();
@@ -492,13 +519,22 @@ public partial class WaveWorkbenchWindow : Window
             _cursorB = seconds;
             try
             {
-                var measure = WaveChartAnalysis.Measure(lanes[index].Actual,
-                    _cursorA.Value, _cursorB.Value);
-                _model.CursorInfo = measure is null ? "选定范围内没有真实样本。" :
-                    lanes[index].Name + " · Δt " + measure.DeltaSeconds.ToString("F4") +
-                    " s · Δy " + measure.DeltaValue.ToString("G6") + " " +
-                    lanes[index].Unit + " · 最小 " + measure.Minimum.ToString("G6") +
-                    " · 最大 " + measure.Maximum.ToString("G6");
+                if (!HasReliableCursorInterval(lanes[index].Actual,
+                        _cursorA.Value, _cursorB.Value))
+                {
+                    _model.CursorInfo = lanes[index].Name +
+                        "：选区存在无效样本、乱序时间或采样缺口，不输出误导性的 Δy／极值；请缩小范围核对真实证据。";
+                }
+                else
+                {
+                    var measure = WaveChartAnalysis.Measure(lanes[index].Actual,
+                        _cursorA.Value, _cursorB.Value);
+                    _model.CursorInfo = measure is null ? "选定范围内没有真实样本。" :
+                        lanes[index].Name + " · Δt " + measure.DeltaSeconds.ToString("F4") +
+                        " s · Δy " + measure.DeltaValue.ToString("G6") + " " +
+                        lanes[index].Unit + " · 最小 " + measure.Minimum.ToString("G6") +
+                        " · 最大 " + measure.Maximum.ToString("G6");
+                }
             }
             catch (Exception ex)
             {
