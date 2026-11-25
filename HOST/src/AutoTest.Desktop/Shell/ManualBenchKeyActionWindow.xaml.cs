@@ -101,7 +101,6 @@ public partial class ManualBenchKeyActionWindow : Window
         }
     }
 
-    private void SaveAndClose_Click(object sender, RoutedEventArgs e) => Close();
     private void CloseKeyEditor_Click(object sender, RoutedEventArgs e) => Close();
 
     private async void OnClosing(object? sender, CancelEventArgs e)
