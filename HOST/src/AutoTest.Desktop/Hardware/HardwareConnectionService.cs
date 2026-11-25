@@ -270,6 +270,21 @@ public sealed partial class HardwareConnectionService : IAsyncDisposable
     public ICanFrameHub? ConnectedCanHub => IsConnected ? _hub : null;
     public event Action<string>? EvidenceRecorded;
     public event Action<CanObservation>? FrameObserved;
+    /// <summary>
+    /// Host-observed successful USB 0x40 ACK, NOT a physical CAN-bus transmit
+    /// confirmation or ECU reception. Never expose sensitive FLASH traffic.
+    /// </summary>
+    public event Action<CanFrame>? FrameTransmitAcknowledged;
+    private void PublishTransmitAck(CanFrame frame)
+    {
+        if (IsFlashSecuritySensitive) return;
+        foreach (Action<CanFrame> handler in FrameTransmitAcknowledged?.GetInvocationList()
+                     .Cast<Action<CanFrame>>() ?? Enumerable.Empty<Action<CanFrame>>())
+        {
+            try { handler(frame); }
+            catch (Exception error) { Record("CAN TX 监视者异常：" + error.Message); }
+        }
+    }
     private long _canMonitorDelivered;
     private long _canMonitorObserverErrors;
     /// <summary>Stage-by-stage live RX diagnostics, including before any DBC parsing.
@@ -497,6 +512,7 @@ public sealed partial class HardwareConnectionService : IAsyncDisposable
             await _usb.RequestAsync(MainControllerCodec.CanSend, payload,
                 TimeSpan.FromSeconds(3), cancellationToken);
             ConfirmKeyRequest(frame);
+            PublishTransmitAck(frame);
             Record("CAN TX 设备 ACK；不能据此认定 DUT 已收到该帧。");
         }
         finally { _lifecycle.Release(); }
@@ -606,6 +622,7 @@ public sealed partial class HardwareConnectionService : IAsyncDisposable
                 throw new UnauthorizedAccessException("报文授权已经失效或发送内容发生改变。");
             await _usb.RequestAsync(MainControllerCodec.CanSend, payload,
                 TimeSpan.FromSeconds(3), ct);
+            PublishTransmitAck(frame);
         }
         finally { _lifecycle.Release(); }
     }
@@ -671,6 +688,7 @@ public sealed partial class HardwareConnectionService : IAsyncDisposable
                 StationCanWiring.Current);
             await _usb.RequestAsync(MainControllerCodec.CanSend, payload,
                 TimeSpan.FromSeconds(3), ct);
+            PublishTransmitAck(frame);
         }
         finally { _lifecycle.Release(); }
     }
@@ -913,6 +931,7 @@ public sealed partial class HardwareConnectionService : IAsyncDisposable
                 TimeSpan.FromSeconds(3), ct);
             ConfirmKeyRequest(frame);
             _testRunGrantUsed++;
+            PublishTransmitAck(frame);
             Record("测试 CAN 写入设备 ACK：CAN" + payload[0] + " 0x" +
                 frame.Id.ToString("X") + "；尚不能证明 DUT 已响应。");
         }
