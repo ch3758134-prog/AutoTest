@@ -177,6 +177,97 @@ public sealed class ProductionIdentityConfigTests
     }
 
     [Fact]
+    public void FixedPositionFormatExtractsOnlyConfiguredSerialRegion()
+    {
+        var pin = Pin("HYDEPB");
+        var rule = Serial("定长编号") with
+        {
+            Format = ProductionBarcodeRule.Fixed,
+            ExactLength = 8,
+            SerialStart = 3, SerialLength = 6
+        };
+        var config = StationProductionConfiguration.New() with
+        {
+            FixedModel = "HYDEPB", Rules = [rule],
+            Products = [new("HYDEPB", "", pin.ManifestPath)]
+        };
+        var decision = ProductionIdentityResolver.Resolve(
+            Fixture(config, pin), "AB000123");
+        Assert.True(decision.Accepted);
+        Assert.Equal("000123", decision.Serial);
+        Assert.Equal("NO_BARCODE_RULE_MATCHED",
+            ProductionIdentityResolver.Resolve(Fixture(config, pin),
+                "AB0001239").Code);
+    }
+
+    [Fact]
+    public void NamedRegexExtractsModelHardwareBatchAndSerial()
+    {
+        var pin = Pin("HYDEPB", "HW1");
+        var rule = Serial("型号硬件序列号") with
+        {
+            Format = ProductionBarcodeRule.RegexFormat,
+            AllowedCharacters = @"[A-Z0-9|]+",
+            RegexExpression = @"(?<model>[A-Z0-9]+)\|(?<hardware>[A-Z0-9]+)\|(?<serial>[A-Z0-9]+)\|(?<batch>[A-Z0-9]+)"
+        };
+        var config = StationProductionConfiguration.New() with
+        {
+            Mode = StationProductionConfiguration.BarcodeModel,
+            Rules = [rule], Products = [new("HYDEPB", "HW1", pin.ManifestPath)]
+        };
+        var decision = ProductionIdentityResolver.Resolve(
+            Fixture(config, pin), "HYDEPB|HW1|S001|B7");
+        Assert.True(decision.Accepted);
+        Assert.Equal("S001", decision.Serial);
+        Assert.Equal("B7", decision.Batch);
+        Assert.Equal("HW1", decision.Hardware);
+    }
+
+    [Fact]
+    public void SameSerialButDifferentBatchFromOverlappingRulesRejects()
+    {
+        var pin = Pin("HYDEPB");
+        var rule = Serial("带批次") with
+        {
+            Format = ProductionBarcodeRule.Delimited,
+            Separator = "|", SerialField = 1, BatchField = 2,
+            AllowedCharacters = @"[A-Za-z0-9|]+"
+        };
+        var other = rule with
+        {
+            RuleId = Guid.NewGuid().ToString("N"),
+            Name = "读取不同批次",
+            BatchField = 1
+        };
+        var config = StationProductionConfiguration.New() with
+        {
+            FixedModel = "HYDEPB", Rules = [rule, other],
+            Products = [new("HYDEPB", "", pin.ManifestPath)]
+        };
+        Assert.Equal("BARCODE_RULE_CONFLICT",
+            ProductionIdentityResolver.Resolve(Fixture(config, pin),
+                "SER123|B09").Code);
+    }
+
+    [Fact]
+    public void FailedRuleSamplesBlockPublicationBeforeAnyProjectInspection()
+    {
+        var pin = Pin("HYDEPB");
+        var rule = Serial("样例") with
+        {
+            Samples = [new ProductionBarcodeSample("SN001", true, "SN001"),
+                new ProductionBarcodeSample("SN001", false)]
+        };
+        var config = StationProductionConfiguration.New() with
+        {
+            FixedModel = "HYDEPB", Rules = [rule],
+            Products = [new("HYDEPB", "", pin.ManifestPath)]
+        };
+        Assert.Contains(StationProductionConfigurationStore.InspectRules(config),
+            x => x.Contains("样例"));
+    }
+
+    [Fact]
     public void StartAndClampFeedbackCannotBeAssertedFromUsbAck()
     {
         var contract = ProductionFixtureConfiguration.Draft;
