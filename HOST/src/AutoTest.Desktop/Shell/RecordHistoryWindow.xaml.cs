@@ -83,6 +83,7 @@ public partial class RecordHistoryWindow : Window
     public RecordHistoryWindow(string? projectRoot)
     {
         InitializeComponent();
+        Loaded += (_, _) => AutoTest.Desktop.Shell.DesktopWindowSizing.FitToVisibleWorkspace(this);
         StepFactsGrid.ItemsSource = _archivedSteps;
         EventFactsGrid.ItemsSource = _archivedEvents;
         if (!string.IsNullOrWhiteSpace(projectRoot))
