@@ -83,7 +83,21 @@
     </StackPanel>
    </Grid>
   </Border>
-  <Grid x:Name="UdsMainGrid" Grid.Row="2">
+  <Grid Grid.Row="2">
+   <Grid.RowDefinitions>
+    <RowDefinition Height="Auto"/>
+    <RowDefinition Height="*"/>
+   </Grid.RowDefinitions>
+   <StackPanel x:Name="UdsCompactNavigation" Grid.Row="0"
+    Orientation="Horizontal" Margin="0,0,0,7" Visibility="Collapsed">
+    <Button x:Name="UdsServicesTab" Content="服务序列"
+     Click="UdsServicesTab_Click" Padding="13,5" Margin="0,0,7,0"
+     ToolTip="编辑和保存诊断服务定义"/>
+    <Button x:Name="UdsReplayTab" Content="回放与响应"
+     Click="UdsReplayTab_Click" Padding="13,5"
+     ToolTip="核对已导入的真实诊断交换记录"/>
+   </StackPanel>
+  <Grid x:Name="UdsMainGrid" Grid.Row="1">
    <Grid.RowDefinitions>
     <RowDefinition x:Name="UdsPrimaryRow" Height="*"/>
     <RowDefinition x:Name="UdsReplayRow" Height="0"/>
@@ -168,6 +182,7 @@
      </ScrollViewer>
     </Grid>
    </Border>
+  </Grid>
   </Grid>
   <TextBlock x:Name="StatusText" Grid.Row="3" TextWrapping="Wrap"
    Foreground="#53677F" Margin="2,11,0,1"
