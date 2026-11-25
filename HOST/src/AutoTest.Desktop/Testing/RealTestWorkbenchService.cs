@@ -112,7 +112,9 @@ public sealed partial class RealTestWorkbenchService
                  dutIdentity != dutIdentity.Trim() || dutIdentity.Length > 256 ||
                  dutIdentity.Any(char.IsControl)))
                 throw new InvalidDataException("ECU 编号如填写，必须是不含控制字符且无首尾空格的真实编号。");
-            await _signals.BindAsync(mappings, ct);
+            // Keep the union DBC observation binding alive for the full group.
+            // Rebinding per case would drop continuous signal subscriptions.
+            if (ownsStation) await _signals.BindAsync(mappings, ct);
             actions = projectSession?.Actions ??
                 new ConfiguredStationActionPort(_hardware, _projects);
             if (ownsStation)

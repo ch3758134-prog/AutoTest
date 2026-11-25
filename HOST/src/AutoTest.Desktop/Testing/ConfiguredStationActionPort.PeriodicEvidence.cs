@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using AutoTest.Core;
+using AutoTest.Contracts;
 using AutoTest.Devices.Station;
 using AutoTest.Testing.Authoring;
 using AutoTest.Testing.Runtime;

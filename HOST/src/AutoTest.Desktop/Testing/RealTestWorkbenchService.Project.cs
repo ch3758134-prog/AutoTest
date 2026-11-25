@@ -2,6 +2,7 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using AutoTest.Core;
 using AutoTest.Desktop.Projects;
 using AutoTest.Projects.Project;
 using AutoTest.Testing.Authoring;
