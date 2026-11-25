@@ -504,3 +504,16 @@ DbcMessageEditDialog、DbcSignalEditDialog 的原始报文/信号/发送节点�
 再次审查 AutomaticTestHomeViewModel 的工程事件后发现，工程自动保存会触发 ProjectWorkspaceService.CurrentChanged；实际工程整组运行期间，既有处理代码可能重新构建 Cases 树，令真实步骤 UI 状态突然重置，更危险的是新工程的预览与已冻结运行资源产生混淆。现已将 AutomaticTestHomeViewModel.cs 的 OnPlanChanged、OnEngineeringProjectChanged 纳入运行期间明确撤销策略：真实实体执行中若工程/资源变更，请求取消当前 Run 并由既有 finally 执行工位收尾，不再重建正在展示真实状态的 Steps/Cases 或载入更新后的预览。异步预览执行完成还会二次核对运行标志与项目身份，防止旧预览回写。WPF 可见数据修改调度到 Dispatcher。实际断电、USB 卡死、FLASH 无法取消时的安全恢复仍以 UNKNOWN 和现场人工核查为准，**绝不因为 UI 发出 Cancel 就认定物理动作已停止。**
 
 以上新增针对运行期间资源变更的修复发生在第九轮评分落档之后，保持第九轮 **82/100 不人为追加分数**；仍须 Windows 真实触发、日志比对和实体 ECU 授权/中断结果验收。
+
+
+### 19.7 第九轮补充：完整 Desktop 39 个 XAML 页面事件接线扫描
+
+第九轮又逐一取回 HOST/src/AutoTest.Desktop 目录下全部 **39 个非主题 XAML 页面及其同名 code-behind**，覆盖 App、Configuration、DBC、Hardware、Projects、Shell、Testing：包括原先未覆盖的 TEST 编辑器、工程树、多个 Inspector、扫码配置、RECORD、生产首页、旧 ProductionInspectionView、UDS、波形、工程整组实测观察窗、全部 CAN/KEY 浮窗和 DBC 编辑对话框。逐个进行 XAML 简单标签配对及常见 Click/TextChanged/SelectionChanged/SelectedItemChanged/KeyDown/鼠标事件处理方法名字检索：**39/39 未发现明显标签不配对或缺失声明的事件函数**。主窗口 30 个 Command 绑定的成员名也可在 MainWindowViewModel 各 partial 源码中定位；新增工程监视窗的三条准备/启动/停止命令均有真实 VM 定义。
+
+限制特别注明：该扫描不是 MSBuild XAML/BAML 编译，也不能检查资源找不到、绑定属性路径错误、错线程、代码类型错误、实际控件空间溢出、UI 自动化、COM 扫码枪或主控实测；因此不将 39/39 直接换算成 100 分。样式检查和 Windows 真实操作尚为阻断项。
+
+### 19.8 工程监视操作入口闭环
+
+在新建的 EngineeringVerificationWindow 中增加“1. 准备扫码 / 2. 开始真实整组实测 / 停止”连续入口，避免用户必须先到菜单、再返回工具浮窗。准备扫码按钮直接调用已有 AutomaticTestHomeViewModel.ArmEngineeringVerification：它只撤销前次身份、允许接收本台真实扫描，不下发 USB/FLASH/CAN。真实运行按钮仍走既有 CanStartOperatorVerification 门槛（工程资源 Ready、真实扫码已核对、主控已连接且波特率设置确认、打开的工程一致、无其它 TEST 正在运行），执行前仍需明确二次确认烧录。窗口关闭只关闭观察，不能默默停止正在执行的实体任务；停止按钮才请求停并走工位清理。新增命令与 XAML 的静态匹配已核对。
+
+该项操作路径改善与运行时资源修订安全整改，仍保持第九轮静态 **82/100**：没有 Windows 及真机证据就不能凭控件或自己打分完成 90 分 Gate。硬件/安全验收必须另行执行。
