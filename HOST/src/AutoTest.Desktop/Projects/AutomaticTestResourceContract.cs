@@ -23,6 +23,20 @@ public sealed record AutomaticTestResourceSnapshot(
     AssetEntry TestProjectAsset, IReadOnlyList<AutomaticTestCaseBinding> Cases,
     IReadOnlyList<string> Issues)
 {
+    /// <summary>Project-wide physical environment stages are distinct from
+    /// judged TEST cases yet reuse the same pinned TestDocument DSL.</summary>
+    public AutomaticTestCaseBinding? ProjectSetup { get; init; }
+    public AutomaticTestCaseBinding? ProjectTeardown { get; init; }
+
+    public IReadOnlyList<AutomaticTestCaseBinding> OrderedExecutions()
+    {
+        var result = new List<AutomaticTestCaseBinding>(Cases.Count + 2);
+        if (ProjectSetup is not null) result.Add(ProjectSetup);
+        result.AddRange(Cases);
+        if (ProjectTeardown is not null) result.Add(ProjectTeardown);
+        return result;
+    }
+
     public bool CanExecute => Cases.Count > 0 && Issues.Count == 0;
     public void RequireExecutable()
     {
@@ -110,7 +124,58 @@ public static class AutomaticTestResourceContract
                 issues.Add("用例「" + entry.DisplayName + "」：" + error.Message);
             }
         }
-        return new(projectAsset, cases.AsReadOnly(), issues.AsReadOnly());
+        var projectSetup = tree.ProjectSetup is null ? null :
+            await ResolveProjectStageAsync(project, tree.ProjectSetup,
+                "项目准备", issues, ct).ConfigureAwait(false);
+        var projectTeardown = tree.ProjectTeardown is null ? null :
+            await ResolveProjectStageAsync(project, tree.ProjectTeardown,
+                "项目收尾", issues, ct).ConfigureAwait(false);
+        return new(projectAsset, cases.AsReadOnly(), issues.AsReadOnly())
+        {
+            ProjectSetup = projectSetup, ProjectTeardown = projectTeardown
+        };
+    }
+
+    private static async Task<AutomaticTestCaseBinding?> ResolveProjectStageAsync(
+        OpenProjectContext project, TestProjectEntry entry, string phaseName,
+        List<string> issues, CancellationToken ct)
+    {
+        try
+        {
+            if (!entry.Enabled)
+                throw new InvalidDataException("项目级阶段不能使用历史排除开关；请显式移除或恢复。");
+            var asset = project.Definition.Assets.SingleOrDefault(a =>
+                a.Kind == ProjectWorkspaceService.TestProgramKind &&
+                a.Id.Value == entry.PackageAssetId)
+                ?? throw new InvalidDataException("项目级阶段的 TEST 定义资源不存在。");
+            RequirePinnedInvocation(entry, asset);
+            var bytes = await ReadPinnedAsync(project, asset, ct).ConfigureAwait(false);
+            var program = TestDocumentCodec.Deserialize(
+                new UTF8Encoding(false, true).GetString(bytes));
+            var prepared = new PlanCompiler().Prepare(program, allowRealOperations: true);
+            foreach (var diag in prepared.Diagnostics)
+                issues.Add(phaseName + "：" + diag);
+            if (TestRunStepScope.EnabledSteps(program).Any(s => s.Type == "Flash"))
+                issues.Add(phaseName + "：不可内嵌 FLASH；每台 ECU 前置烧录由工位工艺负责。");
+            foreach (var mapping in TestRunStepScope.RequiredMappings(program))
+            {
+                try { await ValidateMappingAsync(project, mapping, ct).ConfigureAwait(false); }
+                catch (Exception error) when (error is InvalidDataException or
+                    IOException or ArgumentException or ProjectDataException or
+                    FormatException or NotSupportedException)
+                {
+                    issues.Add(phaseName + " 资源「" + mapping.Name + "」：" + error.Message);
+                }
+            }
+            return new(entry, asset, program, asset.Sha256);
+        }
+        catch (Exception error) when (error is InvalidDataException or IOException or
+            UnauthorizedAccessException or ArgumentException or ProjectDataException or
+            FormatException or NotSupportedException)
+        {
+            issues.Add(phaseName + "：" + error.Message);
+            return null;
+        }
     }
 
     /// <summary>
