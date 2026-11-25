@@ -30,6 +30,17 @@ public sealed partial class AutomaticTestHomeViewModel
         if (e.PropertyName == nameof(SerialScannerWorkbenchViewModel.IsConnected) &&
             !_scanner.IsConnected)
             OnUi(() => InvalidateScan("扫码枪断开，本次扫码身份失效；恢复后请重新扫码。"));
+        else if (e.PropertyName == nameof(SerialScannerWorkbenchViewModel.ConnectedPort))
+            OnUi(() =>
+            {
+                // Scanner COM may be re-bound without an observable period of
+                // IsConnected=false. The accepted observation is device-scoped.
+                if (_prepared?.AcceptedScannerObservation is { } scan &&
+                    !string.Equals(scan.ScannerPort, _scanner.ConnectedPort,
+                        StringComparison.OrdinalIgnoreCase))
+                    InvalidateScan("扫码枪 COM 端口已切换，原实体扫码身份失效；请重新扫码。");
+                else UpdateConnection();
+            });
         else if (e.PropertyName == nameof(SerialScannerWorkbenchViewModel.IsConnected))
             OnUi(UpdateConnection);
     }
@@ -97,6 +108,8 @@ public sealed partial class AutomaticTestHomeViewModel
                 return;
             }
             if (revision != _scanRevision || !_scanner.IsConnected ||
+                !string.Equals(scannerPort, _scanner.ConnectedPort,
+                    StringComparison.OrdinalIgnoreCase) ||
                 (!_isProductionWorkspace() && !_engineeringVerificationArmed) ||
                 !ReferenceEquals(_plans.Current, plan)) return;
             var identity = parsed.DutSerial;
