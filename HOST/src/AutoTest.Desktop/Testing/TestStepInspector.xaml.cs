@@ -256,7 +256,7 @@ public partial class TestStepInspector : UserControl
         Heading.Text = "编辑步骤";
         StepEnabledInput.IsChecked = StepExecutionPolicy.IsEnabled(editing);
         StepActionsPanel.Visibility = Visibility.Collapsed;
-        ConfirmButton.Content = "应用";
+        ConfirmButton.Content = "完成";
         var mapping = boundMappings.FirstOrDefault(m =>
             m.Name == editing.Properties.GetValueOrDefault("target", ""));
         var targetKind = mapping?.Kind;
