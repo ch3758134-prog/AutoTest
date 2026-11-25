@@ -156,6 +156,15 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     public string ProductionFlashState => "正式检测未执行烧录";
     public string ProductionTestState => "正式检测未执行 TEST";
     public string ProductionRecordState => "尚无正式生产 Inspection";
+    public string ProductionAlert =>
+        _prepared is null &&
+        (_scanStatus.StartsWith("本次扫码身份未被接受", StringComparison.Ordinal) ||
+         _scanStatus.StartsWith("无法完成", StringComparison.Ordinal) ||
+         _scanStatus.StartsWith("当前工程缺少扫码期望", StringComparison.Ordinal) ||
+         _scanStatus.StartsWith("本次正式资源", StringComparison.Ordinal) ||
+         _scanStatus.StartsWith("扫码枪断开", StringComparison.Ordinal))
+            ? _scanStatus : "";
+
     public string ProductionResultLabel =>
         "尚无正式生产检测结论";
 
@@ -227,8 +236,9 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         _plans.Current is null ? "请打开工程" :
         !_plans.Current.ResourceReady ? "工程未就绪" :
         _prepared is null ? "等待扫码" :
-        IsOperatorRunning ? "检测进行中" :
-        "工程实测已就绪";
+        IsOperatorRunning ? "工程实测进行中" :
+        _isProductionWorkspace() ? "已核对扫码；实体 START 未接线" :
+        "工程实测可启动";
     public string IdentityLabel => IdentityAccepted ? "编号已核对" : "编号待核对";
     public string DutSerial => _dutSerial;
     public string ScanStatus => _scanStatus;
@@ -378,6 +388,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         RaisePropertyChanged(nameof(ProductionDisplayStage));
         RaisePropertyChanged(nameof(ProductionGuidance));
         RaisePropertyChanged(nameof(ProductionResultLabel));
+        RaisePropertyChanged(nameof(ProductionAlert));
         RaisePropertyChanged(nameof(StationReadiness));
         RaisePropertyChanged(nameof(IdentityLabel));
         RaisePropertyChanged(nameof(HasPlan));
