@@ -74,8 +74,11 @@ public static class AutomaticTestResourceContract
                 // the entry's explicitly frozen revision and SHA256.
                 RequirePinnedInvocation(entry, target);
                 var source = await ReadPinnedAsync(project, target, ct);
-                var program = ProjectWorkspaceService.BindCurrentRunResources(TestDocumentCodec.Deserialize(
-                    new UTF8Encoding(false, true).GetString(source)), project);
+                // Preserve the authored TEST mapping pins verbatim. Any
+                // change in DBC/wave resource SHA or revision must produce a
+                // preflight issue, not an automatic binding to the newest file.
+                var program = TestDocumentCodec.Deserialize(
+                    new UTF8Encoding(false, true).GetString(source));
                 // Compile first, but DO NOT replace a case's authoring tree or
                 // infer a successful test from absence of execution errors.
                 var prepared = new PlanCompiler().Prepare(program,
