@@ -51,6 +51,8 @@ public partial class NativeFlashProfileWindow : Window
         _expectedModel = modelCode ?? "";
         _draft = NativeFlashProfileDocument.CreateDraft(_expectedModel);
         InitializeComponent();
+        MethodScopeNotice.Visibility = string.Equals(_expectedModel, "HYDEPB",
+            StringComparison.Ordinal) ? Visibility.Collapsed : Visibility.Visible;
         Loaded += (_, _) => FlashWindowSizing.Fit(this);
         Closing += OnClosing;
         Loaded += async (_, _) => await LoadAsync();
