@@ -4,6 +4,12 @@
  FontFamily="{StaticResource UiFont}" FontSize="14" Background="White" Foreground="#252C34"
  PreviewKeyDown="Editor_KeyDown">
  <Grid>
+  <Grid.ColumnDefinitions>
+   <ColumnDefinition Width="*" MinWidth="400"/>
+   <ColumnDefinition x:Name="MonitorDividerColumn" Width="5"/>
+   <ColumnDefinition x:Name="MonitorColumn" Width="420" MinWidth="0"/>
+  </Grid.ColumnDefinitions>
+  <Grid Grid.Column="0">
   <Grid.RowDefinitions><RowDefinition Height="54"/><RowDefinition Height="Auto"/>
    <RowDefinition Height="45"/><RowDefinition Height="*"/>
    <RowDefinition Height="30"/></Grid.RowDefinitions>
@@ -43,6 +49,8 @@
       </MenuItem>
      </Menu>
      <Button Content="运行前检查" Command="{Binding PreflightCommand}" Margin="0,0,6,0"/>
+     <Button x:Name="ToggleCanMonitorButton" Content="隐藏 CAN 监视" Click="ToggleCanMonitor_Click"
+      Margin="0,0,6,0" Padding="8,5" ToolTip="右侧固定显示真实 CAN RX，拖动分隔线可调整宽度"/>
      <TextBlock Text="自动保存" Foreground="#627C70" FontSize="12" VerticalAlignment="Center" ToolTip="修改完成后自动保存，Ctrl+S 可手动保存"/>
     </StackPanel>
     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -356,7 +364,12 @@
         <TextBlock Grid.Column="3" Text="{Binding ResourceDisplay}" TextTrimming="CharacterEllipsis"
          Foreground="#43566B" VerticalAlignment="Center" FontSize="13" Margin="7,0"
          ToolTip="{Binding ResourceDisplay}"/>
-        <Button Grid.Column="5" Content="编辑" Click="EditStepRow_Click" Tag="{Binding}" Padding="8,3" Margin="6,0" VerticalAlignment="Center" ToolTip="打开步骤属性浮窗"/>
+        <StackPanel Grid.Column="5" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+         <Button Content="＋" Click="InsertAfterRow_Click" Tag="{Binding}" Padding="5,3"
+          MinWidth="25" MinHeight="25" Margin="0,0,3,0" ToolTip="在当前步骤下方直接添加下一步"/>
+         <Button Content="编辑" Click="EditStepRow_Click" Tag="{Binding}" Padding="5,3"
+          MinWidth="38" MinHeight="25" ToolTip="双击整行也可编辑步骤"/>
+        </StackPanel>
         <Border Grid.Column="4" Margin="5,0" Padding="6,4" CornerRadius="4" VerticalAlignment="Center" ToolTip="{Binding StateDetail}">
          <Border.Style><Style TargetType="Border"><Setter Property="Background" Value="#EEF2F6"/>
           <Style.Triggers>
@@ -381,7 +394,7 @@
   </ListBox>
   <Border Grid.Row="4" Background="#FBFCFF" BorderBrush="#E1E5E9" BorderThickness="0,1,0,0">
    <DockPanel Margin="10,0">
-    <TextBlock DockPanel.Dock="Right" Text="右键 · F2 · F9 · Ctrl+Space"
+    <TextBlock DockPanel.Dock="Right" Text="行内＋插入 · 双击编辑 · Ctrl+Space · F9"
      FontSize="12" Foreground="#526477" VerticalAlignment="Center"/>
     <TextBlock Text="{Binding StatusMessage}" Foreground="#64758C" FontSize="12"
      TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
@@ -419,7 +432,7 @@
      <TextBlock DockPanel.Dock="Bottom" Text="Enter 添加  ·  Esc 关闭"
       Foreground="#7A8EA6" FontSize="11" Margin="0,8,0,0"/>
      <DockPanel>
-      <ListBox x:Name="PaletteCategories" DockPanel.Dock="Top" Height="36"
+      <ListBox x:Name="PaletteCategories" DockPanel.Dock="Top" Height="40"
        SelectionChanged="PaletteCategory_Changed" Background="#F6F8FA"
        BorderBrush="#E1E7E5" BorderThickness="1" FontSize="14"
        ScrollViewer.HorizontalScrollBarVisibility="Auto"
@@ -429,9 +442,11 @@
        </ListBox.ItemsPanel>
        <ListBox.ItemContainerStyle>
         <Style TargetType="{x:Type ListBoxItem}">
-         <Setter Property="Padding" Value="10,7"/>
-         <Setter Property="Margin" Value="3,4"/>
-         <Setter Property="Foreground" Value="#334252"/>
+         <Setter Property="Padding" Value="11,6"/>
+         <Setter Property="Margin" Value="2,2"/>
+         <Setter Property="Height" Value="34"/>
+         <Setter Property="VerticalContentAlignment" Value="Center"/>
+         <Setter Property="Foreground" Value="#263D54"/>
          <Style.Triggers>
           <Trigger Property="IsSelected" Value="True">
            <Setter Property="Background" Value="#E8F0FC"/>
