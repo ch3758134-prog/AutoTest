@@ -49,6 +49,7 @@ public sealed class NativeFlashProfileTests
         Assert.Throws<FormatException>(() => draft.ValidateForFreeze());
         var plan = draft with
         {
+            EcuModelCode = "HYDEPB", // one physically verified OEM method
             AppRequestCanId = 0x747,
             AppResponseCanId = 0x74F,
             BootRequestCanId = 0x18DA50F1,
@@ -64,6 +65,8 @@ public sealed class NativeFlashProfileTests
         Assert.Equal((uint)0x18DA50F1, plan.GetEndpoint(true).Request);
         Assert.Equal("500K", plan.Get("BaudRate"));
         Assert.Equal("0x200", plan.Get("BlockLength"));
+        Assert.Throws<NotSupportedException>(() =>
+            (plan with { EcuModelCode = "EPBA" }).ValidateForFreeze());
         Assert.Equal("BootloadPhyID",
             plan.FingerprintEntries().First().Key);
         Assert.Throws<NotSupportedException>(() =>
