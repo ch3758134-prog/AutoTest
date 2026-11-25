@@ -237,7 +237,7 @@ public sealed class ProductionIdentityConfigTests
         {
             RuleId = Guid.NewGuid().ToString("N"),
             Name = "读取不同批次",
-            BatchField = 1
+            BatchField = 3
         };
         var config = StationProductionConfiguration.New() with
         {
@@ -246,7 +246,7 @@ public sealed class ProductionIdentityConfigTests
         };
         Assert.Equal("BARCODE_RULE_CONFLICT",
             ProductionIdentityResolver.Resolve(Fixture(config, pin),
-                "SER123|B09").Code);
+                "SER123|B09|X22").Code);
     }
 
     [Fact]
