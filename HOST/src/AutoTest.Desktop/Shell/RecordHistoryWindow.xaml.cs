@@ -35,14 +35,14 @@ public sealed record RecordHistoryDisplayRow(
         {
             "Pass" => Source.Mode switch
             {
-                "Production" => "检测通过",
+                "Production" => "判定通过",
                 "Development" => "调试通过",
                 "Diagnostic" => "诊断通过",
                 _ => "已通过"
             },
             "Fail" => Source.Mode switch
             {
-                "Production" => "检测失败",
+                "Production" => "判定失败",
                 "Development" => "调试失败",
                 "Diagnostic" => "诊断失败",
                 _ => "失败"
@@ -393,8 +393,8 @@ public partial class RecordHistoryWindow : Window
                     JsonField(row, "evidenceQuality")));
             }
         }
-        var incomplete = JsonField(report, "evidenceArchiveIncomplete") == "True" ||
-            JsonField(report, "evidenceArchiveIncomplete") == "true";
+        var archiveStatus = JsonField(report, "evidenceArchiveIncomplete");
+        var hasArchiveStatus = bool.TryParse(archiveStatus, out var incomplete);
         var unarchived = JsonList(report, "unarchivedEvidenceIds");
         var capture = report.TryGetProperty("captureHealth", out var health) &&
             health.ValueKind == JsonValueKind.Object ? health : default;
@@ -403,12 +403,16 @@ public partial class RecordHistoryWindow : Window
         var reason = JsonField(capture, "incompleteReason");
         var artifacts = report.TryGetProperty("artifacts", out var a) &&
             a.ValueKind == JsonValueKind.Array ? a.GetArrayLength() : 0;
-        var integrity = incomplete
-            ? "报告标识：证据归档不完整；不能将缺失的 CAN/DBC/波形证据当作有效测量。"
-            : "报告未标识证据归档缺失；仍须按冻结判据和原始事实审核结果。";
+        var integrity = !hasArchiveStatus
+            ? "原始报告缺少证据完整性字段，状态未知；不得将记录判定视为实体生产合格。"
+            : incomplete
+                ? "报告确认：证据归档不完整。缺失的 CAN/DBC/波形事实不可用于证明 ECU 合格。"
+                : "归档附件检查未发现缺项；还须确认本次采集完整、测试判据和正式运行模式。";
         integrity += "\n采集完整标记：" + (captureComplete.Length == 0 ? "未提供" : captureComplete) +
             "；丢失事件：" + (dropped.Length == 0 ? "未知" : dropped) +
             "；归档附件：" + artifacts + " 项。";
+        if (!string.Equals(captureComplete, "True", StringComparison.OrdinalIgnoreCase))
+            integrity += "\n采集未证明完整：即使原始 Verdict=Pass，也不得由此推断生产放行。";
         if (!string.IsNullOrWhiteSpace(reason)) integrity += "\n采集问题：" + reason;
         if (!string.IsNullOrWhiteSpace(unarchived)) integrity +=
             "\n未归档证据 ID：" + unarchived;
