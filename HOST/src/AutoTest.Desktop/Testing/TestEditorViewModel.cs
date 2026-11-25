@@ -82,7 +82,7 @@ public sealed class TestEditorViewModel : BindableBase
                 // never persist a provisional TEST step or a half-edited overlay.
                 return;
             }
-            if (IsDirty) await SaveAsync();
+            if (IsDirty) await SaveAsync(silent: true);
         };
         _session = session;
         _transaction = new StepEditTransaction(session.Document);
@@ -1429,7 +1429,7 @@ public sealed class TestEditorViewModel : BindableBase
         return !IsBusy && !IsDirty && AssetRevision > previousRevision;
     }
 
-    private async Task SaveAsync()
+    private async Task SaveAsync(bool silent = false)
     {
         if (HasNewStepDraft)
         {
@@ -1441,13 +1441,17 @@ public sealed class TestEditorViewModel : BindableBase
         try
         {
             _session = await _workspace.SaveTestEditorAsync(_session, _transaction.Current);
-            // Persistence is not an Undo boundary; retain transaction history.
-            RefreshMappings();
-            RefreshTree(_selectedItem?.Step?.Id);
+            // Saving immutable TEST content must not rebuild rows or steal input focus.
+            // Preserve undo/redo and the current selection; only disk revision/state changes.
             RaisePropertyChanged(nameof(AssetRevision));
+            RefreshCommands();
             StatusMessage = "测试程序已保存 · 版本 " + AssetRevision;
         }
-        catch (Exception e) when (IsEditorError(e)) { StatusMessage = "保存失败：" + e.Message; _dialogs.ShowError(StatusMessage); }
+        catch (Exception e) when (IsEditorError(e))
+        {
+            StatusMessage = "保存失败，修改仍在编辑器中：" + e.Message;
+            if (!silent) _dialogs.ShowError(StatusMessage);
+        }
         finally { IsBusy = false; }
     }
 
