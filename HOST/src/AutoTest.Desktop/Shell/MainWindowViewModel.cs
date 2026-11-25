@@ -697,7 +697,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         if (_closeGuardActive ||
             global::System.Windows.Application.Current?.Dispatcher.HasShutdownStarted == true)
             return;
-        var window = new UdsWorkbenchWindow
+        var window = new UdsWorkbenchWindow(_hardware)
         {
             Owner = global::System.Windows.Application.Current?.MainWindow
         };
@@ -708,7 +708,7 @@ public sealed partial class MainWindowViewModel : BindableBase
                 _udsWorkbenchWindow = null;
         };
         window.Show();
-        StatusMessage = "独立 UDS 服务序列工作台已打开；仅编辑与导入记录回放，尚不能进行实体 UDS 发送。";
+        StatusMessage = "UDS 工具支持真实单次只读 DID 0x22 与独立序列/离线回放；其他状态修改服务尚不允许实体发送。";
     }
 
     private RecordHistoryWindow? _recordHistoryWindow;
