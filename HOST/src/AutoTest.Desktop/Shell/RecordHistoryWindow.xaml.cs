@@ -31,8 +31,20 @@ public sealed record RecordHistoryDisplayRow(
         ? Source.PersistenceState == "Writing" ? "未结案" : "中断／未结案"
         : Source.Verdict switch
         {
-            "Pass" => "通过",
-            "Fail" => "失败",
+            "Pass" => Source.Mode switch
+            {
+                "Production" => "检测通过",
+                "Development" => "调试通过",
+                "Diagnostic" => "诊断通过",
+                _ => "已通过"
+            },
+            "Fail" => Source.Mode switch
+            {
+                "Production" => "检测失败",
+                "Development" => "调试失败",
+                "Diagnostic" => "诊断失败",
+                _ => "失败"
+            },
             "Error" => "错误",
             "Inconclusive" => "待确认",
             "Skipped" => "未执行",
@@ -402,6 +414,10 @@ public partial class RecordHistoryWindow : Window
         }
         var row = display.Source;
         ViewReport.IsEnabled = ExportReport.IsEnabled = !_busy;
+        ViewReport.Content = row.PersistenceState == "Committed"
+            ? "查看归档报告" : "查看未结案事实";
+        ExportReport.Content = row.PersistenceState == "Committed"
+            ? "导出归档报告…" : "导出未结案资料…";
         SelectionSummary.Text = row.DutId + " · " + display.StartedLocal +
             " · " + display.ModeLabel + " · " + display.VerdictLabel +
             " · " + display.PersistenceLabel + " · 步骤事实 " + row.StepFactCount;
