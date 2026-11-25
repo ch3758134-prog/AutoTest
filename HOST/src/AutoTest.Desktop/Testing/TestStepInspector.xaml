@@ -290,10 +290,10 @@
      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
      <Button x:Name="CancelButton" Content="取消" Click="Cancel_Click"
       MinWidth="70" Margin="0,0,7,0"/>
-     <Button x:Name="ConfirmButton" Content="应用"
+     <Button x:Name="ConfirmButton" Content="完成"
       Style="{StaticResource AtPrimaryButton}" Click="Confirm_Click" MinWidth="92"/>
      </StackPanel>
-     <TextBlock Text="点击浮窗外部即可应用有效修改并返回列表" Foreground="#43566B" FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,10,0"/>
+     <TextBlock Text="修改完成后直接切换步骤或点击外部；无效字段保留并提示" Foreground="#43566B" FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,10,0"/>
     </DockPanel>
    </StackPanel>
   </Border>
