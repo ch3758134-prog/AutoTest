@@ -76,7 +76,7 @@ public sealed class TestEditorViewModel : BindableBase
         _autosaveTimer.Tick += async (_, _) =>
         {
             _autosaveTimer.Stop();
-            if (IsBusy || HasNewStepDraft || CanAutoPersist?.Invoke() == false)
+            if (IsBusy || HasNewStepDraft || _realTest.IsRunning || CanAutoPersist?.Invoke() == false)
             {
                 // Keep pending document edits until the next valid interaction;
                 // never persist a provisional TEST step or a half-edited overlay.
