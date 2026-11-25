@@ -15,7 +15,11 @@ namespace AutoTest.Desktop.Shell;
 public sealed record AutomaticTestStep(string Index, string Name, string State,
     IReadOnlyList<AutomaticTestStep> Children, string ActionSummary = "")
 {
-    public bool IsExpanded => false;
+    // Authored StepId is retained strictly for visual correlation with real
+    // execution facts; this does not create a second execution definition.
+    public StepId? AuthoredStepId { get; init; }
+    public bool IsExpanded => State is "执行中" or "执行异常" ||
+        Children.Any(child => child.IsExpanded);
     public string Detail => string.IsNullOrEmpty(ActionSummary)
         ? State : State + " · " + ActionSummary;
 }
@@ -25,7 +29,8 @@ public sealed record AutomaticTestCase(string Index, string Name, TestDocumentId
     string State = "未执行")
 {
     public IReadOnlyList<AutomaticTestStep> Children { get; init; } = [];
-    public bool IsExpanded => false;
+    public bool IsExpanded => State is "执行中" or "执行异常" ||
+        Children.Any(child => child.IsExpanded);
     public string Detail => State;
     public string StepCountLabel => Children.Count + " 步";
 }
@@ -130,7 +135,10 @@ public sealed class AutomaticTestPlanService
         var state = StepExecutionPolicy.IsEnabled(node)
             ? "未执行" : "步骤已禁用（不执行）";
         var label = branch is null ? node.Name : "〔" + branch + "〕 " + node.Name;
-        return new(index, label, state, children, OperatorActionSummary(node, mappings));
+        return new(index, label, state, children, OperatorActionSummary(node, mappings))
+        {
+            AuthoredStepId = node.Id
+        };
     }
 
     private static string OperatorActionSummary(
