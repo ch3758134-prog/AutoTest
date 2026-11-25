@@ -70,6 +70,7 @@ public partial class UdsWorkbenchWindow : Window
     {
         _hardware = hardware ?? throw new ArgumentNullException(nameof(hardware));
         _hardware.ConnectionChanged += OnDidStationChanged;
+        _hardware.EcuCanBitrateSelectionChanged += OnDidBitrateChanged;
         _loading = true;
         InitializeComponent();
         Loaded += (_, _) => AutoTest.Desktop.Shell.DesktopWindowSizing.FitToVisibleWorkspace(this);
@@ -90,6 +91,7 @@ public partial class UdsWorkbenchWindow : Window
         Closed += (_, _) =>
         {
             _hardware.ConnectionChanged -= OnDidStationChanged;
+            _hardware.EcuCanBitrateSelectionChanged -= OnDidBitrateChanged;
             _didCancel?.Cancel();
             _autosave.Stop();
         };
@@ -401,6 +403,12 @@ public partial class UdsWorkbenchWindow : Window
             if (stationEpoch == 0) _didCancel?.Cancel();
             UpdateDidScope();
         }));
+    }
+
+    private void OnDidBitrateChanged(int kbps)
+    {
+        if (Dispatcher.HasShutdownStarted) return;
+        _ = Dispatcher.BeginInvoke(new Action(UpdateDidScope));
     }
 
     private void CopyDidAuthorization_Click(object sender, RoutedEventArgs e)
