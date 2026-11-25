@@ -64,6 +64,12 @@ public sealed partial class ManualBenchViewModel
 
     public bool CanPressKeyPad => !_disposed && !_savingKeyActions &&
         _keyCatalogSession is not null && (!IsBusy || IsKeyActionRunning);
+    public void ReportKeyPadUnavailable()
+    {
+        KeyActionRunStatus = _keyCatalogSession is null
+            ? "当前没有已加载的 KEY 动作库；可以双击编辑，不能向硬件发送。"
+            : "当前工位尚不可执行该 KEY 动作；可双击编辑或在主窗口查看连接状态。";
+    }
 
     private void InitializeKeyPad()
     {
