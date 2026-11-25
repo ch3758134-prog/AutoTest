@@ -238,7 +238,7 @@ public partial class UdsWorkbenchWindow : Window
 
     private void NewDocument_Click(object sender, RoutedEventArgs e)
     {
-        if (_busy || !ConfirmReplaceDraft()) return;
+        if (_busy || !FinishGrid() || !ConfirmReplaceDraft()) return;
         _loading = true;
         try
         {
@@ -259,7 +259,7 @@ public partial class UdsWorkbenchWindow : Window
 
     private async void OpenDocument_Click(object sender, RoutedEventArgs e)
     {
-        if (_busy || !ConfirmReplaceDraft()) return;
+        if (_busy || !FinishGrid() || !ConfirmReplaceDraft()) return;
         var picker = new OpenFileDialog
         {
             Title = "打开真实 UDS 诊断序列文档",
@@ -359,9 +359,9 @@ public partial class UdsWorkbenchWindow : Window
                 throw new FileNotFoundException("已打开的序列文件已被移走，不能静默重建。", absolute);
             await UdsToolDocumentStore.SaveAsync(absolute, document);
             var verified = await UdsToolDocumentStore.LoadSnapshotAsync(absolute);
-            if (!Equals(verified.Document, document) &&
-                (verified.Document.Profile != document.Profile ||
-                 !verified.Document.Services.SequenceEqual(document.Services)))
+            if (verified.Document.Schema != document.Schema ||
+                verified.Document.Profile != document.Profile ||
+                !verified.Document.Services.SequenceEqual(document.Services))
                 throw new InvalidDataException("UDS 序列保存后回读内容不一致。");
             _loadedSha = verified.Sha256;
             _documentPath = absolute;
@@ -452,7 +452,7 @@ public partial class UdsWorkbenchWindow : Window
 
     private async void LoadReplay_Click(object sender, RoutedEventArgs e)
     {
-        if (_busy) return;
+        if (_busy || !FinishGrid()) return;
         var picker = new OpenFileDialog
         {
             Title = "载入已有的 UDS 诊断交换记录（只做离线回放）",
@@ -518,7 +518,10 @@ public partial class UdsWorkbenchWindow : Window
             StatusText.Text = "回放未通过一致性检查，位置保持不变：" + error.Message;
         }
     }
-    private void ClearReplay_Click(object sender, RoutedEventArgs e) => ClearReplay();
+    private void ClearReplay_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_busy) ClearReplay();
+    }
     private void ClearReplay()
     {
         _replay = null;
@@ -533,7 +536,7 @@ public partial class UdsWorkbenchWindow : Window
     /// <summary>Parent shutdown needs a synchronous completion result, not a pending child Closing event.</summary>
     public async Task<bool> PrepareForParentShutdownAsync()
     {
-        if (_busy || _closing) return false;
+        if (_busy || _closing || !FinishGrid()) return false;
         if (_dirty)
         {
             if (_documentPath is null)
@@ -552,6 +555,12 @@ public partial class UdsWorkbenchWindow : Window
     {
         if (_closeApproved) return;
         if (_busy) { e.Cancel = true; StatusText.Text = "正在保存或读取真实序列，尚不能关闭。"; return; }
+        if (!FinishGrid())
+        {
+            e.Cancel = true;
+            StatusText.Text = "当前服务单元格仍无法结束编辑；请先修正或取消编辑。";
+            return;
+        }
         if (!_dirty) { _closeApproved = true; return; }
         if (_documentPath is null)
         {
