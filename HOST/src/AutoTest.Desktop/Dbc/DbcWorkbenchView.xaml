@@ -48,7 +48,7 @@
    <DockPanel>
     <Button DockPanel.Dock="Right" Content="{Binding StateDescription}" Click="ShowPolicy_Click" ToolTip="查看实际可编辑范围" Margin="8,0,0,0"/>
     <WrapPanel VerticalAlignment="Center">
-     <Button Content="保存" Click="Save_Click" IsEnabled="{Binding CanSave}" MinWidth="65" Margin="0,0,6,0"/>
+     <TextBlock Text="自动保存" Foreground="#567766" VerticalAlignment="Center" Margin="0,0,9,0" ToolTip="合法编辑自动保存；Ctrl+S 可立即保存"/>
      <Button Content="撤销" Click="Undo_Click" IsEnabled="{Binding CanUndo}" Margin="0,0,4,0"/>
      <Button Content="重做" Click="Redo_Click" IsEnabled="{Binding CanRedo}" Margin="0,0,12,0"/>
      <Button Content="＋ 报文" Click="AddMessage_Click" IsEnabled="{Binding CanChangeStructure}" ToolTip="{Binding UnsupportedDescription}" Margin="0,0,4,0"/>
@@ -192,7 +192,7 @@
       <TextBlock x:Name="OverlayError" Foreground="#B34035" TextWrapping="Wrap" Margin="0,10,0,0"/>
      </StackPanel></ScrollViewer>
      <DockPanel Grid.Row="2" Margin="0,12,0,0">
-      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"><Button Content="取消" Click="CancelOverlay_Click" Margin="0,0,6,0"/><Button Content="应用" Click="FinishOverlay_Click" MinWidth="74"/></StackPanel>
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"><Button Content="取消" Click="CancelOverlay_Click" Margin="0,0,6,0"/><Button Content="完成" Click="FinishOverlay_Click" MinWidth="74"/></StackPanel>
       <TextBlock Text="应用或取消后关闭；点击外部不丢失草稿" Foreground="#62778D" FontSize="11" VerticalAlignment="Center"/>
      </DockPanel>
     </Grid>
