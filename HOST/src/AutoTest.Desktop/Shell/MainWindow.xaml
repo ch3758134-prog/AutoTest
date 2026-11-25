@@ -3,7 +3,7 @@
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  xmlns:chrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
  xmlns:navigation="clr-namespace:AutoTest.Desktop.Shell.Navigation"
- Title="{Binding WindowTitle}" Width="1530" Height="880" MinWidth="1220" MinHeight="680"
+ Title="{Binding WindowTitle}" Width="1530" Height="880" MinWidth="820" MinHeight="455"
  WindowStartupLocation="CenterScreen" WindowState="Maximized" WindowStyle="None"
  PreviewKeyDown="Window_PreviewKeyDown"
  ResizeMode="CanResize" Background="#F6F7F8" Foreground="#252C34"
@@ -104,8 +104,18 @@
       MinHeight="26" Padding="10,3" Margin="0,0,8,0"/>
      <TextBlock Text="{Binding MainUsbDisplay}" FontSize="13" FontWeight="SemiBold"
       ToolTip="{Binding HardwareStatus}" Foreground="#345B76"
-      VerticalAlignment="Center" MaxWidth="210" TextTrimming="CharacterEllipsis"
-      Margin="0,0,10,0"/>
+      VerticalAlignment="Center" MaxWidth="170" TextTrimming="CharacterEllipsis"
+      Margin="0,0,10,0">
+      <TextBlock.Style>
+       <Style TargetType="TextBlock">
+        <Style.Triggers>
+         <DataTrigger Binding="{Binding IsCompactShell}" Value="True">
+          <Setter Property="Visibility" Value="Collapsed"/>
+         </DataTrigger>
+        </Style.Triggers>
+       </Style>
+      </TextBlock.Style>
+     </TextBlock>
      <Button Content="─" Style="{StaticResource ChromeButton}" ToolTip="最小化"
       chrome:WindowChrome.IsHitTestVisibleInChrome="True" Click="Minimize_Click"/>
      <Button Content="□" Style="{StaticResource ChromeButton}" ToolTip="最大化／还原"
@@ -190,8 +200,22 @@
    </DockPanel>
   </Border>
 
-  <Border Grid.Row="1" Height="49" Background="#F4F7FA" BorderBrush="#E1E5E9" BorderThickness="0,0,0,1"
-   Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}">
+  <Border Grid.Row="1" Height="49" Background="#F4F7FA"
+   BorderBrush="#E1E5E9" BorderThickness="0,0,0,1">
+   <Border.Style>
+    <Style TargetType="Border">
+     <Setter Property="Visibility" Value="Collapsed"/>
+     <Style.Triggers>
+      <MultiDataTrigger>
+       <MultiDataTrigger.Conditions>
+        <Condition Binding="{Binding IsEngineerWorkspace}" Value="True"/>
+        <Condition Binding="{Binding IsCompactShell}" Value="False"/>
+       </MultiDataTrigger.Conditions>
+       <Setter Property="Visibility" Value="Visible"/>
+      </MultiDataTrigger>
+     </Style.Triggers>
+    </Style>
+   </Border.Style>
    <DockPanel Margin="10,0" LastChildFill="False">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
      <!-- Specialist tools remain in the main Tools menu; the toolbar
