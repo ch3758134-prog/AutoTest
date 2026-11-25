@@ -203,9 +203,6 @@ public partial class NativeFlashProfileWindow : Window
         }
     }
 
-    private async void Save_Click(object sender, RoutedEventArgs e) =>
-        await SaveAsync();
-
     private async void ImportFirmware_Click(object sender, RoutedEventArgs e)
     {
         if (_initializing || _loadFailure || _importBusy || _previewBusy || _closing) return;
