@@ -219,6 +219,11 @@ public sealed partial class MainWindowViewModel
         // not a separate TEST or production recipe. Preserve open editors.
         if (_workspace.Current is not null && OpenEditors.Count == 0)
             ShowProjectConfiguration();
+        // Mode switch must reload the one project under the correct policy:
+        // engineering may inspect saved drafts, while production only reads
+        // a verified station deployment. Never carry the previous mode's
+        // loaded plan into engineer-run preflight.
+        await _automaticTestHome.RestoreAsync();
     }
 
     private async Task ShowAutomaticTestAsync()
