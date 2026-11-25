@@ -68,8 +68,10 @@ public sealed class AutomaticTestPlanService
                 var full = Path.GetFullPath(path);
                 var before = await File.ReadAllBytesAsync(full, ct);
                 var definition = await ProjectRepository.OpenDefinitionAsync(full, ct);
-                definition = await ProjectWorkspaceService.ReadCurrentResourceMetadataAsync(
-                    definition, Path.GetDirectoryName(full)!, ct);
+                // Operator readiness uses the MANIFEST's declared revision
+                // and SHA256, not an implicit metadata repair. A file changed
+                // outside its saved project must be treated as a blocking
+                // configuration error instead of an executable new revision.
                 var after = await File.ReadAllBytesAsync(full, ct);
                 if (!before.SequenceEqual(after))
                     throw new IOException("读取期间工程文件发生改变，请重新打开。");
