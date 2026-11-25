@@ -187,6 +187,10 @@ public sealed record ProductionFixtureConfiguration(
             MovementTimeoutMs is < 100 or > 120000 ||
             ReleasePolicy != "AFTER_DURABLE_RECORD_AND_SAFE_RELEASE_CONFIRMATION")
             throw new InvalidDataException("工位槽位、夹具通道或安全释放合同无效。");
+        if (StartInput is null || StopInput is null ||
+            InterlockInput is null || ClampClosedFeedback is null ||
+            ClampOpenFeedback is null)
+            throw new InvalidDataException("工位反馈和实体输入不能为 null；未接线请明确使用 NOT_WIRED。");
         if (StartInput.Length > 128 || StopInput.Length > 128 ||
             InterlockInput.Length > 128 || ClampClosedFeedback.Length > 128 ||
             ClampOpenFeedback.Length > 128)

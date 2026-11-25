@@ -61,6 +61,7 @@ public static class StationProductionConfigurationStore
         var published = JsonSerializer.Deserialize<PublishedStationProductionConfiguration>(
             bytes, Json) ?? throw new InvalidDataException("工位正式发布配置为空。");
         if (published.SchemaVersion != 1 || published.PublicationId == Guid.Empty ||
+            published.Configuration is null ||
             published.Projects is null || published.Projects.Count == 0)
             throw new InvalidDataException("已发布生产配置的版本或工程绑定无效。");
         published.Configuration.Validate();
@@ -147,8 +148,25 @@ public static class StationProductionConfigurationStore
         if (fixture.Length > 1)
             throw new InvalidDataException("工程有多份工位工艺，无法唯一发布。");
         if (fixture.Length == 1)
-            _ = await AutomaticTestResourceContract.ReadPinnedAsync(
+        {
+            var bytes = await AutomaticTestResourceContract.ReadPinnedAsync(
                 opened, fixture[0], ct).ConfigureAwait(false);
+            var procedure = (InspectionStationProcedureDocument)
+                ProjectConfigurationCodec.Decode(fixture[0].Kind, bytes);
+            procedure.Validate();
+            // The STANDARD production clamp/stop sequence is station-owned.
+            // Old project BeforeStart/AfterFinish clamp outputs would duplicate
+            // it and could unexpectedly energize the actuator out of sequence.
+            // Keep explicit IGN and non-actuating waits; fail closed for clamps.
+            var conflicts = procedure.BeforeStart.Concat(procedure.AfterFinish)
+                .Where(x => x.Kind.StartsWith("Clamp", StringComparison.Ordinal))
+                .Select(x => x.Kind).Distinct().ToArray();
+            if (conflicts.Length > 0)
+                throw new InvalidDataException(
+                    "旧工程工位动作包含重复夹具控制（" +
+                    string.Join("、", conflicts) +
+                    "）；请在工程设置中移除旧夹紧/释放动作，改由生产准备标准夹具配置管理。");
+        }
         return new ProductionPublishedProduct(binding.ModelCode, binding.HardwareCode,
             manifest, definition.Id.Value, opened.ManifestSha256,
             test.TestProjectAsset.Id.Value, test.TestProjectAsset.Sha256,
@@ -270,7 +288,16 @@ public static class ProductionIdentityResolver
         ProductionIdentityDecision Reject(string code, string message) =>
             new(code, message, raw, "", 0, "", "", "", "", "", null);
         if (matches.Length == 0)
-            return Reject("NO_BARCODE_RULE_MATCHED", "没有已发布编码形制匹配该原始编码。");
+        {
+            // Prefer concrete rule failures so the engineer can fix a prefix,
+            // checksum, length, or forbidden character without guessing.
+            var diagnostics = config.Rules.Where(x => x.Enabled)
+                .Take(4).Select(x => x.Name + "：" + x.Parse(raw).Code)
+                .ToArray();
+            return Reject("NO_BARCODE_RULE_MATCHED",
+                "没有已发布编码形制匹配该编码。 " +
+                string.Join("；", diagnostics));
+        }
         var resolutions = new List<ProductionIdentityDecision>();
         var registry = new PublishedLocalIdentityRegistry(config.IdentityRows);
         foreach (var matched in matches)
@@ -317,7 +344,7 @@ public static class ProductionIdentityResolver
                 model, hardware, f.Batch, basis, products[0]));
         }
         if (resolutions.Select(x => x.Serial + "\u001f" + x.Model + "\u001f" +
-                x.Hardware + "\u001f" + x.Project!.ProjectId)
+                x.Hardware + "\u001f" + x.Batch + "\u001f" + x.Project!.ProjectId)
             .Distinct(StringComparer.Ordinal).Count() != 1)
             return Reject("BARCODE_RULE_CONFLICT",
                 "多条已发布编码规则对同一原始条码得到不同身份/产品，拒绝按顺序猜选。");
