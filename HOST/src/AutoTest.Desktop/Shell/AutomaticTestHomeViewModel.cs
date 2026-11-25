@@ -108,7 +108,46 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         get => _startRequestStatus;
         private set => SetProperty(ref _startRequestStatus, value);
     }
-    public string PhysicalStartStatus => "正式生产放行待接线";
+    // These are projections of existing project, scanner and station facts.
+    // They never infer a physical START, a production RunId or a final PASS.
+    public string ProductionHeadline =>
+        IsOperatorRunning ? "真实工程验证进行中（非生产）" :
+        _plans.Current is null ? "工位未配置检测工程" :
+        !_plans.Current.ResourceReady ? "检测工程资源未就绪" :
+        !_hardware.IsConnected ? "等待主控连接" :
+        !_hardware.IsEcuCanBitrateApplied ? "ECU CAN 码率未确认" :
+        !_scanner.IsConnected ? "等待扫码枪连接" :
+        _prepared is null ? "等待 ECU 扫码" :
+        "ECU 已识别 · 正式检测尚不可启动";
+
+    public string ProductionDisplayStage =>
+        IsOperatorRunning ? OperatorRunState :
+        _plans.Current is null || !_plans.Current.ResourceReady ? "工程预检" :
+        !_hardware.IsConnected || !_hardware.IsEcuCanBitrateApplied ||
+        !_scanner.IsConnected ? "设备预检" :
+        _prepared is null ? "扫码识别" : "实体 START 待接线";
+
+    public string ProductionGuidance =>
+        IsOperatorRunning
+            ? "仅显示已有工程验证事实；不会计入正式生产结果。"
+            : _plans.Current is null
+                ? "请由工程人员建立并保存对应型号的 ECU 检测工程。"
+            : !_plans.Current.ResourceReady
+                ? "当前用例或烧录资源未通过检查，需工程人员修正。"
+            : !_hardware.IsConnected
+                ? "主控 USB 未连接，工位暂不可投入检测。"
+            : !_hardware.IsEcuCanBitrateApplied
+                ? "ECU CAN 波特率尚未完成主控回读确认。"
+            : !_scanner.IsConnected
+                ? "扫码枪未连接，工位不能接收 ECU 编号。"
+            : _prepared is null
+                ? "使用工位扫码枪扫描条码；不需要鼠标启动。"
+                : "扫码身份及工程资源已核对；实体 START 和正式生产归档尚未接线。";
+
+    public string ProductionResultLabel =>
+        "尚无正式生产检测结论";
+
+    public string PhysicalStartStatus => "实体 START 未接线";
     public string StartInputHint =>
         "工程实测可使用软件启动；正式生产放行尚需实体 START 与生产记录验收。";
 
@@ -322,6 +361,10 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         RaisePropertyChanged(nameof(ScannerDetail));
         RaisePropertyChanged(nameof(CanDetail));
         RaisePropertyChanged(nameof(KeyRequestStatus));
+        RaisePropertyChanged(nameof(ProductionHeadline));
+        RaisePropertyChanged(nameof(ProductionDisplayStage));
+        RaisePropertyChanged(nameof(ProductionGuidance));
+        RaisePropertyChanged(nameof(ProductionResultLabel));
         RaisePropertyChanged(nameof(StationReadiness));
         RaisePropertyChanged(nameof(IdentityLabel));
         RaisePropertyChanged(nameof(HasPlan));
