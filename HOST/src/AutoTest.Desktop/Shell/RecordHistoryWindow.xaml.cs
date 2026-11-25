@@ -488,6 +488,145 @@ public partial class RecordHistoryWindow : Window
               (string.IsNullOrWhiteSpace(row.Detail) ? "" : " · " + row.Detail);
     }
 
+    private RecordHistoryDisplayRow[] SelectedCommittedRuns() =>
+        HistoryGrid.SelectedItems.OfType<RecordHistoryDisplayRow>()
+            .Where(x => x.Source.PersistenceState == "Committed").ToArray();
+
+    private void UpdateBatchExportAvailability()
+    {
+        BatchExportReport.IsEnabled = !_busy && !_batchRunning &&
+            SelectedCommittedRuns().Length >= 2;
+    }
+
+    private void CancelBatchExport_Click(object sender, RoutedEventArgs e)
+    {
+        if (_batchRunning)
+        {
+            _batchCancellation?.Cancel();
+            StatusText.Text = "正在取消当前打包并清理临时文件…";
+        }
+    }
+
+    private static string SafeArchiveSegment(string raw, int maxLength = 35)
+    {
+        var clean = new string((raw ?? "").Where(c =>
+            char.IsLetterOrDigit(c) || c is '-' or '_').Take(maxLength).ToArray());
+        return clean.Length == 0 ? "UNKNOWN" : clean;
+    }
+
+    private async void BatchExportReport_Click(object sender, RoutedEventArgs e)
+    {
+        if (_busy || _batchRunning) return;
+        var selected = SelectedCommittedRuns();
+        if (selected.Length < 2) return;
+        var ignored = HistoryGrid.SelectedItems.Count - selected.Length;
+        var picker = new SaveFileDialog
+        {
+            Title = "批量打包已归档的真实检测报告",
+            FileName = "AutoTest_Reports_" + DateTime.Now.ToString("yyyyMMdd_HHmmss"),
+            Filter = "HTML 报告 ZIP (*.zip)|*.zip|JSON 证据 ZIP (*.zip)|*.zip",
+            DefaultExt = ".zip",
+            AddExtension = true,
+            OverwritePrompt = false
+        };
+        if (picker.ShowDialog(this) != true) return;
+        var destination = Path.GetFullPath(picker.FileName);
+        if (File.Exists(destination))
+        {
+            StatusText.Text = "目标 ZIP 已存在。为保护之前的报告，请选择一个新文件名。";
+            return;
+        }
+        var isHtml = picker.FilterIndex == 1;
+        var temporary = destination + "." + Guid.NewGuid().ToString("N") + ".partial";
+        var cancellation = new CancellationTokenSource();
+        _batchCancellation = cancellation;
+        _batchRunning = _busy = true;
+        HistoryGrid.IsEnabled = false;
+        CancelBatchExport.Visibility = Visibility.Visible;
+        UpdateBatchExportAvailability();
+        IProgress<int> progress = new Progress<int>(done =>
+            StatusText.Text = "已处理 " + done + " / " + selected.Length +
+                " 条真实归档记录…");
+        try
+        {
+            StatusText.Text = "正在批量读取真实 RECORD 并创建归档包…";
+            await Task.Run(async () =>
+            {
+                await using var stream = new FileStream(temporary, FileMode.CreateNew,
+                    FileAccess.Write, FileShare.None, 64 * 1024, useAsync: true);
+                using (var archive = new ZipArchive(stream, ZipArchiveMode.Create,
+                           leaveOpen: true))
+                {
+                    for (var i = 0; i < selected.Length; i++)
+                    {
+                        cancellation.Token.ThrowIfCancellationRequested();
+                        var source = selected[i];
+                        var run = source.Source;
+                        var original = isHtml
+                            ? await source.RecordSource.ExportFullReportHtmlAsync(
+                                run.RunId, cancellation.Token)
+                            : await source.RecordSource.ExportFullReportJsonAsync(
+                                run.RunId, cancellation.Token);
+                        cancellation.Token.ThrowIfCancellationRequested();
+                        var extension = isHtml ? ".html" : ".json";
+                        var name = (i + 1).ToString("D3") + "_" +
+                            SafeArchiveSegment(run.DutId) + "_" +
+                            SafeArchiveSegment(run.RunId) + extension;
+                        var item = archive.CreateEntry(name, CompressionLevel.Optimal);
+                        using (var entry = item.Open())
+                        {
+                            var bytes = Encoding.UTF8.GetBytes(original);
+                            await entry.WriteAsync(bytes.AsMemory(), cancellation.Token);
+                        }
+                        progress.Report(i + 1);
+                    }
+                }
+                await stream.FlushAsync(cancellation.Token);
+            }, cancellation.Token);
+            cancellation.Token.ThrowIfCancellationRequested();
+            // The completed package is published only after every original
+            // report was read and the ZIP central directory was finalized.
+            if (File.Exists(destination))
+                throw new IOException("目标文件在打包期间已由其他进程创建，未覆盖。");
+            File.Move(temporary, destination);
+            StatusText.Text = "已打包 " + selected.Length + " 份已归档真实报告：" +
+                destination + (ignored > 0
+                    ? "；另有 " + ignored + " 条未结案记录未纳入正式打包。" : "");
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+            StatusText.Text = "批量打包已取消；没有发布不完整报告。";
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or
+            InvalidDataException or InvalidOperationException or ArgumentException or
+            Microsoft.Data.Sqlite.SqliteException or JsonException or NotSupportedException)
+        {
+            StatusText.Text = "批量报告未完成，原始记录未修改：" + error.Message;
+        }
+        finally
+        {
+            if (File.Exists(temporary))
+            {
+                try { File.Delete(temporary); }
+                catch (IOException error)
+                {
+                    StatusText.Text += "；临时文件清理失败：" + error.Message;
+                }
+                catch (UnauthorizedAccessException error)
+                {
+                    StatusText.Text += "；临时文件无权限删除：" + error.Message;
+                }
+            }
+            _batchRunning = false;
+            _busy = false;
+            _batchCancellation = null;
+            cancellation.Dispose();
+            HistoryGrid.IsEnabled = true;
+            CancelBatchExport.Visibility = Visibility.Collapsed;
+            UpdateBatchExportAvailability();
+        }
+    }
+
     private async void OpenReport_Click(object sender, RoutedEventArgs e)
     {
         if (_busy || HistoryGrid.SelectedItem is not RecordHistoryDisplayRow selection) return;
