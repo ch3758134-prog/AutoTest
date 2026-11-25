@@ -62,10 +62,7 @@ public partial class TestEditorView : UserControl
             !CommitInlineQuickValue(row))
             return false;
         if (IsPropertyEditorOpen)
-        {
-            _inspector?.ShowPendingWarning();
-            return false;
-        }
+            return TryDismissPropertyEditor();
         if (_viewModel.HasNewStepDraft) return false;
         return true;
     }
@@ -119,16 +116,20 @@ public partial class TestEditorView : UserControl
         var editor = new TestStepInspector(context.Choices, context.ExistingMappings,
             context.Original, context.InitialActionKey, context.CaseOnly, context.PublicFlows);
         editor.ApplyRequested = _viewModel.ApplyInspector;
+        editor.ApplyFailureReason = () => _viewModel.StatusMessage;
         editor.Cancelled += () =>
         {
             if (!ReferenceEquals(_inspector, editor)) return;
             ClosePropertyOverlay();
             _viewModel.CancelInspectorEdit();
         };
-        editor.AppliedSuccessfully += () =>
+        editor.AppliedSuccessfully += async () =>
         {
             if (!ReferenceEquals(_inspector, editor)) return;
             ClosePropertyOverlay();
+            // Applying a valid edit is the user commit; persist it without a second Save action.
+            // A failed disk write remains dirty and is surfaced by SaveForCloseAsync.
+            await SaveForCloseAsync();
         };
         _inspector = editor;
         StepPropertyCard.MaxWidth = editor.PreferredEditorWidth;
@@ -157,7 +158,10 @@ public partial class TestEditorView : UserControl
     private void StepPropertyOverlay_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (ReferenceEquals(e.OriginalSource, StepPropertyOverlay))
+        {
+            TryDismissPropertyEditor();
             e.Handled = true;
+        }
     }
 
     private void FinishPropertyOverlay_Click(object sender, RoutedEventArgs e) =>
