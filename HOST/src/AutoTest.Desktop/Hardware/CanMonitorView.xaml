@@ -5,7 +5,7 @@
  <DockPanel Margin="14">
    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
      <TextBlock Text="CAN 实时监视" FontSize="18" FontWeight="SemiBold"/>
-     <TextBlock Text="USB 实时接收：ECU CAN（A1/A12）、KEY CAN（B1/B11）。断开连接后保留已收报文。"
+     <TextBlock Text="真实 CAN RX 和主控 TX-ACK：ECU CAN（A1/A12）、KEY CAN（B1/B11）；TX-ACK 不证明 ECU 已收到。"
                 Foreground="{StaticResource Subtle}" TextWrapping="Wrap" Margin="0,5,0,0"/>
    </StackPanel>
    <Border DockPanel.Dock="Top" Background="{StaticResource MutedSurface}"
@@ -60,6 +60,7 @@
              VirtualizingPanel.IsVirtualizing="True">
      <DataGrid.Columns>
        <DataGridTextColumn Header="到达时间" Binding="{Binding Time}" Width="150"/>
+       <DataGridTextColumn Header="方向" Binding="{Binding Direction}" Width="75"/>
        <DataGridTextColumn Header="通道" Binding="{Binding Port}" Width="120"/>
        <DataGridTextColumn Header="CAN ID" Binding="{Binding Id}" Width="120"/>
        <DataGridTextColumn Header="帧类型" Binding="{Binding Format}" Width="100"/>
