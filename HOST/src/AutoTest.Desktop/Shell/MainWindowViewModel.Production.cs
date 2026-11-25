@@ -26,6 +26,7 @@ public sealed partial class MainWindowViewModel
         RaisePropertyChanged(nameof(IsCompactShell));
     }
     private bool _developerRestored;
+    private EngineeringVerificationWindow? _engineeringVerificationWindow;
 
     public AutomaticTestHomeView AutomaticTestView { get; private set; } = null!;
     public bool IsProductionWorkspace => _productionWorkspace;
@@ -38,6 +39,7 @@ public sealed partial class MainWindowViewModel
     public DelegateCommand ArmEngineeringFullRunCommand { get; private set; } = null!;
     public DelegateCommand RunEngineeringFullRunCommand { get; private set; } = null!;
     public DelegateCommand StopEngineeringFullRunCommand { get; private set; } = null!;
+    public DelegateCommand ShowEngineeringFullRunMonitorCommand { get; private set; } = null!;
 
     private void InitializeProductionWorkspace()
     {
@@ -50,16 +52,47 @@ public sealed partial class MainWindowViewModel
         ArmEngineeringFullRunCommand = new DelegateCommand(() =>
         {
             _automaticTestHome.ArmEngineeringVerification();
-            StatusMessage = "工程整组验证：先扫码核对当前 ECU，确认后从运行菜单启动真实 FLASH 和全量 TEST。";
+            ShowEngineeringVerificationMonitor();
+            StatusMessage = "工程验证已准备：扫描本台真实 ECU 后，在监视窗口启动包含 FLASH 的整组实测。";
         }, () => IsEngineerWorkspace && !_automaticTestHome.IsOperatorRunning);
         RunEngineeringFullRunCommand = _automaticTestHome.StartOperatorVerificationCommand;
         StopEngineeringFullRunCommand = _automaticTestHome.StopOperatorVerificationCommand;
+        ShowEngineeringFullRunMonitorCommand = new DelegateCommand(
+            ShowEngineeringVerificationMonitor, () => IsEngineerWorkspace);
         ConfigureAutomaticTestCommand = new DelegateCommand(
             async () => await ShowDeveloperAsync());
         ShowEngineerWorkspaceCommand = new DelegateCommand(
             async () => await ShowDeveloperAsync());
         ShowProductionWorkspaceCommand = new DelegateCommand(
             async () => await ShowAutomaticTestAsync());
+    }
+
+    private void ShowEngineeringVerificationMonitor()
+    {
+        if (!IsEngineerWorkspace) return;
+        if (_engineeringVerificationWindow is { IsVisible: true } existing)
+        {
+            existing.Activate();
+            return;
+        }
+        var window = new EngineeringVerificationWindow(_automaticTestHome)
+        {
+            Owner = global::System.Windows.Application.Current?.MainWindow
+        };
+        _engineeringVerificationWindow = window;
+        window.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(_engineeringVerificationWindow, window))
+                _engineeringVerificationWindow = null;
+        };
+        window.Show();
+        window.Activate();
+    }
+
+    private void CloseEngineeringVerificationMonitor()
+    {
+        if (_engineeringVerificationWindow is { IsVisible: true } window)
+            window.Close();
     }
 
     /// <summary>
@@ -117,6 +150,7 @@ public sealed partial class MainWindowViewModel
         }
         if (!await PrepareEditorsForCloseAsync()) return;
         _automaticTestHome.DisarmEngineeringVerification();
+        CloseEngineeringVerificationMonitor();
         SetWorkspaceMode(true);
         // Use the same saved ECU project as the engineering workspace.
         await _automaticTestHome.RestoreAsync();
@@ -131,6 +165,7 @@ public sealed partial class MainWindowViewModel
         RaisePropertyChanged(nameof(WindowTitle));
         ArmEngineeringFullRunCommand?.RaiseCanExecuteChanged();
         RunEngineeringFullRunCommand?.RaiseCanExecuteChanged();
+        ShowEngineeringFullRunMonitorCommand?.RaiseCanExecuteChanged();
         StatusMessage = automaticTest
             ? "自动测试使用当前保存的 ECU 工程。"
             : "开发与调试工作区：可独立打开、编辑 ECU 工程。";
