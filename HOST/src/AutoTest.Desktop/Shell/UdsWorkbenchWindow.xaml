@@ -44,7 +44,9 @@
   </DockPanel>
   <Border Grid.Row="1" Background="White" BorderBrush="#DFE6EF" BorderThickness="1"
    CornerRadius="6" Padding="12" Margin="0,0,0,11">
-   <Grid>
+   <Expander x:Name="UdsProfileExpander" Header="诊断端点、超时与序列名称"
+    IsExpanded="True" FontSize="13" Foreground="#314A63">
+   <Grid Margin="0,8,0,0">
     <Grid.ColumnDefinitions>
      <ColumnDefinition Width="1.2*"/><ColumnDefinition Width="12"/>
      <ColumnDefinition Width="1.1*"/><ColumnDefinition Width="12"/>
@@ -68,7 +70,7 @@
     </StackPanel>
     <StackPanel Grid.Column="4">
      <TextBlock Text="超时设置" Style="{StaticResource UdsCaption}" Margin="0,0,0,4"/>
-     <StackPanel Orientation="Horizontal">
+     <WrapPanel>
       <TextBlock Text="P2" Style="{StaticResource UdsCaption}" Margin="0,0,5,0"/>
       <TextBox x:Name="P2Input" Width="84" TextChanged="Profile_TextChanged"
        MinHeight="31" Padding="6,4"/>
@@ -77,11 +79,12 @@
       <TextBox x:Name="P2StarInput" Width="84" TextChanged="Profile_TextChanged"
        MinHeight="31" Padding="6,4"/>
       <TextBlock Text="ms" Style="{StaticResource UdsCaption}" Margin="5,0,0,0"/>
-     </StackPanel>
+     </WrapPanel>
      <TextBlock Text="ISO-TP Normal 地址模式 · ECU CAN"
       Foreground="#5C7189" FontSize="12" Margin="0,14,0,0"/>
     </StackPanel>
    </Grid>
+   </Expander>
   </Border>
   <Grid Grid.Row="2">
    <Grid.RowDefinitions>
