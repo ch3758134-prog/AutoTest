@@ -6,6 +6,7 @@ using System.Windows.Threading;
 using AutoTest.Contracts;
 using AutoTest.Desktop.Diagnostics;
 using AutoTest.Devices.Can;
+using AutoTest.Testing.Runtime;
 
 namespace AutoTest.Desktop.Shell;
 
@@ -36,13 +37,15 @@ public sealed partial class MainWindowViewModel
     private const int CanPerTick = 48;
     private const int DecodedPerTick = 24;
     private readonly object _monitorDisplayGate = new();
-    private readonly Queue<CanMonitorRow> _pendingCanUi = new();
-    private readonly Queue<DecodedCanRow> _pendingDecodedUi = new();
+    private readonly record struct CanDisplayEvent(CanObservation? Rx, CanFrame? TxAck);
+    private readonly Queue<CanDisplayEvent> _pendingCanUi = new();
+    private readonly Queue<(string Name, TestSignalResult Result)> _pendingDecodedUi = new();
     private DispatcherTimer? _canUiTimer;
     private bool _canUiStopped;
     private long _displaySkippedCan;
     private long _displaySkippedDecoded;
     private DateTimeOffset _lastMonitorStatusUpdate;
+    private string? _pendingHardwareStatusUi;
     private string _canMonitorDisplayStatus = "RX / TX-ACK · 显示最多每秒刷新 8 次";
 
     public string CanMonitorDisplayStatus
@@ -53,37 +56,14 @@ public sealed partial class MainWindowViewModel
 
     private void InitializeCanMonitorUi()
     {
+        // Producers do O(1) bounded enqueue only. Hex conversion and WPF
+        // projection happen after sampling on the UI dispatcher.
         _hardware.FrameObserved += observation =>
-        {
-            var frame = observation.Frame;
-            QueueCanUi(new CanMonitorRow(
-                observation.Time.Utc.ToLocalTime().ToString("HH:mm:ss.fff"),
-                frame.Role == BusRole.DutCan
-                    ? StationCanWiring.DutDisplayName
-                    : StationCanWiring.KeypadDisplayName,
-                "0x" + frame.Id.ToString("X"),
-                frame.ExtendedId ? "扩展" : "标准",
-                frame.Dlc, Convert.ToHexString(frame.Data.ToArray()),
-                observation.LostFrames));
-        };
+            QueueCanUi(new CanDisplayEvent(observation, null));
         _hardware.FrameTransmitAcknowledged += frame =>
-            QueueCanUi(new CanMonitorRow(
-                DateTimeOffset.Now.ToString("HH:mm:ss.fff"),
-                frame.Role == BusRole.DutCan
-                    ? StationCanWiring.DutDisplayName
-                    : StationCanWiring.KeypadDisplayName,
-                "0x" + frame.Id.ToString("X"),
-                frame.ExtendedId ? "扩展" : "标准",
-                frame.Dlc, Convert.ToHexString(frame.Data.ToArray()), 0,
-                "TX-ACK"));
+            QueueCanUi(new CanDisplayEvent(null, frame));
         _liveSignals.SignalReceived += (name, value) =>
         {
-            var row = new DecodedCanRow(
-                value.Observation?.Time.Utc.ToLocalTime().ToString("HH:mm:ss.fff") ?? "",
-                name,
-                value.Observation?.Value?.ToString("R", CultureInfo.InvariantCulture) ?? "",
-                value.Observation?.Unit ?? "",
-                value.Status.ToString());
             lock (_monitorDisplayGate)
             {
                 if (_canUiStopped) return;
@@ -92,7 +72,7 @@ public sealed partial class MainWindowViewModel
                     _pendingDecodedUi.Dequeue();
                     _displaySkippedDecoded++;
                 }
-                _pendingDecodedUi.Enqueue(row);
+                _pendingDecodedUi.Enqueue((name, value));
             }
         };
         _canUiTimer = new DispatcherTimer(DispatcherPriority.Background)
@@ -103,7 +83,7 @@ public sealed partial class MainWindowViewModel
         _canUiTimer.Start();
     }
 
-    private void QueueCanUi(CanMonitorRow row)
+    private void QueueCanUi(CanDisplayEvent row)
     {
         lock (_monitorDisplayGate)
         {
@@ -121,8 +101,9 @@ public sealed partial class MainWindowViewModel
     {
         try
         {
-            CanMonitorRow[] can;
-            DecodedCanRow[] decoded;
+            CanDisplayEvent[] canEvents;
+            (string Name, TestSignalResult Result)[] decodedEvents;
+            string? pendingHardwareStatus;
             long skippedCan, skippedDecoded;
             lock (_monitorDisplayGate)
             {
@@ -139,17 +120,24 @@ public sealed partial class MainWindowViewModel
                     _pendingDecodedUi.Dequeue();
                     _displaySkippedDecoded++;
                 }
-                can = _pendingCanUi.ToArray();
+                canEvents = _pendingCanUi.ToArray();
                 _pendingCanUi.Clear();
-                decoded = _pendingDecodedUi.ToArray();
+                decodedEvents = _pendingDecodedUi.ToArray();
                 _pendingDecodedUi.Clear();
+                pendingHardwareStatus = _pendingHardwareStatusUi;
+                _pendingHardwareStatusUi = null;
                 skippedCan = _displaySkippedCan;
                 skippedDecoded = _displaySkippedDecoded;
             }
             // DispatcherTimer owns this method: both WPF collections are
             // mutated only on the dispatcher, one Reset per nonempty batch.
-            CanRecords.AppendBatch(can, 500);
-            DecodedCanRecords.AppendBatch(decoded, 500);
+            CanRecords.AppendBatch(canEvents.Select(ToMonitorRow).ToArray(), 500);
+            DecodedCanRecords.AppendBatch(decodedEvents.Select(ToDecodedRow).ToArray(), 500);
+            if (pendingHardwareStatus is not null)
+            {
+                HardwareStatus = pendingHardwareStatus;
+                StatusMessage = pendingHardwareStatus;
+            }
             var now = DateTimeOffset.UtcNow;
             if (now - _lastMonitorStatusUpdate >= TimeSpan.FromSeconds(1))
             {
@@ -170,6 +158,52 @@ public sealed partial class MainWindowViewModel
         }
     }
 
+    private static CanMonitorRow ToMonitorRow(CanDisplayEvent entry)
+    {
+        if (entry.Rx is { } observed)
+        {
+            var frame = observed.Frame;
+            return new CanMonitorRow(
+                observed.Time.Utc.ToLocalTime().ToString("HH:mm:ss.fff"),
+                frame.Role == BusRole.DutCan
+                    ? StationCanWiring.DutDisplayName
+                    : StationCanWiring.KeypadDisplayName,
+                "0x" + frame.Id.ToString("X"),
+                frame.ExtendedId ? "扩展" : "标准",
+                frame.Dlc, Convert.ToHexString(frame.Data.ToArray()),
+                observed.LostFrames);
+        }
+        if (entry.TxAck is { } sent)
+            return new CanMonitorRow(
+                DateTimeOffset.Now.ToString("HH:mm:ss.fff"),
+                sent.Role == BusRole.DutCan
+                    ? StationCanWiring.DutDisplayName
+                    : StationCanWiring.KeypadDisplayName,
+                "0x" + sent.Id.ToString("X"),
+                sent.ExtendedId ? "扩展" : "标准",
+                sent.Dlc, Convert.ToHexString(sent.Data.ToArray()), 0, "TX-ACK");
+        throw new InvalidOperationException("CAN monitor event has neither RX nor TX-ACK.");
+    }
+
+    private static DecodedCanRow ToDecodedRow((string Name, TestSignalResult Result) entry)
+    {
+        var reading = entry.Result;
+        return new DecodedCanRow(
+            reading.Observation?.Time.Utc.ToLocalTime().ToString("HH:mm:ss.fff") ?? "",
+            entry.Name,
+            reading.Observation?.Value?.ToString("R", CultureInfo.InvariantCulture) ?? "",
+            reading.Observation?.Unit ?? "",
+            reading.Status.ToString());
+    }
+
+    private void QueueHardwareStatusUi(string status)
+    {
+        lock (_monitorDisplayGate)
+        {
+            if (!_canUiStopped) _pendingHardwareStatusUi = status;
+        }
+    }
+
     private void StopCanMonitorUi()
     {
         _canUiTimer?.Stop();
@@ -179,6 +213,7 @@ public sealed partial class MainWindowViewModel
             _canUiStopped = true;
             _pendingCanUi.Clear();
             _pendingDecodedUi.Clear();
+            _pendingHardwareStatusUi = null;
         }
     }
 }

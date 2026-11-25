@@ -206,12 +206,8 @@ public sealed partial class MainWindowViewModel : BindableBase
                 "\n测试项目勾选只作用于本次检查，工程默认独立保存。" +
                 "\n工程测试可运行前置烧录和全部用例；正式生产放行仍须整机验收。",
                 "AutoTest · 编辑帮助", MessageBoxButton.OK, MessageBoxImage.Information));
-        _hardware.EvidenceRecorded += line =>
-            global::System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() =>
-            {
-                HardwareStatus = line;
-                StatusMessage = line;
-            }));
+        // USB diagnostics may burst during faults; coalesce instead of queueing WPF invocations.
+        _hardware.EvidenceRecorded += QueueHardwareStatusUi;
         // CAN UI uses one bounded, fixed-rate dispatcher batch; never queue one WPF job per frame.
         InitializeCanMonitorUi();
         _workspace.CurrentChanged += (_, _) =>
