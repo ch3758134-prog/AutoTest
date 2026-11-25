@@ -103,6 +103,18 @@ public sealed class WaveLabAnalysisTests
             .Select(i => new WaveChartPoint(i * .01, i * .3)).ToArray();
         Assert.False(WaveDisplayContinuity.HasDiscontinuities(points));
         Assert.True(WaveDisplayContinuity.CanMeasure(points, .01, .09));
+        Assert.False(WaveDisplayContinuity.CanMeasure(points, -.05, .09));
+        Assert.False(WaveDisplayContinuity.CanMeasure(points, .02, .025));
+        Assert.False(WaveDisplayContinuity.CanMeasure(points, .01, .01));
+    }
+
+    [Fact]
+    public void SlowValidSamplingIsNotFlaggedAsMissing()
+    {
+        var samples = Enumerable.Range(0, 9)
+            .Select(i => new WaveChartPoint(i * 5d, i)).ToArray();
+        Assert.False(WaveDisplayContinuity.HasDiscontinuities(samples));
+        Assert.True(WaveDisplayContinuity.CanMeasure(samples, 5, 35));
     }
 
     [Fact]
