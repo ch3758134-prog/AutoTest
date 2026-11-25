@@ -70,6 +70,19 @@ public static class AutomaticTestResourceContract
                 var target = assets.SingleOrDefault(a => a.Id.Value == entry.PackageAssetId &&
                     a.Kind == ProjectWorkspaceService.TestProgramKind)
                     ?? throw new InvalidDataException("用例源资源不存在。");
+                // The formal project's invocation pin is separate from the
+                // asset index. Both MUST match before this case enters a
+                // production preparation. Reading the latest valid asset alone
+                // would silently upgrade a case without operator confirmation.
+                if (entry.PackageRevision != target.Revision ||
+                    !string.Equals(entry.PackageSha256, target.Sha256,
+                        StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException(
+                        "测试项目固定 r" + entry.PackageRevision +
+                        " / " + entry.PackageSha256 + "，当前用例资源 r" +
+                        target.Revision + " / " + target.Sha256 +
+                        "；版本或 SHA256 不一致，须在工程编辑中核对并更新引用。" +
+                        "正式生产禁止自动换用最新版。");
                 var source = await ReadPinnedAsync(project, target, ct);
                 var program = ProjectWorkspaceService.BindCurrentRunResources(TestDocumentCodec.Deserialize(
                     new UTF8Encoding(false, true).GetString(source)), project);
