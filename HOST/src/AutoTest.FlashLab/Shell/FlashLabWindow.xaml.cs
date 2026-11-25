@@ -34,11 +34,56 @@ public partial class FlashLabWindow : Window
     public string? NativeProjectModelCode { get; set; }
     private bool _closingApproved;
     private bool _closingInProgress;
+    private bool? _compactFlashLayout;
+
+    private void ApplyResponsiveLayout()
+    {
+        if (!IsLoaded || ActualWidth <= 0) return;
+        var compact = ActualWidth < 1160;
+        if (_compactFlashLayout == compact) return;
+        _compactFlashLayout = compact;
+        if (compact)
+        {
+            FlashConfigColumn.Width = new GridLength(292);
+            FlashConfigGap.Width = new GridLength(6);
+            FlashWorkflowColumn.Width = new GridLength(1, GridUnitType.Star);
+            FlashMonitorGap.Width = new GridLength(0);
+            FlashCanColumn.Width = new GridLength(0);
+            FlashPrimaryRow.Height = new GridLength(1.3, GridUnitType.Star);
+            FlashMonitorRow.Height = new GridLength(1, GridUnitType.Star);
+            Grid.SetRowSpan(FlashConfigPanel, 2);
+            Grid.SetRowSpan(FlashConfigSplitter, 2);
+            FlashMonitorSplitter.Visibility = Visibility.Collapsed;
+            Grid.SetRow(FlashWorkflowPanel, 0);
+            Grid.SetColumn(FlashCanPanel, 2);
+            Grid.SetRow(FlashCanPanel, 1);
+            FlashCanPanel.Margin = new Thickness(0, 8, 0, 0);
+        }
+        else
+        {
+            Grid.SetRowSpan(FlashConfigPanel, 1);
+            Grid.SetRowSpan(FlashConfigSplitter, 1);
+            FlashMonitorSplitter.Visibility = Visibility.Visible;
+            Grid.SetRow(FlashWorkflowPanel, 0);
+            Grid.SetRow(FlashCanPanel, 0);
+            Grid.SetColumn(FlashCanPanel, 4);
+            FlashCanPanel.Margin = new Thickness(0);
+            FlashConfigColumn.Width = new GridLength(304);
+            FlashConfigGap.Width = new GridLength(6);
+            FlashWorkflowColumn.Width = new GridLength(405);
+            FlashMonitorGap.Width = new GridLength(6);
+            FlashCanColumn.Width = new GridLength(1, GridUnitType.Star);
+            FlashPrimaryRow.Height = new GridLength(1, GridUnitType.Star);
+            FlashMonitorRow.Height = new GridLength(0);
+        }
+    }
 
     public FlashLabWindow()
     {
         InitializeComponent();
         DataContext=_vm;
+        Loaded += (_, _) => ApplyResponsiveLayout();
+        SizeChanged += (_, _) => ApplyResponsiveLayout();
         _device.Message+=line=>
         {
             void Render()
