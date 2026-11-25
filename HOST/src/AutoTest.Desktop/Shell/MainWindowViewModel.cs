@@ -698,7 +698,7 @@ public sealed partial class MainWindowViewModel : BindableBase
             return;
         var window = new UdsWorkbenchWindow
         {
-            Owner = global::System.Windows.Application.Current.MainWindow
+            Owner = global::System.Windows.Application.Current?.MainWindow
         };
         _udsWorkbenchWindow = window;
         window.Closed += (_, _) =>
@@ -2180,7 +2180,7 @@ public sealed partial class MainWindowViewModel : BindableBase
                 closeApproved = true;
                 // Never synchronously call Close while WPF is still unwinding
                 // its original Closing event, or while Owner is shutting down.
-                window.Dispatcher.BeginInvoke(new Action(() =>
+                _ = window.Dispatcher.BeginInvoke(new Action(() =>
                 {
                     if (window.IsLoaded && !window.Dispatcher.HasShutdownStarted)
                         window.Close();
