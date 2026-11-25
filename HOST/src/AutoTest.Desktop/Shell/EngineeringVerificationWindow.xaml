@@ -52,9 +52,12 @@
    <DockPanel LastChildFill="True">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
      VerticalAlignment="Center" Margin="12,0,0,0">
-     <Button Content="开始真实整组实测" Command="{Binding StartOperatorVerificationCommand}"
+     <Button Content="1. 准备扫码" Command="{Binding ArmOperatorVerificationCommand}"
+      Padding="12,7" Margin="0,0,7,0"
+      ToolTip="撤销旧扫码，重新接收本台 ECU 的真实串口扫码身份；不执行 FLASH/TEST"/>
+     <Button Content="2. 开始真实整组实测" Command="{Binding StartOperatorVerificationCommand}"
       Style="{StaticResource AtPrimaryButton}" Padding="12,7" Margin="0,0,7,0"
-      ToolTip="须先由运行菜单准备扫码身份，真实 FLASH 前再次确认"/>
+      ToolTip="仅在接受本次扫码且所有项目/码率/硬件预检通过时启用；开始前再次确认真机 FLASH"/>
      <Button Content="停止" Command="{Binding StopOperatorVerificationCommand}"
       Padding="12,7" Margin="0,0,7,0" ToolTip="请求停止并执行真实工位收尾，不擅自重试 FLASH"/>
      <Button Content="关闭监视" Click="Close_Click" Padding="12,7"/>
