@@ -37,8 +37,12 @@ public partial class DbcSignalEditDialog : Window
         var name = NameBox.Text.Trim();
         var receiver = ReceiverBox.Text.Trim();
         var mux = MultiplexerBox.Text.Trim();
-        if (!Regex.IsMatch(name, @"^\w+$") || !Regex.IsMatch(receiver, @"^\w+$") ||
-            (mux.Length > 0 && mux != "M" && !Regex.IsMatch(mux, @"^m\d+$")))
+        // DBC raw identifiers are ASCII; Chinese display names belong in the
+        // dedicated signal alias, not the wire-level DBC name fields.
+        const string dbcIdentifier = @"^[A-Za-z_][A-Za-z0-9_]*$";
+        if (!Regex.IsMatch(name, dbcIdentifier) ||
+            !Regex.IsMatch(receiver, dbcIdentifier) ||
+            (mux.Length > 0 && mux != "M" && !Regex.IsMatch(mux, @"^m[0-9]+$"))
         {
             ErrorText.Text = "信号名称/接收节点须是 DBC 标识符；复用标记只能为空、M 或 m数字。";
             return;
