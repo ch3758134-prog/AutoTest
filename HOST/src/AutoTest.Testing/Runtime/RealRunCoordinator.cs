@@ -182,6 +182,9 @@ public sealed class RealRunCoordinator
         var verdict = RealTestVerdict.Inconclusive;
         bool asserted = false, failed = false, error = false, aborted = false, incomplete = false;
         bool preparing = false;
+        // Unlike FALSE, an UNKNOWN IF never permits later normal TEST writes.
+        // Scripted station cleanup still runs independently in the finally block.
+        bool stopAfterUnknownBranch = false;
         // Missing or invalid data must never become an empty string that could
         // accidentally satisfy an equality or be encoded as a hardware command.
         bool TryEvaluate(string input, out string value)
@@ -234,7 +237,7 @@ public sealed class RealRunCoordinator
             {
                 // A failed preparation prerequisite stops the rest of Prepare,
                 // including nested steps, before any further physical writes.
-                if (!cleanup && preparing && (failed || incomplete))
+                if (!cleanup && (stopAfterUnknownBranch || preparing && (failed || incomplete)))
                     return;
                 if (!cleanup)
                 {
@@ -289,23 +292,35 @@ public sealed class RealRunCoordinator
                     case "If":
                     {
                         var sourceName = Property(node, "variable");
-                        if (!variables.TryGetValue(sourceName, out var source) || source.Value is null ||
+                        if (!variables.TryGetValue(sourceName, out var source) ||
+                            source.Value is null ||
                             (source.Quality is not null and not TestSignalStatus.Valid))
                         {
                             incomplete = true;
-                            Fact(node, RealStepStatus.NoData, detail:
-                                "Branch source unavailable: " + sourceName);
-                            break; // Never treat missing DUT feedback as the else branch.
+                            if (!cleanup) stopAfterUnknownBranch = true;
+                            Fact(node, RealStepStatus.NoData,
+                                expected: node.Properties.GetValueOrDefault("equals", ""),
+                                actual: source?.Value ?? "",
+                                detail: "IF 无法判断：" + sourceName +
+                                    " 未产生有效数据；未进入 THEN/ELSE，已阻断后续正常测试步骤。");
+                            break;
                         }
                         var actual = source.Value;
                         if (!TryEvaluate(Property(node, "equals"), out var expected))
                         {
                             incomplete = true;
-                            Fact(node, RealStepStatus.NoData, detail: "分支期望值引用了尚无有效数据的变量。");
+                            if (!cleanup) stopAfterUnknownBranch = true;
+                            Fact(node, RealStepStatus.NoData,
+                                expected: Property(node, "equals"), actual: actual,
+                                detail: "IF 比较值引用了尚无有效数据的变量；未执行任何分支，已阻断后续正常测试步骤。");
                             break;
                         }
-                        var pass = Compare(actual, "==", expected);
-                        Fact(node, RealStepStatus.Completed, expected, actual, "Branch: " + (pass ? "then" : "else"));
+                        // Existing TEST files omit 'operator' and retain ==.
+                        var comparator = node.Properties.GetValueOrDefault("operator", "==");
+                        var pass = Compare(actual, comparator, expected);
+                        Fact(node, RealStepStatus.Completed, comparator + " " + expected,
+                            actual, "IF " + sourceName + " " + comparator + " " +
+                                expected + " → " + (pass ? "THEN" : "ELSE"));
                         await Execute(node.Slots[pass ? "then" : "else"], ct, cleanup,
                             phase, occurrence, path, loopIteration);
                         break;

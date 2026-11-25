@@ -30,6 +30,9 @@ public sealed class PlanCompiler
         bool allowRealOperations = false)
     {
         var errors = StepTreeValidator.ValidateTree(document, _catalog, availableAssets).ToBuilder();
+        // A branch must not authorize downstream physical operations using
+        // a variable that no preceding execution path could have created.
+        errors.AddRange(TestVariableFlowValidator.Validate(document));
         try { _ = document.ReportSettings.Validate(); }
         catch (FormatException e) { errors.Add("Test report: " + e.Message); }
         void CheckEnabledNodes(IEnumerable<StepNode> steps)

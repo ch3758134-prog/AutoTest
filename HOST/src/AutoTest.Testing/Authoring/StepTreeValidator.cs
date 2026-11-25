@@ -92,6 +92,10 @@ public static class StepTreeValidator
                         errors.Add($"{location}: Read 最大数据年龄必须是 0～600000ms");
                 }
             }
+            if (!allowIncompleteSteps && n.Type == "If" &&
+                n.Properties.TryGetValue("operator", out var ifComparator) &&
+                ifComparator is not ("==" or "!=" or "<" or "<=" or ">" or ">="))
+                errors.Add($"{location}: IF 条件比较运算符无效");
             if (!allowIncompleteSteps && n.Type is "WaitUntil" or "Expect")
             {
                 if (n.Properties.GetValueOrDefault("operator", "") is not

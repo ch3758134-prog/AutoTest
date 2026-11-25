@@ -153,6 +153,8 @@ public static class StepUiCatalog
             };
             node = node.WithProperty(property, value);
         }
+        // Optional operator preserves equality semantics for existing saved IF nodes.
+        if (type == "If") node = node.WithProperty("operator", "==");
         if (type is "WaveAnalyze" or "WaveCompare")
             node = node.WithProperty("profile", "").WithProperty("reference", "");
         // Editing schemas are deliberately not executable; invalid/absent resource

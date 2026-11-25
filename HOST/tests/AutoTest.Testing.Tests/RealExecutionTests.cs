@@ -169,6 +169,35 @@ public sealed class RealExecutionTests
 
 
     [Fact]
+    public async Task UnknownIfAfterInvalidReadBlocksFollowingPhysicalWriteAndStillCleansUp()
+    {
+        var mapping = Target();
+        var can = new TestTargetMapping("CAN_AFTER_IF", TestTargetKind.RawCan,
+            default, 0, "", BusRole.DutCan, 0x123);
+        var tx = new StepEditTransaction(TestDocument.Create("UnknownBranchGate") with
+        { Mappings = ImmutableArray.Create(mapping, can) });
+        tx.Insert(TestPhase.Test, null, null, 0,
+            N("Read", ("target", mapping.Name), ("variable", "brakeState"),
+                ("mode", "Next"), ("timeoutMs", "100"), ("maxAgeMs", "100")));
+        var condition = N("If", ("variable", "brakeState"), ("equals", "1"),
+            ("operator", "==")).WithSlot("then").WithSlot("else");
+        tx.Insert(TestPhase.Test, null, null, 1, condition);
+        tx.Insert(TestPhase.Test, null, null, 2,
+            N("Write", ("target", can.Name), ("value", "HEX:01")));
+        var plan = new PlanCompiler().Prepare(tx.Current, allowRealOperations: true);
+        Assert.Empty(plan.Diagnostics);
+        var actions = new ActuationPort();
+        var result = await new RealRunCoordinator(
+            new SignalPort(new TestSignalResult(TestSignalStatus.NoFrame, null, "No ECU CAN")),
+            actions, new WavePort()).StartAsync(plan);
+        Assert.Equal(RealTestVerdict.Inconclusive, result.Verdict);
+        Assert.Equal(0, actions.Written);
+        Assert.True(actions.CleanupCalled);
+        Assert.Contains(result.Facts, x => x.Step == condition.Id &&
+            x.Status == RealStepStatus.NoData && x.Detail.Contains("阻断后续"));
+    }
+
+    [Fact]
     public void StepAndAutomaticObjectMapping_InsertAndUndoTogether()
     {
         var doc = TestDocument.Create("Action");
