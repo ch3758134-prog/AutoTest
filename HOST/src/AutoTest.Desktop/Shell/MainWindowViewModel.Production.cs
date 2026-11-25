@@ -75,7 +75,7 @@ public sealed partial class MainWindowViewModel
             existing.Activate();
             return;
         }
-        var window = new EngineeringVerificationWindow(_automaticTestHome)
+        var window = new EngineeringVerificationWindow(_automaticTestHome, OpenRecordHistory)
         {
             Owner = global::System.Windows.Application.Current?.MainWindow
         };
