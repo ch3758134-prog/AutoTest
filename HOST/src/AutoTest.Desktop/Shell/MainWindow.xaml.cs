@@ -272,6 +272,9 @@ public partial class MainWindow : Window
 
     private void OnShellSizeChanged(object sender, SizeChangedEventArgs e)
     {
+        // Dynamic toolbar is optional chrome. Every command remains in the
+        // native File/Edit/Run/Tools menu at high DPI or limited desktop height.
+        _viewModel.SetCompactShell(ActualWidth < 1150 || ActualHeight < 625);
         // 1366×768 at 150% provides fewer than 920×500 effective DIPs.
         // Preserve the editing surface instead of squeezing controls/fonts.
         if (!_inspectorManualLayout) _inspectorVisible = ActualWidth >= 1120;
