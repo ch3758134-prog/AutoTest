@@ -102,6 +102,15 @@ public sealed partial class AutomaticTestHomeViewModel
     /// verification. Production cannot expose its software START.
     /// A fresh real scan is required for every armed attempt.
     /// </summary>
+    public void DisarmEngineeringVerification()
+    {
+        if (IsOperatorRunning) return;
+        if (!_engineeringVerificationArmed) return;
+        _engineeringVerificationArmed = false;
+        InvalidateScan("已返回自动测试；上一轮工程验证扫码身份已失效。");
+        RefreshOperatorCommands();
+    }
+
     public void ArmEngineeringVerification()
     {
         if (_isProductionWorkspace() || IsOperatorRunning) return;
