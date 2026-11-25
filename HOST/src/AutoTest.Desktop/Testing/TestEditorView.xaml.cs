@@ -124,13 +124,13 @@ public partial class TestEditorView : UserControl
             ClosePropertyOverlay();
             _viewModel.CancelInspectorEdit();
         };
-        editor.AppliedSuccessfully += async () =>
+        editor.AppliedSuccessfully += () =>
         {
             if (!ReferenceEquals(_inspector, editor)) return;
+            // Canonical document is already updated. Close queues one debounced
+            // persist; a direct Run or Ctrl+S awaits the same save contract.
+            // Do not race a second async save from this synchronous event.
             ClosePropertyOverlay();
-            // Applying a valid edit is the user commit; persist it without a second Save action.
-            // A failed disk write remains dirty and is surfaced by SaveForCloseAsync.
-            await SaveForCloseAsync();
         };
         _inspector = editor;
         StepPropertyCard.MaxWidth = editor.PreferredEditorWidth;
