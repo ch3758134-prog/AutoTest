@@ -528,6 +528,15 @@ public sealed partial class AutomaticTestHomeViewModel
             Snapshot();
             AddOperatorEvent(flashState);
 
+            // All ordered TEST programs share one physical CAN/KEY/IGN grant.
+            // Each case still gets its own RunRecord, StepOccurrence and verdict.
+            var anyFunctionalFail = false;
+            await using (var projectScope = await _operatorEngine.OpenProjectSessionAsync(
+                programs.Cases.Select(x => x.Program).ToArray(), _operatorRunId,
+                scan.DutSerial, ct))
+            {
+            AddOperatorEvent("连续整组 TEST 硬件会话已建立：周期 CAN 跨用例保持；" +
+                "用例 Cleanup 仅执行显式编写的步骤。");
             for (var i = 0; i < programs.Cases.Count; i++)
             {
                 ct.ThrowIfCancellationRequested();
@@ -546,11 +555,9 @@ public sealed partial class AutomaticTestHomeViewModel
                 if (!prepared.Diagnostics.IsEmpty)
                     throw new InvalidDataException("用例编译诊断：" +
                         string.Join("；", prepared.Diagnostics));
-                // This scoped confirmation belongs to the explicit operator
-                // software START recorded above, not a hidden startup action.
-                var confirmation = RealTestWorkbenchService.ExpectedApproval(prepared);
-                var run = await _operatorEngine.ExecuteAsync(
-                    item.Program, confirmation, "", scan.DutSerial, ct);
+                // Scope was authorized once, with every permitted CAN ID and
+                // action frozen BEFORE the first case began.
+                var run = await projectScope.ExecuteCaseAsync(item.Program, ct);
                 // Close the event/UI dispatch race using the executor's
                 // immutable final facts. UI callbacks can be queued when the
                 // engine finishes on a non-UI thread; never lose the last
@@ -573,18 +580,41 @@ public sealed partial class AutomaticTestHomeViewModel
                 }
                 results.Add(new RealOperatorCaseEvidence(item.Entry.DisplayName,
                     run.Run.Value, run.Verdict.ToString(), run.EvidencePath ?? ""));
-                ChangeCaseState(i, run.Verdict == RealTestVerdict.Passed ? "实测通过" :
-                    "实测" + run.Verdict);
+                var caseState = run.Verdict switch
+                {
+                    RealTestVerdict.Passed => "实测通过",
+                    RealTestVerdict.CompletedNoAssertion => "动作完成 · 无功能判定",
+                    RealTestVerdict.Failed => "功能判定失败",
+                    RealTestVerdict.Inconclusive => "数据不足 · 未得结论",
+                    RealTestVerdict.Aborted => "已停止",
+                    _ => "执行异常"
+                };
+                ChangeCaseState(i, caseState);
                 _operatorActiveStepId = null;
                 Snapshot();
                 AddOperatorEvent("用例完成 · " + item.Entry.DisplayName +
                     " · " + run.Verdict + " · Record " + run.Run.Value.ToString("N")[..8]);
-                if (run.Verdict != RealTestVerdict.Passed)
-                    throw new InvalidDataException("真实 TEST 未通过：" +
-                        item.Entry.DisplayName + " · " + run.Verdict +
-                        "，不会执行后续用例或发布生产结果。");
+                if (run.Verdict == RealTestVerdict.Failed)
+                {
+                    // A functional FAIL remains in its own RECORD and in the
+                    // overall verdict, but does not automatically tear down a
+                    // healthy VCU environment needed by subsequent diagnostics.
+                    anyFunctionalFail = true;
+                    AddOperatorEvent("功能 FAIL 已记录；继续执行后续已冻结用例，" +
+                        "不会将本项目最终结果覆盖为 PASS。");
+                }
+                else if (run.Verdict is not (RealTestVerdict.Passed or
+                    RealTestVerdict.CompletedNoAssertion))
+                    throw new InvalidDataException("用例因数据无效、硬件故障或 STOP 未能安全继续：" +
+                        item.Entry.DisplayName + " · " + run.Verdict);
+                // Periodic senders are still owned by projectScope here.
+                await projectScope.Actions.CheckHealthAsync(ct);
             }
-            outcome = "工程整组真实实测完成（不构成生产放行）";
+            projectScope.MarkCompleted();
+            } // One project-level disposal stops senders/revokes the fence.
+            outcome = anyFunctionalFail
+                ? "工程整组完成 · 存在功能 FAIL（不构成生产放行）"
+                : "工程整组真实实测完成（不构成生产放行）";
             OperatorRunState = outcome;
             AddOperatorEvent(outcome);
         }
