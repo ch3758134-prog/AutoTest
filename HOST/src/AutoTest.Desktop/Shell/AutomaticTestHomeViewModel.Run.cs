@@ -287,22 +287,22 @@ public sealed partial class AutomaticTestHomeViewModel
             {
                 case "Wait": break;
                 case "Clamp1Press":
-                    await hardware.SendManualClampAsync(1, true, "AUTHORIZE CLAMP 1 PRESS", ct);
+                    await SetAndCheckClampRequestAsync(hardware, 1, true, ct);
                     break;
                 case "Clamp1Release":
-                    await hardware.SendManualClampAsync(1, false, "AUTHORIZE CLAMP 1 RELEASE", ct);
+                    await SetAndCheckClampRequestAsync(hardware, 1, false, ct);
                     break;
                 case "Clamp2Press":
-                    await hardware.SendManualClampAsync(2, true, "AUTHORIZE CLAMP 2 PRESS", ct);
+                    await SetAndCheckClampRequestAsync(hardware, 2, true, ct);
                     break;
                 case "Clamp2Release":
-                    await hardware.SendManualClampAsync(2, false, "AUTHORIZE CLAMP 2 RELEASE", ct);
+                    await SetAndCheckClampRequestAsync(hardware, 2, false, ct);
                     break;
                 case "IgnOn":
-                    await hardware.SendManualIgnAsync(true, "AUTHORIZE IGN ON", ct);
+                    await SetAndCheckIgnRequestAsync(hardware, true, ct);
                     break;
                 case "IgnOff":
-                    await hardware.SendManualIgnAsync(false, "AUTHORIZE IGN OFF", ct);
+                    await SetAndCheckIgnRequestAsync(hardware, false, ct);
                     break;
                 default:
                     throw new InvalidDataException("未识别的工位动作：" + action.Kind);
@@ -310,6 +310,34 @@ public sealed partial class AutomaticTestHomeViewModel
             if (action.WaitAfterMilliseconds > 0)
                 await Task.Delay(action.WaitAfterMilliseconds, ct);
         }
+    }
+
+    /// <summary>
+    /// USB ACK alone does not establish the MCU output request state. Require
+    /// a fresh GPIO readback after every configured fixture request. This is
+    /// still NOT mechanical clamp position feedback; production physical
+    /// fixture approval remains blocked without real sensor observations.
+    /// </summary>
+    private static async Task SetAndCheckClampRequestAsync(
+        HardwareConnectionService hardware, byte clamp, bool press,
+        CancellationToken ct)
+    {
+        await hardware.SendManualClampAsync(clamp, press,
+            "AUTHORIZE CLAMP " + clamp + (press ? " PRESS" : " RELEASE"), ct);
+        var bits = await hardware.ReadClampLevelsAsync(ct);
+        if (((bits >> (clamp - 1)) & 1) != (press ? 1 : 0))
+            throw new IOException("夹具" + clamp + " USB 写入已应答，但主控 GET_CLAMPS GPIO 回读" +
+                "与请求不一致；不能继续 FLASH/TEST。该回读仍不是机械到位证据。");
+    }
+
+    private static async Task SetAndCheckIgnRequestAsync(
+        HardwareConnectionService hardware, bool on, CancellationToken ct)
+    {
+        await hardware.SendManualIgnAsync(on,
+            on ? "AUTHORIZE IGN ON" : "AUTHORIZE IGN OFF", ct);
+        if (await hardware.ReadIgnLevelAsync(ct) != on)
+            throw new IOException("IGN USB 写入已应答，但主控 GET_IGN GPIO 回读" +
+                "与请求不一致；不能继续 FLASH/TEST。该回读仍不是 ECU 端子电压。");
     }
 
     private sealed record RealOperatorCaseEvidence(string Name, Guid RunId,
