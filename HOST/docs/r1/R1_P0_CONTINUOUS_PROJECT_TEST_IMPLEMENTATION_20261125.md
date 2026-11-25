@@ -22,6 +22,8 @@ OpenProjectSessionAsync 在第一条 TEST 物理写入前，检查真实 USB 连
 
 PeriodicCanTaskEvidence 保存 TaskId、CAN role/ID/扩展格式/DLC/DATA、目标周期/时长、创建用例/StepId/StepOccurrenceId、开始和停止时间/原因、主机请求数、USB ACK 次数、最长主机 ACK 间隔、错过周期数及异常。记录归档在工程根目录/test-records/project-runs/<ProjectRunId>.json，父记录关联各 CaseRunId、CaseAttemptId 和独立报告路径。
 
+另外新增与各用例 RECORD 同源的整组连续 CAN/DBC/设备观察窗口，覆盖相邻用例之间的空隙；真实接收及设备日志按 ProjectRunId 存在工程根目录/test-records/project-runs/<ProjectRunId>.timeline.json。父记录引用该文件及丢失计数；原始证据超限或硬件接收丢帧会标为 EVIDENCE_ERROR，不得宣称完整通过。
+
 USB ACK 只证明主控接受请求，不是 ECU 接收帧或 CAN 总线实测周期。真实 65ms 必须使用独立 CAN 分析仪采样并依 ECU 规范判定，禁止把最大 USB ACK 间隔作为实际 CAN 线上周期。TEST 编辑器取消新建周期报文默认 5 秒定时结束的设计。
 
 ## 4. 结果和 RECORD
