@@ -549,6 +549,7 @@
     VirtualizingPanel.VirtualizationMode="Recycling">
     <DataGrid.Columns>
      <DataGridTextColumn Header="时间" Binding="{Binding Time}" Width="94"/>
+     <DataGridTextColumn Header="方向" Binding="{Binding Direction}" Width="67"/>
      <DataGridTextColumn Header="通道" Binding="{Binding Port}" Width="68"/>
      <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="96"/>
      <DataGridTextColumn Header="DLC" Binding="{Binding Dlc}" Width="42"/>
@@ -557,7 +558,7 @@
     </DataGrid.Columns>
    </DataGrid>
    <TextBlock Grid.Row="3" Margin="11,8,11,10" FontSize="11" Foreground="#617589"
-    TextWrapping="Wrap" Text="主控真实 RX 观察值；丢帧不等于零时记录可能不完整。不代表 ECU 判定 PASS。"/>
+    TextWrapping="Wrap" Text="RX 为真实 CAN 接收，TX-ACK 只代表主控接受发送，不证明 ECU 收到；丢帧会影响记录完整性。"/>
   </Grid>
  </Border>
  </Grid>
