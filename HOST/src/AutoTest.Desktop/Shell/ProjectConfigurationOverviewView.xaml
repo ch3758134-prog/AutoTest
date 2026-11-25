@@ -190,7 +190,7 @@
        CornerRadius="6" Padding="12" Margin="0,10,0,0">
        <StackPanel>
         <TextBlock Text="正确的工程操作顺序" FontWeight="SemiBold" Margin="0,0,0,8"/>
-        <TextBlock Text="编辑并保存参数、固件和算法 → 按需预检和实体调试。正式检测使用当前保存的配置前置烧录。"
+        <TextBlock Text="编辑并自动保存参数、固件和算法 → 核对配置 → 在“运行前检查”确认用于生产。正式检测使用工程内已确认的版本，不读取未确认的草稿。"
          Foreground="{StaticResource Subtle}" TextWrapping="Wrap"/>
         <TextBlock Text="烧录配置已保存不代表 ECU 已完成烧录。"
          Margin="0,9,0,0" TextWrapping="Wrap" Foreground="#9A6A2C"/>
@@ -246,7 +246,7 @@
         <TextBlock Text="设备读取结果" FontWeight="SemiBold" Margin="0,0,0,8"/>
         <TextBlock Text="{Binding EngineeringClampReadback}" Foreground="#3B607E"
          TextWrapping="Wrap"/>
-        <TextBlock Text="只代表主控 GPIO，绝不冒充夹具机械到位信号。实体 START 尚未实测，上位机保留软件 START；两者最终共用一次检测锁。"
+        <TextBlock Text="回读只代表主控 GPIO，不能证明夹具机械到位。软件 START 仅限工程实测；正式生产等待真实实体 START 接口，不能以软件操作代替。"
          Foreground="#7C6470" TextWrapping="Wrap" Margin="0,12,0,0"/>
        </StackPanel>
       </Border>
