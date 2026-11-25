@@ -21,7 +21,7 @@ public sealed record ProductionBarcodeRule(
     public const string Serial = "Serial";
     public const string Delimited = "Delimited";
     public const string Fixed = "Fixed";
-    public const string Regex = "Regex";
+    public const string RegexFormat = "Regex";
     public const string Ut1 = "UT1";
 
     public static ProductionBarcodeRule NewSerial() => new(
@@ -34,15 +34,16 @@ public sealed record ProductionBarcodeRule(
     {
         if (string.IsNullOrWhiteSpace(RuleId) || RuleId.Length > 64 ||
             string.IsNullOrWhiteSpace(Name) || Name.Length > 100 || Revision < 1 ||
-            Format is not (Serial or Delimited or Fixed or Regex or Ut1) ||
-            ExactLength is < 0 or > 256 || Prefix.Length > 64 ||
-            Separator.Length is < 1 or > 4 ||
+            Format is not (Serial or Delimited or Fixed or RegexFormat or Ut1) ||
+            ExactLength is < 0 or > 256 || Prefix is null || Prefix.Length > 64 ||
+            Separator is null || Separator.Length is < 1 or > 4 ||
             SerialField is < 1 or > 32 || ModelField is < 0 or > 32 ||
             HardwareField is < 0 or > 32 || BatchField is < 0 or > 32 ||
             SerialStart is < 1 or > 256 || SerialLength is < 0 or > 256 ||
             ModelStart is < 0 or > 256 || ModelLength is < 0 or > 256 ||
             HardwareStart is < 0 or > 256 || HardwareLength is < 0 or > 256 ||
-            Samples is null || Samples.Count > 500)
+            Samples is null || Samples.Count > 500 ||
+            AllowedCharacters is null || RegexExpression is null)
             throw new InvalidDataException("编码规则 ID、格式、字段位置或长度无效：" + Name);
         if (Format == Fixed && (SerialLength == 0 ||
             SerialStart + SerialLength - 1 > 256))
@@ -56,7 +57,7 @@ public sealed record ProductionBarcodeRule(
             RegexExpression.Length > 512)
             throw new InvalidDataException("编码字符校验或正则过长/为空。");
         _ = StrictRegex(AllowedCharacters);
-        if (Format == Regex)
+        if (Format == RegexFormat)
         {
             if (RegexExpression.Length == 0) throw new InvalidDataException("正则规则不能为空。");
             var re = StrictRegex(RegexExpression);
@@ -253,6 +254,7 @@ public sealed record StationProductionConfiguration(
         foreach (var row in IdentityRows)
         {
             if (string.IsNullOrWhiteSpace(row.Serial) || row.Serial.Length > 64 ||
+                row.ExpiresUtc is { } expired && expired <= DateTimeOffset.UtcNow ||
                 !serials.Add(row.Serial))
                 throw new InvalidDataException("编号绑定表存在重复编号或无效行：" + row.Serial);
             if (!Products.Any(x => x.ModelCode == row.ModelCode &&
