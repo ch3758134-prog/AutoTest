@@ -48,10 +48,19 @@ public partial class DbcMessageEditDialog : Window
         }
         var idText = IdBox.Text.Trim();
         if (idText.StartsWith("0x", StringComparison.OrdinalIgnoreCase)) idText = idText[2..];
+        if (!uint.TryParse(idText, NumberStyles.HexNumber,
+                CultureInfo.InvariantCulture, out var id) || id > 0x1FFFFFFFu)
+        { ErrorText.Text = "CAN ID 必须在 0x000～0x1FFFFFFF 范围内。"; return; }
+        // When ID editing is allowed, the 29-bit frame type follows the
+        // physical arbitration ID; a >0x7FF entry cannot be a standard frame.
         var extended = ExtendedBox.IsChecked == true;
-        if (!uint.TryParse(idText, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var id) ||
-            id > (extended ? 0x1FFFFFFFu : 0x7FFu))
-        { ErrorText.Text = "CAN ID 超出标准帧或扩展帧范围。"; return; }
+        if (id > 0x7FF && ExtendedBox.IsEnabled)
+        {
+            extended = true;
+            ExtendedBox.IsChecked = true;
+        }
+        if (!extended && id > 0x7FF)
+        { ErrorText.Text = "该 ID 需要 29 位扩展帧；请核对报文格式。"; return; }
         var encoded = id == _existing.ArbitrationId && extended == _existing.IsExtended
             ? _existing.Id : extended ? id | 0x80000000u : id;
         Result = _existing with { Id = encoded, Name = name, Dlc = dlc, Transmitter = senderName };
