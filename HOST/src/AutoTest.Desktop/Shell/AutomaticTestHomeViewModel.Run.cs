@@ -218,24 +218,43 @@ public sealed partial class AutomaticTestHomeViewModel
         };
 
     private static AutomaticTestStep UpdateStepProjection(AutomaticTestStep step,
-        StepId id, string state) =>
-        step with
+        StepId id, string state)
+    {
+        // Keep unaffected tree nodes by reference. A large TEST with many
+        // real step events must not rebuild every UI row per occurrence.
+        var ownChanged = step.AuthoredStepId == id && step.State != state;
+        List<AutomaticTestStep>? newChildren = null;
+        for (var i = 0; i < step.Children.Count; i++)
         {
-            State = step.AuthoredStepId == id ? state : step.State,
-            Children = step.Children.Select(child =>
-                UpdateStepProjection(child, id, state)).ToArray()
+            var original = step.Children[i];
+            var next = UpdateStepProjection(original, id, state);
+            if (newChildren is null && !ReferenceEquals(original, next))
+            {
+                newChildren = new List<AutomaticTestStep>(step.Children.Count);
+                for (var before = 0; before < i; before++)
+                    newChildren.Add(step.Children[before]);
+            }
+            newChildren?.Add(next);
+        }
+        if (!ownChanged && newChildren is null) return step;
+        return step with
+        {
+            State = ownChanged ? state : step.State,
+            Children = newChildren is null ? step.Children : newChildren.ToArray()
         };
+    }
 
     private void ChangeStepState(StepId id, string state)
     {
         if (_operatorActiveCaseIndex < 0 || _operatorActiveCaseIndex >= Cases.Count)
             return;
         var item = Cases[_operatorActiveCaseIndex];
-        Cases[_operatorActiveCaseIndex] = item with
-        {
-            Children = item.Children.Select(x =>
-                UpdateStepProjection(x, id, state)).ToArray()
-        };
+        var children = item.Children.Select(x =>
+            UpdateStepProjection(x, id, state)).ToArray();
+        if (children.Length == item.Children.Count &&
+            !children.Where((child, i) =>
+                !ReferenceEquals(child, item.Children[i])).Any()) return;
+        Cases[_operatorActiveCaseIndex] = item with { Children = children };
     }
 
     private static async Task ApplyStationActionsAsync(
