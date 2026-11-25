@@ -35,10 +35,11 @@ public sealed partial class AutomaticTestHomeViewModel
             {
                 // Scanner COM may be re-bound without an observable period of
                 // IsConnected=false. The accepted observation is device-scoped.
-                if (_prepared?.AcceptedScannerObservation is { } scan &&
-                    !string.Equals(scan.ScannerPort, _scanner.ConnectedPort,
-                        StringComparison.OrdinalIgnoreCase))
-                    InvalidateScan("扫码枪 COM 端口已切换，原实体扫码身份失效；请重新扫码。");
+                if ((_prepared?.AcceptedScannerObservation is { } scan &&
+                     !string.Equals(scan.ScannerPort, _scanner.ConnectedPort,
+                         StringComparison.OrdinalIgnoreCase)) ||
+                    _dutSerial == "正在核对")
+                    InvalidateScan("扫码枪 COM 端口已切换或当前扫码预检被打断；请重新扫码。");
                 else UpdateConnection();
             });
         else if (e.PropertyName == nameof(SerialScannerWorkbenchViewModel.IsConnected))
