@@ -149,6 +149,15 @@ public partial class WaveWorkbenchWindow : Window
     }
     private void OnChartChanged()
     {
+        // A real capture source can notify from a hardware callback thread.
+        // Do not access WPF controls or Canvas children off the dispatcher.
+        if (!Dispatcher.CheckAccess())
+        {
+            _ = Dispatcher.BeginInvoke(new Action(OnChartChanged),
+                DispatcherPriority.Background);
+            return;
+        }
+        if (!IsLoaded) return;
         if (_lastLiveMode != _model.IsLiveView)
         {
             _lastLiveMode = _model.IsLiveView;
