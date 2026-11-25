@@ -82,6 +82,7 @@ public partial class FlashLabWindow : Window
     public FlashLabWindow()
     {
         InitializeComponent();
+        Loaded += (_, _) => FlashWindowSizing.Fit(this);
         DataContext=_vm;
         Loaded += (_, _) => ApplyResponsiveLayout();
         SizeChanged += (_, _) => ApplyResponsiveLayout();
