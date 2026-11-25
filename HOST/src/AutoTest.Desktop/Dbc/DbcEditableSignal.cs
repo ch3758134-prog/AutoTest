@@ -41,9 +41,13 @@ public class DbcEditableSignal : BindableBase
                 var physical = DbcSignalCodec.ToPhysical(signal, raw);
                 if (!double.IsFinite(physical) || physical < signal.Minimum ||
                     physical > signal.Maximum) continue;
-                var text = physical.ToString("G17", CultureInfo.InvariantCulture);
-                if (!options.Any(x => x.Value == text))
-                    options.Add(new DbcSignalChoice(text, pair.Value + "（" + text +
+                // Keep an exact round-trip physical value for the DBC encoder,
+                // but never show the binary floating-point tail in the user's
+                // dropdown label (e.g. 0.10000000000000001 for an enum 0.1).
+                var exact = physical.ToString("G17", CultureInfo.InvariantCulture);
+                var readable = physical.ToString("G9", CultureInfo.InvariantCulture);
+                if (!options.Any(x => x.Value == exact))
+                    options.Add(new DbcSignalChoice(exact, pair.Value + "（" + readable +
                         (signal.Unit.Length == 0 ? "" : " " + signal.Unit) + "）"));
             }
         }
