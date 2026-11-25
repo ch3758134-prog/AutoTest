@@ -355,61 +355,108 @@ public partial class WaveWorkbenchWindow : Window
         finally { _isRendering = false; }
     }
 
+    private static double VisualGapLimit(IReadOnlyList<WaveChartPoint> raw)
+    {
+        // Derive cadence from the real input BEFORE visual decimation. A gap
+        // in the original sample clock must never become a connecting line
+        // merely because the preview was downsampled.
+        var intervals = new List<double>(512);
+        for (var i = 1; i < raw.Count && intervals.Count < 512; i++)
+        {
+            var previous = raw[i - 1];
+            var current = raw[i];
+            if (!double.IsFinite(previous.Seconds) || !double.IsFinite(current.Seconds))
+                continue;
+            var gap = current.Seconds - previous.Seconds;
+            if (gap > 0 && double.IsFinite(gap)) intervals.Add(gap);
+        }
+        if (intervals.Count == 0) return 0.2;
+        intervals.Sort();
+        return Math.Max(0.2, intervals[intervals.Count / 2] * 8d);
+    }
+
+    private static bool TraceHasDiscontinuities(IReadOnlyList<WaveChartPoint> raw)
+    {
+        var limit = VisualGapLimit(raw);
+        for (var i = 0; i < raw.Count; i++)
+        {
+            var current = raw[i];
+            if (!double.IsFinite(current.Value) || !double.IsFinite(current.Seconds))
+                return true;
+            if (i != 0 && current.Seconds - raw[i - 1].Seconds > limit)
+                return true;
+        }
+        return false;
+    }
+
     private void DrawTrace(IReadOnlyList<WaveChartPoint> points,
         Func<double, double> x, Func<double, double> y,
         string color, double thickness, bool dashed, bool stepped)
     {
         if (points.Count == 0) return;
-        IReadOnlyList<WaveChartPoint> plot = points;
-        if (points.Count > 2400)
-            plot = WaveChartAnalysis.InWindow(points, points[0].Seconds,
-                points[^1].Seconds, 2200);
-        // A long gap must not be drawn as a continuous measured signal.
-        // Compare/TEST always use unmodified evidence, not this visual projection.
-        var intervals = plot.Zip(plot.Skip(1), (a, b) => b.Seconds - a.Seconds)
-            .Where(d => d > 0 && double.IsFinite(d))
-            .OrderBy(d => d).ToArray();
-        var median = intervals.Length == 0 ? 0 :
-            intervals[intervals.Length / 2];
-        var gapLimit = Math.Max(0.2, median * 8d);
-        Polyline NewSegment() => new()
+        var maxGap = VisualGapLimit(points);
+        var stroke = Brush(color);
+        var currentSegment = new List<WaveChartPoint>();
+
+        void EmitSegment()
         {
-            Stroke = Brush(color),
-            StrokeThickness = thickness,
-            StrokeLineJoin = PenLineJoin.Round,
-            StrokeDashArray = dashed ? new DoubleCollection { 6, 4 } : null,
-            IsHitTestVisible = false
-        };
-        var previous = plot[0];
-        var segment = NewSegment();
-        segment.Points.Add(new Point(x(previous.Seconds), y(previous.Value)));
-        foreach (var current in plot.Skip(1))
-        {
-            if (current.Seconds - previous.Seconds > gapLimit)
+            if (currentSegment.Count == 0) return;
+            IReadOnlyList<WaveChartPoint> preview = currentSegment;
+            if (preview.Count > 1900)
+                preview = WaveChartAnalysis.InWindow(preview,
+                    preview[0].Seconds, preview[^1].Seconds, 1700);
+            if (preview.Count == 1)
             {
-                if (segment.Points.Count > 1) WavePlot.Children.Add(segment);
-                segment = NewSegment();
-                segment.Points.Add(new Point(x(current.Seconds), y(current.Value)));
-                previous = current;
+                var dot = new Ellipse
+                {
+                    Width = 5, Height = 5, Fill = stroke,
+                    IsHitTestVisible = false
+                };
+                Canvas.SetLeft(dot, x(preview[0].Seconds) - 2.5);
+                Canvas.SetTop(dot, y(preview[0].Value) - 2.5);
+                WavePlot.Children.Add(dot);
+            }
+            else if (preview.Count > 1)
+            {
+                var path = new Polyline
+                {
+                    Stroke = stroke,
+                    StrokeThickness = thickness,
+                    StrokeLineJoin = PenLineJoin.Round,
+                    StrokeDashArray = dashed ? new DoubleCollection { 6, 4 } : null,
+                    IsHitTestVisible = false
+                };
+                var previous = preview[0];
+                path.Points.Add(new Point(x(previous.Seconds), y(previous.Value)));
+                foreach (var sample in preview.Skip(1))
+                {
+                    if (stepped)
+                        path.Points.Add(new Point(x(sample.Seconds), y(previous.Value)));
+                    path.Points.Add(new Point(x(sample.Seconds), y(sample.Value)));
+                    previous = sample;
+                }
+                WavePlot.Children.Add(path);
+            }
+            currentSegment.Clear();
+        }
+
+        WaveChartPoint? last = null;
+        foreach (var sample in points)
+        {
+            if (!double.IsFinite(sample.Seconds) || !double.IsFinite(sample.Value))
+            {
+                EmitSegment();
+                last = null;
                 continue;
             }
-            if (stepped)
-                segment.Points.Add(new Point(x(current.Seconds), y(previous.Value)));
-            segment.Points.Add(new Point(x(current.Seconds), y(current.Value)));
-            previous = current;
+            if (last is { } previous &&
+                (sample.Seconds < previous.Seconds ||
+                 sample.Seconds - previous.Seconds > maxGap))
+                EmitSegment();
+            currentSegment.Add(sample);
+            last = sample;
         }
-        if (segment.Points.Count > 1) WavePlot.Children.Add(segment);
-        else if (plot.Count == 1)
-        {
-            var dot = new Ellipse
-            {
-                Width = 5, Height = 5, Fill = Brush(color),
-                IsHitTestVisible = false
-            };
-            Canvas.SetLeft(dot, x(plot[0].Seconds) - 2.5);
-            Canvas.SetTop(dot, y(plot[0].Value) - 2.5);
-            WavePlot.Children.Add(dot);
-        }
+        EmitSegment();
     }
 
     private void WavePlot_Click(object sender, MouseButtonEventArgs e)
