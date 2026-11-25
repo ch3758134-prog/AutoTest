@@ -152,7 +152,7 @@
      <StackPanel Grid.Row="0" Margin="0,0,0,9">
       <DockPanel Margin="0,0,0,8">
        <TextBlock Text="ECU CAN 发送" Style="{StaticResource BenchHeader}"/>
-       <TextBlock DockPanel.Dock="Right" Text="双击或右键 → 完整属性编辑"
+       <TextBlock DockPanel.Dock="Right" Text="双击编辑"
         FontSize="11" Foreground="#627C9D" Margin="8,0,0,0"/>
       </DockPanel>
       <WrapPanel>
@@ -200,17 +200,28 @@
           HorizontalAlignment="Center" VerticalAlignment="Center"/>
         </DataTemplate></DataGridTemplateColumn.CellTemplate>
        </DataGridTemplateColumn>
-       <DataGridTextColumn Header="报文" Binding="{Binding Name}" Width="64" MinWidth="60"/>
-       <DataGridTextColumn Header="CAN ID" Binding="{Binding PreviewId}" Width="96"/>
-       <DataGridTextColumn Header="DLC" Binding="{Binding PreviewDlc}" Width="42"/>
-       <DataGridTemplateColumn Header="DATA (HEX)" Width="*" MinWidth="182">
+       <DataGridTemplateColumn Header="报文 / CAN ID" Width="126">
+        <DataGridTemplateColumn.CellTemplate><DataTemplate>
+         <StackPanel VerticalAlignment="Center" ToolTip="{Binding PreviewFull}">
+          <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="12"
+           TextTrimming="CharacterEllipsis"/>
+          <StackPanel Orientation="Horizontal">
+           <TextBlock Text="{Binding PreviewId}" FontFamily="Consolas"
+            FontSize="11" Foreground="#526B84"/>
+           <TextBlock Text="{Binding PreviewDlc,StringFormat='  / {0}B'}"
+            FontSize="11" Foreground="#7C8FA0" Margin="3,0,0,0"/>
+          </StackPanel>
+         </StackPanel>
+        </DataTemplate></DataGridTemplateColumn.CellTemplate>
+       </DataGridTemplateColumn>
+       <DataGridTemplateColumn Header="DATA (HEX)" Width="*" MinWidth="177">
         <DataGridTemplateColumn.CellTemplate><DataTemplate>
          <TextBlock Text="{Binding PreviewData}" FontFamily="Consolas"
           FontSize="12" TextTrimming="None" VerticalAlignment="Center"
           ToolTip="{Binding PreviewFull}"/>
         </DataTemplate></DataGridTemplateColumn.CellTemplate>
        </DataGridTemplateColumn>
-       <DataGridTemplateColumn Header="方式 / 状态" Width="96">
+       <DataGridTemplateColumn Header="状态" Width="93">
          <DataGridTemplateColumn.CellTemplate><DataTemplate>
           <StackPanel VerticalAlignment="Center" ToolTip="{Binding Result}">
            <TextBlock Text="{Binding ModeLabel}" FontSize="12"/>
@@ -231,7 +242,7 @@
           </StackPanel>
          </DataTemplate></DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
-       <DataGridTemplateColumn Header="操作" Width="154">
+       <DataGridTemplateColumn Header="操作" Width="116">
         <DataGridTemplateColumn.CellTemplate><DataTemplate>
          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
           <Button Content="{Binding RunLabel}" Padding="5,5" Margin="0,0,3,0"
@@ -240,9 +251,7 @@
           <Button Content="单发" Padding="4,5" Margin="0,0,3,0"
            Command="{Binding DataContext.SendCanRowOnceCommand,RelativeSource={RelativeSource AncestorType=Window}}"
            CommandParameter="{Binding}" ToolTip="独立单发一次，不停止其他周期报文"/>
-          <Button Content="编辑" Padding="4,5" Tag="{Binding}" Click="OpenCanQuickEdit_Click"
-           IsEnabled="{Binding CanEditFields}"
-           ToolTip="编辑未运行的报文；运行中的报文请先独立停止"/>
+ 
          </StackPanel>
         </DataTemplate></DataGridTemplateColumn.CellTemplate>
        </DataGridTemplateColumn>
