@@ -241,6 +241,73 @@ public sealed class ProductionOrchestrationTests
         Assert.False(result.PhysicalReleaseAllowed);
     }
 
+    [Fact]
+    public async Task RealProductionCannotAutoStartFromBarcodeOrUseSoftwareStart()
+    {
+        var configuration = Config(flash: true);
+        var executor = new CountingProductionStageExecutor();
+        var session = new ProductionSession();
+        var handler = new ProductionCommandHandler(
+            new FakeMatcher(configuration.Assets), _ => configuration,
+            session, new ProductionWorkflow(executor,
+                new ProductionResultCoordinator(new FakeSink(true)),
+                new ProductionPreflight()),
+            new RuleRevision(_hash), new ProjectRevision(1));
+        var admitted = await handler.ScanAsync(Scan(),
+            Station(mock: false, auth: AuthorizationScope.Programming),
+            autoStart: true, CancellationToken.None);
+        Assert.Equal("REAL_PRODUCTION_PHYSICAL_START_REQUIRED", admitted.Code);
+        Assert.Equal(ProductionState.Ready, admitted.State);
+        Assert.NotNull(admitted.Run);
+        var software = await handler.StartAsync(CancellationToken.None);
+        Assert.Equal("REAL_PRODUCTION_PHYSICAL_START_REQUIRED", software.Code);
+        Assert.Equal(ProductionState.Ready, software.State);
+        Assert.Equal(0, executor.Commands);
+    }
+
+    [Fact]
+    public async Task RawBoolPhysicalStartCannotClaimARealInspectionWithoutVerifiedInput()
+    {
+        var configuration = Config(flash: true);
+        var executor = new CountingProductionStageExecutor();
+        var session = new ProductionSession();
+        var handler = new ProductionCommandHandler(
+            new FakeMatcher(configuration.Assets), _ => configuration,
+            session, new ProductionWorkflow(executor,
+                new ProductionResultCoordinator(new FakeSink(true)),
+                new ProductionPreflight()),
+            new RuleRevision(_hash), new ProjectRevision(1));
+        var admitted = await handler.ScanAsync(Scan(),
+            Station(mock: false, auth: AuthorizationScope.Programming),
+            autoStart: false, CancellationToken.None);
+        Assert.Equal("READY_FOR_START", admitted.Code);
+        var released = await handler.PhysicalStartSignalAsync(false, CancellationToken.None);
+        var pressed = await handler.PhysicalStartSignalAsync(true, CancellationToken.None);
+        Assert.Equal("PHYSICAL_START_SOURCE_NOT_CONNECTED", released.Code);
+        Assert.Equal("PHYSICAL_START_SOURCE_NOT_CONNECTED", pressed.Code);
+        Assert.Equal(ProductionState.Ready, session.State);
+        Assert.Equal(0, executor.Commands);
+    }
+
+    private sealed class CountingProductionStageExecutor : IProductionStageExecutor
+    {
+        public int Commands { get; private set; }
+        public ValueTask<ProductionStageResult> ExecuteFlashAsync(
+            ProductionJobSnapshot job, CancellationToken ct)
+        {
+            Commands++;
+            throw new InvalidOperationException("No real hardware must be invoked.");
+        }
+        public ValueTask<ProductionStageResult> ExecuteTestAsync(
+            ProductionJobSnapshot job, CancellationToken ct)
+        {
+            Commands++;
+            throw new InvalidOperationException("No real TEST must be invoked.");
+        }
+        public ValueTask RequestStopAsync(RunId run, CancellationToken ct) =>
+            ValueTask.CompletedTask;
+    }
+
     private sealed class FlashProofExecutor(bool simulated) : IProductionStageExecutor
     {
         public int TestCalls { get; private set; }
