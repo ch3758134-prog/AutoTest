@@ -814,9 +814,12 @@ public sealed class DbcWorkbenchViewModel : BindableBase
 
     public async Task<bool> SaveForCloseAsync()
     {
-        if (IsBusy || HasOpenEditor) return false;
+        if (IsBusy || HasOpenEditor || HasActiveGridEdit) return false;
         if (!IsDirty) return true;
-        await SaveAsync();
+        // This contract is also used by the shell's idle autosave. Failures
+        // stay visible in StatusMessage without interrupting batch editing with
+        // a system dialog; explicit Check DBC is available to diagnose syntax.
+        await SaveAsync(silent: true);
         return !IsBusy && !IsDirty;
     }
 
