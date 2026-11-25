@@ -311,6 +311,10 @@
         Margin="0,0,0,5" TextWrapping="Wrap"/>
        <TextBlock Text="{Binding DataQuality}" FontSize="12"
         Foreground="#52677D" Margin="0,0,0,9" TextWrapping="Wrap"/>
+       <Expander Header="参考波形与比较参数" IsExpanded="False"
+        Foreground="#35536F" FontSize="12" Margin="0,0,0,6"
+        ToolTip="展开后采集标准参考或调整离线比较容差；不影响实时观察与记录">
+        <StackPanel Margin="0,7,0,2">
        <WrapPanel VerticalAlignment="Center" Margin="0,0,0,8">
         <TextBlock Text="参考名称" Style="{StaticResource WaveLabel}" Margin="0,0,7,0"/>
         <TextBox Text="{Binding ReferenceName,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
@@ -330,6 +334,8 @@
         <Button Content="清除叠加" Command="{Binding ClearComparisonCommand}"
          Style="{StaticResource WaveButton}"/>
        </WrapPanel>
+        </StackPanel>
+       </Expander>
        <TextBlock Text="{Binding ComparisonSummary}" FontSize="13" FontWeight="SemiBold"
         Margin="0,7,0,0" TextWrapping="Wrap">
         <TextBlock.Style><Style TargetType="TextBlock">
