@@ -306,7 +306,8 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         IsBusy = true;
         try
         {
-            await _plans.RestoreAsync(_engineering.Current);
+            await _plans.RestoreAsync(_engineering.Current,
+                requireProductionDeployment: _isProductionWorkspace());
             await RefreshDraftPreviewAsync();
         }
         finally { IsBusy = false; }
