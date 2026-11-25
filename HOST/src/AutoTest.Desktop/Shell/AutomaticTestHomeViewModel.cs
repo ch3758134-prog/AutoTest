@@ -129,7 +129,10 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         IsOperatorRunning ? OperatorRunState :
         _plans.Current is null || !_plans.Current.ResourceReady ? "工程预检" :
         !_hardware.IsConnected || !_hardware.IsEcuCanBitrateApplied ||
-        !_scanner.IsConnected ? "设备预检" :
+        !_scanner.IsConnected ||
+        (_prepared is not null &&
+         _hardware.ConfirmedEcuCanBitrateKbps != _prepared.EcuCanKbps)
+            ? "设备预检" :
         _prepared is null ? "扫码识别" : "实体 START 待接线";
 
     public string ProductionGuidance =>
@@ -182,7 +185,9 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
          _scanStatus.StartsWith("无法完成", StringComparison.Ordinal) ||
          _scanStatus.StartsWith("当前工程缺少扫码期望", StringComparison.Ordinal) ||
          _scanStatus.StartsWith("本次正式资源", StringComparison.Ordinal) ||
-         _scanStatus.StartsWith("扫码枪断开", StringComparison.Ordinal))
+         _scanStatus.StartsWith("扫码枪断开", StringComparison.Ordinal) ||
+         _scanStatus.Contains("失效", StringComparison.Ordinal) ||
+         _scanStatus.StartsWith("扫码预检期间", StringComparison.Ordinal))
             ? _scanStatus : "";
 
     public string ProductionResultLabel =>
