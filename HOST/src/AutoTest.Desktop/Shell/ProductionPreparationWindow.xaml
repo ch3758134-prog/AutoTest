@@ -64,9 +64,7 @@
         <TextBlock Text="产品识别方式" FontWeight="SemiBold" Margin="0,0,0,8"/>
         <ComboBox x:Name="ModeBox" Width="320" HorizontalAlignment="Left"
          SelectedItem="{Binding IdentityMode,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-         SelectionChanged="DraftSelectionChanged">
-         <ComboBoxItem Content=""/>
-        </ComboBox>
+         SelectionChanged="DraftSelectionChanged"/>
         <TextBlock Style="{StaticResource Help}" Margin="0,8,0,10"
          Text="FixedStation = 固定型号工位；BarcodeModel = 编码自带可信型号；RegistryModel = 编号绑定表确定型号。"/>
         <WrapPanel>

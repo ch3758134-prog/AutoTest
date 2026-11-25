@@ -43,9 +43,15 @@ public sealed partial class MainWindowViewModel
     public DelegateCommand StopEngineeringFullRunCommand { get; private set; } = null!;
     public DelegateCommand ShowEngineeringFullRunMonitorCommand { get; private set; } = null!;
     public DelegateCommand ConfirmProductionConfigurationCommand { get; private set; } = null!;
+    public DelegateCommand OpenProductionPreparationCommand { get; private set; } = null!;
+    private ProductionPreparationWindow? _productionPreparationWindow;
 
     private void InitializeProductionWorkspace()
     {
+        OpenProductionPreparationCommand = new DelegateCommand(
+            OpenProductionPreparationWindow, () => IsEngineerWorkspace &&
+                !_realTest.IsRunning &&
+                (_automaticTestHome is null || !_automaticTestHome.IsOperatorRunning));
         _automaticTestPlans = new AutomaticTestPlanService();
         _automaticTestHome = new AutomaticTestHomeViewModel(_automaticTestPlans, _hardware,
             _scannerWorkbench, _workspace, _realTest,
@@ -72,6 +78,29 @@ public sealed partial class MainWindowViewModel
             async () => await ShowDeveloperAsync());
         ShowProductionWorkspaceCommand = new DelegateCommand(
             async () => await ShowAutomaticTestAsync());
+    }
+
+    private void OpenProductionPreparationWindow()
+    {
+        if (!IsEngineerWorkspace || _realTest.IsRunning ||
+            _automaticTestHome.IsOperatorRunning) return;
+        if (_productionPreparationWindow is { IsVisible: true } current)
+        { current.Activate(); return; }
+        var window = new ProductionPreparationWindow(_workspace,
+            () => IsEngineerWorkspace && !_realTest.IsRunning &&
+                !_automaticTestHome.IsOperatorRunning &&
+                !_hardware.IsFlashSecuritySensitive &&
+                !_hardware.IsManualCanBatchApproved &&
+                !_hardware.IsManualKeyActionApproved)
+        { Owner = global::System.Windows.Application.Current?.MainWindow };
+        _productionPreparationWindow = window;
+        window.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(_productionPreparationWindow, window))
+                _productionPreparationWindow = null;
+            _ = RefreshEngineeringSetupAsync();
+        };
+        window.Show(); window.Activate();
     }
 
     /// <summary>
@@ -252,6 +281,7 @@ public sealed partial class MainWindowViewModel
         RunEngineeringFullRunCommand?.RaiseCanExecuteChanged();
         ShowEngineeringFullRunMonitorCommand?.RaiseCanExecuteChanged();
         ConfirmProductionConfigurationCommand?.RaiseCanExecuteChanged();
+        OpenProductionPreparationCommand?.RaiseCanExecuteChanged();
         StatusMessage = automaticTest
             ? "自动测试使用当前保存的 ECU 工程。"
             : "开发与调试工作区：可独立打开、编辑 ECU 工程。";

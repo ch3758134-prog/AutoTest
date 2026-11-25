@@ -16,7 +16,6 @@ public partial class ProjectConfigurationOverviewView : UserControl
     private readonly MainWindowViewModel _shell;
     private readonly ProjectWorkspaceService _workspace;
     private InspectionStationProcedureEditorViewModel? _inspectionEditor;
-    private readonly ProjectBarcodeExpectationView _barcodeEditor;
 
     public ContentControl InspectorHost { get; } = new()
     {
@@ -30,8 +29,12 @@ public partial class ProjectConfigurationOverviewView : UserControl
         InitializeComponent();
         DataContext = shell;
         _shell = shell;
-        _barcodeEditor = new ProjectBarcodeExpectationView(shell, workspace);
-        ScannerSetupHost.Content = _barcodeEditor;
+        // Legacy per-project barcode editor is retired from formal production.
+        ScannerSetupHost.Content = new TextBlock
+        {
+            Text = "旧工程扫码期望已退出正式生产；请使用一级入口“生产准备”。",
+            Margin = new Thickness(14), TextWrapping = TextWrapping.Wrap
+        };
         _workspace = workspace;
         InspectorHost.Content = new ProjectConfigurationOverviewInspector(shell);
         Loaded += OnLoaded;
@@ -44,6 +47,11 @@ public partial class ProjectConfigurationOverviewView : UserControl
     private void NavigateToStage_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: string stage }) return;
+        if (stage == "scan")
+        {
+            _shell.OpenProductionPreparationCommand.Execute();
+            return;
+        }
         ConfigTabs.SelectedIndex = stage switch
         {
             "scan" => 1,
@@ -123,12 +131,12 @@ public partial class ProjectConfigurationOverviewView : UserControl
         await LoadInspectionAsync();
     }
 
-    public bool HasUnsavedDrafts => _barcodeEditor.IsDirty || _inspectionEditor?.IsDirty == true;
-    public bool IsBusy => _barcodeEditor.IsBusy || _inspectionEditor?.IsBusy == true;
+    public bool HasUnsavedDrafts => _inspectionEditor?.IsDirty == true;
+    public bool IsBusy => _inspectionEditor?.IsBusy == true;
 
     public async Task<bool> SaveForCloseAsync()
     {
-        if (IsBusy || !await _barcodeEditor.SaveForCloseAsync()) return false;
+        if (IsBusy) return false;
         if (_inspectionEditor is not null && !await _inspectionEditor.SaveForCloseAsync())
             return false;
         return !HasUnsavedDrafts;
