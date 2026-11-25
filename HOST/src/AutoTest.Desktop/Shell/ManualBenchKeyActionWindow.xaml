@@ -41,8 +41,6 @@
     Visibility="{Binding IsKeyEditorExpanded,Converter={StaticResource BoolToVisibility}}">
    <Border BorderBrush="#E3EAE5" BorderThickness="0,1,0,0" Margin="0,8,0,10"/>
    <DockPanel Margin="0,0,0,8">
-    <Button DockPanel.Dock="Right" Content="关闭窗口" Click="CloseKeyEditor_Click"
-     Padding="8,5" Margin="4,0,0,0"/>
     <Button DockPanel.Dock="Right" Content="复制动作" Command="{Binding CopyKeyActionCommand}"
      Padding="8,5" Margin="4,0,0,0"/>
     <Button DockPanel.Dock="Right" Content="删除动作" Command="{Binding DeleteKeyActionCommand}"
@@ -123,24 +121,13 @@
      </StackPanel>
     </Border>
    </StackPanel>
-   <Border BorderBrush="#E3EAE5" BorderThickness="0,1,0,0" Margin="0,12,0,8"/>
-   <DockPanel>
-    <Button DockPanel.Dock="Right" Content="停止 KEY 动作"
-     Command="{Binding StopKeyActionCommand}" Padding="9,6"/>
-    <TextBlock Text="KEY 动作状态" FontWeight="SemiBold"
-     Foreground="#3478D6" VerticalAlignment="Center"/>
-   </DockPanel>
-   <TextBlock Text="{Binding KeyActionRunStatus}" Style="{StaticResource BenchHint}"
-    ToolTip="{Binding KeyActionRunStatus}" TextTrimming="CharacterEllipsis" MaxHeight="21" Margin="0,5,0,0"/>
   </StackPanel>
     </StackPanel>
    </ScrollViewer>
   </Border>
   <DockPanel Grid.Row="2" Margin="0,12,0,0">
-   <Button DockPanel.Dock="Right" Content="保存并关闭" Click="SaveAndClose_Click"
-    Padding="14,7" MinWidth="110" Style="{StaticResource AtPrimaryButton}"/>
-   <Button DockPanel.Dock="Right" Content="关闭" Click="CloseKeyEditor_Click"
-    Padding="14,7" MinWidth="76" Margin="0,0,10,0"/>
+   <Button DockPanel.Dock="Right" Content="完成" Click="CloseKeyEditor_Click"
+    Padding="14,7" MinWidth="100" Style="{StaticResource AtPrimaryButton}"/>
    <TextBlock Text="{Binding KeyLibraryState}" Foreground="#627C9D" VerticalAlignment="Center"/>
   </DockPanel>
  </Grid>
