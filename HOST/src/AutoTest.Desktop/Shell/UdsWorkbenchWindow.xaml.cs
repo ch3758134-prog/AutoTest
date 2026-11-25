@@ -81,9 +81,9 @@ public partial class UdsWorkbenchWindow : Window
         var compact = ActualWidth < 1120 || ActualHeight < 690;
         if (_compactLayout == compact) return;
         _compactLayout = compact;
-        // Endpoint/P2 fields remain one explicit expand-away action in
-        // compact layouts; the active service table gets the available height.
-        UdsProfileExpander.IsExpanded = !compact;
+        // Keep the operator's endpoint-panel choice when resizing the window.
+        // A wide layout must not unexpectedly reopen low-frequency settings
+        // and steal height from the editable UDS service sequence.
         if (compact)
         {
             UdsEditorColumn.Width = new GridLength(1, GridUnitType.Star);
