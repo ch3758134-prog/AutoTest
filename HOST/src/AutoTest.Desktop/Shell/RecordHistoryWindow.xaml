@@ -52,7 +52,7 @@
     </Grid.RowDefinitions>
     <DataGrid x:Name="HistoryGrid" Grid.Row="0" AutoGenerateColumns="False"
      CanUserAddRows="False" IsReadOnly="True" HeadersVisibility="Column"
-     SelectionMode="Single" SelectionChanged="HistoryGrid_SelectionChanged"
+     SelectionMode="Extended" SelectionChanged="HistoryGrid_SelectionChanged"
      RowHeaderWidth="0" RowHeight="36" ColumnHeaderHeight="38"
      BorderThickness="0" GridLinesVisibility="Horizontal"
      HorizontalScrollBarVisibility="Auto">
@@ -143,7 +143,13 @@
        <Button x:Name="ViewReport" Content="打开完整报告" Click="OpenReport_Click"
         IsEnabled="False" Padding="12,6" Margin="0,0,7,0"/>
        <Button x:Name="ExportReport" Content="导出报告…" Click="ExportReport_Click"
-        IsEnabled="False" Padding="12,6"/>
+        IsEnabled="False" Padding="12,6" Margin="0,0,7,0"/>
+       <Button x:Name="BatchExportReport" Content="批量打包…" Click="BatchExportReport_Click"
+        ToolTip="按 Ctrl 选择至少两条已归档记录；批量导出真实 HTML 或 JSON 至一个 ZIP 文件"
+        IsEnabled="False" Padding="12,6" Margin="0,0,7,0"/>
+       <Button x:Name="CancelBatchExport" Content="取消打包"
+        Click="CancelBatchExport_Click" Visibility="Collapsed"
+        Padding="10,6" ToolTip="取消当前打包并清理未完成的临时 ZIP"/>
       </StackPanel>
      </Grid>
     </Border>
