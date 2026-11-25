@@ -1,0 +1,347 @@
+<Window x:Class="AutoTest.Desktop.Shell.ProductionPreparationWindow"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Title="生产准备 · 产品识别、工程发布与工位配置" Width="1240" Height="830"
+ MinWidth="870" MinHeight="560" WindowStartupLocation="CenterOwner"
+ Background="#F6F8FB" Foreground="#293E52" FontSize="13"
+ UseLayoutRounding="True">
+ <Window.Resources>
+  <Style x:Key="Section" TargetType="TextBlock">
+   <Setter Property="FontSize" Value="16"/>
+   <Setter Property="FontWeight" Value="SemiBold"/>
+   <Setter Property="Margin" Value="0,0,0,9"/>
+  </Style>
+  <Style x:Key="Help" TargetType="TextBlock">
+   <Setter Property="Foreground" Value="#60758A"/>
+   <Setter Property="TextWrapping" Value="Wrap"/>
+   <Setter Property="Margin" Value="0,0,0,11"/>
+  </Style>
+  <Style x:Key="Panel" TargetType="Border">
+   <Setter Property="Background" Value="White"/>
+   <Setter Property="BorderBrush" Value="#DEE6EE"/>
+   <Setter Property="BorderThickness" Value="1"/>
+   <Setter Property="CornerRadius" Value="7"/>
+   <Setter Property="Padding" Value="15"/>
+   <Setter Property="Margin" Value="0,0,0,12"/>
+  </Style>
+  <Style TargetType="TextBox">
+   <Setter Property="MinHeight" Value="28"/>
+   <Setter Property="VerticalContentAlignment" Value="Center"/>
+  </Style>
+ </Window.Resources>
+ <Grid Margin="13">
+  <Grid.RowDefinitions>
+   <RowDefinition Height="Auto"/>
+   <RowDefinition Height="*"/>
+   <RowDefinition Height="Auto"/>
+  </Grid.RowDefinitions>
+  <Border Background="White" BorderBrush="#DCE5EE" BorderThickness="1"
+   CornerRadius="7" Padding="15,12" Margin="0,0,0,10">
+   <DockPanel>
+    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+     <Button Content="保存草稿" Click="Save_Click" Padding="13,8" Margin="0,0,9,0"/>
+     <Button Content="核对并发布配置" Click="Publish_Click"
+      Padding="17,8" Background="#2469B3" Foreground="White" Margin="0,0,9,0"/>
+     <Button Content="关闭" Click="Close_Click" Padding="13,8"/>
+    </StackPanel>
+    <StackPanel>
+     <TextBlock Text="生产准备" FontSize="21" FontWeight="SemiBold"/>
+     <TextBlock Text="工位产品识别 → 唯一已发布 ECU 工程 → 原生 FLASH 与完整 TEST → 真实工位"
+      Foreground="#62788D" FontSize="12" Margin="0,4,0,0"/>
+    </StackPanel>
+   </DockPanel>
+  </Border>
+  <TabControl Grid.Row="1" x:Name="PreparationTabs" Background="White"
+    BorderBrush="#DBE5EF">
+   <TabItem Header="1  产品与工程">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+     <StackPanel Margin="19" MaxWidth="1080">
+      <TextBlock Text="产品与工程绑定" Style="{StaticResource Section}"/>
+      <TextBlock Style="{StaticResource Help}"
+       Text="这里维护产品型号和已发布 ECU 工程之间的唯一关系。固件、DBC、波形和 TEST 全部来自工程自身，扫码不能组合这些资源。"/>
+      <Border Style="{StaticResource Panel}">
+       <StackPanel>
+        <TextBlock Text="产品识别方式" FontWeight="SemiBold" Margin="0,0,0,8"/>
+        <ComboBox x:Name="ModeBox" Width="320" HorizontalAlignment="Left"
+         SelectedItem="{Binding IdentityMode,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+         SelectionChanged="DraftSelectionChanged">
+         <ComboBoxItem Content=""/>
+        </ComboBox>
+        <TextBlock Style="{StaticResource Help}" Margin="0,8,0,10"
+         Text="FixedStation = 固定型号工位；BarcodeModel = 编码自带可信型号；RegistryModel = 编号绑定表确定型号。"/>
+        <WrapPanel>
+         <StackPanel Margin="0,0,12,10">
+          <TextBlock Text="固定工位型号" Foreground="#60758A"/>
+          <TextBox Width="210" Text="{Binding FixedModel,UpdateSourceTrigger=PropertyChanged}"
+           TextChanged="DraftChanged" ToolTip="例如 HYDEPB，不填写时无法发布固定型号工位"/>
+         </StackPanel>
+         <StackPanel Margin="0,0,12,10">
+          <TextBlock Text="固定硬件版本（可为空）" Foreground="#60758A"/>
+          <TextBox Width="210" Text="{Binding FixedHardware,UpdateSourceTrigger=PropertyChanged}"
+           TextChanged="DraftChanged"/>
+         </StackPanel>
+        </WrapPanel>
+       </StackPanel>
+      </Border>
+      <Border Style="{StaticResource Panel}">
+       <DockPanel Margin="0,0,0,9">
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+         <Button Content="绑定当前打开工程" Click="AddCurrentProject_Click"
+          Padding="12,7" Margin="0,0,7,0"/>
+         <Button Content="添加工程文件" Click="AddManifest_Click" Padding="12,7" Margin="0,0,7,0"/>
+         <Button Content="移除选中绑定" Click="RemoveProject_Click" Padding="12,7"/>
+        </StackPanel>
+        <TextBlock Text="型号及硬件版本 → 一份已发布工程" FontWeight="SemiBold" VerticalAlignment="Center"/>
+       </DockPanel>
+       <DataGrid x:Name="ProductsGrid" ItemsSource="{Binding Products}"
+        AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+        Height="245" CellEditEnding="GridEditEnding">
+        <DataGrid.Columns>
+         <DataGridTextColumn Header="产品型号" Binding="{Binding ModelCode,UpdateSourceTrigger=PropertyChanged}" Width="160"/>
+         <DataGridTextColumn Header="硬件版本" Binding="{Binding HardwareCode,UpdateSourceTrigger=PropertyChanged}" Width="130"/>
+         <DataGridTextColumn Header="工程清单绝对路径（只引用完整工程）"
+          Binding="{Binding ManifestPath,UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+        </DataGrid.Columns>
+       </DataGrid>
+       <TextBlock Text="更改工程文件、TEST、DBC、波形、FLASH 后，必须重新发布；不会悄悄使用编辑草稿。"
+        Foreground="#667F96" TextWrapping="Wrap" Margin="0,9,0,0"/>
+      </Border>
+      <TextBlock Text="本工位已发布产品与完整 TEST 顺序" Style="{StaticResource Section}"/>
+      <TextBox Text="{Binding PublicationOverview}" IsReadOnly="True" TextWrapping="Wrap"
+       VerticalScrollBarVisibility="Auto" MinHeight="100" MaxHeight="210"/>
+     </StackPanel>
+    </ScrollViewer>
+   </TabItem>
+   <TabItem Header="2  编码形制">
+    <Grid Margin="16">
+     <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/><RowDefinition Height="220"/>
+      <RowDefinition Height="*"/>
+     </Grid.RowDefinitions>
+     <DockPanel Margin="0,0,0,10">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+       <Button Content="新增" Click="AddRule_Click" Padding="12,7" Margin="0,0,7,0"/>
+       <Button Content="复制" Click="CloneRule_Click" Padding="12,7" Margin="0,0,7,0"/>
+       <Button Content="删除" Click="RemoveRule_Click" Padding="12,7"/>
+      </StackPanel>
+      <StackPanel>
+       <TextBlock Text="多编码形制规则" Style="{StaticResource Section}"/>
+       <TextBlock Text="每条规则可有独立前缀、字符校验、固定长度、解析方法和正反样例；冲突禁止发布。"
+        Style="{StaticResource Help}"/>
+      </StackPanel>
+     </DockPanel>
+     <DataGrid x:Name="RulesGrid" Grid.Row="1" ItemsSource="{Binding Rules}"
+      AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+      CellEditEnding="GridEditEnding" SelectionMode="Single">
+      <DataGrid.Columns>
+       <DataGridCheckBoxColumn Header="启用" Binding="{Binding Enabled,UpdateSourceTrigger=PropertyChanged}" Width="55"/>
+       <DataGridTextColumn Header="名称" Binding="{Binding Name,UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+       <DataGridTextColumn Header="解析格式" Binding="{Binding Format,UpdateSourceTrigger=PropertyChanged}" Width="145"/>
+       <DataGridTextColumn Header="前缀" Binding="{Binding Prefix,UpdateSourceTrigger=PropertyChanged}" Width="95"/>
+       <DataGridTextColumn Header="固定长度(0=不限)" Binding="{Binding ExactLength,UpdateSourceTrigger=PropertyChanged}" Width="125"/>
+       <DataGridTextColumn Header="版本" Binding="{Binding Revision}" Width="65" IsReadOnly="True"/>
+      </DataGrid.Columns>
+     </DataGrid>
+     <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+      <StackPanel DataContext="{Binding SelectedItem,ElementName=RulesGrid}" Margin="0,14,8,10">
+       <TextBlock Text="当前形制的字段与校验" Style="{StaticResource Section}"/>
+       <TextBlock Style="{StaticResource Help}" Text="格式：Serial / Delimited / Fixed / Regex / UT1。固定位置从 1 开始；正则使用 (?&lt;serial&gt;...)，可选 (?&lt;model&gt;...)、(?&lt;hardware&gt;...)、(?&lt;batch&gt;...)。"/>
+       <WrapPanel>
+        <StackPanel Margin="0,0,13,10">
+         <TextBlock Text="合法字符正则（须完整匹配）"/>
+         <TextBox Width="235" Text="{Binding AllowedCharacters,UpdateSourceTrigger=PropertyChanged}" TextChanged="DraftChanged"/>
+        </StackPanel>
+        <StackPanel Margin="0,0,13,10">
+         <TextBlock Text="分隔符"/>
+         <TextBox Width="70" Text="{Binding Separator,UpdateSourceTrigger=PropertyChanged}" TextChanged="DraftChanged"/>
+        </StackPanel>
+        <StackPanel Margin="0,0,13,10">
+         <TextBlock Text="编号字段序号"/>
+         <TextBox Width="85" Text="{Binding SerialField,UpdateSourceTrigger=PropertyChanged}" TextChanged="DraftChanged"/>
+        </StackPanel>
+        <StackPanel Margin="0,0,13,10">
+         <TextBlock Text="型号字段序号（0=无）"/>
+         <TextBox Width="85" Text="{Binding ModelField,UpdateSourceTrigger=PropertyChanged}" TextChanged="DraftChanged"/>
+        </StackPanel>
+        <StackPanel Margin="0,0,13,10">
+         <TextBlock Text="硬件字段序号"/>
+         <TextBox Width="85" Text="{Binding HardwareField,UpdateSourceTrigger=PropertyChanged}" TextChanged="DraftChanged"/>
+        </StackPanel>
+        <StackPanel Margin="0,0,13,10">
+         <TextBlock Text="批次字段序号"/>
+         <TextBox Width="85" Text="{Binding BatchField,UpdateSourceTrigger=PropertyChanged}" TextChanged="DraftChanged"/>
+        </StackPanel>
+       </WrapPanel>
+       <WrapPanel>
+        <StackPanel Margin="0,0,12,10">
+         <TextBlock Text="编号起点 / 长度"/>
+         <StackPanel Orientation="Horizontal">
+          <TextBox Width="70" Text="{Binding SerialStart,UpdateSourceTrigger=PropertyChanged}" TextChanged="DraftChanged"/>
+          <TextBox Width="70" Margin="7,0,0,0" Text="{Binding SerialLength,UpdateSourceTrigger=PropertyChanged}" TextChanged="DraftChanged"/>
+         </StackPanel>
+        </StackPanel>
+        <StackPanel Margin="0,0,12,10">
+         <TextBlock Text="型号起点 / 长度"/>
+         <StackPanel Orientation="Horizontal">
+          <TextBox Width="70" Text="{Binding ModelStart,UpdateSourceTrigger=PropertyChanged}" TextChanged="DraftChanged"/>
+          <TextBox Width="70" Margin="7,0,0,0" Text="{Binding ModelLength,UpdateSourceTrigger=PropertyChanged}" TextChanged="DraftChanged"/>
+         </StackPanel>
+        </StackPanel>
+        <StackPanel Margin="0,0,12,10">
+         <TextBlock Text="硬件起点 / 长度"/>
+         <StackPanel Orientation="Horizontal">
+          <TextBox Width="70" Text="{Binding HardwareStart,UpdateSourceTrigger=PropertyChanged}" TextChanged="DraftChanged"/>
+          <TextBox Width="70" Margin="7,0,0,0" Text="{Binding HardwareLength,UpdateSourceTrigger=PropertyChanged}" TextChanged="DraftChanged"/>
+         </StackPanel>
+        </StackPanel>
+       </WrapPanel>
+       <TextBlock Text="命名捕获正则（仅 Regex 格式）" Foreground="#526B83"/>
+       <TextBox Text="{Binding RegexExpression,UpdateSourceTrigger=PropertyChanged}"
+        TextChanged="DraftChanged" Margin="0,5,0,13"/>
+       <DockPanel Margin="0,0,0,5">
+        <Button Content="添加正例" DockPanel.Dock="Right" Click="AddPositiveSample_Click"
+         Margin="0,0,7,0" Padding="9,5"/>
+        <Button Content="添加反例" DockPanel.Dock="Right" Click="AddNegativeSample_Click" Padding="9,5"/>
+        <TextBlock Text="样例校验（必须有正例、反例）" FontWeight="SemiBold" VerticalAlignment="Center"/>
+       </DockPanel>
+       <DataGrid x:Name="RuleSamplesGrid" ItemsSource="{Binding Samples}"
+        Height="135" AutoGenerateColumns="False" CanUserAddRows="False"
+        CellEditEnding="GridEditEnding">
+        <DataGrid.Columns>
+         <DataGridTextColumn Header="原始条码" Width="*" Binding="{Binding Raw,UpdateSourceTrigger=PropertyChanged}"/>
+         <DataGridCheckBoxColumn Header="应匹配" Width="85" Binding="{Binding ShouldAccept,UpdateSourceTrigger=PropertyChanged}"/>
+         <DataGridTextColumn Header="期望编号" Width="140" Binding="{Binding ExpectedSerial,UpdateSourceTrigger=PropertyChanged}"/>
+         <DataGridTextColumn Header="期望型号" Width="135" Binding="{Binding ExpectedModel,UpdateSourceTrigger=PropertyChanged}"/>
+        </DataGrid.Columns>
+       </DataGrid>
+      </StackPanel>
+     </ScrollViewer>
+    </Grid>
+   </TabItem>
+   <TabItem Header="3  身份匹配">
+    <Grid Margin="19">
+     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+     <StackPanel>
+      <TextBlock Text="唯一编号 → 产品身份登记表" Style="{StaticResource Section}"/>
+      <TextBlock Style="{StaticResource Help}"
+       Text="固定型号工位不需要编号表；混合工位若编码不带可信型号，选 RegistryModel 并导入受控 CSV。重复编号、失效映射和型号冲突会阻断发布。"/>
+      <WrapPanel Margin="0,0,0,11">
+       <Button Content="导入 CSV（编号,型号,硬件版本,截止日期）" Click="ImportIdentityCsv_Click"
+        Padding="12,8" Margin="0,0,8,0"/>
+       <Button Content="添加一行" Click="AddIdentity_Click" Padding="12,8" Margin="0,0,8,0"/>
+       <Button Content="移除选中" Click="RemoveIdentity_Click" Padding="12,8"/>
+      </WrapPanel>
+     </StackPanel>
+     <DataGrid x:Name="IdentityGrid" Grid.Row="1" ItemsSource="{Binding IdentityRows}"
+      AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+      CellEditEnding="GridEditEnding">
+      <DataGrid.Columns>
+       <DataGridTextColumn Header="唯一编号（大小写敏感）" Binding="{Binding Serial,UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+       <DataGridTextColumn Header="产品型号" Binding="{Binding ModelCode,UpdateSourceTrigger=PropertyChanged}" Width="160"/>
+       <DataGridTextColumn Header="硬件版本" Binding="{Binding HardwareCode,UpdateSourceTrigger=PropertyChanged}" Width="130"/>
+       <DataGridTextColumn Header="截止日期 UTC（可为空）" Binding="{Binding ExpiresUtc,UpdateSourceTrigger=PropertyChanged}" Width="220"/>
+       <DataGridTextColumn Header="批次" Binding="{Binding Batch,UpdateSourceTrigger=PropertyChanged}" Width="135"/>
+      </DataGrid.Columns>
+     </DataGrid>
+    </Grid>
+   </TabItem>
+   <TabItem Header="4  工位与夹具">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+     <StackPanel Margin="19" MaxWidth="940">
+      <TextBlock Text="一个 ECU 检测位置 · 两路夹具输出" Style="{StaticResource Section}"/>
+      <TextBlock Style="{StaticResource Help}"
+       Text="Clamp1 与 Clamp2 是同一工位可选的两路输出，不是两台 ECU。实际通道固定为 MCU PTB1、PTC2；不能在软件中随意改接线。"/>
+      <Border Style="{StaticResource Panel}">
+       <StackPanel>
+        <TextBlock Text="检测位置 ID" FontWeight="SemiBold"/>
+        <TextBox Width="160" HorizontalAlignment="Left" Margin="0,5,0,10"
+         Text="{Binding Fixture.StationSlotId,UpdateSourceTrigger=PropertyChanged}" TextChanged="DraftChanged"/>
+        <WrapPanel Margin="0,0,0,10">
+         <CheckBox Content="使用夹具输出 1（PTB1 / J1-B5）" IsChecked="{Binding Fixture.UseClamp1}"
+          Margin="0,0,20,0" Checked="DraftSelectionChanged" Unchecked="DraftSelectionChanged"/>
+         <CheckBox Content="使用夹具输出 2（PTC2 / J1-B4）" IsChecked="{Binding Fixture.UseClamp2}"
+          Checked="DraftSelectionChanged" Unchecked="DraftSelectionChanged"/>
+        </WrapPanel>
+        <TextBlock Text="夹紧机械到位反馈来源（无可信输入填 NOT_WIRED）"/>
+        <TextBox Margin="0,4,0,9" Text="{Binding Fixture.ClampClosedFeedback,UpdateSourceTrigger=PropertyChanged}" TextChanged="DraftChanged"/>
+        <TextBlock Text="释放机械到位反馈来源"/>
+        <TextBox Margin="0,4,0,9" Text="{Binding Fixture.ClampOpenFeedback,UpdateSourceTrigger=PropertyChanged}" TextChanged="DraftChanged"/>
+        <TextBlock Text="实体 START 输入来源（不等于安全互锁）"/>
+        <TextBox Margin="0,4,0,9" Text="{Binding Fixture.StartInput,UpdateSourceTrigger=PropertyChanged}" TextChanged="DraftChanged"/>
+        <TextBlock Text="实体 STOP 输入来源"/>
+        <TextBox Margin="0,4,0,9" Text="{Binding Fixture.StopInput,UpdateSourceTrigger=PropertyChanged}" TextChanged="DraftChanged"/>
+        <TextBlock Text="安全互锁输入来源（必须实物确认）"/>
+        <TextBox Margin="0,4,0,9" Text="{Binding Fixture.InterlockInput,UpdateSourceTrigger=PropertyChanged}" TextChanged="DraftChanged"/>
+        <WrapPanel>
+         <TextBlock Text="动作超时 ms" VerticalAlignment="Center" Margin="0,0,10,0"/>
+         <TextBox Width="110" Text="{Binding Fixture.MovementTimeoutMs,UpdateSourceTrigger=PropertyChanged}" TextChanged="DraftChanged"/>
+        </WrapPanel>
+       </StackPanel>
+      </Border>
+      <Border Style="{StaticResource Panel}">
+       <StackPanel>
+        <TextBlock Text="标准生产阶段" FontWeight="SemiBold" Margin="0,0,0,7"/>
+        <TextBlock Text="扫码与工程确认 → 等待实体 START → 互锁确认 → 夹紧及真实到位确认 → 原生 FLASH → 完整连续 TEST → 结果持久化 → 满足安全释放条件后松夹具。"
+         TextWrapping="Wrap" Margin="0,0,0,10"/>
+        <TextBlock Style="{StaticResource Help}" Text="配置输入来源不会自动证实硬件接入；主控 USB ACK/GPIO 回读不能作为机械到位证据。现阶段缺真实反馈或 START 时，正式生产始终阻断。"/>
+        <TextBlock Text="工程中的特殊 IGN / 夹具动作仍由受控工位工艺定义；不得替代标准夹紧确认与释放条件。"
+         Foreground="#546F87" TextWrapping="Wrap"/>
+       </StackPanel>
+      </Border>
+      <TextBlock Text="{Binding StationBlockerSummary}" Foreground="#9D4E2C" TextWrapping="Wrap"/>
+     </StackPanel>
+    </ScrollViewer>
+   </TabItem>
+   <TabItem Header="5  验证与发布">
+    <Grid Margin="19">
+     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+     <StackPanel>
+      <TextBlock Text="条码 → 身份 → 唯一已发布工程 → 完整生产任务" Style="{StaticResource Section}"/>
+      <TextBlock Style="{StaticResource Help}"
+       Text="输入单条或多条样例，每行一条；或使用已连接的真实 COM 扫码枪。此处只能离线解析和核对工程文件，绝不会启动夹具、FLASH 或 TEST。"/>
+      <TextBox x:Name="PreviewInput" TextWrapping="Wrap" AcceptsReturn="True"
+       MinHeight="88" MaxHeight="135" VerticalScrollBarVisibility="Auto"/>
+      <WrapPanel Margin="0,10,0,12">
+       <Button Content="批量试扫并检查资源" Click="Preview_Click"
+        Padding="14,9" Margin="0,0,9,0"/>
+       <Button Content="检查规则与样例冲突" Click="ValidateRules_Click"
+        Padding="14,9" Margin="0,0,9,0"/>
+       <Button Content="刷新生产总览" Click="Refresh_Click" Padding="14,9"/>
+      </WrapPanel>
+     </StackPanel>
+     <Border Grid.Row="1" Style="{StaticResource Panel}">
+      <StackPanel>
+       <TextBlock Text="发布前检查" FontWeight="SemiBold" Margin="0,0,0,6"/>
+       <TextBlock Text="{Binding IssueSummary}" Foreground="#A15C21" TextWrapping="Wrap"/>
+       <TextBlock Text="{Binding PublicationOverview}" Margin="0,7,0,0"
+        Foreground="#42647F" TextWrapping="Wrap" MaxHeight="135"/>
+      </StackPanel>
+     </Border>
+     <Border Grid.Row="2" Style="{StaticResource Panel}">
+      <ScrollViewer VerticalScrollBarVisibility="Auto">
+       <ItemsControl ItemsSource="{Binding PreviewResults}">
+        <ItemsControl.ItemTemplate>
+         <DataTemplate>
+          <Border BorderBrush="#E3EAF1" BorderThickness="0,0,0,1" Padding="7">
+           <TextBlock Text="{Binding}" TextWrapping="Wrap" FontFamily="Consolas"
+            Foreground="#344D64"/>
+          </Border>
+         </DataTemplate>
+        </ItemsControl.ItemTemplate>
+       </ItemsControl>
+      </ScrollViewer>
+     </Border>
+    </Grid>
+   </TabItem>
+  </TabControl>
+  <Border Grid.Row="2" Background="White" BorderBrush="#DEE6EF" BorderThickness="1"
+   CornerRadius="5" Margin="0,9,0,0" Padding="10">
+   <DockPanel>
+    <TextBlock DockPanel.Dock="Right" Text="{Binding ConnectionHint}"
+     Foreground="#637A90" FontSize="11" VerticalAlignment="Center"/>
+    <TextBlock Text="{Binding Status}" Foreground="#315B7B"
+     TextTrimming="CharacterEllipsis" ToolTip="{Binding Status}"/>
+   </DockPanel>
+  </Border>
+ </Grid>
+</Window>
