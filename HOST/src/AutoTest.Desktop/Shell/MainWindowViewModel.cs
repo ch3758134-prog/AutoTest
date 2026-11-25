@@ -762,6 +762,13 @@ public sealed partial class MainWindowViewModel : BindableBase
                 if (!OpenEditors.Contains(tab)) continue;
                 if (tab.View is TestEditorView { IsPropertyEditorOpen: true } ||
                     tab.View is PublicFlowEditorView { IsPropertyEditorOpen: true }) continue;
+                // An inspector, active cell, or incomplete signal value is
+                // still the operator's draft. Do not force DBC validation on
+                // every idle tick or starve other open editors when it fails.
+                if (tab.View is DbcWorkbenchView dbc &&
+                    dbc.DataContext is DbcWorkbenchViewModel dbcVm &&
+                    (dbcVm.HasOpenEditor || dbcVm.HasActiveGridEdit ||
+                     dbcVm.HasPendingSignalDraft)) continue;
                 var draft = tab.CloseDraft;
                 if (draft.IsBusy() || !draft.IsDirty()) continue;
                 var success = await draft.SaveAsync();
