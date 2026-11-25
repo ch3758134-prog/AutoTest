@@ -15,7 +15,7 @@ public partial class ManualBenchKeyActionWindow : Window
 {
     private readonly ManualBenchViewModel _model;
     private readonly DispatcherTimer _autosaveTimer = new()
-        { Interval = TimeSpan.FromSeconds(7) };
+        { Interval = TimeSpan.FromSeconds(2) };
     private DateTime _lastInteractionUtc = DateTime.UtcNow;
     private bool _autosaveBusy;
     private Task? _autosaveTask;
@@ -46,8 +46,7 @@ public partial class ManualBenchKeyActionWindow : Window
     {
         if (_autosaveBusy || _closingForSave || !IsActive || !IsEnabled ||
             !_model.CanSaveKeyActions ||
-            DateTime.UtcNow - _lastInteractionUtc < TimeSpan.FromSeconds(4) ||
-            Keyboard.FocusedElement is TextBoxBase) return;
+            DateTime.UtcNow - _lastInteractionUtc < TimeSpan.FromSeconds(2)) return;
         _autosaveBusy = true;
         try
         {
