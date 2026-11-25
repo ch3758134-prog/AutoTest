@@ -56,12 +56,32 @@ public partial class ManualBenchWindow : Window
         _keyPadClickTimer.Start();
     }
 
-    private void DispatchPendingKeyPad(object? sender, EventArgs e)
+    private async void DispatchPendingKeyPad(object? sender, EventArgs e)
     {
         var pad = _pendingKeyPad;
         CancelPendingKeyPadClick();
         if (pad is null || _benchClosePending || _benchCloseScheduled || !IsLoaded)
             return;
+        // One click means execute the CURRENT edit, not silently execute an
+        // earlier saved KEY mask while the operator's latest changes are pending.
+        if (_model.KeyActionsDirty)
+        {
+            try
+            {
+                await _model.SaveKeyActionsForCloseAsync();
+                if (_model.KeyActionsDirty)
+                {
+                    _model.ReportKeyPadSaveFailure("保存期间还有新的修改，请重试。");
+                    return;
+                }
+            }
+            catch (Exception error) when (error is not OutOfMemoryException)
+            {
+                _model.ReportKeyPadSaveFailure(error.Message);
+                return;
+            }
+        }
+        if (_benchClosePending || _benchCloseScheduled || !IsLoaded) return;
         var command = _model.PressKeyPadCommand;
         if (command.CanExecute(pad)) command.Execute(pad);
         else _model.ReportKeyPadUnavailable();
