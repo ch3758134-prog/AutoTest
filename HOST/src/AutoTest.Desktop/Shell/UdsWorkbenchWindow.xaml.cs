@@ -9,6 +9,11 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Threading;
 using AutoTest.Specialists.Uds.Workbench;
+using AutoTest.Specialists.Uds;
+using AutoTest.Desktop.Hardware;
+using AutoTest.Devices.Usb;
+using AutoTest.Contracts;
+using AutoTest.Core;
 using Microsoft.Win32;
 using Prism.Mvvm;
 
@@ -30,14 +35,17 @@ public sealed class UdsServiceEditRow : BindableBase
 }
 
 /// <summary>
-/// Independent, offline WPF editor of the existing UDS ToolDocument. File
-/// replay consumes only provided records and cannot transmit CAN, claim a live
-/// ECU response or publish a TEST/production verdict.
+/// Independent UDS sequence editor with offline replay and one separately
+/// authorized, physical 0x22 DID diagnostic over the main station USB/CAN.
+/// File replay cannot be represented as a live ECU response; neither path
+/// publishes a TEST/production verdict.
 /// </summary>
 public partial class UdsWorkbenchWindow : Window
 {
     public ObservableCollection<UdsServiceEditRow> ServiceRows { get; } = new();
     private readonly DispatcherTimer _autosave = new() { Interval = TimeSpan.FromSeconds(4) };
+    private readonly HardwareConnectionService _hardware;
+    private CancellationTokenSource? _didCancel;
     private UdsReplayWorkspace? _replay;
     private string? _documentPath;
     private string? _loadedSha;
@@ -52,8 +60,9 @@ public partial class UdsWorkbenchWindow : Window
     private long _documentRevision;
     private long _replayRevision;
 
-    public UdsWorkbenchWindow()
+    public UdsWorkbenchWindow(HardwareConnectionService hardware)
     {
+        _hardware = hardware ?? throw new ArgumentNullException(nameof(hardware));
         _loading = true;
         InitializeComponent();
         Loaded += (_, _) => AutoTest.Desktop.Shell.DesktopWindowSizing.FitToVisibleWorkspace(this);
@@ -71,8 +80,18 @@ public partial class UdsWorkbenchWindow : Window
         Loaded += (_, _) => { _autosave.Start(); ApplyResponsiveLayout(); };
         SizeChanged += (_, _) => ApplyResponsiveLayout();
         Closing += ClosingGuard;
-        Closed += (_, _) => _autosave.Stop();
-        ServiceRows.CollectionChanged += (_, _) => { MarkDirty(); UpdateReplayAvailability(); };
+        Closed += (_, _) =>
+        {
+            _didCancel?.Cancel();
+            _autosave.Stop();
+        };
+        ServiceRows.CollectionChanged += (_, _) =>
+        {
+            MarkDirty();
+            UpdateReplayAvailability();
+            UpdateDidScope();
+        };
+        UpdateDidScope();
     }
 
     private void ApplyResponsiveLayout()
@@ -218,11 +237,19 @@ public partial class UdsWorkbenchWindow : Window
         _lastEditUtc = DateTime.UtcNow;
         SourceLabel.Text = (_documentPath ?? "未保存的独立 UDS 序列") + " · 已修改";
     }
-    private void Profile_TextChanged(object sender, TextChangedEventArgs e) => MarkDirty();
+    private void Profile_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        MarkDirty();
+        UpdateDidScope();
+    }
 
     private void AddRow(UdsServiceEditRow row)
     {
-        row.PropertyChanged += (_, _) => MarkDirty();
+        row.PropertyChanged += (_, _) =>
+        {
+            MarkDirty();
+            UpdateDidScope();
+        };
         ServiceRows.Add(row);
     }
     private UdsServiceEditRow? SelectedRow => ServiceGrid.SelectedItem as UdsServiceEditRow;
@@ -424,7 +451,11 @@ public partial class UdsWorkbenchWindow : Window
             name += " 2";
         var copy = new UdsServiceEditRow(name, src.RequestHex, src.ExpectedHex);
         ServiceRows.Insert(ServiceRows.IndexOf(src) + 1, copy);
-        copy.PropertyChanged += (_, _) => MarkDirty();
+        copy.PropertyChanged += (_, _) =>
+        {
+            MarkDirty();
+            UpdateDidScope();
+        };
         ServiceGrid.SelectedItem = copy;
     }
     private void MoveUp_Click(object sender, RoutedEventArgs e) => MoveSelected(-1);
@@ -447,8 +478,11 @@ public partial class UdsWorkbenchWindow : Window
             return;
         ServiceRows.Remove(row);
     }
-    private void ServiceGrid_SelectionChanged(object sender, SelectionChangedEventArgs e) =>
+    private void ServiceGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
         UpdateReplayAvailability();
+        UpdateDidScope();
+    }
 
     private async void LoadReplay_Click(object sender, RoutedEventArgs e)
     {
