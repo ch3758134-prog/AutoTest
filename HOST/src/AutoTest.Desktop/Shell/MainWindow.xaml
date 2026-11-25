@@ -156,6 +156,14 @@
      </MenuItem>
      <MenuItem Header="运行">
       <MenuItem Header="检查当前开发调试范围" Command="{Binding CheckActiveCommand}"/>
+      <Separator/>
+      <MenuItem Header="工程整组实测（非生产）">
+       <MenuItem Header="1. 准备本台扫码身份" Command="{Binding ArmEngineeringFullRunCommand}"
+        ToolTip="重新核对实体扫码和工程资源；不启动烧录和 TEST"/>
+       <MenuItem Header="2. 开始整组真实实测（含 FLASH）" Command="{Binding RunEngineeringFullRunCommand}"
+        ToolTip="仅在扫码与资源冻结后允许；仍需明确授权，结果不作为正式生产 PASS"/>
+       <MenuItem Header="停止整组实测" Command="{Binding StopEngineeringFullRunCommand}"/>
+      </MenuItem>
      </MenuItem>
      <MenuItem Header="工具">
       <MenuItem Header="手动台架" Command="{Binding OpenManualBenchCommand}"/>
@@ -214,8 +222,7 @@
       <TextBlock Text="{Binding MainUsbDisplay}" FontSize="12"
        VerticalAlignment="Center" Foreground="#6E4F23"/>
      </Border>
-     <Button Content="CAN 监视" Command="{Binding OpenCanMonitorCommand}" Margin="0"
-       ToolTip="查看真实 CAN 收发记录"/>
+     <!-- CAN 监视并入手动台架，独立旧工具入口不占用全局命令栏。 -->
     </StackPanel>
     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
      <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
