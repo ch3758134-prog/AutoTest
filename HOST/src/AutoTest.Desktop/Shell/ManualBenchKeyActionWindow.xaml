@@ -133,7 +133,8 @@
   <DockPanel Grid.Row="2" Margin="0,12,0,0">
    <Button DockPanel.Dock="Right" Content="完成" Click="CloseKeyEditor_Click"
     Padding="14,7" MinWidth="100" Style="{StaticResource AtPrimaryButton}"/>
-   <TextBlock Text="{Binding KeyLibraryState}" Foreground="#627C9D" VerticalAlignment="Center"/>
+   <TextBlock Text="{Binding Status}" Foreground="#627C9D" VerticalAlignment="Center"
+    MaxWidth="520" TextTrimming="CharacterEllipsis" ToolTip="{Binding Status}"/>
   </DockPanel>
  </Grid>
 </Window>
