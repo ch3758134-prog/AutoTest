@@ -39,10 +39,11 @@ public sealed class TestProjectPackageRow : BindableBase
     public int? LatestRevision => _latestRevision;
     public string? LatestSha256 => _latestSha256;
     public bool CanAdoptLatest => _latestRevision is > 0 &&
-        !string.IsNullOrWhiteSpace(_latestSha256) &&
-        (_latestRevision != Revision ||
+        _latestRevision >= Revision && !string.IsNullOrWhiteSpace(_latestSha256) &&
+        (_latestRevision > Revision ||
          !string.Equals(_latestSha256, Sha256, StringComparison.OrdinalIgnoreCase));
     public string PinStatus => _latestRevision is null ? "资源已移除" :
+        _latestRevision < Revision ? "资源修订倒退 · 禁止自动回退" :
         CanAdoptLatest ? "绑定 r" + Revision + " → 当前 r" + _latestRevision + " · 待确认" : "修订一致";
     public string PinDetail => _latestRevision is null ? "当前工程已找不到此 TEST 定义" :
         "项目固定 r" + Revision + " / " + Sha256 +
