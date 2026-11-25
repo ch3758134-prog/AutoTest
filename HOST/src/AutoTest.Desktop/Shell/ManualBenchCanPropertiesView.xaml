@@ -12,11 +12,10 @@
   </Grid.RowDefinitions>
   <StackPanel Grid.Row="0" Margin="0,0,0,12">
    <TextBlock Text="CAN 报文 · 完整属性" FontSize="19" FontWeight="SemiBold"/>
-   <TextBlock Text="编辑 CAN 报文，保存后才会更新发送配置。"
-    Foreground="#627C9D" FontSize="12" Margin="0,5,0,0"/>
+ 
   </StackPanel>
   <Grid Grid.Row="1" DataContext="{Binding SelectedCanRow}" IsEnabled="{Binding CanEditFields}">
-   <Grid.ColumnDefinitions><ColumnDefinition Width="360"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+   <Grid.ColumnDefinitions><ColumnDefinition Width="1*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="1.16*"/></Grid.ColumnDefinitions>
    <Border Background="White" BorderBrush="#E0E5E5" BorderThickness="1" CornerRadius="8" Padding="12">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
      <StackPanel>
@@ -59,8 +58,7 @@
       TextWrapping="Wrap" FontSize="11" Margin="0,0,0,11"/>
       <Border Height="1" Background="#E4E8ED" Margin="0,6,0,12"/>
      <TextBlock Text="发送方式" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
-     <TextBlock Text="周期发送将持续运行，直到主动停止。"
-      TextWrapping="Wrap" Foreground="#627C9D" Margin="0,0,0,10"/>
+ 
      <Grid IsEnabled="{Binding CanEditFields}">
       <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
       <CheckBox Content="周期发送" IsChecked="{Binding IsPeriodic,Mode=TwoWay}"
@@ -85,9 +83,7 @@
      </DockPanel>
      <testing:DbcReferencePicker x:Name="BenchDbcPicker" Margin="0,0,0,7"
        BenchChoiceCommitted="BenchDbcPicker_ChoiceCommitted"/>
-     <TextBlock Text="选报文即可看到信号；直接改 DATA 也会同步解析信号。无需切换编辑模式。"
-      FontSize="11" Foreground="#606F7F" TextWrapping="Wrap"
-      Margin="0,0,0,9"/>
+ 
      <TextBox x:Name="SignalSearch" TextChanged="SignalSearch_Changed" ToolTip="输入信号名称、别名或定义进行筛选；不改变 DATA" Padding="7,5" Margin="0,0,0,6" Visibility="{Binding UseDbc,Converter={StaticResource BoolToVisibility}}"/>
      </StackPanel>
      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Visibility="{Binding UseDbc,Converter={StaticResource BoolToVisibility}}">
@@ -97,8 +93,8 @@
    </Border>
   </Grid>
   <DockPanel Grid.Row="2" Margin="0,12,0,0">
-   <TextBlock Text="编辑完成后返回列表，勾选报文并点击“启动勾选发送”；行内“单发”始终只发一次。"
-    Foreground="#627C9D" FontSize="12" VerticalAlignment="Center"/>
+   <TextBlock Text="{Binding SelectedCanRow.PreviewError}" Foreground="#B42318"
+    FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center"/>
    <Button DockPanel.Dock="Right" Content="关闭" Click="Close_Click"
     Padding="17,7" MinWidth="78" HorizontalAlignment="Right"/>
   </DockPanel>
