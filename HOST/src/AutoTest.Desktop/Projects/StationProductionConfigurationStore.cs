@@ -37,7 +37,7 @@ public static class StationProductionConfigurationStore
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(draft);
-        draft.Validate();
+        draft.ValidateDraft();
         await WriteGate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
@@ -112,6 +112,10 @@ public static class StationProductionConfigurationStore
         return issues;
     }
 
+    public static Task<ProductionPublishedProduct> InspectProjectAsync(
+        ProductionProductBinding binding, CancellationToken ct = default) =>
+        FreezeProjectAsync(binding, ct);
+
     private static async Task<ProductionPublishedProduct> FreezeProjectAsync(
         ProductionProductBinding binding, CancellationToken ct)
     {
@@ -181,6 +185,20 @@ public static class StationProductionConfigurationStore
         }
         finally { WriteGate.Release(); }
         return publication;
+    }
+
+    public static async Task<ProductionIdentityDecision> PreviewDraftAsync(
+        StationProductionConfiguration config, string raw,
+        CancellationToken ct = default)
+    {
+        config.Validate();
+        var pins = new List<ProductionPublishedProduct>();
+        foreach (var product in config.Products)
+            pins.Add(await FreezeProjectAsync(product, ct).ConfigureAwait(false));
+        var ephemeral = new PublishedStationProductionConfiguration(1,
+            ConfigurationSha(config), Guid.NewGuid(), DateTimeOffset.UtcNow,
+            config, pins.ToArray());
+        return ProductionIdentityResolver.Resolve(ephemeral, raw);
     }
 
     public static async Task<ProductionPublishedProduct> VerifyProductAsync(
@@ -285,8 +303,7 @@ public static class ProductionIdentityResolver
                 basis = "PUBLISHED_IDENTITY_REGISTRY";
             }
             if (!string.IsNullOrEmpty(f.Model) && f.Model != model ||
-                !string.IsNullOrEmpty(f.Hardware) &&
-                !string.IsNullOrEmpty(hardware) && f.Hardware != hardware)
+                !string.IsNullOrEmpty(f.Hardware) && f.Hardware != hardware)
                 return Reject("BARCODE_MODEL_CONFLICT",
                     "编码内型号/硬件版本与工位或编号登记的可信结果冲突。");
             var products = release.Projects.Where(x =>
