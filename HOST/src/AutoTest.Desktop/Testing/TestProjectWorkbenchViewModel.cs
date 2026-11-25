@@ -184,7 +184,12 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
             // an unwanted project revision while the operator is still typing.
             if (IsBusy || !IsDirty || _realTest?.IsRunning == true ||
                 _hardware?.IsTestRunApproved == true || string.IsNullOrWhiteSpace(Name)) return;
-            await SaveAsync(silent: true);
+            try { await SaveAsync(silent: true); }
+            catch (Exception error) when (error is not OutOfMemoryException)
+            {
+                StatusMessage = "测试项目自动保存失败，修改仍保留：" + error.Message;
+                System.Diagnostics.Trace.TraceWarning("TEST project autosave failed: " + error);
+            }
         };
         _selection = selection; _realTest = realTest; _hardware = hardware;
         if (_selection is not null) _selection.Changed += OnNavigationSelectionChanged;
