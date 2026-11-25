@@ -232,6 +232,17 @@ public sealed partial class MainWindowViewModel : BindableBase
                     f.Dlc, Convert.ToHexString(f.Data.ToArray()), frame.LostFrames));
                 if (CanRecords.Count > 500) CanRecords.RemoveAt(0);
             }));
+        _hardware.FrameTransmitAcknowledged += frame =>
+            global::System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                CanRecords.Add(new CanMonitorRow(
+                    DateTimeOffset.Now.ToString("HH:mm:ss.fff"),
+                    frame.Role == BusRole.DutCan ? StationCanWiring.DutDisplayName : StationCanWiring.KeypadDisplayName,
+                    "0x" + frame.Id.ToString("X"), frame.ExtendedId ? "扩展" : "标准",
+                    frame.Dlc, Convert.ToHexString(frame.Data.ToArray()), 0,
+                    "TX-ACK"));
+                if (CanRecords.Count > 500) CanRecords.RemoveAt(0);
+            }));
         _workspace.CurrentChanged += (_, _) =>
         {
             RaisePropertyChanged(nameof(SelectedConfigurationSummary));
@@ -277,7 +288,7 @@ public sealed partial class MainWindowViewModel : BindableBase
     }
 
     public sealed record CanMonitorRow(string Time, string Port, string Id, string Format,
-        byte Dlc, string Data, long Lost);
+        byte Dlc, string Data, long Lost, string Direction = "RX");
     public sealed record DecodedCanRow(string Time, string Target, string Value,
         string Unit, string Status);
     public ObservableCollection<CanMonitorRow> CanRecords { get; } = new();
