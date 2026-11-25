@@ -11,6 +11,7 @@ public partial class NewProjectDialog : Window
     public NewProjectDialog(ProjectWorkspaceService workspace, RecentProjectStore recent)
     {
         InitializeComponent();
+        Loaded += (_, _) => AutoTest.Desktop.Shell.DesktopWindowSizing.FitToVisibleWorkspace(this);
         _viewModel = new NewProjectDialogViewModel(workspace, PickParentDirectory, recent);
         DataContext = _viewModel;
         _viewModel.CloseRequested += accepted => DialogResult = accepted;
