@@ -378,6 +378,24 @@ public partial class UdsWorkbenchWindow : Window
 
     private void DidConsentChanged(object sender, TextChangedEventArgs e) => UpdateDidScope();
 
+    private void CopyDidAuthorization_Click(object sender, RoutedEventArgs e)
+    {
+        if (!TryGetDidScope(out _, out _, out var authorization))
+        {
+            StatusText.Text = "先选中完整的 22 HH LL 服务并填写有效的 ECU CAN 端点。";
+            return;
+        }
+        try
+        {
+            Clipboard.SetText(authorization);
+            StatusText.Text = "已复制本次精确 DID 授权文本；粘贴到输入框后可明确执行一次。";
+        }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            StatusText.Text = "复制授权文本失败：" + error.Message;
+        }
+    }
+
     private async void ReadDid_Click(object sender, RoutedEventArgs e)
     {
         if (_busy || _didCancel is not null || !FinishGrid() ||
@@ -397,6 +415,17 @@ public partial class UdsWorkbenchWindow : Window
             return;
         }
         var expectedHex = SelectedRow?.ExpectedHex ?? "";
+        byte[]? expectedResponse = null;
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(expectedHex))
+                expectedResponse = UdsHex.Parse(expectedHex);
+        }
+        catch (FormatException error)
+        {
+            StatusText.Text = "期望响应的十六进制格式有误，未发送实体诊断：" + error.Message;
+            return;
+        }
         _busy = true;
         _didCancel = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         SetEditorInputsEnabled(false);
@@ -417,8 +446,8 @@ public partial class UdsWorkbenchWindow : Window
             DidResponseText.Text = "请求  " + UdsHex.Format(exchange.RequestPdu) +
                 "\n响应  " + (exchange.ResponsePdu.IsDefaultOrEmpty
                     ? "（未取得可确认的 ECU 响应）" : UdsHex.Format(exchange.ResponsePdu));
-            var expectedMatch = string.IsNullOrWhiteSpace(expectedHex)
-                ? (bool?)null : exchange.ResponsePdu.AsSpan().SequenceEqual(UdsHex.Parse(expectedHex));
+            bool? expectedMatch = expectedResponse is null ? null :
+                exchange.ResponsePdu.SequenceEqual(expectedResponse);
             var detail = exchange.Outcome switch
             {
                 Outcome.Accepted => "真实 ECU 正响应（不是正式检测 PASS）",
