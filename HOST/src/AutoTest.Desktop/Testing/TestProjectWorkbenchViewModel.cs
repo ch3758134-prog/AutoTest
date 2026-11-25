@@ -416,8 +416,10 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
                     throw new InvalidDataException("用例文件不存在：" + row.Name);
                 if (!row.MatchesPinnedRevision(asset.Revision, asset.Sha256))
                     throw new InvalidDataException("测试用例“" + row.Name + "”的固定引用与当前 TEST 资源不一致：" +
-                        "项目 r" + row.Revision + "，当前资源 r" + asset.Revision +
-                        "。请先在用例列表明确核对并更新引用，不能静默运行最新文件。");
+                        "项目 r" + row.Revision + "，当前资源 r" + asset.Revision + "。" +
+                        (row.CanAdoptLatest
+                            ? "请在用例列表核对并明确采用新的受控修订。"
+                            : "资源丢失、倒退或同版本 SHA256 异常时禁止更新引用；请先恢复或重新建立合规 TEST 资产。"));
                 var opened = await _workspace.OpenTestEditorAsync(AssetId.Create(row.AssetId));
                 if (!row.MatchesPinnedRevision(opened.AssetRevision, opened.FileHash))
                     throw new IOException("准备时测试用例“" + row.Name + "”的内容或修订已变化，请重新检查。");
