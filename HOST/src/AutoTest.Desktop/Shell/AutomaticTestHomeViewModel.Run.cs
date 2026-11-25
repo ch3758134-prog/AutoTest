@@ -39,6 +39,7 @@ public sealed partial class AutomaticTestHomeViewModel
     private int _operatorActiveCaseIndex = -1;
     private StepId? _operatorActiveStepId;
     private Guid _operatorRunId;
+    private long _operatorEventTotal;
     private Task? _operatorExecutionTask;
 
     public DelegateCommand ArmOperatorVerificationCommand { get; private set; } = null!;
@@ -218,6 +219,7 @@ public sealed partial class AutomaticTestHomeViewModel
 
     private void AddOperatorEvent(string line)
     {
+        _operatorEventTotal++;
         OperatorEvents.Add(DateTime.Now.ToString("HH:mm:ss.fff") + "  " + line);
         while (OperatorEvents.Count > 250) OperatorEvents.RemoveAt(0);
     }
@@ -353,7 +355,8 @@ public sealed partial class AutomaticTestHomeViewModel
         string ScannerPort, string ProjectPath, string PreparationFingerprint,
         string FirmwareSha256, string UsbIdentity, long UsbEpoch,
         string FlashState, IReadOnlyList<RealOperatorCaseEvidence> Cases,
-        string Outcome, string? Error, IReadOnlyList<string> ObservedEvents);
+        string Outcome, string? Error, IReadOnlyList<string> ObservedEvents,
+        long EventCount, long EventsEvictedFromLiveView);
 
     private static void SaveOperatorReceipt(string root, RealOperatorRunReceipt receipt)
     {
@@ -414,6 +417,7 @@ public sealed partial class AutomaticTestHomeViewModel
         _operatorStop = new CancellationTokenSource();
         var ct = _operatorStop.Token;
         OperatorEvents.Clear();
+        _operatorEventTotal = 0;
         OperatorRunEvidence = "记录号 " + _operatorRunId.ToString("N");
         OperatorFlashState = "尚未开始";
         OperatorRecordState = "准备记录工程验证事实";
@@ -442,7 +446,8 @@ public sealed partial class AutomaticTestHomeViewModel
                 scan.ScannerPort, opened.ManifestPath, frozen.PreparationFingerprint,
                 frozen.FirmwareSha256, _hardware.ConnectedDeviceIdentity ?? "UNKNOWN",
                 sessionEpoch, flashState, results.ToArray(), outcome, failure,
-                OperatorEvents.ToArray()));
+                OperatorEvents.ToArray(), _operatorEventTotal,
+                Math.Max(0, _operatorEventTotal - OperatorEvents.Count)));
         }
 
         try
