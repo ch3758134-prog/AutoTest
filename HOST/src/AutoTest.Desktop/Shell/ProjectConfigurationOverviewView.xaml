@@ -291,8 +291,19 @@
        TextWrapping="Wrap" Foreground="#687D90" Margin="0,0,0,14"/>
       <Border Background="#F3F7FC" BorderBrush="#DFE7F0"
        BorderThickness="1" CornerRadius="7" Padding="13" Margin="0,0,0,12">
-       <TextBlock Text="{Binding SetupOverallStatus}" TextWrapping="Wrap"
-        Foreground="#43607B"/>
+       <StackPanel>
+        <TextBlock Text="{Binding SetupOverallStatus}" TextWrapping="Wrap"
+         Foreground="#43607B" Margin="0,0,0,10"/>
+        <DockPanel LastChildFill="True">
+         <Button Content="确认当前工程用于生产" DockPanel.Dock="Right"
+          Command="{Binding ConfirmProductionConfigurationCommand}"
+          Style="{StaticResource AtPrimaryButton}"
+          Padding="13,8" Margin="12,0,0,0" VerticalAlignment="Center"
+          ToolTip="只确认本工程 TEST 顺序和已保存的原生 FLASH/固件/安全资源版本；不会直接驱动设备"/>
+         <TextBlock Text="配置核对无误后确认一次。正式生产使用该工程的受控版本；后续编辑将使旧确认失效。"
+          Foreground="#607A91" TextWrapping="Wrap" VerticalAlignment="Center"/>
+        </DockPanel>
+       </StackPanel>
       </Border>
       <Border BorderBrush="#E1E7EF" BorderThickness="1" CornerRadius="7"
        Padding="13" Margin="0,0,0,8">
