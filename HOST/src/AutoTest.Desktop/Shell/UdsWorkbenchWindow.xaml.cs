@@ -46,6 +46,10 @@ public partial class UdsWorkbenchWindow : Window
     private readonly DispatcherTimer _autosave = new() { Interval = TimeSpan.FromSeconds(4) };
     private readonly HardwareConnectionService _hardware;
     private CancellationTokenSource? _didCancel;
+    private StationDidRead? _lastDidEvidence;
+    private DateTimeOffset _lastDidObservedUtc;
+    private ushort _lastDidIdentifier;
+    private uint _lastDidTxId, _lastDidRxId;
     private UdsReplayWorkspace? _replay;
     private string? _documentPath;
     private string? _loadedSha;
@@ -440,6 +444,8 @@ public partial class UdsWorkbenchWindow : Window
             return;
         }
         _busy = true;
+        _lastDidEvidence = null;
+        ExportDidReportButton.IsEnabled = false;
         _didCancel = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         SetEditorInputsEnabled(false);
         DidConsentInput.IsEnabled = false;
@@ -454,6 +460,12 @@ public partial class UdsWorkbenchWindow : Window
         {
             var observed = await _hardware.ReadOnlyDidAsync(
                 endpoint, did, authorization, _didCancel.Token);
+            _lastDidEvidence = observed;
+            _lastDidObservedUtc = DateTimeOffset.UtcNow;
+            _lastDidIdentifier = did;
+            _lastDidTxId = endpoint.RequestCanId;
+            _lastDidRxId = endpoint.ResponseCanId;
+            ExportDidReportButton.IsEnabled = true;
             var exchange = observed.Exchange;
             DidFrames.ItemsSource = observed.CanFrames;
             DidResponseText.Text = "请求  " + UdsHex.Format(exchange.RequestPdu) +
@@ -496,6 +508,65 @@ public partial class UdsWorkbenchWindow : Window
             DidConsentInput.IsEnabled = true;
             DidConsentInput.Clear(); // A second physical request requires new consent.
             CancelDidButton.IsEnabled = false;
+            UpdateDidScope();
+        }
+    }
+
+    private async void ExportDidReport_Click(object sender, RoutedEventArgs e)
+    {
+        if (_busy || _lastDidEvidence is not { } observation) return;
+        var picker = new SaveFileDialog
+        {
+            Title = "导出本次真实 CAN1 / UDS DID 诊断记录",
+            FileName = "UDS_DID_" + _lastDidIdentifier.ToString("X4") + "_" +
+                _lastDidObservedUtc.ToLocalTime().ToString("yyyyMMdd_HHmmss"),
+            Filter = "只读 DID 诊断 JSON (*.json)|*.json",
+            AddExtension = true, OverwritePrompt = false
+        };
+        if (picker.ShowDialog(this) != true) return;
+        var destination = Path.GetFullPath(picker.FileName);
+        if (File.Exists(destination))
+        {
+            StatusText.Text = "同名诊断记录已存在，禁止覆盖原证据；请选择其他文件名。";
+            return;
+        }
+        _busy = true;
+        UpdateDidScope();
+        try
+        {
+            // Export only the frozen facts from this one actual WinUSB exchange,
+            // never make it a production RECORD, a synthetic response or PASS.
+            var data = new
+            {
+                Schema = 1,
+                Kind = "ENGINEERING_UDS_READ_DID_NOT_PRODUCTION_RECORD",
+                Source = "REAL_USB_0x41_ECU_CAN1_HOST_OBSERVED",
+                ObservedUtc = _lastDidObservedUtc,
+                StationEpoch = observation.StationEpoch,
+                Device = observation.UsbDeviceIdentity,
+                TxCanId = "0x" + _lastDidTxId.ToString("X"),
+                RxCanId = "0x" + _lastDidRxId.ToString("X"),
+                Did = "0x" + _lastDidIdentifier.ToString("X4"),
+                Result = observation.Exchange.Outcome.ToString(),
+                RequestPduHex = UdsHex.Format(observation.Exchange.RequestPdu),
+                ResponsePduHex = UdsHex.Format(observation.Exchange.ResponsePdu),
+                NegativeResponseCode = observation.Exchange.NegativeResponseCode is { } nrc
+                    ? "0x" + nrc.ToString("X2") : null,
+                Error = observation.Error,
+                ActualFrames = observation.CanFrames
+            };
+            var json = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(data,
+                new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            await File.WriteAllBytesAsync(destination, json);
+            StatusText.Text = "已导出本次真实诊断事实（非正式生产报告）：" + destination;
+        }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            StatusText.Text = "诊断记录导出失败，原始数据显示仍保留：" + error.Message;
+        }
+        finally
+        {
+            _busy = false;
             UpdateDidScope();
         }
     }
