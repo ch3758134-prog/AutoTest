@@ -104,6 +104,10 @@
       <TextBlock DockPanel.Dock="Right"
        Text="{Binding CaseCount,StringFormat='{}{0} 个用例'}"
        VerticalAlignment="Center" Foreground="#61758A" FontSize="12"/>
+      <CheckBox x:Name="OperatorFollowExecution" DockPanel.Dock="Right"
+       Content="跟随执行" IsChecked="True" VerticalAlignment="Center"
+       Margin="0,0,15,0" FontSize="12"
+       ToolTip="默认自动定位真实执行的用例和步骤；取消后可自由查看历史行"/>
       <TextBlock Text="检测用例与步骤" FontSize="16" FontWeight="SemiBold"
        VerticalAlignment="Center"/>
      </DockPanel>
