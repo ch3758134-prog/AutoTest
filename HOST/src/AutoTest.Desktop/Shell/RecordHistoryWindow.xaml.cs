@@ -425,7 +425,10 @@ public partial class RecordHistoryWindow : Window
         if (HistoryGrid.SelectedItem is not RecordHistoryDisplayRow display)
         {
             ViewReport.IsEnabled = ExportReport.IsEnabled = false;
-            SelectionSummary.Text = "选择一条记录查看详情";
+            var multiCount = HistoryGrid.SelectedItems.OfType<RecordHistoryDisplayRow>().Count();
+            SelectionSummary.Text = multiCount >= 2
+                ? "已多选 " + multiCount + " 次记录；可对已归档记录批量打包"
+                : "选择一条记录查看详情";
             FailureDetail.Text = "";
             return;
         }
@@ -654,7 +657,11 @@ public partial class RecordHistoryWindow : Window
         {
             StatusText.Text = "报告无法打开：" + error.Message;
         }
-        finally { _busy = false; }
+        finally
+        {
+            _busy = false;
+            UpdateBatchExportAvailability();
+        }
     }
 
     private async void ExportReport_Click(object sender, RoutedEventArgs e)
@@ -693,6 +700,10 @@ public partial class RecordHistoryWindow : Window
         {
             StatusText.Text = "报告导出失败，原始记录未改动：" + error.Message;
         }
-        finally { _busy = false; }
+        finally
+        {
+            _busy = false;
+            UpdateBatchExportAvailability();
+        }
     }
 }
