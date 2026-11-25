@@ -116,6 +116,7 @@ public sealed partial class MainWindowViewModel
             return;
         }
         if (!await PrepareEditorsForCloseAsync()) return;
+        _automaticTestHome.DisarmEngineeringVerification();
         SetWorkspaceMode(true);
         // Use the same saved ECU project as the engineering workspace.
         await _automaticTestHome.RestoreAsync();
