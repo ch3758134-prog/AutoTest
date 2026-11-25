@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.IO.Compression;
+using System.Text;
 using System.Text.Json;
 using System.IO;
 using System.Windows;
@@ -88,6 +90,8 @@ public partial class RecordHistoryWindow : Window
     private bool _busy;
     private int _detailRequestRevision;
     private CancellationTokenSource? _detailCancellation;
+    private CancellationTokenSource? _batchCancellation;
+    private bool _batchRunning;
  
 
     public RecordHistoryWindow(string? projectRoot)
@@ -103,8 +107,16 @@ public partial class RecordHistoryWindow : Window
             else StatusText.Text = "当前工程尚无持久化记录。可以选择已有的记录库，或在完成真实检测后重新查询。";
         }
         Loaded += async (_, _) => await RefreshAsync();
+        Closing += (_, e) =>
+        {
+            if (!_batchRunning) return;
+            e.Cancel = true;
+            _batchCancellation?.Cancel();
+            StatusText.Text = "报告打包仍在清理；取消完成后可重新关闭窗口。";
+        };
         Closed += (_, _) =>
         {
+            _batchCancellation?.Cancel();
             _detailCancellation?.Cancel();
             _detailCancellation = null;
         };
@@ -276,7 +288,11 @@ public partial class RecordHistoryWindow : Window
             ViewReport.IsEnabled = false;
             ExportReport.IsEnabled = false;
         }
-        finally { _busy = false; }
+        finally
+        {
+            _busy = false;
+            UpdateBatchExportAvailability();
+        }
     }
 
     private sealed record RealReportPreview(
@@ -405,6 +421,7 @@ public partial class RecordHistoryWindow : Window
     private async void HistoryGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         ClearSelectedFacts();
+        UpdateBatchExportAvailability();
         if (HistoryGrid.SelectedItem is not RecordHistoryDisplayRow display)
         {
             ViewReport.IsEnabled = ExportReport.IsEnabled = false;
