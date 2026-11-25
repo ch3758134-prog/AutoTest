@@ -300,6 +300,16 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
 
     private void OnPlanChanged(object? sender, EventArgs e)
     {
+        if (IsOperatorRunning)
+        {
+            // During real FLASH/TEST, the loaded case projection and frozen
+            // resource map must never be replaced with another revision.
+            // Stop safely and retain the existing run's failure evidence.
+            AddOperatorEvent("工程资源或 TEST 配置在真实运行期间发生变更；请求停止并进行工位收尾。");
+            _operatorStop?.Cancel();
+            _operatorEngine.RequestStop();
+            return;
+        }
         _engineeringVerificationArmed = false;
         InvalidateScan("正式工程加载或更新后，需要重新核对本次 ECU 的真实扫码身份。");
         StartRequestStatus = "当前工程已更新：请重新完成扫码与工位核对；正式执行器尚未接通。";
@@ -308,10 +318,21 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     }
 
     private void OnEngineeringProjectChanged(object? sender, EventArgs e) =>
-        OnUi(() => { _ = RefreshDraftPreviewAsync(); });
+        OnUi(() =>
+        {
+            if (IsOperatorRunning)
+            {
+                AddOperatorEvent("运行期间工程内容变化；请求停止，防止旧冻结资源与当前编辑混用。");
+                _operatorStop?.Cancel();
+                _operatorEngine.RequestStop();
+                return;
+            }
+            _ = RefreshDraftPreviewAsync();
+        });
 
     private async Task RefreshDraftPreviewAsync()
     {
+        if (IsOperatorRunning) return;
         var revision = Interlocked.Increment(ref _previewVersion);
         var opened = _engineering.Current;
         EngineeringTestProjectPreview? preview = null;
@@ -330,7 +351,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
                 error = "当前工程的测试用例无法读取：" + failure.Message;
             }
         }
-        if (revision != _previewVersion ||
+        if (revision != _previewVersion || IsOperatorRunning ||
             !ReferenceEquals(_engineering.Current, opened)) return;
         _draftPreview = preview;
         _draftIssue = error;
