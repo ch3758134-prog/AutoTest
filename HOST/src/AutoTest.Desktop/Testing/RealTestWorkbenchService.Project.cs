@@ -128,6 +128,8 @@ public sealed partial class RealTestWorkbenchService
         public string ScopeFingerprint { get; }
         public int CompletedCases => _next;
         public int PlannedCases => _pinnedCases.Length;
+        public IReadOnlyList<PeriodicCanTaskEvidence> PeriodicTasks =>
+            Actions.PeriodicEvidenceSnapshot();
 
         internal ProjectExecutionSession(RealTestWorkbenchService owner,
             ConfiguredStationActionPort actions, OpenProjectContext project,

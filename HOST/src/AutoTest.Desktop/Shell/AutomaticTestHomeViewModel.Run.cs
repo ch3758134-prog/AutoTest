@@ -32,6 +32,12 @@ public sealed partial class AutomaticTestHomeViewModel
     private string _operatorFlashState = "尚未开始";
     private string _operatorRecordState = "尚无工程验证记录";
     private string _operatorStepStatus = "未执行";
+    private string _operatorPeriodicStatus = "当前没有已确认的项目周期 CAN 任务";
+    public string OperatorPeriodicStatus
+    {
+        get => _operatorPeriodicStatus;
+        private set => SetProperty(ref _operatorPeriodicStatus, value);
+    }
     private string _operatorActual = "—";
     private string _operatorExpected = "—";
     private string _operatorFailure = "";
@@ -420,6 +426,7 @@ public sealed partial class AutomaticTestHomeViewModel
         _operatorEventTotal = 0;
         OperatorRunEvidence = "记录号 " + _operatorRunId.ToString("N");
         OperatorFlashState = "尚未开始";
+        OperatorPeriodicStatus = "准备整组共享 CAN 发送会话";
         OperatorRecordState = "准备记录工程验证事实";
         OperatorCurrentStep = "—";
         OperatorCurrentCase = "—";
@@ -609,9 +616,20 @@ public sealed partial class AutomaticTestHomeViewModel
                         item.Entry.DisplayName + " · " + run.Verdict);
                 // Periodic senders are still owned by projectScope here.
                 await projectScope.Actions.CheckHealthAsync(ct);
+                var ongoing = projectScope.PeriodicTasks
+                    .Where(x => x.StoppedUtc is null).ToArray();
+                OperatorPeriodicStatus = ongoing.Length == 0
+                    ? "当前没有活动的周期 CAN 任务"
+                    : "持续发送 " + ongoing.Length + " 条 · " +
+                      string.Join("；", ongoing.Take(4).Select(x =>
+                          "0x" + x.CanId.ToString("X") + " / " + x.PeriodMs +
+                          " ms · USB ACK " + x.UsbAcks));
+                AddOperatorEvent("项目周期 CAN · " + OperatorPeriodicStatus +
+                    "（ACK 不是 ECU 接收证据）");
             }
             projectScope.MarkCompleted();
             } // One project-level disposal stops senders/revokes the fence.
+            OperatorPeriodicStatus = "整组结束：周期 CAN 发送已停止，物理授权已撤销";
             outcome = anyFunctionalFail
                 ? "工程整组完成 · 存在功能 FAIL（不构成生产放行）"
                 : "工程整组真实实测完成（不构成生产放行）";
@@ -638,6 +656,9 @@ public sealed partial class AutomaticTestHomeViewModel
         }
         finally
         {
+            if (stationOperationsMayHaveStarted &&
+                !OperatorPeriodicStatus.StartsWith("整组结束", StringComparison.Ordinal))
+                OperatorPeriodicStatus = "运行已中断 · 周期 CAN 及物理授权交由项目清理（详情见证据）";
             try
             {
                 if (stationOperationsMayHaveStarted)

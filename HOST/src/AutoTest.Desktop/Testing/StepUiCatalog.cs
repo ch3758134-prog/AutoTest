@@ -21,7 +21,7 @@ public static class StepUiCatalog
         new("Read", "读取信号", "读取 DBC 解析值保存到变量，读取本身不判定", true),
         new("WaitUntil", "等待响应条件", "持续观察信号，将条件是否成立写入变量", true),
         new("AssertSignal", "CAN 信号判定", "在规定时间内等待目标信号，满足判定才算通过", true),
-        new("CanStopPeriodic", "停止周期 CAN", "停止本次测试中的所有 ECU CAN 周期发送", true),
+        new("CanStopPeriodic", "停止周期 CAN", "停止当前独立用例或项目连续会话中的所有 ECU CAN 周期发送", true),
         new("Calculate", "计算", "用变量和字面值计算新的测试数据", true),
         new("Expect", "期望判定", "在指定位置用表达式作出测试判定", true),
         new("WaveStart", "开始波形记录", "开始记录所选的实时 DBC 信号", true),

@@ -416,7 +416,7 @@ public sealed class RealRunCoordinator
                     case "CanStopPeriodic":
                     {
                         await _actions.StopPeriodicAsync(ct);
-                        Fact(node, RealStepStatus.Completed, "", "", "已停止本次测试的全部 ECU CAN 周期发送。");
+                        Fact(node, RealStepStatus.Completed, "", "", "已停止当前运行作用域的全部 ECU CAN 周期发送。");
                         break;
                     }
                     case "Read":
