@@ -66,8 +66,8 @@ public sealed class TestStepInputField : BindableBase
                 new("*", "乘"),
                 new("/", "除")
             ],
-            "operator" when stepType is "Expect" or "WaitUntil" or "AssertSignal" &&
-                value is "==" or "!=" or ">" or ">=" or "<" or "<=" =>
+            "operator" when (stepType is "If" or "Expect" or "WaitUntil" or "AssertSignal") &&
+                (value is "==" or "!=" or ">" or ">=" or "<" or "<=") =>
             [
                 new("==", "等于"),
                 new("!=", "不等于"),
@@ -172,6 +172,7 @@ public partial class TestStepInspector : UserControl
             option.StepType != "Case" && option.Key != "can-send").ToArray();
 
     private readonly StepNode? _editing;
+    private readonly IReadOnlyList<TestStepFieldChoice> _ifVariables;
      private readonly IReadOnlyList<MappingChoice> _catalog;
     private readonly IReadOnlyList<TestTargetMapping> _boundMappings;
     private bool _ready;
@@ -239,8 +240,10 @@ public partial class TestStepInspector : UserControl
     public TestStepInspector(IReadOnlyList<MappingChoice> catalog,
         IReadOnlyList<TestTargetMapping> boundMappings, StepNode? editing = null,
         string? initialActionKey = null, bool caseOnly = false,
-        IReadOnlyList<PublicFlowChoice>? publicFlows = null)
+        IReadOnlyList<PublicFlowChoice>? publicFlows = null,
+        IReadOnlyList<TestStepFieldChoice>? ifVariables = null)
     {
+        _ifVariables = ifVariables ?? [];
          _catalog = catalog;
         _boundMappings = boundMappings;
         _editing = editing;
@@ -313,8 +316,10 @@ public partial class TestStepInspector : UserControl
                 ? chosen.Title + " · 转换为正式步骤" : chosen.Title;
             StepCode.Text = editing.Id.ToString()[^5..];
             ActionDescription.Text = chosen.Description;
+            if (chosen.StepType == "If")
+                ActionDescription.Text = "IF 只选择执行分支，不负责判定 ECU PASS/FAIL。变量必须由前面的读取、设置或计算步骤产生；数据无效时不进入 ELSE。";
             ActionDescription.Visibility = _convertedLegacy ||
-                chosen.StepType is "CanSend" or "CanWait"
+                chosen.StepType is "If" or "CanSend" or "CanWait"
                 ? Visibility.Visible : Visibility.Collapsed;
             TypeLabel.ToolTip = chosen.Description;
             NameInput.Text = editing.Name;
@@ -420,6 +425,28 @@ public partial class TestStepInspector : UserControl
             // as opaque generic fields in the narrow inspector.
             if (action.Key == "can")
                 ParameterFields.Clear();
+        }
+        if (action.StepType == "If")
+        {
+            // A conditional has ONE recognizable left-to-right expression.
+            // Display only variables proven available before this StepId;
+            // retain an invalid saved value visibly so it can be corrected.
+            var variable = node.Properties.GetValueOrDefault("variable", "");
+            var choices = _ifVariables.ToList();
+            if (!string.IsNullOrWhiteSpace(variable) &&
+                !choices.Any(x => string.Equals(x.Value, variable,
+                    StringComparison.OrdinalIgnoreCase)))
+                choices.Add(new TestStepFieldChoice(variable,
+                    variable + "（未找到可保证的上游来源，运行前将阻断）"));
+            ParameterFields.Clear();
+            ParameterFields.Add(new TestStepInputField("variable", variable,
+                "条件变量（由前面步骤产生）", "If", choices));
+            ParameterFields.Add(new TestStepInputField("operator",
+                node.Properties.GetValueOrDefault("operator", "=="),
+                "比较方式", "If"));
+            ParameterFields.Add(new TestStepInputField("equals",
+                node.Properties.GetValueOrDefault("equals", ""),
+                "比较值（常量或 $其他变量）", "If"));
         }
     }
 

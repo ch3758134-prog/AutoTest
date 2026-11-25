@@ -101,6 +101,14 @@ public sealed class StepRowProjection : BindableBase
     public string Name => IsPhase ? StepUiCatalog.PhaseLabel(Item.Phase) :
         Item.Step?.Name ?? Item.Label;
     public string RowCount => IsPhase ? Item.Children.Count + " 步" : "";
+    public string AddBranchButtonText => Item.SlotName switch
+    {
+        "then" => "＋ 添加 THEN 步骤",
+        "else" => "＋ 添加 ELSE 步骤",
+        "body" => "＋ 添加循环内步骤",
+        "cases" => "＋ 添加 CASE",
+        _ => "＋ 添加子步骤"
+    };
     public string Kind => Item.Step is { } n ? StepUiCatalog.Label(n.Type) : "";
     public string Summary { get; }
     public bool IsCanSendRow { get; }
@@ -177,7 +185,9 @@ public sealed class StepRowProjection : BindableBase
         {
             "Wait" => Prop("milliseconds") + " ms",
             "Loop" => "重复 " + Prop("count") + " 次",
-            "If" => "IF " + Prop("variable") + " = " + Prop("equals"),
+            "If" => "IF " + Prop("variable") + " " +
+                (Prop("operator").Length == 0 ? "==" : Prop("operator")) +
+                " " + Prop("equals"),
             "When" => "等待条件 " + Prop("variable") + " = " + Prop("equals") +
                 " · 超时 " + Prop("timeoutMs") + " ms",
             "Switch" => "按变量 " + Prop("variable") + " 分派",
@@ -211,6 +221,16 @@ public sealed class StepRowProjection : BindableBase
             "Sequence" => "按顺序执行子步骤",
             _ => StepUiCatalog.Label(step.Type) + " · 打开属性查看参数"
         };
+        if (step.Type == "If" && realFact is not null)
+        {
+            Summary += realFact.Status == RealStepStatus.NoData
+                ? " · 无法判断，后续测试已阻断"
+                : realFact.Status == RealStepStatus.Completed
+                    ? " · 实际 " + realFact.Actual + " → " +
+                      (realFact.Detail.Contains("→ THEN", StringComparison.Ordinal)
+                          ? "THEN" : "ELSE")
+                    : " · " + realFact.Status;
+        }
         if (step.Type == "Write" &&
             int.TryParse(Prop("periodMs"), out var interval) && interval > 0)
         {

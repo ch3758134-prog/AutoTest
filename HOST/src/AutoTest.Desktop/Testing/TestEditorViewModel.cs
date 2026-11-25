@@ -19,7 +19,8 @@ public sealed record StepInspectorContext(
     IReadOnlyList<MappingChoice> Choices,
     IReadOnlyList<TestTargetMapping> ExistingMappings,
     bool CaseOnly = false,
-    IReadOnlyList<PublicFlowChoice>? PublicFlows = null);
+    IReadOnlyList<PublicFlowChoice>? PublicFlows = null,
+    IReadOnlyList<TestStepFieldChoice>? IfVariables = null);
 
 
 /// <summary>Operator-only projection; the original runtime evidence remains untouched.</summary>
@@ -587,9 +588,16 @@ public sealed class TestEditorViewModel : BindableBase
             .Select(asset => new PublicFlowChoice(asset.Id.Value,
                 asset.Revision, asset.Sha256, asset.Name))
             .ToArray() ?? [];
+        // Resolve variables from the actual execution path before this node,
+        // not from arbitrary DBC resources or later steps in the document.
+        var ifVariables = original?.Type == "If"
+            ? TestVariableFlowValidator.Before(_transaction.Current, original.Id)
+                .Select(x => new TestStepFieldChoice(x.Name,
+                    x.Name + "（来自：" + x.Source + "）")).ToArray()
+            : [];
         InspectorRequested?.Invoke(new StepInspectorContext(original, initialActionKey,
             choices, _transaction.Current.Mappings.ToArray(), insertion?.RequiresCase == true,
-            flowChoices));
+            flowChoices, ifVariables));
     }
 
     public bool ApplyInspector(StepCompositionResult result)
@@ -1433,7 +1441,8 @@ public sealed class TestEditorViewModel : BindableBase
             var step = nodes[i];
             var summary = step.Type switch
             {
-                "If" => step.Properties.GetValueOrDefault("variable", "") + " = " +
+                "If" => step.Properties.GetValueOrDefault("variable", "") + " " +
+                    step.Properties.GetValueOrDefault("operator", "==") + " " +
                     step.Properties.GetValueOrDefault("equals", ""),
                 "Loop" => step.Properties.GetValueOrDefault("count", "") + " 次",
                 "Wait" => step.Properties.GetValueOrDefault("milliseconds", "") + " ms",
@@ -1457,7 +1466,13 @@ public sealed class TestEditorViewModel : BindableBase
             var current = new StepTreeItem(StepTreeItemKind.Step, parent.Phase, caption,
                 parent, step, index: i);
             parent.Children.Add(current);
-            foreach (var slot in step.Slots.OrderBy(x => x.Key, StringComparer.Ordinal))
+            // Control-flow has semantic order, not alphabetical order (ELSE first).
+            foreach (var slot in step.Slots
+                .OrderBy(x => step.Type == "If" ? x.Key switch
+                {
+                    "then" => 0, "else" => 1, _ => 2
+                } : 0)
+                .ThenBy(x => x.Key, StringComparer.Ordinal))
             {
                 var branch = new StepTreeItem(StepTreeItemKind.Slot, parent.Phase,
                     StepUiCatalog.SlotLabel(slot.Key) + " (" + slot.Value.Length + ")",

@@ -247,13 +247,13 @@
        </StackPanel>
       </Border>
 
-      <Border x:Name="SlotRow" Background="#FAFBFF" BorderBrush="#EDF1F6"
-       BorderThickness="0,0,0,1" Height="25"
+      <Border x:Name="SlotRow" Background="#F3F7FC" BorderBrush="#DCE6F1"
+       BorderThickness="0,0,0,1" Height="36"
        Visibility="{Binding IsSlot,Converter={StaticResource BoolToVisibility}}">
        <DockPanel LastChildFill="True" Margin="8,0,7,0">
-        <Button DockPanel.Dock="Right" Content="＋ 插入" Tag="{Binding}"
-         Click="AddAtRow_Click" Focusable="False" Height="22" MinHeight="0"
-         Padding="6,0" FontSize="12" Foreground="#435975"
+        <Button DockPanel.Dock="Right" Content="{Binding AddBranchButtonText}" Tag="{Binding}"
+         Click="AddAtRow_Click" Focusable="False" Height="27" MinHeight="0"
+         Padding="10,2" FontSize="12" Foreground="#285B89"
          Style="{StaticResource AtQuietButton}"
          ToolTip="直接向此 THEN／ELSE／CASE／循环子分支末尾添加步骤"/>
         <StackPanel Orientation="Horizontal" Margin="{Binding Indent}"
@@ -261,8 +261,8 @@
          <Button Content="{Binding ExpandMark}" Click="StepExpand_Click"
           Width="18" Height="22" MinWidth="0" MinHeight="0" Padding="0"
           Style="{StaticResource AtQuietButton}" Foreground="#435975"/>
-         <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="12"
-          Foreground="#435975" VerticalAlignment="Center" Margin="5,0,0,0"/>
+         <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13"
+          Foreground="#344E67" VerticalAlignment="Center" Margin="5,0,0,0"/>
         </StackPanel>
        </DockPanel>
       </Border>

@@ -144,7 +144,8 @@ public partial class TestEditorView : UserControl
         if (context.Original is null) return;
         if (_inspector?.HasPendingEdits == true && !_viewModel.IsApplyingInspector) return;
         var editor = new TestStepInspector(context.Choices, context.ExistingMappings,
-            context.Original, context.InitialActionKey, context.CaseOnly, context.PublicFlows);
+            context.Original, context.InitialActionKey, context.CaseOnly,
+            context.PublicFlows, context.IfVariables);
         editor.ApplyRequested = _viewModel.ApplyInspector;
         editor.ApplyFailureReason = () => _viewModel.StatusMessage;
         editor.Cancelled += () =>

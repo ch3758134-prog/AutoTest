@@ -89,6 +89,27 @@ public sealed class FrozenStepEditorInteractionTests
     }
 
     [Fact]
+    public void IfStepShowsExactComparatorAndBranchesHaveDirectInsertionLabels()
+    {
+        var phase = new StepTreeItem(StepTreeItemKind.Phase, TestPhase.Test, "测试");
+        var conditional = StepNode.Create("If", "判断驻车状态")
+            .WithProperty("variable", "brakeState")
+            .WithProperty("operator", ">=")
+            .WithProperty("equals", "1")
+            .WithSlot("then").WithSlot("else");
+        var parent = new StepTreeItem(StepTreeItemKind.Step, TestPhase.Test,
+            conditional.Name, phase, conditional);
+        var row = new StepRowProjection(parent, 0);
+        Assert.Contains("brakeState >= 1", row.Summary);
+        var thenSlot = new StepTreeItem(StepTreeItemKind.Slot,
+            TestPhase.Test, "THEN", parent, slot: "then");
+        var elseSlot = new StepTreeItem(StepTreeItemKind.Slot,
+            TestPhase.Test, "ELSE", parent, slot: "else");
+        Assert.Contains("THEN", new StepRowProjection(thenSlot, 1).AddBranchButtonText);
+        Assert.Contains("ELSE", new StepRowProjection(elseSlot, 1).AddBranchButtonText);
+    }
+
+    [Fact]
     public void CanSendStepSummaryShowsTargetPeriodAndStopCondition()
     {
         var phase = new StepTreeItem(StepTreeItemKind.Phase, TestPhase.Test, "测试");
