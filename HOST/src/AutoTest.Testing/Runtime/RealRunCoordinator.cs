@@ -48,6 +48,12 @@ public sealed record TestDatum(string? Value, TestSignalStatus? Quality,
 public sealed record TestWaveResult(bool Available, string Code, string? Value,
     string? Evidence, string Detail);
 
+/// <summary>Optional physical-write provenance for actual periodic tasks.</summary>
+public interface ITestStepContextPort
+{
+    void BindStep(TestDocumentId caseId, StepId stepId, Guid stepOccurrenceId);
+}
+
 public interface ITestWavePort
 {
     Task StartAsync(TestTargetMapping target, string captureKey, int durationMs, CancellationToken ct);
@@ -355,6 +361,8 @@ public sealed class RealRunCoordinator
                     }
                     case "Write":
                     {
+                        if (_actions is ITestStepContextPort context)
+                            context.BindStep(document.Id, node.Id, occurrence);
                         var target = Target(node);
                         var action = Evaluate(Property(node, "value"));
                         if (node.Properties.TryGetValue("periodMs", out var intervalText) &&

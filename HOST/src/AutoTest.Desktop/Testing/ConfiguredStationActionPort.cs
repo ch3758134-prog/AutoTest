@@ -21,7 +21,7 @@ namespace AutoTest.Desktop.Testing;
 /// all CAN/IGN writes route through the bounded, typed-consent WinUSB physical fence.
 /// Device ACK is reported as an operation fact, never as a DUT test verdict.
 /// </summary>
-public sealed class ConfiguredStationActionPort : ITestActuationPort
+public sealed partial class ConfiguredStationActionPort : ITestActuationPort, ITestStepContextPort
 {
     private readonly HardwareConnectionService _hardware;
     private readonly ProjectWorkspaceService _projects;
@@ -38,7 +38,7 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
     private bool _hasRawKey;
     private uint _rawMask;
     private readonly Dictionary<(BusRole Role, bool Extended, uint Id),
-        (CancellationTokenSource Stop, Task Worker)> _periodic = new();
+        (CancellationTokenSource Stop, Task Worker, PeriodicTracker Meter)> _periodic = new();
     private readonly ConcurrentQueue<Exception> _periodicErrors = new();
 
     public ConfiguredStationActionPort(HardwareConnectionService hardware,
@@ -305,15 +305,20 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
                 var key = (target.Role, target.Extended, target.CanId);
                 if (_periodic.Remove(key, out var previous))
                 {
+                    previous.Meter.StopWith("REPLACED");
                     previous.Stop.Cancel();
                     try { await previous.Worker; }
                     finally { previous.Stop.Dispose(); }
                 }
-                // The replacement is committed only after a real device ACK.
+                // ACK the first replacement frame BEFORE publishing a new worker.
+                // A failed first write can never leave old bytes transmitting.
                 await _hardware.SendTestCanAsync(frame, _fingerprint, ct);
+                var meter = BeginPeriodicEvidence(frame, period, duration);
+                meter.RecordAck();
                 var stop = new CancellationTokenSource();
-                var worker = SendPeriodicAsync(frame, period, duration, _fingerprint, stop.Token);
-                _periodic[key] = (stop, worker);
+                var worker = SendPeriodicAsync(frame, period, duration,
+                    _fingerprint, meter, stop.Token);
+                _periodic[key] = (stop, worker, meter);
                 return Ack("CAN_PERIODIC_STARTED");
             }
             if (target.Kind == TestTargetKind.Ignition)
@@ -473,7 +478,7 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
     // than pretending that the current host interface configures firmware 0x50.
     // All writes still traverse the same hardware authorization and ACK path.
     private async Task SendPeriodicAsync(CanFrame frame, int periodMs, int durationMs,
-        string fingerprint, CancellationToken stop)
+        string fingerprint, PeriodicTracker meter, CancellationToken stop)
     {
         using var limited = new CancellationTokenSource();
         if (durationMs > 0) limited.CancelAfter(durationMs);
@@ -489,15 +494,26 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
                 var now = System.Diagnostics.Stopwatch.GetTimestamp();
                 var deadline = MonotonicDeadline.Advance(scheduled, now, periodTicks);
                 scheduled = deadline.NextTicks;
+                meter.RecordSkipped(deadline.SkippedPeriods);
                 // A missed deadline is skipped, not compensated with a CAN burst.
                 var untilDue = System.Diagnostics.Stopwatch.GetElapsedTime(now, scheduled);
                 if (untilDue > TimeSpan.Zero)
                     await Task.Delay(untilDue, linked.Token);
+                meter.RecordRequest();
                 await _hardware.SendTestCanAsync(frame, fingerprint, linked.Token);
+                meter.RecordAck();
             }
         }
-        catch (OperationCanceledException) when (linked.IsCancellationRequested) { }
-        catch (Exception error) { _periodicErrors.Enqueue(error); }
+        catch (OperationCanceledException) when (linked.IsCancellationRequested)
+        {
+            meter.StopWith(limited.IsCancellationRequested ?
+                "DURATION_ELAPSED" : "REQUESTED_STOP");
+        }
+        catch (Exception error)
+        {
+            meter.RecordFault(error);
+            _periodicErrors.Enqueue(error);
+        }
     }
 
     private static TestOperationResult Ack(string code) =>
@@ -511,16 +527,20 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
         {
             if (_fingerprint is null)
                 throw new InvalidOperationException("真实自动测试尚未授权。");
-            await StopPeriodicWorkersAsync();
+            await StopPeriodicWorkersAsync("EXPLICIT_STOP_ALL");
             if (_periodicErrors.TryDequeue(out var failure))
                 throw new IOException("ECU CAN 周期发送发生设备通信错误。", failure);
         }
         finally { _serial.Release(); }
     }
 
-    private async Task StopPeriodicWorkersAsync()
+    private async Task StopPeriodicWorkersAsync(string reason)
     {
-        foreach (var item in _periodic.Values) item.Stop.Cancel();
+        foreach (var item in _periodic.Values)
+        {
+            item.Meter.StopWith(reason);
+            item.Stop.Cancel();
+        }
         try { await Task.WhenAll(_periodic.Values.Select(x => x.Worker)); }
         finally
         {
@@ -537,7 +557,7 @@ public sealed class ConfiguredStationActionPort : ITestActuationPort
             if (_fingerprint is null) return;
             try
             {
-                await StopPeriodicWorkersAsync();
+                await StopPeriodicWorkersAsync("PROJECT_OR_CASE_SCOPE_ENDED");
                 // KEY_SIM has persistent requested state, by operator contract:
                 // ending a TEST case, cancellation, or normal cleanup does NOT
                 // automatically release it. Only an explicit Release / zero-mask
