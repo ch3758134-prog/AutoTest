@@ -28,12 +28,16 @@ public partial class ManualBenchWindow : Window
     private DispatcherTimer? _keyPadClickTimer;
     private ManualBenchViewModel.KeyActionPadItem? _pendingKeyPad;
     private DateTime _ignoreKeyPadClickUntilUtc;
+    private long _keyPadIntentGeneration;
 
     [DllImport("user32.dll")]
     private static extern uint GetDoubleClickTime();
 
     private void CancelPendingKeyPadClick()
     {
+        // Invalidate in-flight asynchronous save-before-execute on any newer click,
+        // edit double-click, right-click, stop or window shutdown.
+        _keyPadIntentGeneration++;
         _keyPadClickTimer?.Stop();
         _pendingKeyPad = null;
     }
@@ -60,6 +64,7 @@ public partial class ManualBenchWindow : Window
     {
         var pad = _pendingKeyPad;
         CancelPendingKeyPadClick();
+        var intent = _keyPadIntentGeneration;
         if (pad is null || _benchClosePending || _benchCloseScheduled || !IsLoaded)
             return;
         // One click means execute the CURRENT edit, not silently execute an
@@ -81,7 +86,8 @@ public partial class ManualBenchWindow : Window
                 return;
             }
         }
-        if (_benchClosePending || _benchCloseScheduled || !IsLoaded) return;
+        if (intent != _keyPadIntentGeneration || _benchClosePending ||
+            _benchCloseScheduled || !IsLoaded || _model.KeyActionsDirty) return;
         var command = _model.PressKeyPadCommand;
         if (command.CanExecute(pad)) command.Execute(pad);
         else _model.ReportKeyPadUnavailable();
