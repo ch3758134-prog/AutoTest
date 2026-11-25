@@ -298,7 +298,8 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         return Task.CompletedTask;
     }
 
-    private void OnPlanChanged(object? sender, EventArgs e)
+    private void OnPlanChanged(object? sender, EventArgs e) =>
+        OnUi(() =>
     {
         if (IsOperatorRunning)
         {
@@ -315,7 +316,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         StartRequestStatus = "当前工程已更新：请重新完成扫码与工位核对；正式执行器尚未接通。";
         RebuildCases();
         UpdateConnection();
-    }
+    });
 
     private void OnEngineeringProjectChanged(object? sender, EventArgs e) =>
         OnUi(() =>
