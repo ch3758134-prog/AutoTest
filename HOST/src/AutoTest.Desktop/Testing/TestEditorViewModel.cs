@@ -82,7 +82,17 @@ public sealed class TestEditorViewModel : BindableBase
                 // never persist a provisional TEST step or a half-edited overlay.
                 return;
             }
-            if (IsDirty) await SaveAsync(silent: true);
+            try
+            {
+                if (IsDirty) await SaveAsync(silent: true);
+            }
+            catch (Exception error) when (error is not OutOfMemoryException)
+            {
+                // DispatcherTimer uses async void: do not crash WPF on an
+                // unexpected filesystem or serialization failure.
+                StatusMessage = "自动保存失败，编辑内容仍保留：" + error.Message;
+                System.Diagnostics.Trace.TraceWarning("TEST autosave failed: " + error);
+            }
         };
         _session = session;
         _transaction = new StepEditTransaction(session.Document);
