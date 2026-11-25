@@ -53,7 +53,9 @@
     <TextBox Text="{Binding SelectedKeyAction.Name,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
      IsEnabled="{Binding CanEditKeyActions}" Padding="7,5"/>
     <DockPanel Margin="0,10,0,6">
-     <Button DockPanel.Dock="Right" Content="+ 步骤" Command="{Binding AddKeyStepCommand}" Padding="8,5" Margin="5,0,0,0"/>
+     <Button DockPanel.Dock="Right" Content="+ KEY 组合" Command="{Binding AddKeyStepCommand}" Padding="8,5" Margin="5,0,0,0"/>
+     <Button DockPanel.Dock="Right" Content="+ 纯等待" Command="{Binding AddWaitOnlyStepCommand}" Padding="8,5" Margin="5,0,0,0"
+      ToolTip="只等待，不发送 KEY CAN，不改变已经保持的 KEY 组合"/>
      <Button DockPanel.Dock="Right" Content="复制" Command="{Binding CopyKeyStepCommand}" Padding="8,5" Margin="5,0,0,0"/>
      <Button DockPanel.Dock="Right" Content="删除" Command="{Binding DeleteKeyStepCommand}" Padding="8,5" Margin="5,0,0,0"/>
      <Button DockPanel.Dock="Right" Content="↑" Command="{Binding MoveKeyStepUpCommand}" Padding="8,5" Margin="5,0,0,0"/>
@@ -85,12 +87,15 @@
      <StackPanel IsEnabled="{Binding CanEditKeyActions}">
       <TextBlock Text="KEY 组合" Foreground="#3478D6"
        FontWeight="SemiBold" Margin="0,0,0,6"/>
-      <WrapPanel Margin="0,0,0,5">
+      <CheckBox Content="纯等待 · 不改变当前 KEY 组合"
+       IsChecked="{Binding SelectedKeyStep.WaitOnly,Mode=TwoWay}"
+       Margin="0,0,0,8" ToolTip="保持结束后不自动释放，纯等待不会发送按键报文"/>
+      <WrapPanel Margin="0,0,0,5" IsEnabled="{Binding SelectedKeyStep.CanChangeKeys}">
        <Button Content="清空" Command="{Binding ClearStepKeysCommand}" Padding="7,5" Margin="0,0,5,5"/>
        <Button Content="反选" Command="{Binding InvertStepKeysCommand}" Padding="7,5" Margin="0,0,5,5"/>
        <Button Content="复制上一段" Command="{Binding CopyPreviousStepKeysCommand}" Padding="7,5" Margin="0,0,5,5"/>
       </WrapPanel>
-      <Grid Margin="0,3,0,6">
+      <Grid Margin="0,3,0,6" IsEnabled="{Binding SelectedKeyStep.CanChangeKeys}">
        <Grid.ColumnDefinitions>
         <ColumnDefinition Width="Auto"/><ColumnDefinition Width="105"/>
         <ColumnDefinition Width="10"/><ColumnDefinition Width="Auto"/>
@@ -108,7 +113,7 @@
        TextTrimming="CharacterEllipsis" FontSize="11" Margin="0,0,0,5"/>
       <TextBlock Text="{Binding SelectedKeyStep.MaskError}" Foreground="#B34035"
        FontSize="10" TextWrapping="Wrap" Margin="0,0,0,4"/>
-      <ItemsControl ItemsSource="{Binding StepKeys}">
+      <ItemsControl ItemsSource="{Binding StepKeys}" IsEnabled="{Binding SelectedKeyStep.CanChangeKeys}">
        <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="5"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
        <ItemsControl.ItemTemplate>
         <DataTemplate>
