@@ -199,8 +199,9 @@ public sealed partial class RealTestWorkbenchService
             {
                 // Production/full project must match the entire ordered tree.
                 actual.RequireExecutable();
-                if (actual.Cases.Count != _pinnedCases.Length ||
-                    actual.Cases.Where((entry, i) =>
+                var fullSequence = actual.OrderedExecutions();
+                if (fullSequence.Count != _pinnedCases.Length ||
+                    fullSequence.Where((entry, i) =>
                         entry.Program.Id != _pinnedCases[i].Id ||
                         !string.Equals(_owner.Prepare(entry.Program).Fingerprint,
                             _pinnedCases[i].Sha, StringComparison.OrdinalIgnoreCase)).Any())
