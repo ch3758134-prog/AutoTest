@@ -221,6 +221,12 @@ public sealed class StepRowProjection : BindableBase
             "Sequence" => "按顺序执行子步骤",
             _ => StepUiCatalog.Label(step.Type) + " · 打开属性查看参数"
         };
+        if (step.Type == "If" &&
+            (!step.Slots.TryGetValue("then", out var thenArm) ||
+             !thenArm.Any(StepExecutionPolicy.IsEnabled)) &&
+            (!step.Slots.TryGetValue("else", out var elseArm) ||
+             !elseArm.Any(StepExecutionPolicy.IsEnabled)))
+            Summary += " · THEN / ELSE 都没有动作，请添加分支步骤";
         if (step.Type == "If" && realFact is not null)
         {
             Summary += realFact.Status == RealStepStatus.NoData
@@ -286,6 +292,11 @@ public sealed class StepRowProjection : BindableBase
         var descriptor = StepDescriptorCatalog.Builtins().Lookup(step.Type);
         State = newDraft ? "待完善" :
             !StepExecutionPolicy.IsEnabled(step) && realFact is null ? "已关闭" :
+            step.Type == "If" && realFact is null &&
+            (!step.Slots.TryGetValue("then", out var thenSteps) ||
+             !thenSteps.Any(StepExecutionPolicy.IsEnabled)) &&
+            (!step.Slots.TryGetValue("else", out var elseSteps) ||
+             !elseSteps.Any(StepExecutionPolicy.IsEnabled)) ? "待完善" :
             step.Type is "KeySet" or "CanSend" or "CanWait" && realFact is null
                 ? "步骤类型不支持" :
             realFact is not null ? realFact.Status switch

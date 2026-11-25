@@ -45,6 +45,12 @@ public sealed class PlanCompiler
                 if (_catalog.Lookup(node.Type) is { ExecutableV1: false } &&
                     !(allowRealOperations && RealTypes.Contains(node.Type)))
                     errors.Add($"{node.Id}: {node.Type} not executable in V1");
+                if (node.Type == "If" &&
+                    (!node.Slots.TryGetValue("then", out var thenArm) ||
+                     !thenArm.Any(StepExecutionPolicy.IsEnabled)) &&
+                    (!node.Slots.TryGetValue("else", out var elseArm) ||
+                     !elseArm.Any(StepExecutionPolicy.IsEnabled)))
+                    errors.Add(node.Id + ": IF 的 THEN/ELSE 均无启用步骤；请先添加分支动作或删除无效 IF。");
                 foreach (var slot in node.Slots.Values) CheckEnabledNodes(slot);
             }
         }

@@ -23,11 +23,26 @@ public sealed class IfFlowContractTests
         tx.Insert(TestPhase.Prepare, null, null, 0,
             StepNode.Create("SetVariable").WithProperty("variable", "brakeState")
                 .WithProperty("value", "1"));
-        var branch = StepUiCatalogNotRequired();
+        var branch = StepUiCatalogNotRequired().WithSlot("then",
+            StepNode.Create("Wait").WithProperty("milliseconds", "50"));
         tx.Insert(TestPhase.Test, null, null, 0, branch);
         Assert.Empty(new PlanCompiler().Prepare(tx.Current).Diagnostics);
         Assert.Contains(TestVariableFlowValidator.Before(tx.Current, branch.Id),
             x => x.Name == "brakeState");
+    }
+
+    [Fact]
+    public void EmptyIfCanBeEditedButDoesNotPassRunPreflight()
+    {
+        var tx = new StepEditTransaction(TestDocument.Create("Empty branches"));
+        tx.Insert(TestPhase.Test, null, null, 0,
+            StepNode.Create("SetVariable").WithProperty("variable", "brakeState")
+                .WithProperty("value", "1"));
+        tx.Insert(TestPhase.Test, null, null, 1, StepUiCatalogNotRequired());
+        Assert.Empty(StepTreeValidator.ValidateTree(tx.Current,
+            StepDescriptorCatalog.Builtins()));
+        Assert.Contains(new PlanCompiler().Prepare(tx.Current).Diagnostics,
+            x => x.Contains("THEN/ELSE 均无启用步骤"));
     }
 
     [Fact]
