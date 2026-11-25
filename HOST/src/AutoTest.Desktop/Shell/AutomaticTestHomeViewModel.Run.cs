@@ -492,6 +492,23 @@ public sealed partial class AutomaticTestHomeViewModel
                 rechecked.Project!.ProjectId != frozen.ProjectId)
                 throw new InvalidDataException("扫码身份的原始规则、型号或已发布工程已改变。");
             await StationProductionConfigurationStore.VerifyProductAsync(rechecked.Project, ct);
+            if (!string.IsNullOrEmpty(scan.ScannerPnpInstanceId))
+            {
+                // A real scan observation cannot be replayed after a physical
+                // scanner replacement on the same COM name.
+                var actualScanner = await Task.Run(() =>
+                {
+                    var bound = StationScannerDeviceBinding.Load();
+                    return bound is null ? null : StationScannerDeviceBinding.Match(bound);
+                }, ct);
+                if (actualScanner is null ||
+                    !string.Equals(actualScanner.PortName, scan.ScannerPort,
+                        StringComparison.OrdinalIgnoreCase) ||
+                    !string.Equals(actualScanner.PnpInstanceId, scan.ScannerPnpInstanceId,
+                        StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException(
+                        "本次扫码来源的物理 USB 扫码枪已变化，不能沿用旧冻结身份。");
+            }
             // Only this engineer-only, explicitly armed software verification
             // may deliberately use the saved draft rather than a published
             // production release. Production preflight defaults to published.
