@@ -245,3 +245,14 @@
 - **项目管理边界：** 本轮报告只保存在 R1。Project_Management 分支的现有 Gate/项目管理证据作为只读上下文，本轮没有创建管理 Gate 或修改批准记录。
 
 **报告的源码变更 SHA，以 GitHub R1 当前提交历史、基线对比和交付时所述 HEAD 为准；报告内的“未运行”事实为本次对话确实未自行执行的测试。**
+
+
+## 11. 报告形成后追加的独立代码复审（不人为提分）
+
+- **R3-F04，已提交源码：** 在 AutomaticTestHomeViewModel.Run.cs 发现一种新 UI 性能问题：若每条真实 RealStepFact 都完整复制当前用例的所有嵌套步骤节点，长用例的多次 StepOccurrence 会导致大量 WPF ItemsControl 刷新和选择/滚动跳变。本轮改为只替换真正发生变化的节点及祖先，未受影响节点保持相同引用；最终运行完成时还用实际 RealRunResult.Facts 核对最后事实，避免调度器上晚到的 StepReported 更新丢失。**这只保证源码中的数据相关性，不证明 WPF 真机运行流畅；必须 UI-05 / UI-17 复测。**
+- **R3-L02，已提交源码：** 在 FlashLabWindow.xaml 新增本地浅色按钮、键盘焦点与紧凑 DataGrid 定义，与 Desktop 主要视觉基线接近；在 FlashLabWindow.xaml.cs 显式引入 System.Windows.Controls，避免自适应布局新增 Grid.SetRowSpan 的缺少命名空间编译问题。**没有以这一点给视觉维度额外加分**。
+- **R3-B02，已提交源码：** TestProjectWorkbenchView.xaml 同一临时开发用例检查命令曾在顶部和运行区重复出现；删去后一处，不变更临时选择和正式生产全量用例的不同语义。历史排除修复按钮仅改善文案，未据此宣称旧工程兼容全部合格。
+- **附加静态验收：** 在最终相关 R1 源码上重新扫描 AutomaticTestHomeView、TestEditorView、TestProjectWorkbenchView、WaveWorkbenchWindow、ManualBenchWindow、FlashLabWindow、ProjectConfigurationOverviewView、MainWindow 八个主要 XAML：所检查标签嵌套未报闭合错误，XAML 声明的代码事件处理函数未发现缺失。**这不是 WPF XAML 编译**；ResourceDictionary、程序集引用、Binding 类型及实际键鼠操作仍需 UI-01 等 Windows 项目复测。
+- **改动规模：** 本节形成时，自基线 99618d180bc3b5aa35bc579d2281cfdaea8f13f8 起已提交 37 个源码/报告提交，GitHub compare 显示 19 个 .cs/.xaml 源码文件和本报告，共 20 文件；最后的报告附录更新会产生一个额外文档提交。只能以最后实际 R1 HEAD 及 diff 追溯改动数量。
+
+复评仍为 **66/100；DESIGN_GATE=BLOCKED；BUILD/WPF/HARDWARE=NOT_RUN**。静态检查本身不能代替 1366×768/150% 的实际工业操作体验，也不会因新一轮小修补而自动涨分。
