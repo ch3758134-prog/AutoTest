@@ -65,7 +65,7 @@ public partial class ProjectBarcodeExpectationView : UserControl
         Renumber();
         _initializing = false;
         SaveStatus.Text = current.Definition.BarcodeExpectation is null
-            ? "请填写期望型号、硬件版本，调整字段顺序后保存。无需先扫码。"
+            ? "填写型号、硬件版本和字段顺序后自动保存；无需先扫码。"
             : "已读取当前工程保存的扫码期望。";
     }
 
@@ -93,7 +93,7 @@ public partial class ProjectBarcodeExpectationView : UserControl
         if (_initializing) return;
         IsDirty = true;
         _editRevision++;
-        SaveStatus.Text = "配置已修改，等待自动保存；也可立即保存。";
+        SaveStatus.Text = "配置已修改，等待自动保存。";
         MatchStatus.Text = "规则已修改，请重新验证。";
         foreach (var row in _rows) row.Actual = "";
     }
