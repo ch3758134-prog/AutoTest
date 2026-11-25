@@ -60,7 +60,14 @@ public partial class NativeFlashProfileWindow : Window
         _idleSave.Tick += async (_, _) =>
         {
             _idleSave.Stop();
-            await SaveAsync();
+            try { await SaveAsync(); }
+            catch (Exception error) when (error is not OutOfMemoryException)
+            {
+                // A WPF async timer must never lose the unsaved FLASH draft
+                // or crash the configuration tool due to an unusual IO failure.
+                StatusLabel.Text = "原生烧录参数自动保存失败：" + error.Message;
+                System.Diagnostics.Trace.TraceWarning("Native FLASH autosave failed: " + error);
+            }
         };
     }
 
