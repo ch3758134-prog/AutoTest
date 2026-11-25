@@ -512,4 +512,53 @@
    </Border>
   </Grid>
  </Grid>
+ <GridSplitter x:Name="MonitorDivider" Grid.Column="1" Width="5"
+  HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="#D6E1ED"
+  ShowsPreview="True" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext"/>
+ <Border x:Name="CanMonitorPanel" Grid.Column="2" Background="#F8FAFD"
+  BorderBrush="#D6E1ED" BorderThickness="1,0,0,0">
+  <Grid>
+   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+    <RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+   <DockPanel Grid.Row="0" Margin="12,12,10,7">
+    <TextBlock DockPanel.Dock="Right" Text="真实接收" Foreground="#406B51" FontSize="12"
+     VerticalAlignment="Center"/>
+    <TextBlock Text="CAN 实时监视" FontSize="15" FontWeight="SemiBold"
+     Foreground="#203C55" VerticalAlignment="Center"/>
+   </DockPanel>
+   <DockPanel Grid.Row="1" Margin="10,0,10,8">
+    <CheckBox x:Name="CanAutoFollow" DockPanel.Dock="Right" Content="跟随最新"
+     IsChecked="True" FontSize="12" Foreground="#3F556A" VerticalAlignment="Center"/>
+    <StackPanel Orientation="Horizontal">
+     <RadioButton Content="全部" Tag="All" GroupName="TestCanFilter" IsChecked="True"
+      Checked="CanMonitorFilter_Checked" Margin="0,0,11,0" Foreground="#263D54"/>
+     <RadioButton Content="ECU" Tag="Ecu" GroupName="TestCanFilter"
+      Checked="CanMonitorFilter_Checked" Margin="0,0,11,0" Foreground="#263D54"/>
+     <RadioButton Content="KEY" Tag="Key" GroupName="TestCanFilter"
+      Checked="CanMonitorFilter_Checked" Foreground="#263D54"/>
+    </StackPanel>
+   </DockPanel>
+   <DataGrid x:Name="CanMonitorTable" Grid.Row="2" Margin="7,0,7,0"
+    AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
+    HeadersVisibility="Column" RowHeaderWidth="0" FontFamily="Consolas"
+    FontSize="12" Foreground="#203C55" Background="White"
+    AlternatingRowBackground="#F2F6FB" GridLinesVisibility="Horizontal"
+    ScrollViewer.HorizontalScrollBarVisibility="Auto"
+    ScrollViewer.VerticalScrollBarVisibility="Auto"
+    VirtualizingPanel.IsVirtualizing="True"
+    VirtualizingPanel.VirtualizationMode="Recycling">
+    <DataGrid.Columns>
+     <DataGridTextColumn Header="时间" Binding="{Binding Time}" Width="94"/>
+     <DataGridTextColumn Header="通道" Binding="{Binding Port}" Width="68"/>
+     <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="96"/>
+     <DataGridTextColumn Header="DLC" Binding="{Binding Dlc}" Width="42"/>
+     <DataGridTextColumn Header="DATA (HEX)" Binding="{Binding Data}" Width="175"/>
+     <DataGridTextColumn Header="丢帧" Binding="{Binding Lost}" Width="55"/>
+    </DataGrid.Columns>
+   </DataGrid>
+   <TextBlock Grid.Row="3" Margin="11,8,11,10" FontSize="11" Foreground="#617589"
+    TextWrapping="Wrap" Text="主控真实 RX 观察值；丢帧不等于零时记录可能不完整。不代表 ECU 判定 PASS。"/>
+  </Grid>
+ </Border>
+ </Grid>
 </UserControl>
