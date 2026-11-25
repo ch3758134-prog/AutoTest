@@ -144,6 +144,18 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
                 ? "使用工位扫码枪扫描条码；不需要鼠标启动。"
                 : "扫码身份及工程资源已核对；实体 START 和正式生产归档尚未接线。";
 
+    // Formal station facts do not exist until the physical START and
+    // production RECORD adapter are wired. Never project the last development
+    // verification into the production operator's active DUT.
+    public string ProductionCurrentCase => "—";
+    public string ProductionCurrentStep => "—";
+    public string ProductionStepStatus => "正式检测未开始";
+    public string ProductionMeasuredValue => "—";
+    public string ProductionExpectedValue => "—";
+    public string ProductionFailure => "";
+    public string ProductionFlashState => "正式检测未执行烧录";
+    public string ProductionTestState => "正式检测未执行 TEST";
+    public string ProductionRecordState => "尚无正式生产 Inspection";
     public string ProductionResultLabel =>
         "尚无正式生产检测结论";
 
