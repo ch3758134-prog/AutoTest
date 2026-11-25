@@ -45,7 +45,7 @@
   <Border Grid.Row="1" Background="White" BorderBrush="#DFE6EF" BorderThickness="1"
    CornerRadius="6" Padding="12" Margin="0,0,0,11">
    <Expander x:Name="UdsProfileExpander" Header="诊断端点、超时与序列名称"
-    IsExpanded="True" FontSize="13" Foreground="#314A63">
+    IsExpanded="False" FontSize="13" Foreground="#314A63">
    <Grid Margin="0,8,0,0">
     <Grid.ColumnDefinitions>
      <ColumnDefinition Width="1.2*"/><ColumnDefinition Width="12"/>
@@ -159,7 +159,7 @@
      </Grid.RowDefinitions>
      <TextBlock Text="已保存的诊断报文回放" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,5"/>
      <TextBlock Grid.Row="1" TextWrapping="Wrap" Foreground="#66788B" FontSize="12"
-      Text="仅分析显式导入的 UDS 交换记录，不连接或发送 ECU CAN；不能冒充现场 ECU 响应。"
+      Text="离线回放 · 不向 ECU 发送报文"
       Margin="0,0,0,11"/>
      <WrapPanel Grid.Row="2" Margin="0,0,0,10">
       <Button Content="载入回放…" Click="LoadReplay_Click" Style="{StaticResource UdsAction}"/>
@@ -189,6 +189,6 @@
   </Grid>
   <TextBlock x:Name="StatusText" Grid.Row="3" TextWrapping="Wrap"
    Foreground="#53677F" Margin="2,11,0,1"
-   Text="输入服务及 ISO-TP 参数后可保存独立诊断序列；实时 UDS 发送尚需受控 CAN 诊断会话。"/>
+   Text="序列编辑与实际诊断属于不同操作；当前工具只支持保存序列和读取真实来源的离线回放。"/>
  </Grid>
 </Window>
