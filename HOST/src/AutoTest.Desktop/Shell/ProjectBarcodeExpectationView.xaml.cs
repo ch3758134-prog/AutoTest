@@ -147,15 +147,6 @@ public partial class ProjectBarcodeExpectationView : UserControl
         MatchStatus.Text = (result.Accepted ? "匹配通过｜" : "匹配未通过｜") + result.Explanation;
     }
 
-    private async void Save_Click(object sender, RoutedEventArgs e)
-    {
-        // Explicit Save can validate a default/new draft even before its first edit.
-        CommitGrid();
-        IsDirty = true;
-        _editRevision++;
-        await SaveForCloseAsync();
-    }
-
     public async Task<bool> SaveForCloseAsync()
     {
         if (IsBusy) return false;
