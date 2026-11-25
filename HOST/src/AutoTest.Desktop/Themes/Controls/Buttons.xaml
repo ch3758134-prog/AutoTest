@@ -9,9 +9,9 @@
   <Setter Property="Background" Value="White"/>
   <Setter Property="BorderBrush" Value="#D9E0E4"/>
   <Setter Property="BorderThickness" Value="1"/>
-  <Setter Property="Padding" Value="9,3"/>
+  <Setter Property="Padding" Value="10,5"/>
   <Setter Property="Margin" Value="0"/>
-  <Setter Property="MinHeight" Value="25"/>
+  <Setter Property="MinHeight" Value="30"/>
   <Setter Property="MinWidth" Value="0"/>
   <Setter Property="Cursor" Value="Hand"/>
   <Setter Property="HorizontalContentAlignment" Value="Center"/>
@@ -38,7 +38,7 @@
       </Trigger>
       <Trigger Property="IsEnabled" Value="False">
        <Setter Property="Cursor" Value="Arrow"/>
-       <Setter TargetName="Surface" Property="Opacity" Value="0.45"/>
+       <Setter TargetName="Surface" Property="Opacity" Value="0.62"/>
       </Trigger>
       <Trigger Property="IsKeyboardFocused" Value="True">
        <Setter TargetName="Surface" Property="BorderBrush" Value="#2568B7"/>
@@ -87,7 +87,7 @@
       </Trigger>
       <Trigger Property="IsEnabled" Value="False">
        <Setter Property="Cursor" Value="Arrow"/>
-       <Setter TargetName="Surface" Property="Opacity" Value="0.45"/>
+       <Setter TargetName="Surface" Property="Opacity" Value="0.62"/>
       </Trigger>
       <Trigger Property="IsKeyboardFocused" Value="True">
        <Setter TargetName="Surface" Property="BorderBrush" Value="#A7C8F6"/>
