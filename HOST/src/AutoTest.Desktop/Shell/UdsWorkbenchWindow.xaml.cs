@@ -50,6 +50,8 @@ public partial class UdsWorkbenchWindow : Window
     private DateTimeOffset _lastDidObservedUtc;
     private ushort _lastDidIdentifier;
     private uint _lastDidTxId, _lastDidRxId;
+    private string _lastDidExpectedHex = "";
+    private bool? _lastDidExpectedMatch;
     private UdsReplayWorkspace? _replay;
     private string? _documentPath;
     private string? _loadedSha;
@@ -473,6 +475,8 @@ public partial class UdsWorkbenchWindow : Window
                     ? "（未取得可确认的 ECU 响应）" : UdsHex.Format(exchange.ResponsePdu));
             bool? expectedMatch = expectedResponse is null ? null :
                 exchange.ResponsePdu.SequenceEqual(expectedResponse);
+            _lastDidExpectedHex = expectedHex;
+            _lastDidExpectedMatch = expectedMatch;
             var detail = exchange.Outcome switch
             {
                 Outcome.Accepted => "真实 ECU 正响应（不是正式检测 PASS）",
@@ -553,11 +557,22 @@ public partial class UdsWorkbenchWindow : Window
                 NegativeResponseCode = observation.Exchange.NegativeResponseCode is { } nrc
                     ? "0x" + nrc.ToString("X2") : null,
                 Error = observation.Error,
+                AuthoredExpectedHex = _lastDidExpectedHex,
+                AuthoredExpectedMatched = _lastDidExpectedMatch,
                 ActualFrames = observation.CanFrames
             };
             var json = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(data,
                 new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
-            await File.WriteAllBytesAsync(destination, json);
+            // A destination that appears during the save must never be
+            // overwritten. Write a private temp first, then atomically move
+            // with overwrite=false, and clean incomplete temp files.
+            var temp = destination + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            try
+            {
+                await File.WriteAllBytesAsync(temp, json);
+                File.Move(temp, destination, overwrite: false);
+            }
+            finally { if (File.Exists(temp)) File.Delete(temp); }
             StatusText.Text = "已导出本次真实诊断事实（非正式生产报告）：" + destination;
         }
         catch (Exception error) when (error is not OutOfMemoryException)
