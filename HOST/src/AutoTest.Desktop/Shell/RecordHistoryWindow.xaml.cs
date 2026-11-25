@@ -92,6 +92,11 @@ public partial class RecordHistoryWindow : Window
             else StatusText.Text = "当前工程尚无持久化记录。可以选择已有的记录库，或在完成真实检测后重新查询。";
         }
         Loaded += async (_, _) => await RefreshAsync();
+        Closed += (_, _) =>
+        {
+            _detailCancellation?.Cancel();
+            _detailCancellation = null;
+        };
     }
 
     private void SetSource(string path)
@@ -259,21 +264,183 @@ public partial class RecordHistoryWindow : Window
         finally { _busy = false; }
     }
 
-    private void HistoryGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private sealed record RealReportPreview(
+        IReadOnlyList<ArchivedStepDisplayRow> Steps,
+        IReadOnlyList<ArchivedEventDisplayRow> Events,
+        string IntegrityText, string Summary);
+
+    private void ClearSelectedFacts()
     {
-        var row = (HistoryGrid.SelectedItem as RecordHistoryDisplayRow)?.Source;
-        ViewReport.IsEnabled = ExportReport.IsEnabled = row is not null && !_busy;
-        if (row is null)
+        _detailRequestRevision++;
+        _detailCancellation?.Cancel();
+        _detailCancellation = null;
+        _archivedSteps.Clear();
+        _archivedEvents.Clear();
+        DetailsStatus.Text = "选择一次运行，查看真实步骤、测量、事件和证据";
+        StepDetailText.Text = "选择一个步骤可查看 Occurrence、证据 ID 和失败说明";
+        EvidenceIntegrity.Text = "尚未选择记录；不能从空白或未结案记录推断测试通过。";
+    }
+
+    private static string JsonField(JsonElement row, string key)
+    {
+        if (row.ValueKind != JsonValueKind.Object ||
+            !row.TryGetProperty(key, out var value) ||
+            value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+            return "";
+        return value.ValueKind == JsonValueKind.String ? value.GetString() ?? "" : value.ToString();
+    }
+
+    private static string JsonList(JsonElement row, string key)
+    {
+        if (row.ValueKind != JsonValueKind.Object ||
+            !row.TryGetProperty(key, out var value) || value.ValueKind != JsonValueKind.Array)
+            return "";
+        return string.Join("；", value.EnumerateArray().Select(x =>
+            x.ValueKind == JsonValueKind.String ? x.GetString() : x.ToString())
+            .Where(x => !string.IsNullOrWhiteSpace(x)));
+    }
+
+    private static string LocalDate(string value) =>
+        DateTimeOffset.TryParse(value, out var timestamp)
+            ? timestamp.ToLocalTime().ToString("MM-dd HH:mm:ss.fff")
+            : value;
+
+    // Read the already-exported canonical REPORT payload. Only project a
+    // bounded preview into WPF; full rows and artifact hashes remain in the
+    // original immutable source and the existing HTML/JSON report.
+    private static RealReportPreview ParseRealReport(string raw, CancellationToken ct)
+    {
+        using var document = JsonDocument.Parse(raw);
+        var report = document.RootElement;
+        var steps = new List<ArchivedStepDisplayRow>();
+        var events = new List<ArchivedEventDisplayRow>();
+        const int maxPreview = 1200;
+        var totalSteps = 0;
+        var totalEvents = 0;
+        if (report.TryGetProperty("stepFacts", out var stepFacts) &&
+            stepFacts.ValueKind == JsonValueKind.Array)
         {
+            totalSteps = stepFacts.GetArrayLength();
+            foreach (var row in stepFacts.EnumerateArray())
+            {
+                ct.ThrowIfCancellationRequested();
+                if (steps.Count == maxPreview) break;
+                var path = JsonField(row, "path");
+                if (string.IsNullOrWhiteSpace(path)) path = JsonField(row, "stepId");
+                var failureCode = JsonField(row, "failureCode");
+                var detail = JsonField(row, "detail");
+                if (!string.IsNullOrWhiteSpace(failureCode))
+                    detail = failureCode + (string.IsNullOrWhiteSpace(detail) ? "" : " · " + detail);
+                steps.Add(new ArchivedStepDisplayRow(
+                    steps.Count + 1, path,
+                    JsonField(row, "disposition"),
+                    JsonField(row, "actual"),
+                    JsonField(row, "expected"),
+                    JsonField(row, "evidenceQuality") + " / " + JsonField(row, "timeQuality"),
+                    LocalDate(JsonField(row, "timestamp")),
+                    JsonField(row, "occurrenceId"),
+                    JsonList(row, "evidenceIds"), detail));
+            }
+        }
+        if (report.TryGetProperty("facts", out var facts) &&
+            facts.ValueKind == JsonValueKind.Array)
+        {
+            totalEvents = facts.GetArrayLength();
+            foreach (var row in facts.EnumerateArray())
+            {
+                ct.ThrowIfCancellationRequested();
+                if (events.Count == maxPreview) break;
+                events.Add(new ArchivedEventDisplayRow(
+                    events.Count + 1, LocalDate(JsonField(row, "timestamp")),
+                    JsonField(row, "kind"), JsonField(row, "description"),
+                    JsonField(row, "evidenceQuality")));
+            }
+        }
+        var incomplete = JsonField(report, "evidenceArchiveIncomplete") == "True" ||
+            JsonField(report, "evidenceArchiveIncomplete") == "true";
+        var unarchived = JsonList(report, "unarchivedEvidenceIds");
+        var capture = report.TryGetProperty("captureHealth", out var health) &&
+            health.ValueKind == JsonValueKind.Object ? health : default;
+        var captureComplete = JsonField(capture, "recordingComplete");
+        var dropped = JsonField(capture, "droppedEvents");
+        var reason = JsonField(capture, "incompleteReason");
+        var artifacts = report.TryGetProperty("artifacts", out var a) &&
+            a.ValueKind == JsonValueKind.Array ? a.GetArrayLength() : 0;
+        var integrity = incomplete
+            ? "报告标识：证据归档不完整；不能将缺失的 CAN/DBC/波形证据当作有效测量。"
+            : "报告未标识证据归档缺失；仍须按冻结判据和原始事实审核结果。";
+        integrity += "\n采集完整标记：" + (captureComplete.Length == 0 ? "未提供" : captureComplete) +
+            "；丢失事件：" + (dropped.Length == 0 ? "未知" : dropped) +
+            "；归档附件：" + artifacts + " 项。";
+        if (!string.IsNullOrWhiteSpace(reason)) integrity += "\n采集问题：" + reason;
+        if (!string.IsNullOrWhiteSpace(unarchived)) integrity +=
+            "\n未归档证据 ID：" + unarchived;
+        integrity += "\n正式 Inspection 是否通过只能由当前记录的真实运行模式、提交状态和完整验收事实决定。";
+        var summary = "真实步骤 " + totalSteps + " 条，原始事件 " + totalEvents +
+            " 条；窗口预览每类最多 " + maxPreview + " 条，完整数据请打开原始报告。";
+        return new RealReportPreview(steps, events, integrity, summary);
+    }
+
+    private async void HistoryGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        ClearSelectedFacts();
+        if (HistoryGrid.SelectedItem is not RecordHistoryDisplayRow display)
+        {
+            ViewReport.IsEnabled = ExportReport.IsEnabled = false;
             SelectionSummary.Text = "选择一条记录查看详情";
             FailureDetail.Text = "";
             return;
         }
-        var display = (RecordHistoryDisplayRow)HistoryGrid.SelectedItem;
+        var row = display.Source;
+        ViewReport.IsEnabled = ExportReport.IsEnabled = !_busy;
         SelectionSummary.Text = row.DutId + " · " + display.StartedLocal +
-            " · " + display.VerdictLabel + " · " + display.PersistenceLabel +
-            " · 步骤事实 " + row.StepFactCount;
+            " · " + display.ModeLabel + " · " + display.VerdictLabel +
+            " · " + display.PersistenceLabel + " · 步骤事实 " + row.StepFactCount;
         FailureDetail.Text = row.FailureReason ?? "";
+        DetailsStatus.Text = "正在从原始归档核对逐步骤与事件数据…";
+        var version = _detailRequestRevision;
+        var cancellation = new CancellationTokenSource();
+        _detailCancellation = cancellation;
+        try
+        {
+            var json = await display.RecordSource.ExportFullReportJsonAsync(
+                row.RunId, cancellation.Token);
+            var parsed = await Task.Run(() => ParseRealReport(json, cancellation.Token),
+                cancellation.Token);
+            if (version != _detailRequestRevision || cancellation.IsCancellationRequested ||
+                !ReferenceEquals(HistoryGrid.SelectedItem, display)) return;
+            foreach (var step in parsed.Steps) _archivedSteps.Add(step);
+            foreach (var entry in parsed.Events) _archivedEvents.Add(entry);
+            EvidenceIntegrity.Text = parsed.IntegrityText;
+            DetailsStatus.Text = parsed.Summary;
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or
+            InvalidDataException or ArgumentException or InvalidOperationException or
+            Microsoft.Data.Sqlite.SqliteException or JsonException or KeyNotFoundException)
+        {
+            if (version == _detailRequestRevision)
+            {
+                DetailsStatus.Text = "本次记录明细无法核验：" + error.Message;
+                EvidenceIntegrity.Text = "明细无法核验；请勿将当前信息视为完整证据。";
+            }
+        }
+        finally
+        {
+            if (ReferenceEquals(_detailCancellation, cancellation))
+                _detailCancellation = null;
+            cancellation.Dispose();
+        }
+    }
+
+    private void StepFactsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        StepDetailText.Text = StepFactsGrid.SelectedItem is not ArchivedStepDisplayRow row
+            ? "选择一个步骤可查看 Occurrence、证据 ID 和失败说明"
+            : "步骤 " + row.Number + " · Occurrence：" +
+              (string.IsNullOrEmpty(row.Occurrence) ? "未记录" : row.Occurrence) +
+              " · 证据：" + (string.IsNullOrWhiteSpace(row.Evidence) ? "未引用" : row.Evidence) +
+              (string.IsNullOrWhiteSpace(row.Detail) ? "" : " · " + row.Detail);
     }
 
     private async void OpenReport_Click(object sender, RoutedEventArgs e)
