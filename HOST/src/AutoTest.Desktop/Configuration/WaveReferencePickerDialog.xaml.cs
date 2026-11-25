@@ -13,6 +13,7 @@ public partial class WaveReferencePickerDialog : Window
     {
         Choices = choices;
         InitializeComponent();
+        Loaded += (_, _) => AutoTest.Desktop.Shell.DesktopWindowSizing.FitToVisibleWorkspace(this);
         DataContext = this;
         if (choices.Count > 0) CaptureList.SelectedIndex = 0;
     }
