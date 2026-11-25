@@ -497,3 +497,10 @@ DbcMessageEditDialog、DbcSignalEditDialog 的原始报文/信号/发送节点�
 | **总分** | **79** | **82** | **未达 90 分，所有产品准出仍被阻断** |
 
 **第九轮决定：静态 82/100、UI_DESIGN_GATE=BLOCKED、PRODUCTION_GATE=BLOCKED、BUILD=NOT_RUN、TESTS=NOT_RUN、WPF_HANDS_ON=NOT_RUN、HARDWARE=NOT_RUN、CI=NOT_RUN。** 不得把报告加分当实体投产通行证。
+
+
+### 19.6 第九轮反向回归：自动保存导致工程版本变化时的实体运行保护
+
+再次审查 AutomaticTestHomeViewModel 的工程事件后发现，工程自动保存会触发 ProjectWorkspaceService.CurrentChanged；实际工程整组运行期间，既有处理代码可能重新构建 Cases 树，令真实步骤 UI 状态突然重置，更危险的是新工程的预览与已冻结运行资源产生混淆。现已将 AutomaticTestHomeViewModel.cs 的 OnPlanChanged、OnEngineeringProjectChanged 纳入运行期间明确撤销策略：真实实体执行中若工程/资源变更，请求取消当前 Run 并由既有 finally 执行工位收尾，不再重建正在展示真实状态的 Steps/Cases 或载入更新后的预览。异步预览执行完成还会二次核对运行标志与项目身份，防止旧预览回写。WPF 可见数据修改调度到 Dispatcher。实际断电、USB 卡死、FLASH 无法取消时的安全恢复仍以 UNKNOWN 和现场人工核查为准，**绝不因为 UI 发出 Cancel 就认定物理动作已停止。**
+
+以上新增针对运行期间资源变更的修复发生在第九轮评分落档之后，保持第九轮 **82/100 不人为追加分数**；仍须 Windows 真实触发、日志比对和实体 ECU 授权/中断结果验收。
