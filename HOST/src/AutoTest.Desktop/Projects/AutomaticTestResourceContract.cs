@@ -143,7 +143,7 @@ public static class AutomaticTestResourceContract
         return content;
     }
 
-    private static async Task ValidateMappingAsync(OpenProjectContext project,
+    internal static async Task ValidateMappingAsync(OpenProjectContext project,
         TestTargetMapping mapping, CancellationToken ct)
     {
         mapping.Validate();

@@ -19,10 +19,11 @@ public sealed partial class RealTestWorkbenchService
     /// </summary>
     public async Task<ProjectExecutionSession> OpenProjectSessionAsync(
         IReadOnlyList<TestDocument> orderedCases, Guid projectRunId,
-        string dutIdentity, CancellationToken ct = default)
+        string dutIdentity, CancellationToken ct = default,
+        bool allowOrderedSubset = false)
     {
         if (projectRunId == Guid.Empty || orderedCases.Count == 0 ||
-            string.IsNullOrWhiteSpace(dutIdentity))
+            !allowOrderedSubset && string.IsNullOrWhiteSpace(dutIdentity))
             throw new ArgumentException("整组运行需要项目运行号、DUT 编号和有序 TEST 用例。");
         if (!await _station.WaitAsync(0, ct))
             throw new InvalidOperationException("工位正在由另一测试任务占用。");
@@ -55,6 +56,12 @@ public sealed partial class RealTestWorkbenchService
                 pinned.Add((doc.Id, plan.Fingerprint));
                 foreach (var mapping in TestRunStepScope.RequiredMappings(doc))
                 {
+                    // The development subset is authoritative only for THIS
+                    // debugging scope. Check every selected DBC/wave dependency
+                    // before opening the shared physical grant; an unrelated
+                    // draft case need not participate in developer preflight.
+                    await AutomaticTestResourceContract.ValidateMappingAsync(
+                        project, mapping, ct).ConfigureAwait(false);
                     if (maps.TryGetValue(mapping.Name, out var old) &&
                         !EqualityComparer<TestTargetMapping>.Default.Equals(old, mapping))
                         throw new InvalidDataException(
@@ -77,7 +84,8 @@ public sealed partial class RealTestWorkbenchService
             var fingerprint = Convert.ToHexString(
                 SHA256.HashData(Encoding.UTF8.GetBytes(grantMaterial)));
             var session = new ProjectExecutionSession(this, actions, project,
-                projectRunId, dutIdentity, epoch, fingerprint, pinned);
+                projectRunId, dutIdentity, epoch, fingerprint, pinned,
+                allowOrderedSubset);
             pending = session;
             // Durable parent receipt before the first physical TEST write.
             await session.PersistAsync("PREPARED", CancellationToken.None);
@@ -121,6 +129,7 @@ public sealed partial class RealTestWorkbenchService
         private readonly long _stationEpoch;
         private readonly string _dut;
         private readonly (TestDocumentId Id, string Sha)[] _pinnedCases;
+        private readonly bool _allowOrderedSubset;
         private readonly List<ProjectCaseReceipt> _cases = new();
         private readonly SemaphoreSlim _persistGate = new(1, 1);
         private readonly RealRunEvidenceRecorder _projectTimeline;
@@ -146,9 +155,11 @@ public sealed partial class RealTestWorkbenchService
         internal ProjectExecutionSession(RealTestWorkbenchService owner,
             ConfiguredStationActionPort actions, OpenProjectContext project,
             Guid projectRunId, string dut, long epoch, string fingerprint,
-            IReadOnlyList<(TestDocumentId Id, string Sha)> pinnedCases)
+            IReadOnlyList<(TestDocumentId Id, string Sha)> pinnedCases,
+            bool allowOrderedSubset)
         {
             _owner = owner; Actions = actions; _project = project;
+            _allowOrderedSubset = allowOrderedSubset;
             ProjectRunId = projectRunId; _dut = dut; _stationEpoch = epoch;
             ScopeFingerprint = fingerprint; _pinnedCases = pinnedCases.ToArray();
             _projectTimeline = new RealRunEvidenceRecorder(owner._hardware, owner._signals);
@@ -184,13 +195,44 @@ public sealed partial class RealTestWorkbenchService
                 _project.ManifestSha256, StringComparison.OrdinalIgnoreCase))
                 throw new IOException("整组运行期间工程清单被外部修改。");
             var actual = await AutomaticTestResourceContract.ResolveAsync(_project, ct);
-            actual.RequireExecutable();
-            if (actual.Cases.Count != _pinnedCases.Length ||
-                actual.Cases.Where((entry, i) =>
-                    entry.Program.Id != _pinnedCases[i].Id ||
-                    !string.Equals(_owner.Prepare(entry.Program).Fingerprint,
-                        _pinnedCases[i].Sha, StringComparison.OrdinalIgnoreCase)).Any())
-                throw new IOException("整组用例或 DBC/波形/TEST 资源版本在运行中发生变化。");
+            if (!_allowOrderedSubset)
+            {
+                // Production/full project must match the entire ordered tree.
+                actual.RequireExecutable();
+                if (actual.Cases.Count != _pinnedCases.Length ||
+                    actual.Cases.Where((entry, i) =>
+                        entry.Program.Id != _pinnedCases[i].Id ||
+                        !string.Equals(_owner.Prepare(entry.Program).Fingerprint,
+                            _pinnedCases[i].Sha, StringComparison.OrdinalIgnoreCase)).Any())
+                    throw new IOException("整组用例或 DBC/波形/TEST 资源版本在运行中发生变化。");
+            }
+            else
+            {
+                // Development selection is an ordered SUBSEQUENCE of one
+                // pinned project, never a second persisted production recipe.
+                // Unselected authoring drafts cannot expand the USB grant.
+                var cursor = 0;
+                foreach (var pin in _pinnedCases)
+                {
+                    while (cursor < actual.Cases.Count)
+                    {
+                        var current = actual.Cases[cursor++].Program;
+                        if (current.Id == pin.Id &&
+                            string.Equals(_owner.Prepare(current).Fingerprint,
+                                pin.Sha, StringComparison.OrdinalIgnoreCase))
+                            break;
+                    }
+                    if (cursor == 0 || cursor > actual.Cases.Count ||
+                        actual.Cases[cursor - 1].Program.Id != pin.Id ||
+                        !string.Equals(_owner.Prepare(actual.Cases[cursor - 1].Program).Fingerprint,
+                            pin.Sha, StringComparison.OrdinalIgnoreCase))
+                        throw new IOException("开发勾选范围已不再属于当前工程冻结的有序 TEST 树。");
+                }
+                // Run-specific mappings were validated before authorization.
+                foreach (var map in TestRunStepScope.RequiredMappings(doc))
+                    await AutomaticTestResourceContract.ValidateMappingAsync(
+                        _project, map, ct).ConfigureAwait(false);
+            }
             await Actions.CheckHealthAsync(ct);
             var result = await _owner.ExecuteAsync(doc, "", "", _dut, ct,
                 projectSession: this);
@@ -223,7 +265,9 @@ public sealed partial class RealTestWorkbenchService
                 var bytes = JsonSerializer.SerializeToUtf8Bytes(new
                 {
                     SchemaVersion = 1,
-                    Mode = "ENGINEERING_CONTINUOUS_PROJECT_NOT_PRODUCTION_RELEASE",
+                    Mode = _allowOrderedSubset
+                        ? "ENGINEERING_CONTINUOUS_SELECTED_SUBSET_NOT_PRODUCTION"
+                        : "ENGINEERING_CONTINUOUS_PROJECT_NOT_PRODUCTION_RELEASE",
                     ProjectRunId, DutSerial = _dut, StationEpoch = _stationEpoch,
                     ProjectId = _project.Definition.Id.Value,
                     _project.ManifestSha256, ScopeFingerprint, State = state,
