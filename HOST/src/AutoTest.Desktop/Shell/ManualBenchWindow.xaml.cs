@@ -20,7 +20,6 @@ public partial class ManualBenchWindow : Window
     private readonly DispatcherTimer _keyAutosaveTimer = new() { Interval = TimeSpan.FromSeconds(7) };
     private DateTime _lastInteractionUtc = DateTime.UtcNow;
     private bool _keyAutosaveBusy;
-    private bool _propertyOverlayClosing;
     private ManualBenchKeyActionWindow? _keyActionDialog;
     private readonly Dictionary<ManualBenchViewModel.BenchCanRow,
         ManualBenchCanPropertiesWindow> _canPropertyWindows = new();
@@ -379,54 +378,6 @@ public partial class ManualBenchWindow : Window
         await _model.ApplyIgnSelectionAsync(true);
     private async void IgnOff_Click(object sender, RoutedEventArgs e) =>
         await _model.ApplyIgnSelectionAsync(false);
-
-    private void OpenPropertyOverlay(UserControl content)
-    {
-        PropertyOverlayCard.MaxWidth = content is ManualBenchKeyActionView ? 710 : 1120;
-        PropertyOverlayCard.MaxHeight = content is ManualBenchKeyActionView ? 620 : 760;
-        PropertyOverlayContent.Content = content;
-        PropertyOverlay.Visibility = Visibility.Visible;
-        content.Focus();
-    }
-
-    private void PropertyOverlay_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        // The editor is a deliberate operation, not a hover popover.
-        // Clicking the surrounding surface must never close it and discard
-        // the operator's place. Use its explicit Close/Save buttons instead.
-        if (ReferenceEquals(e.OriginalSource, PropertyOverlay))
-            e.Handled = true;
-    }
-
-    private async Task ClosePropertyOverlayAsync()
-    {
-        if (_propertyOverlayClosing || PropertyOverlay.Visibility != Visibility.Visible)
-            return;
-        _propertyOverlayClosing = true;
-        try
-        {
-            if (PropertyOverlayContent.Content is ManualBenchKeyActionView)
-            {
-                if (_model.KeyActionsDirty)
-                {
-                    await _model.SaveKeyActionsForCloseAsync();
-                    if (_model.KeyActionsDirty)
-                        throw new InvalidOperationException(
-                            "KEY 动作包含未通过校验的修改，无法关闭编辑区。");
-                }
-                _model.IsKeyEditorExpanded = false;
-            }
-            PropertyOverlay.Visibility = Visibility.Collapsed;
-            PropertyOverlayContent.Content = null;
-        }
-        catch (Exception error) when (error is not OutOfMemoryException)
-        {
-            System.Diagnostics.Trace.TraceWarning("Bench property overlay save failed: " + error);
-            MessageBox.Show(this, "保存属性失败，内容仍保留在编辑区：\n" + error.Message,
-                "属性未保存", MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-        finally { _propertyOverlayClosing = false; }
-    }
 
     private void OpenKeyActionEditor(ManualBenchViewModel.KeyActionEditor action)
     {
