@@ -91,7 +91,8 @@ public sealed partial class MainWindowViewModel
                 !_automaticTestHome.IsOperatorRunning &&
                 !_hardware.IsFlashSecuritySensitive &&
                 !_hardware.IsManualCanBatchApproved &&
-                !_hardware.IsManualKeyActionApproved)
+                !_hardware.IsManualKeyActionApproved,
+            _scannerWorkbench, () => _automaticTestHome.OnPublishedConfigurationChanged())
         { Owner = global::System.Windows.Application.Current?.MainWindow };
         _productionPreparationWindow = window;
         window.Closed += (_, _) =>

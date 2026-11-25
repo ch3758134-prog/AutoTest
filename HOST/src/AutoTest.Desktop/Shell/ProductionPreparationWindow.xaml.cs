@@ -140,6 +140,8 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
     }
 
     private readonly ProjectWorkspaceService _workspace;
+    private readonly SerialScannerWorkbenchViewModel? _scanner;
+    private readonly Action? _onPublished;
     private readonly Func<bool> _mayEdit;
     private readonly DispatcherTimer _autosave = new()
         { Interval = TimeSpan.FromMilliseconds(850) };
@@ -205,10 +207,13 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
     private void Changed(string name) => PropertyChanged?.Invoke(this,
         new PropertyChangedEventArgs(name));
 
-    public ProductionPreparationWindow(ProjectWorkspaceService workspace, Func<bool> mayEdit)
+    public ProductionPreparationWindow(ProjectWorkspaceService workspace, Func<bool> mayEdit,
+        SerialScannerWorkbenchViewModel? scanner = null, Action? onPublished = null)
     {
         _workspace = workspace;
         _mayEdit = mayEdit;
+        _scanner = scanner;
+        _onPublished = onPublished;
         InitializeComponent();
         DataContext = this;
         // No hidden combo-box entries: these are identity SOURCE modes.
@@ -225,6 +230,34 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
         };
         Loaded += async (_, _) => await LoadAsync();
         Closing += OnClosing;
+        Closed += (_, _) =>
+        {
+            if (_scanner is not null) _scanner.CompleteBarcodeReceived -= OnRealSample;
+            _autosave.Stop();
+        };
+        if (_scanner is not null)
+        {
+            _scanner.CompleteBarcodeReceived += OnRealSample;
+            ConnectionHint = _scanner.IsConnected
+                ? "真实扫码设备：" + _scanner.ConnectedPort + " · 仅离线试扫"
+                : "扫码枪未连接：仍可手动试扫；连接在独立扫码设备工具中完成";
+        }
+    }
+
+    private void OnRealSample(string raw)
+    {
+        Dispatcher.BeginInvoke((Action)(() =>
+        {
+            if (!IsVisible || !_ready || _busy) return;
+            var lines = PreviewInput.Text.Split(['\r', '\n'],
+                StringSplitOptions.RemoveEmptyEntries).Length;
+            if (lines >= 199) return;
+            PreviewInput.AppendText((PreviewInput.Text.Length > 0 &&
+                !PreviewInput.Text.EndsWith("\n", StringComparison.Ordinal) ? "\n" : "") +
+                raw + "\n");
+            PreparationTabs.SelectedIndex = 4;
+            Preview_Click(this, new RoutedEventArgs());
+        }));
     }
 
     private async Task LoadAsync()
@@ -339,6 +372,7 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
             // EXACT bytes saved above, not a newly synthesised revision.
             config = await StationProductionConfigurationStore.LoadDraftAsync();
             var released = await StationProductionConfigurationStore.PublishAsync(config);
+            _onPublished?.Invoke();
             Status = "已发布工位产品识别与工程关联 · " +
                 released.PublicationId.ToString("N")[..10] +
                 "。实体 START/机械反馈仍必须真实验收。";

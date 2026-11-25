@@ -58,6 +58,9 @@ public sealed partial class AutomaticTestHomeViewModel
         else dispatcher.BeginInvoke(action);
     }
 
+    internal void OnPublishedConfigurationChanged() => OnUi(() =>
+        InvalidateScan("生产编码与工位发布版本已改变；旧扫码冻结身份作废，请重新扫码。"));
+
     private void InvalidateScan(string reason)
     {
         Interlocked.Increment(ref _scanRevision);
