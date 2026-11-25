@@ -264,7 +264,7 @@ public partial class MainWindow : Window
     private void OpenDockForRealEvents()
     {
         if (_bottomManualLayout) return; // the operator's explicit choice wins
-        var hasRealFacts = _activeRunFacts?.RunFacts.Count > 0;
+        var hasRealFacts = ActualHeight >= 690 && _activeRunFacts?.RunFacts.Count > 0;
         if (_bottomVisible == hasRealFacts) return;
         _bottomVisible = hasRealFacts; // only real TEST evidence; no simulated PASS
         ApplyPanelLayout();
@@ -279,7 +279,7 @@ public partial class MainWindow : Window
         // Preserve the editing surface instead of squeezing controls/fonts.
         if (!_inspectorManualLayout) _inspectorVisible = ActualWidth >= 1120;
         if (!_bottomManualLayout)
-            _bottomVisible = _activeRunFacts?.RunFacts.Count > 0;
+            _bottomVisible = ActualHeight >= 690 && _activeRunFacts?.RunFacts.Count > 0;
         if (ActualWidth < 1050 && !_treeAutoNarrow && TreeColumn.Width.Value > 240)
         {
             TreeColumn.Width = new GridLength(230);
