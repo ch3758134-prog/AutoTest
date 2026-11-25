@@ -1085,10 +1085,17 @@ public sealed class TestEditorViewModel : BindableBase
             StatusMessage = "主控未连接，无法运行步骤。";
             return;
         }
+        var periodicOnly = step.Type == "Write" &&
+            int.TryParse(step.Properties.GetValueOrDefault("periodMs", "0"),
+                out var cycleMs) && cycleMs > 0;
         if (!_dialogs.Confirm("将对真实 ECU 执行选中步骤及其子步骤：\n" +
                 step.Name + "（" + step.Type + "）\n\n" +
                 "只运行此步骤，不运行其余准备、测试和脚本清理步骤；" +
-                "结束后仍执行硬件安全清理。依赖前置变量或 ECU 状态的步骤可能失败。\n\n继续？"))
+                "结束后仍执行硬件安全清理。依赖前置变量或 ECU 状态的步骤可能失败。" +
+                (periodicOnly
+                    ? "\n\n注意：此步骤是后台周期 CAN。单步结束即清理周期任务，" +
+                      "可能只观察到首帧。要持续观察周期，请运行包含等待、判断或停止周期步骤的完整用例。"
+                    : "") + "\n\n继续？"))
             return;
         if (_preparedRunDocument is null || _preparedStepId != step.Id ||
             _preparedStationEpoch != _realTest.ConnectedStationEpoch ||
