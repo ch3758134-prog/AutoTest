@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
+using System.Windows.Threading;
 using System.Windows;
 using AutoTest.Desktop.Projects;
 using AutoTest.Desktop.Hardware;
@@ -151,12 +152,22 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         await RemoveSelectedPackageAsync();
     }
 
+    private readonly DispatcherTimer _autosaveTimer = new() { Interval = TimeSpan.FromMilliseconds(850) };
+
     public TestProjectWorkbenchViewModel(ProjectWorkspaceService workspace,
         TestEditorDialogs dialogs, TestProjectEditorSession session,
         ProjectRunSelectionState? selection = null,
         RealTestWorkbenchService? realTest = null, HardwareConnectionService? hardware = null)
     {
         _workspace = workspace; _dialogs = dialogs; _session = session;
+        _autosaveTimer.Tick += async (_, _) =>
+        {
+            _autosaveTimer.Stop();
+            // Invalid or transient user input must remain visible; never create
+            // an unwanted project revision while the operator is still typing.
+            if (IsBusy || !IsDirty || string.IsNullOrWhiteSpace(Name)) return;
+            await SaveAsync(silent: true);
+        };
         _selection = selection; _realTest = realTest; _hardware = hardware;
         if (_selection is not null) _selection.Changed += OnNavigationSelectionChanged;
         _name = session.Document.Name;
@@ -312,8 +323,12 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         }
         if (IsDirty)
         {
-            StatusMessage = "请先保存测试项目的顺序、默认配置和修订，再确认本次运行。";
-            return;
+            await SaveAsync(silent: true);
+            if (IsDirty)
+            {
+                StatusMessage = "当前测试项目有未保存或无效修改，请先修正后重试检查。";
+                return;
+            }
         }
         if (DutIdentity.Length > 0 &&
             (string.IsNullOrWhiteSpace(DutIdentity) || DutIdentity != DutIdentity.Trim() ||
@@ -685,6 +700,11 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         PreflightSelectedCommand?.RaiseCanExecuteChanged();
         RunSelectedCommand?.RaiseCanExecuteChanged();
         StopSelectedCommand?.RaiseCanExecuteChanged();
+        if (!IsBusy && IsDirty)
+        {
+            _autosaveTimer.Stop();
+            _autosaveTimer.Start();
+        }
     }
     public bool ConfirmClose() =>
         !IsBusy && (!IsDirty || _dialogs.Confirm("测试项目有未保存的用例顺序修改。确定放弃吗？"));
@@ -698,10 +718,10 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         return !IsBusy && !IsDirty && Revision > previousRevision;
     }
 
-    private async Task SaveAsync()
+    private async Task SaveAsync(bool silent = false)
     {
+        if (!IsDirty || IsBusy) return;
         ResetFrozenSelection();
-        if (IsBusy) return;
         IsBusy = true;
         try
         {
@@ -723,7 +743,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
                                       AutoTest.Projects.Project.ProjectDataException)
         {
             StatusMessage = "保存测试项目失败：" + error.Message;
-            _dialogs.ShowError(StatusMessage);
+            if (!silent) _dialogs.ShowError(StatusMessage);
         }
         finally { IsBusy = false; }
     }
