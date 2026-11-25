@@ -746,9 +746,21 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
             }
             var captured = result.Event;
             var capturedHex = _source?.LastFrameHex ?? "";
-            // The scanner is only an input device. Engineering previews the
-            // current project expectation; production independently checks the
-            // pinned deployment with the SAME matcher, never a global rule.
+            // Diagnostic and formal screen must NOT show conflicting barcode
+            // interpretations. Read the same station publication, but never
+            // drive ECU actions or switch projects from this device console.
+            PublishedStationProductionConfiguration? release = null;
+            string publicationError = "";
+            try
+            {
+                release = await StationProductionConfigurationStore
+                    .LoadPublishedAsync(ct).ConfigureAwait(false);
+            }
+            catch (Exception error) when (error is IOException or InvalidDataException or
+                UnauthorizedAccessException or System.Text.Json.JsonException)
+            {
+                publicationError = error.Message;
+            }
             OnUi(() =>
             {
                 try
@@ -756,20 +768,27 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
                     LastRaw = captured.Scan.Text;
                     LastHex = capturedHex;
                     SampleRaw = captured.Scan.Text;
-                    var project = _workspace.Current?.Definition;
-                    var preview = ProductionBarcodePreflight.InspectExpected(captured.Scan.Text, project);
-                    LastModel = preview.ModelCode ?? "";
-                    LastSerial = preview.DutSerial ?? "";
-                    LastMappedFields = DescribeFields(preview.MappedFields);
-                    LastDecision = preview.Code;
+                    var preview = release is null ? null :
+                        ProductionIdentityResolver.Resolve(release, captured.Scan.Text);
+                    LastModel = preview?.Model ?? "";
+                    LastSerial = preview?.Serial ?? "";
+                    LastMappedFields = preview is { Accepted: true } accepted
+                        ? "编号=" + accepted.Serial + " · 型号=" + accepted.Model +
+                          " · 硬件=" + accepted.Hardware + " · 形制=" + accepted.RuleId
+                        : "";
+                    LastDecision = preview?.Code ?? "STATION_PUBLICATION_MISSING";
                     ProductionPreview = "";
                     _resolvedManifestPath = null;
-                    MatchedProjectName = preview.IdentityMatched ? project?.Name ?? "" : "";
+                    MatchedProjectName = preview?.Accepted == true
+                        ? preview.Project!.ModelCode : "";
                     SwitchProjectCommand.RaiseCanExecuteChanged();
-                    Status = project is null ? "已接收完整串口数据；工程扫码期望在检测准备中编辑。"
-                        : "开发工程预览：" + preview.Explanation;
-                    // Production consumes the same real frame, but never the
-                    // editable engineering preview or manually entered sample.
+                    Status = publicationError.Length > 0
+                        ? "工位发布配置不可读取：" + publicationError
+                        : preview is null
+                            ? "原始扫码已接收；生产准备尚未发布，不能解释为正式 DUT 身份。"
+                            : "已发布工位规则只读诊断：" + preview.Detail;
+                    // The formal home performs its own frozen full-resource
+                    // admission, and may reject an otherwise parsed identity.
                     try { CompleteBarcodeReceived?.Invoke(captured.Scan.Text); }
                     catch { /* UI observers cannot alter scanner safety. */ }
                 }
