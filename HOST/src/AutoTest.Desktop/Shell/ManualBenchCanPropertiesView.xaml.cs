@@ -5,27 +5,35 @@ using AutoTest.Desktop.Testing;
 
 namespace AutoTest.Desktop.Shell;
 
-/// <summary>Only the contents of a CAN property editor; the bench owns its overlay.</summary>
+/// <summary>
+/// Shared detailed CAN editor, pinned to ONE specific row. The source row must
+/// never silently switch merely because the engineer clicks another row in
+/// the underlying bench while its floating editor remains open.
+/// </summary>
 public partial class ManualBenchCanPropertiesView : UserControl
 {
+    private sealed record EditorContext(ManualBenchViewModel.BenchCanRow SelectedCanRow);
     private readonly ManualBenchViewModel _model;
+    private readonly ManualBenchViewModel.BenchCanRow _editedRow;
     public event EventHandler? CloseRequested;
 
-    public ManualBenchCanPropertiesView(ManualBenchViewModel model)
+    public ManualBenchCanPropertiesView(ManualBenchViewModel model,
+        ManualBenchViewModel.BenchCanRow? editedRow = null)
     {
-        if (model.SelectedCanRow is null)
+        _model = model ?? throw new ArgumentNullException(nameof(model));
+        _editedRow = editedRow ?? model.SelectedCanRow ??
             throw new InvalidOperationException("请先选择 CAN 报文。");
-        _model = model;
-        DataContext = model;
+        DataContext = new EditorContext(_editedRow);
         InitializeComponent();
-        model.SelectedCanRow.AttachUniqueMatchingDbc();
-        BenchDbcPicker.SetBenchChoices(model.DbcMessages, model.SelectedCanRow.DbcMessage);
+        _editedRow.AttachUniqueMatchingDbc();
+        BenchDbcPicker.SetBenchChoices(_model.DbcMessages, _editedRow.DbcMessage);
     }
 
     private void BenchDbcPicker_ChoiceCommitted(
         object? sender, BenchDbcReferenceChosenEventArgs e)
     {
-        if (_model.SelectedCanRow is not { } row || !row.CanEditFields) return;
+        if (!_editedRow.CanEditFields) return;
+        var row = _editedRow;
         SignalSearch.Clear();
         row.DbcMessage = e.Choice;
         BenchDbcPicker.SetBenchChoices(_model.DbcMessages, row.DbcMessage);
@@ -43,7 +51,8 @@ public partial class ManualBenchCanPropertiesView : UserControl
 
     private void ClearDbc_Click(object sender, RoutedEventArgs e)
     {
-        if (_model.SelectedCanRow is not { } row || !row.CanEditFields) return;
+        if (!_editedRow.CanEditFields) return;
+        var row = _editedRow;
         SignalSearch.Clear();
         row.ClearDbcAssistance();
         BenchDbcPicker.SetBenchChoices(_model.DbcMessages, null);
