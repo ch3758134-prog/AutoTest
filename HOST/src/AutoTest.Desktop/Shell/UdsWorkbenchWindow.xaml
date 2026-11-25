@@ -211,6 +211,11 @@
           TextWrapping="Wrap" Foreground="#38614D" Margin="0,0,0,6"/>
          <TextBlock x:Name="DidResponseText" FontFamily="Consolas"
           TextWrapping="Wrap" Margin="0,0,0,6"/>
+         <Button x:Name="ExportDidReportButton" Content="导出本次真实诊断记录…"
+          Click="ExportDidReport_Click" IsEnabled="False"
+          Style="{StaticResource UdsAction}" Margin="0,0,0,7"
+          HorizontalAlignment="Left"
+          ToolTip="仅导出当前会话实际记录的 PDU、CAN1 帧、主控身份和结果；非正式 RECORD"/>
          <ListBox x:Name="DidFrames" FontFamily="Consolas"
           FontSize="11" MaxHeight="165" MinHeight="44"/>
         </StackPanel>
