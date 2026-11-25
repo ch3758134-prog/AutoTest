@@ -31,6 +31,12 @@ public sealed partial class AutomaticTestHomeViewModel
     private string _operatorRunEvidence = "";
     private string _operatorFlashState = "尚未开始";
     private string _operatorRecordState = "尚无工程验证记录";
+    private string _operatorStepStatus = "未执行";
+    private string _operatorActual = "—";
+    private string _operatorExpected = "—";
+    private string _operatorFailure = "";
+    private int _operatorActiveCaseIndex = -1;
+    private StepId? _operatorActiveStepId;
     private Guid _operatorRunId;
     private Task? _operatorExecutionTask;
 
@@ -44,6 +50,9 @@ public sealed partial class AutomaticTestHomeViewModel
         {
             if (!SetProperty(ref _operatorRunning, value)) return;
             RaisePropertyChanged(nameof(StationReadiness));
+            RaisePropertyChanged(nameof(ProductionHeadline));
+            RaisePropertyChanged(nameof(ProductionGuidance));
+            RaisePropertyChanged(nameof(ProductionDisplayStage));
             RefreshOperatorCommands();
         }
     }
@@ -62,6 +71,11 @@ public sealed partial class AutomaticTestHomeViewModel
         get => _operatorCurrentStep;
         private set => SetProperty(ref _operatorCurrentStep, value);
     }
+    public string OperatorStepStatus { get => _operatorStepStatus; private set => SetProperty(ref _operatorStepStatus, value); }
+    public string OperatorActual { get => _operatorActual; private set => SetProperty(ref _operatorActual, value); }
+    public string OperatorExpected { get => _operatorExpected; private set => SetProperty(ref _operatorExpected, value); }
+    public string OperatorFailure { get => _operatorFailure; private set => SetProperty(ref _operatorFailure, value); }
+
     public string OperatorRunEvidence
     {
         get => _operatorRunEvidence;
@@ -122,7 +136,13 @@ public sealed partial class AutomaticTestHomeViewModel
         OnUi(() =>
         {
             if (!IsOperatorRunning) return;
+            _operatorActiveStepId = id;
             OperatorCurrentStep = name;
+            OperatorStepStatus = "执行中";
+            OperatorActual = "—";
+            OperatorExpected = "—";
+            OperatorFailure = "";
+            ChangeStepState(id, "执行中");
             if (OperatorEvents.Count < 1000)
                 AddOperatorEvent("步骤开始 · " + phase + " · " + name);
         });
@@ -131,6 +151,28 @@ public sealed partial class AutomaticTestHomeViewModel
         OnUi(() =>
         {
             if (!IsOperatorRunning) return;
+            var state = fact.Status switch
+            {
+                RealStepStatus.Completed => "执行完成（非单独 PASS）",
+                RealStepStatus.Skipped => "已跳过",
+                RealStepStatus.ConditionFalse => "条件不成立",
+                RealStepStatus.NoData => "无数据",
+                RealStepStatus.Timeout => "超时",
+                RealStepStatus.InvalidData => "数据无效",
+                RealStepStatus.DeviceError => "设备异常",
+                RealStepStatus.Cancelled => "已取消",
+                _ => "状态未知"
+            };
+            ChangeStepState(fact.Step, state);
+            if (_operatorActiveStepId == fact.Step)
+            {
+                OperatorStepStatus = state;
+                OperatorActual = string.IsNullOrWhiteSpace(fact.Actual) ? "—" : fact.Actual;
+                OperatorExpected = string.IsNullOrWhiteSpace(fact.Expected) ? "—" : fact.Expected;
+                OperatorFailure = fact.Status is RealStepStatus.Completed or
+                    RealStepStatus.Skipped or RealStepStatus.ConditionFalse
+                    ? "" : fact.Detail;
+            }
             if (fact.Status is not RealStepStatus.Completed && OperatorEvents.Count < 1000)
                 AddOperatorEvent("步骤 · " + fact.Type + " · " + fact.Status +
                     " · " + fact.Detail);
@@ -146,6 +188,35 @@ public sealed partial class AutomaticTestHomeViewModel
     {
         if (index < 0 || index >= Cases.Count) return;
         Cases[index] = Cases[index] with { State = status };
+    }
+
+    private static AutomaticTestStep ResetStepProjection(AutomaticTestStep step) =>
+        step with
+        {
+            State = step.State == "步骤已禁用（不执行)" ||
+                step.State == "步骤已禁用（不执行）" ? step.State : "未执行",
+            Children = step.Children.Select(ResetStepProjection).ToArray()
+        };
+
+    private static AutomaticTestStep UpdateStepProjection(AutomaticTestStep step,
+        StepId id, string state) =>
+        step with
+        {
+            State = step.AuthoredStepId == id ? state : step.State,
+            Children = step.Children.Select(child =>
+                UpdateStepProjection(child, id, state)).ToArray()
+        };
+
+    private void ChangeStepState(StepId id, string state)
+    {
+        if (_operatorActiveCaseIndex < 0 || _operatorActiveCaseIndex >= Cases.Count)
+            return;
+        var item = Cases[_operatorActiveCaseIndex];
+        Cases[_operatorActiveCaseIndex] = item with
+        {
+            Children = item.Children.Select(x =>
+                UpdateStepProjection(x, id, state)).ToArray()
+        };
     }
 
     private static async Task ApplyStationActionsAsync(
@@ -243,8 +314,19 @@ public sealed partial class AutomaticTestHomeViewModel
         OperatorFlashState = "尚未开始";
         OperatorRecordState = "准备记录工程验证事实";
         OperatorCurrentStep = "—";
+        OperatorCurrentCase = "—";
+        OperatorStepStatus = "未执行";
+        OperatorActual = OperatorExpected = "—";
+        OperatorFailure = "";
+        _operatorActiveCaseIndex = -1;
+        _operatorActiveStepId = null;
         IsOperatorRunning = true;
-        for (var i = 0; i < Cases.Count; i++) ChangeCaseState(i, "未执行");
+        for (var i = 0; i < Cases.Count; i++)
+            Cases[i] = Cases[i] with
+            {
+                State = "未执行",
+                Children = Cases[i].Children.Select(ResetStepProjection).ToArray()
+            };
         int activeCaseIndex = -1;
 
         void Snapshot()
@@ -317,6 +399,8 @@ public sealed partial class AutomaticTestHomeViewModel
                     throw new IOException("主控 USB 会话切换，不能继续使用本次烧录结果。");
                 var item = programs.Cases[i];
                 activeCaseIndex = i;
+                _operatorActiveCaseIndex = i;
+                _operatorActiveStepId = null;
                 OperatorCurrentCase = (i + 1) + "/" + programs.Cases.Count +
                     " · " + item.Entry.DisplayName;
                 OperatorCurrentStep = "正在准备...";
@@ -336,6 +420,7 @@ public sealed partial class AutomaticTestHomeViewModel
                     run.Run.Value, run.Verdict.ToString(), run.EvidencePath ?? ""));
                 ChangeCaseState(i, run.Verdict == RealTestVerdict.Passed ? "实测通过" :
                     "实测" + run.Verdict);
+                _operatorActiveStepId = null;
                 Snapshot();
                 AddOperatorEvent("用例完成 · " + item.Entry.DisplayName +
                     " · " + run.Verdict + " · Record " + run.Run.Value.ToString("N")[..8]);
@@ -386,6 +471,12 @@ public sealed partial class AutomaticTestHomeViewModel
             }
             AddOperatorEvent("KEY 输出状态：" + _hardware.KeyRequestStatus +
                 "；测试结束/停止没有自动发送释放帧");
+            if (_operatorActiveStepId is { } unfinished &&
+                OperatorStepStatus == "执行中")
+            {
+                ChangeStepState(unfinished, "中断，步骤结果未知");
+                OperatorStepStatus = "中断，步骤结果未知";
+            }
             if (activeCaseIndex >= 0 && activeCaseIndex < Cases.Count &&
                 Cases[activeCaseIndex].State == "执行中")
                 ChangeCaseState(activeCaseIndex, outcome == "操作员停止；实体状态待核查"
@@ -406,6 +497,8 @@ public sealed partial class AutomaticTestHomeViewModel
             }
             _operatorStop?.Dispose();
             _operatorStop = null;
+            _operatorActiveCaseIndex = -1;
+            _operatorActiveStepId = null;
             IsOperatorRunning = false;
             RefreshOperatorCommands();
             StartRequestStatus = OperatorRunState + "；正式生产放行仍需实体 START 与生产 RECORD 集成。";
