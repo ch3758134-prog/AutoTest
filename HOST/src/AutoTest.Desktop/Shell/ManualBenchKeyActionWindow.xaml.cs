@@ -56,8 +56,11 @@ public partial class ManualBenchKeyActionWindow : Window
             _autosaveTask = persistence;
             await persistence;
         }
-        catch (Exception error)
-        { System.Diagnostics.Trace.TraceWarning("KEY editor autosave failed: " + error); }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            _model.ReportBenchAutosaveFailure(error.Message);
+            System.Diagnostics.Trace.TraceWarning("KEY editor autosave failed: " + error);
+        }
         finally { _autosaveTask = null; _autosaveBusy = false; }
     }
 
