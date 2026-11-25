@@ -545,8 +545,11 @@ public partial class RecordHistoryWindow : Window
         CancelBatchExport.Visibility = Visibility.Visible;
         UpdateBatchExportAvailability();
         IProgress<int> progress = new Progress<int>(done =>
-            StatusText.Text = "已处理 " + done + " / " + selected.Length +
-                " 条真实归档记录…");
+        {
+            if (_batchRunning && !cancellation.IsCancellationRequested)
+                StatusText.Text = "已处理 " + done + " / " + selected.Length +
+                    " 条真实归档记录…";
+        });
         try
         {
             StatusText.Text = "正在批量读取真实 RECORD 并创建归档包…";
