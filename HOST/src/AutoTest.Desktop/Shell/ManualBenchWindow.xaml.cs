@@ -64,6 +64,7 @@ public partial class ManualBenchWindow : Window
             return;
         var command = _model.PressKeyPadCommand;
         if (command.CanExecute(pad)) command.Execute(pad);
+        else _model.ReportKeyPadUnavailable();
     }
 
     private void KeyPad_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
