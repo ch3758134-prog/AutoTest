@@ -345,9 +345,9 @@
          Padding="8,5" Margin="5,0,0,0" ToolTip="新建一个可保存到工程的 KEY 组合动作"/>
         <Button DockPanel.Dock="Right" Content="管理动作" Click="ManageKeyActions_Click"
          Padding="8,5" Margin="5,0,0,0" ToolTip="进入 20 KEY 组合和每段时间编辑器"/>
-        <Button DockPanel.Dock="Right" Content="保存修改"
-         Command="{Binding SaveKeyActionsCommand}" Padding="8,5" Margin="5,0,0,0"
-         ToolTip="成功保存后，快捷按钮才会使用新版本；未保存修改不会影响旧按钮"/>
+        <TextBlock DockPanel.Dock="Right" Text="{Binding KeyLibraryState}"
+         Foreground="#64788D" VerticalAlignment="Center" Margin="8,0,0,0"
+         ToolTip="KEY 动作有效修改会自动保存；单击按钮执行前也会先保存"/>
         <TextBlock Text="按键动作" FontSize="15" FontWeight="SemiBold"
          Foreground="#254D70" VerticalAlignment="Center"/>
        </DockPanel>
