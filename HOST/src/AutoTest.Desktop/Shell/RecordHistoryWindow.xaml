@@ -53,6 +53,7 @@
     <DataGrid x:Name="HistoryGrid" Grid.Row="0" AutoGenerateColumns="False"
      CanUserAddRows="False" IsReadOnly="True" HeadersVisibility="Column"
      SelectionMode="Extended" SelectionChanged="HistoryGrid_SelectionChanged"
+     MouseDoubleClick="HistoryGrid_DoubleClick" ToolTip="双击记录查看完整报告；Ctrl 多选用于批量打包"
      RowHeaderWidth="0" RowHeight="36" ColumnHeaderHeight="38"
      BorderThickness="0" GridLinesVisibility="Horizontal"
      HorizontalScrollBarVisibility="Auto">
