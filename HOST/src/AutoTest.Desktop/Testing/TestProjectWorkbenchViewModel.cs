@@ -743,11 +743,16 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         IsBusy = true;
         try
         {
+            var submittedName = Name;
             var changed = Compose();
             changed.Validate();
             var selectedItem = SelectedPackage;
             var selectedAvailableId = SelectedAvailable?.Asset.Id;
             _session = await _workspace.SaveTestProjectEditorAsync(_session, changed);
+            // Normalize only the same name draft that was just persisted. Do not
+            // overwrite a fresh keystroke made while asynchronous I/O ran.
+            if (string.Equals(Name, submittedName, StringComparison.Ordinal))
+                Name = _session.Document.Name;
             // Do not reconstruct bound rows after each autosave: preserves selection,
             // scroll, keyboard focus and transient engineer-only checkboxes.
             RefreshAvailable();
