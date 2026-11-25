@@ -446,3 +446,8 @@
 本轮完成 GitHub HEAD 上 13 个变更文件的二次结构读取：含 RecordHistoryWindow.xaml(.cs)、UdsWorkbenchWindow.xaml.cs、WaveWorkbenchWindow.xaml.cs、NativeFlashProfileDocument.cs、NativeFlashProfileWindow.xaml(.cs)、UdsReplayWorkspace.cs、UdsToolDocumentStore.cs、WaveDisplayContinuity.cs，以及三份对应测试。简单 C# 代码括号扫描与 XAML 标签/事件处理方法名检查没有找到闭合或处理函数缺失问题。此仅是辅助静态检查；不是 MSBuild 的 C# 编译、WPF XAML 资源类型/编译检查，更不是自动化测试结果。
 
 **八轮决定：79/100｜UI_DESIGN_GATE=BLOCKED｜PRODUCTION_GATE=BLOCKED｜BUILD=NOT_RUN｜TESTS=NOT_RUN｜WPF_HANDS_ON=NOT_RUN｜HARDWARE=NOT_RUN｜CI=NOT_RUN。**
+
+
+### 18.4 KEY_SIM 保持语义独立回查（不加分）
+
+额外回读 Shell/ManualBenchKeyActions.cs、Devices/Station/RawKeyAction.cs、Devices.Tests/ManualKeySequenceFenceTests.cs：真实动作库运行器只对非 WaitOnly 段授权并发送 KEY CAN；WaitOnly 只等待不生成掩码清零帧；保持时间结束后代码没有追加隐式 Release。明确掩码零才下发 ReleaseAll；Stop 取消任务并撤销 KEY 授权，没有伪造“已释放实际按键板电压”的 ACK。可见日志明确“主控 ACK 非五路实际电压”。这与现有 20 KEY／5 路电压和状态继续保持的已批准语义一致，但**不证明实物按键板保持/电压、断线异常状态已通过测试**。本轮未修改该链，未增加评分。
