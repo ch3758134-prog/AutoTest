@@ -48,6 +48,7 @@ public partial class UdsWorkbenchWindow : Window
     private bool _closing;
     private bool _closeApproved;
     private bool? _compactLayout;
+    private bool _showReplayInCompact;
     private long _documentRevision;
     private long _replayRevision;
 
@@ -76,7 +77,7 @@ public partial class UdsWorkbenchWindow : Window
     private void ApplyResponsiveLayout()
     {
         if (!IsLoaded || ActualWidth <= 0) return;
-        var compact = ActualWidth < 1120;
+        var compact = ActualWidth < 1120 || ActualHeight < 690;
         if (_compactLayout == compact) return;
         _compactLayout = compact;
         if (compact)
@@ -84,13 +85,15 @@ public partial class UdsWorkbenchWindow : Window
             UdsEditorColumn.Width = new GridLength(1, GridUnitType.Star);
             UdsGapColumn.Width = new GridLength(0);
             UdsReplayColumn.Width = new GridLength(0);
-            UdsPrimaryRow.Height = new GridLength(1.3, GridUnitType.Star);
-            UdsReplayRow.Height = new GridLength(1, GridUnitType.Star);
+            UdsPrimaryRow.Height = new GridLength(1, GridUnitType.Star);
+            UdsReplayRow.Height = new GridLength(0);
             UdsColumnSplitter.Visibility = Visibility.Collapsed;
-            UdsRowSplitter.Visibility = Visibility.Visible;
-            Grid.SetRow(UdsReplayPanel, 1);
+            UdsRowSplitter.Visibility = Visibility.Collapsed;
+            UdsCompactNavigation.Visibility = Visibility.Visible;
+            Grid.SetRow(UdsReplayPanel, 0);
             Grid.SetColumn(UdsReplayPanel, 0);
-            UdsReplayPanel.Margin = new Thickness(0, 8, 0, 0);
+            UdsReplayPanel.Margin = new Thickness(0);
+            ApplyCompactTab();
         }
         else
         {
@@ -101,10 +104,42 @@ public partial class UdsWorkbenchWindow : Window
             UdsReplayRow.Height = new GridLength(0);
             UdsColumnSplitter.Visibility = Visibility.Visible;
             UdsRowSplitter.Visibility = Visibility.Collapsed;
+            UdsCompactNavigation.Visibility = Visibility.Collapsed;
             Grid.SetRow(UdsReplayPanel, 0);
             Grid.SetColumn(UdsReplayPanel, 2);
             UdsReplayPanel.Margin = new Thickness(0);
+            UdsEditorPanel.Visibility = Visibility.Visible;
+            UdsReplayPanel.Visibility = Visibility.Visible;
         }
+    }
+
+    private void UdsServicesTab_Click(object sender, RoutedEventArgs e)
+    {
+        _showReplayInCompact = false;
+        ApplyCompactTab();
+    }
+
+    private void UdsReplayTab_Click(object sender, RoutedEventArgs e)
+    {
+        _showReplayInCompact = true;
+        ApplyCompactTab();
+    }
+
+    private void ApplyCompactTab()
+    {
+        if (_compactLayout != true) return;
+        UdsEditorPanel.Visibility = _showReplayInCompact ? Visibility.Collapsed : Visibility.Visible;
+        UdsReplayPanel.Visibility = _showReplayInCompact ? Visibility.Visible : Visibility.Collapsed;
+        UdsServicesTab.FontWeight = _showReplayInCompact ? FontWeights.Normal : FontWeights.SemiBold;
+        UdsReplayTab.FontWeight = _showReplayInCompact ? FontWeights.SemiBold : FontWeights.Normal;
+        UdsServicesTab.Background = _showReplayInCompact
+            ? System.Windows.Media.Brushes.White
+            : new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(230, 241, 255));
+        UdsReplayTab.Background = _showReplayInCompact
+            ? new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(230, 241, 255))
+            : System.Windows.Media.Brushes.White;
     }
 
     private void SetEditorInputsEnabled(bool enabled)
