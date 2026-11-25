@@ -35,7 +35,8 @@ public partial class TestEditorView : UserControl
         _viewModel.InspectorLoading += ShowInspectorLoading;
         _viewModel.ActionPaletteRequested += OpenActionPalette;
         _viewModel.AllowEditorAction = TryLeaveInspector;
-        _viewModel.CanAutoPersist = () => !IsPropertyEditorOpen;
+        _viewModel.CanAutoPersist = () =>
+            !IsPropertyEditorOpen && _activeQuickRow?.IsInlineEditing != true;
         Loaded += (_, _) =>
         {
             // A document tab can be unloaded/reloaded whenever the user switches
