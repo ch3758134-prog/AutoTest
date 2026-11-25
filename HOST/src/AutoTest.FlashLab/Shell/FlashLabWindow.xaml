@@ -3,21 +3,50 @@
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  Title="AutoTest · ECU 烧录" Width="1440" Height="850"
  MinWidth="800" MinHeight="480" WindowState="Normal"
- WindowStartupLocation="CenterOwner" Background="#F7F8F8"
- FontFamily="Microsoft YaHei UI" FontSize="13" Closing="Window_Closing">
+ WindowStartupLocation="CenterOwner" Background="#F5F7FA"
+ FontFamily="Segoe UI, Microsoft YaHei UI" FontSize="13" Closing="Window_Closing">
  <Window.Resources>
   <Style TargetType="Button">
    <Setter Property="Padding" Value="12,6"/>
    <Setter Property="Margin" Value="4,2"/>
-   <Setter Property="MinHeight" Value="31"/>
+   <Setter Property="MinHeight" Value="32"/>
    <Setter Property="Background" Value="White"/>
-   <Setter Property="Foreground" Value="#323C39"/>
-   <Setter Property="BorderBrush" Value="#D5E0DA"/>
+   <Setter Property="Foreground" Value="#263849"/>
+   <Setter Property="BorderBrush" Value="#D7E1EC"/>
+   <Setter Property="Template">
+    <Setter.Value>
+     <ControlTemplate TargetType="Button">
+      <Border x:Name="ButtonSurface" Background="{TemplateBinding Background}"
+       BorderBrush="{TemplateBinding BorderBrush}"
+       BorderThickness="{TemplateBinding BorderThickness}"
+       CornerRadius="5" TextElement.Foreground="{TemplateBinding Foreground}"
+       SnapsToDevicePixels="True">
+       <ContentPresenter Margin="{TemplateBinding Padding}"
+        HorizontalAlignment="Center" VerticalAlignment="Center"
+        RecognizesAccessKey="True"/>
+      </Border>
+      <ControlTemplate.Triggers>
+       <Trigger Property="IsMouseOver" Value="True">
+        <Setter TargetName="ButtonSurface" Property="BorderBrush" Value="#91B6DC"/>
+       </Trigger>
+       <Trigger Property="IsPressed" Value="True">
+        <Setter TargetName="ButtonSurface" Property="BorderBrush" Value="#5F9AD4"/>
+       </Trigger>
+       <Trigger Property="IsKeyboardFocused" Value="True">
+        <Setter TargetName="ButtonSurface" Property="BorderBrush" Value="#3478D6"/>
+       </Trigger>
+       <Trigger Property="IsEnabled" Value="False">
+        <Setter TargetName="ButtonSurface" Property="Opacity" Value="0.58"/>
+       </Trigger>
+      </ControlTemplate.Triggers>
+     </ControlTemplate>
+    </Setter.Value>
+   </Setter>
   </Style>
   <Style TargetType="TextBox">
    <Setter Property="Margin" Value="4,2"/>
    <Setter Property="Padding" Value="7,5"/>
-   <Setter Property="MinHeight" Value="29"/>
+   <Setter Property="MinHeight" Value="30"/>
    <Setter Property="Background" Value="White"/>
    <Setter Property="BorderBrush" Value="#D7E0DB"/>
   </Style>
