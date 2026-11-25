@@ -361,6 +361,7 @@ public sealed partial class AutomaticTestHomeViewModel
         var started = DateTimeOffset.UtcNow;
         var results = new List<RealOperatorCaseEvidence>();
         var flashState = "未执行";
+        var stationOperationsMayHaveStarted = false;
         var outcome = "未完成";
         string? failure = null;
         _operatorRunId = Guid.NewGuid();
@@ -421,12 +422,20 @@ public sealed partial class AutomaticTestHomeViewModel
             if (programs.Cases.Count != frozen.OrderedEnabledCases.Count ||
                 programs.Cases.Where((x, i) =>
                     x.Entry.ItemId != frozen.OrderedEnabledCases[i].EntryId ||
-                    x.Asset.Id.Value != frozen.OrderedEnabledCases[i].TestAssetId)
+                    x.Asset.Id.Value != frozen.OrderedEnabledCases[i].TestAssetId ||
+                    x.Asset.Revision != frozen.OrderedEnabledCases[i].Revision ||
+                    !string.Equals(x.ContentSha256,
+                        frozen.OrderedEnabledCases[i].Sha256,
+                        StringComparison.OrdinalIgnoreCase))
                     .Any())
                 throw new InvalidDataException("本次正式工程用例顺序已改变。");
             if (_hardware.IsManualCanBatchApproved || _hardware.IsManualKeyActionApproved)
                 throw new InvalidOperationException("手动任务仍占用工位；请先停止。");
 
+            // The resource and equipment checks above are read-only. Do not
+            // send fixture cleanup commands if an inspection was rejected
+            // before any physical command was even attempted.
+            stationOperationsMayHaveStarted = true;
             OperatorRunState = "准备工位 · 执行工程已保存的夹具/IGN 动作";
             await ApplyStationActionsAsync(
                 frozen.Fixture?.BeforeStart ?? [], _hardware, ct);
@@ -532,15 +541,20 @@ public sealed partial class AutomaticTestHomeViewModel
         {
             try
             {
-                OperatorRunState += " · 工位收尾";
-                using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(12));
-                await ApplyStationActionsAsync(
-                    frozen.Fixture?.AfterFinish ?? [], _hardware, cleanup.Token);
-                AddOperatorEvent("工程配置的后置工位动作已发送；现场实际状态仍需确认");
+                if (stationOperationsMayHaveStarted)
+                {
+                    OperatorRunState += " · 工位收尾";
+                    using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(12));
+                    await ApplyStationActionsAsync(
+                        frozen.Fixture?.AfterFinish ?? [], _hardware, cleanup.Token);
+                    AddOperatorEvent("工程配置的后置工位动作已发送；现场实际状态仍需确认");
+                }
+                else
+                    AddOperatorEvent("预检失败发生在物理动作之前；未向夹具/IGN 发送收尾指令");
             }
             catch (Exception error)
             {
-                        outcome = "收尾异常 · 不可作为合格结果";
+                outcome = "收尾异常 · 不可作为合格结果";
                 failure = (failure is null ? "" : failure + "；") +
                     "收尾动作失败：" + error.Message;
                 OperatorRunState = outcome;
@@ -568,7 +582,7 @@ public sealed partial class AutomaticTestHomeViewModel
             }
             catch (Exception error)
             {
-                        OperatorRunState = "记录保存失败；结果不可放行";
+                OperatorRunState = "记录保存失败；结果不可放行";
                 OperatorRecordState = "记录保存失败：" + error.Message;
                 AddOperatorEvent("本次真实运行汇总未能归档：" + error.Message);
             }
