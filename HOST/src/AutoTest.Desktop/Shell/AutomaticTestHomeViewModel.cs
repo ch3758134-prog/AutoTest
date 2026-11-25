@@ -440,7 +440,16 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
 
     private void OnEcuCanBitrateChanged(int targetKbps) => OnUi(() =>
     {
-        if (!IsOperatorRunning && _prepared is { } prepared &&
+        if (IsOperatorRunning)
+        {
+            AddOperatorEvent("实体整组验证期间 ECU CAN 目标码率或主控读回状态变化，" +
+                "请求停止；后续 FLASH/TEST 不再继承旧配置。");
+            _operatorStop?.Cancel();
+            _operatorEngine.RequestStop();
+            UpdateConnection();
+            return;
+        }
+        if (_prepared is { } prepared &&
             (prepared.EcuCanKbps != targetKbps || !_hardware.IsEcuCanBitrateApplied))
             InvalidateScan("ECU CAN 配置在扫码后变化；旧测试准备已失效，请确认码率并重新扫码。");
         UpdateConnection();
