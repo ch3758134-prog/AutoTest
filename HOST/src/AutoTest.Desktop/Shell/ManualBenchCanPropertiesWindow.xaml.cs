@@ -17,7 +17,7 @@ public partial class ManualBenchCanPropertiesWindow : Window
     private readonly ManualBenchViewModel _model;
     private readonly ManualBenchViewModel.BenchCanRow _row;
     private readonly DispatcherTimer _autosave = new()
-        { Interval = TimeSpan.FromSeconds(7) };
+        { Interval = TimeSpan.FromSeconds(2) };
     private Task? _autosaveTask;
     private bool _autosaveBusy;
     private bool _closingForSave;
@@ -64,7 +64,7 @@ public partial class ManualBenchCanPropertiesWindow : Window
     {
         if (_autosaveBusy || _closingForSave || !IsActive || !IsEnabled ||
             !_model.CanRowsDirty ||
-            DateTime.UtcNow - _lastInteractionUtc < TimeSpan.FromSeconds(3)) return;
+            DateTime.UtcNow - _lastInteractionUtc < TimeSpan.FromSeconds(2)) return;
         _autosaveBusy = true;
         try
         {
