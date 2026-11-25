@@ -9,6 +9,7 @@ public partial class ResourceNameDialog : Window
     public ResourceNameDialog(string title, string initialName)
     {
         InitializeComponent();
+        Loaded += (_, _) => AutoTest.Desktop.Shell.DesktopWindowSizing.FitToVisibleWorkspace(this);
         Title = title;
         Prompt.Text = title;
         ResourceNameInput.Text = initialName;
