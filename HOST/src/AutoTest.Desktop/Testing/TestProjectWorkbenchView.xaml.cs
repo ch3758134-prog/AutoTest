@@ -51,7 +51,7 @@ public partial class TestProjectWorkbenchView : UserControl
             "\n\n当前正式 TEST 资源：" +
             "\n  Revision " + asset.Revision + "\n  SHA256 " + asset.Sha256 +
             "\n\n只更新当前这一条执行条目，不修改其他条目或历史记录。" +
-            "\n需要保存测试项目，修改才会持久化。\n\n是否采用当前修订？",
+            "\n确认后将自动保存当前项目的这条引用。\n\n是否采用当前修订？",
             "检查并更新本条 TEST 引用", MessageBoxButton.YesNo,
             MessageBoxImage.Question, MessageBoxResult.No);
         if (answer == MessageBoxResult.Yes)
@@ -69,7 +69,7 @@ public partial class TestProjectWorkbenchView : UserControl
         var result = MessageBox.Show(Window.GetWindow(this),
             "测试项目中的每条有序用例实例都属于正式检测。\n\n" +
             "旧工程中的「" + row.Name + "」当前被标记为排除。\n" +
-            "恢复后本条将参与工程完整检测；需要保存并重新完成资源检查。\n\n" +
+            "恢复后本条将参与工程完整检测；系统自动保存，运行前需重新完成资源检查。\n\n" +
             "确认恢复这条历史排除记录？",
             "恢复完整检测顺序", MessageBoxButton.YesNo,
             MessageBoxImage.Warning, MessageBoxResult.No);
