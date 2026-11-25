@@ -15,6 +15,7 @@ public partial class KeyMaskPickerDialog : Window
             throw new ArgumentOutOfRangeException(nameof(initialMask));
         SelectedMask = initialMask;
         InitializeComponent();
+        Loaded += (_, _) => AutoTest.Desktop.Shell.DesktopWindowSizing.FitToVisibleWorkspace(this);
         Heading.Text = heading;
         for (var i = 0; i < _keys.Length; i++)
         {
