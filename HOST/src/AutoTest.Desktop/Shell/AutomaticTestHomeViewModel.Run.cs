@@ -603,6 +603,14 @@ public sealed partial class AutomaticTestHomeViewModel
                     " · " + run.Verdict + " · Record " + run.Run.Value.ToString("N")[..8]);
                 if (run.Verdict == RealTestVerdict.Failed)
                 {
+                    // A failed PREPARE gate or failed scripted CLEANUP is a
+                    // prerequisite/physical-state fault, not a normal ECU
+                    // functional FAIL that can safely be carried forward.
+                    if (run.Facts.Any(f => f.Type == "PrepareGate" ||
+                        f.Phase is TestPhase.Prepare or TestPhase.Cleanup &&
+                        f.Status is not (RealStepStatus.Completed or RealStepStatus.Skipped)))
+                        throw new InvalidDataException("用例准备或收尾失败，不允许继续下一台架动作：" +
+                            item.Entry.DisplayName + "；请检查对应 StepOccurrence。");
                     // A functional FAIL remains in its own RECORD and in the
                     // overall verdict, but does not automatically tear down a
                     // healthy VCU environment needed by subsequent diagnostics.
