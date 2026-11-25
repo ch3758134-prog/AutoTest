@@ -104,7 +104,8 @@ public sealed partial class AutomaticTestHomeViewModel
                 return;
             }
             var decision = await ProductionPreparationService.PrepareAsync(
-                plan.Project, parsed.ModelCode, parsed.DutSerial);
+                plan.Project, parsed.ModelCode, parsed.DutSerial,
+                requireProductionDeployment: _isProductionWorkspace());
             if (!decision.ConfigurationReady)
             {
                 Reject("本次正式资源无法冻结：" + decision.Explanation);
