@@ -866,7 +866,21 @@ public sealed class DbcWorkbenchViewModel : BindableBase
                 _session = await _workspace.SaveDbcEditorAsync(_session);
                 StatusMessage = "DBC 已保存、重新读取并更新工程资源修订 " + AssetRevision;
             }
-            RefreshDocument(messageId, signalName);
+            if (silent)
+            {
+                // The canonical DBC document has been persisted and re-read,
+                // but rebuilding observable message/signal rows during an idle
+                // save would discard scroll position, selection and keyboard focus.
+                // Edits themselves already refresh those rows synchronously.
+                RaisePropertyChanged(nameof(AssetRevision));
+                RaisePropertyChanged(nameof(FilePath));
+                RaisePropertyChanged(nameof(SourceDescription));
+                RaisePropertyChanged(nameof(CanEdit));
+                RaisePropertyChanged(nameof(StateDescription));
+                RaisePropertyChanged(nameof(UnsupportedDescription));
+            }
+            else
+                RefreshDocument(messageId, signalName);
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or
                                         ProjectDataException or InvalidDataException or FormatException or
