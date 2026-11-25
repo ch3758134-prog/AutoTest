@@ -752,7 +752,7 @@ public partial class FlashLabWindow : Window
                 $"固件：{Path.GetFileName(frozen.FirmwarePath)}\n"+
                 $"擦除范围：0x{frozen.FlashStart:X8} - 0x{frozen.FlashEndInclusive:X8}\n\n"+
                 "将对真实 ECU 擦除并写入，请确认型号与固件匹配、供电稳定。\n"+
-                "安全算法尚未经这台 ECU 验证。\n\n"+
+                "请核对当前安全文件、固件及 ECU 型号与已批准烧录工艺一致。\n\n"+
                 "确定开始烧录？",
                 "确认开始烧录",MessageBoxButton.YesNo,
                 MessageBoxImage.Warning,MessageBoxResult.No);
