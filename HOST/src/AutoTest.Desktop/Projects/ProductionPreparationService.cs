@@ -100,7 +100,10 @@ public static class ProductionPreparationService
             !manifestSha.Equals(opened.ManifestSha256, StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("工程已发生变更，必须重新打开工程及扫码。");
 
-        actual = await ProjectWorkspaceService.ReadCurrentResourceMetadataAsync(actual, opened.RootDirectory, ct).ConfigureAwait(false);
+        // The production manifest is the frozen authority. Never reconcile
+        // modified files into a new in-memory SHA/Revision: that would hide
+        // external TEST/DBC/wave asset substitution without a saved project
+        // revision. ReadPinnedAsync must reject every changed required asset.
         opened = opened with { Definition = actual };
 
         // Only required production resources may authorize execution;
