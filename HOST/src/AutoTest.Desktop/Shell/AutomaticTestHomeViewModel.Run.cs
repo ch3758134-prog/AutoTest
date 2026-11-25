@@ -41,6 +41,7 @@ public sealed partial class AutomaticTestHomeViewModel
     private Guid _operatorRunId;
     private Task? _operatorExecutionTask;
 
+    public DelegateCommand ArmOperatorVerificationCommand { get; private set; } = null!;
     public DelegateCommand StartOperatorVerificationCommand { get; private set; } = null!;
     public DelegateCommand StopOperatorVerificationCommand { get; private set; } = null!;
     public ObservableCollection<string> OperatorEvents { get; } = new();
@@ -137,6 +138,9 @@ public sealed partial class AutomaticTestHomeViewModel
     private void InitializeOperatorExecution(RealTestWorkbenchService engine)
     {
         _operatorEngine = engine;
+        ArmOperatorVerificationCommand = new DelegateCommand(
+            ArmEngineeringVerification,
+            () => !_isProductionWorkspace() && !IsOperatorRunning);
         StartOperatorVerificationCommand = new DelegateCommand(
             async () =>
             {
@@ -158,6 +162,7 @@ public sealed partial class AutomaticTestHomeViewModel
 
     private void RefreshOperatorCommands()
     {
+        ArmOperatorVerificationCommand?.RaiseCanExecuteChanged();
         StartOperatorVerificationCommand?.RaiseCanExecuteChanged();
         StopOperatorVerificationCommand?.RaiseCanExecuteChanged();
         RaisePropertyChanged(nameof(CanStartOperatorVerification));
