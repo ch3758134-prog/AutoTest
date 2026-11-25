@@ -60,6 +60,45 @@ public sealed class StepEditTransaction
         Apply(EditList(baseDocument, phase, parent, slot, nodes => nodes.SetItem(index, edited)));
     }
 
+    /// <summary>
+    /// An explicit operator-approved replacement of the single named mapping
+    /// (all references in this TEST use that name). Never silently move an
+    /// unrelated DBC, change CAN ID, change signal identity or modify an
+    /// unrelated asset. The map and edited step form ONE undo transaction.
+    /// </summary>
+    public static bool CanRebindSamePhysicalIdentity(
+        TestTargetMapping existing, TestTargetMapping proposed) =>
+        string.Equals(existing.Name, proposed.Name, StringComparison.OrdinalIgnoreCase) &&
+        existing.Kind is TestTargetKind.Signal or TestTargetKind.CanMessage or
+            TestTargetKind.Button or TestTargetKind.WaveProfile &&
+        existing.Kind == proposed.Kind && existing.Asset == proposed.Asset &&
+        existing.Role == proposed.Role && existing.CanId == proposed.CanId &&
+        existing.Extended == proposed.Extended &&
+        existing.SignalName == proposed.SignalName &&
+        existing.ControllerId == proposed.ControllerId &&
+        existing.StateId == proposed.StateId;
+
+    public void ReplaceWithExplicitRebind(StepId id, StepNode edited,
+        TestTargetMapping proposed)
+    {
+        if (id != edited.Id) throw new ArgumentException("Step identity changed.");
+        proposed.Validate();
+        var index = Array.FindIndex(Current.Mappings.ToArray(),
+            m => string.Equals(m.Name, proposed.Name,
+                StringComparison.OrdinalIgnoreCase));
+        if (index < 0 || !CanRebindSamePhysicalIdentity(Current.Mappings[index], proposed))
+            throw new InvalidOperationException(
+                "仅允许在确认后更新同一硬件身份、同一工程资产的修订；不同资产或 CAN 信号须分别建立独立绑定。");
+        var updated = Current.Mappings.SetItem(index, proposed);
+        var errors = TestTargetMappings.Validate(updated);
+        if (errors.Length != 0)
+            throw new InvalidDataException(string.Join("; ", errors));
+        var (phase, parent, slot, position) = Find(id);
+        var document = Current with { Mappings = updated };
+        Apply(EditList(document, phase, parent, slot,
+            nodes => nodes.SetItem(position, edited)));
+    }
+
     private static TestDocument WithMapping(TestDocument doc, TestTargetMapping? mapping)
     {
         if (mapping is null) return doc;
