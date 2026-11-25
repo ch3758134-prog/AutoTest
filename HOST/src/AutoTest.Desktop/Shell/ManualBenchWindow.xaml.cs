@@ -275,8 +275,11 @@ public partial class ManualBenchWindow : Window
             if (_model.CanSaveKeyActions && !_model.IsKeyActionRunning)
                 await _model.SaveKeyActionsForCloseAsync();
         }
-        catch (Exception error)
-        { System.Diagnostics.Trace.TraceWarning("Manual bench draft autosave error: " + error); }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            _model.ReportBenchAutosaveFailure(error.Message);
+            System.Diagnostics.Trace.TraceWarning("Manual bench draft autosave error: " + error);
+        }
         finally { _keyAutosaveBusy = false; }
     }
 
