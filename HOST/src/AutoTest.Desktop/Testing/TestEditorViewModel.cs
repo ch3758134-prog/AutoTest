@@ -103,7 +103,7 @@ public sealed class TestEditorViewModel : BindableBase
         PrepareRunApprovalCommand = new DelegateCommand(PrepareRealRunApproval,
             () => !IsBusy && !IsDirty && !HasNewStepDraft);
         RunCommand = new DelegateCommand(async () => await RunCurrentCaseInteractiveAsync(),
-            () => !IsBusy && !IsDirty && !HasNewStepDraft);
+            () => !IsBusy && !HasNewStepDraft);
         RunSelectedStepCommand = new DelegateCommand(
             async () => await RunSelectedStepInteractiveAsync(),
             () => !IsBusy && !HasNewStepDraft &&
