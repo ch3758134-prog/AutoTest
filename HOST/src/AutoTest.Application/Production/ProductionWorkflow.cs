@@ -32,6 +32,9 @@ public sealed class ProductionWorkflow
         if (begin.Outcome != Outcome.Accepted || session.Job is null)
             throw new InvalidOperationException("RUN_NOT_READY");
         var job = session.Job;
+        // Persist the stage where physical side effects may have started.
+        // This is an uncertainty marker, NOT a successful stage proof.
+        var stage = "PREFLIGHT";
         try
         {
             if (!job.IsMock && !job.Configuration.RequiresFlash)
@@ -50,6 +53,7 @@ public sealed class ProductionWorkflow
             }
             if (job.Configuration.RequiresFlash)
             {
+                stage = "FLASH";
                 var flash = await _executor.ExecuteFlashAsync(job, ct).ConfigureAwait(false);
                 // FLASH is destructive. A simulated stage, missing physical
                 // evidence or a non-durable fact can NEVER authorize TEST.
@@ -76,6 +80,7 @@ public sealed class ProductionWorkflow
                         false, false, reason);
                 }
             }
+            stage = "TEST";
             var test = await _executor.ExecuteTestAsync(job, ct).ConfigureAwait(false);
             // A development/simulation judgement must not enter a physical
             // production result path. The caller still gets an explicit fact.
@@ -103,6 +108,7 @@ public sealed class ProductionWorkflow
                 return new(job.Run, ProductionState.Unknown, Verdict.Inconclusive,
                     false, false, "TEST_EVIDENCE_MISSING");
             }
+            stage = "RECORD_COMMIT";
             session.Mark(ProductionState.AwaitingCommit);
             var result = await _records.FinalizeAsync(job, test, ct).ConfigureAwait(false);
             if (result.State != ProductionState.AwaitingCommit)
@@ -111,6 +117,8 @@ public sealed class ProductionWorkflow
         }
         catch (OperationCanceledException)
         {
+            await TryAppendTerminalUncertaintyAsync(job,
+                "RUN_CANCELLED_AT_" + stage);
             session.Mark(ProductionState.Aborted, "OPERATION_CANCELLED");
             return new(job.Run, ProductionState.Aborted, Verdict.Inconclusive,
                 false, false, "OPERATION_CANCELLED");
@@ -118,9 +126,33 @@ public sealed class ProductionWorkflow
         catch (Exception)
         {
             // An exception cannot establish that hardware did nothing. Fail closed.
+            await TryAppendTerminalUncertaintyAsync(job,
+                "RUN_EXCEPTION_AT_" + stage);
             session.Mark(ProductionState.Unknown, "RUN_UNEXPECTED_EXCEPTION");
             return new(job.Run, ProductionState.Unknown, Verdict.Inconclusive,
                 false, false, "RUN_UNEXPECTED_EXCEPTION");
+        }
+    }
+
+    private async Task TryAppendTerminalUncertaintyAsync(
+        ProductionJobSnapshot job, string stageCode)
+    {
+        // A cancelled operator token must not suppress the terminal
+        // uncertainty fact. Use a bounded independent commit attempt; if
+        // durable storage is unavailable, leave the run UNKNOWN/ABORTED
+        // rather than claiming an inspection verdict.
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+        try
+        {
+            _ = await _records.AppendAsync(job, stageCode,
+                RunFactKind.Uncertainty, EvidenceQuality.Unknown,
+                deadline.Token).ConfigureAwait(false);
+        }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            System.Diagnostics.Trace.TraceWarning(
+                "Production terminal uncertainty could not be persisted: " +
+                stageCode + " " + error);
         }
     }
 
