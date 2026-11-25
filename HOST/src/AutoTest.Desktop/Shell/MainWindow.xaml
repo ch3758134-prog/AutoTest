@@ -83,25 +83,6 @@
    <DockPanel LastChildFill="True">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center"
      chrome:WindowChrome.IsHitTestVisibleInChrome="True">
-     <Button Content="记录与报告" Command="{Binding OpenRecordHistoryCommand}"
-      Style="{StaticResource AtQuietButton}" FontSize="13" Foreground="#334D69"
-      MinHeight="26" Padding="10,3" Margin="0,0,8,0"
-      ToolTip="按 ECU 编号查询真实检测和开发记录、查看与导出报告"/>
-     <!-- Engineering is a global workspace action, never an operator
-          production command. This menu does not pretend to provide access control. -->
-     <Menu Background="Transparent" VerticalAlignment="Center" FontSize="13"
-      Margin="0,0,8,0"
-      Visibility="{Binding IsProductionWorkspace,Converter={StaticResource BoolToVisibility}}">
-      <MenuItem Header="管理">
-       <MenuItem Header="进入开发与调试"
-        Command="{Binding ShowEngineerWorkspaceCommand}"
-        ToolTip="离开生产监视界面，进入工程编辑工作区"/>
-      </MenuItem>
-     </Menu>
-     <Button Content="返回自动测试" Command="{Binding ShowProductionWorkspaceCommand}"
-      Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}"
-      Style="{StaticResource AtQuietButton}" FontSize="13" Foreground="#245A94"
-      MinHeight="26" Padding="10,3" Margin="0,0,8,0"/>
      <TextBlock Text="{Binding MainUsbDisplay}" FontSize="13" FontWeight="SemiBold"
       ToolTip="{Binding HardwareStatus}" Foreground="#345B76"
       VerticalAlignment="Center" MaxWidth="170" TextTrimming="CharacterEllipsis"
@@ -139,6 +120,25 @@
      <TextBlock Text="· 自动测试" Margin="8,0,0,0" Foreground="#51667A"
       FontSize="12" VerticalAlignment="Center"
       Visibility="{Binding IsProductionWorkspace,Converter={StaticResource BoolToVisibility}}"/>
+    </StackPanel>
+    <!-- Product workspaces are first-level tasks, not hidden branches of
+         scanner settings or the TEST inspector. These commands reuse the
+         established actual production, engineering, preparation and RECORD
+         services, never a second test executor. -->
+    <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="9,0,8,0"
+     VerticalAlignment="Center" chrome:WindowChrome.IsHitTestVisibleInChrome="True">
+     <Button Content="生产检测" Command="{Binding ShowProductionWorkspaceCommand}"
+      Style="{StaticResource AtQuietButton}" FontSize="13" Margin="0,0,2,0"
+      Padding="9,5" ToolTip="扫码、工装、真实实体 START、FLASH、完整 TEST 与结论；不能在此编辑配置"/>
+     <Button Content="工程开发" Command="{Binding ShowEngineerWorkspaceCommand}"
+      Style="{StaticResource AtQuietButton}" FontSize="13" Margin="0,0,2,0"
+      Padding="9,5" ToolTip="ECU 工程、唯一 TEST、公共流程、DBC/波形、原生烧录与独立调试工具"/>
+     <Button Content="生产准备" Command="{Binding NavigateProductionPreparationCommand}"
+      Style="{StaticResource AtQuietButton}" FontSize="13" Margin="0,0,2,0"
+      Padding="9,5" ToolTip="工位产品识别、型号工程绑定、真实设备与工装、发布和试扫"/>
+     <Button Content="记录与报告" Command="{Binding OpenRecordHistoryCommand}"
+      Style="{StaticResource AtQuietButton}" FontSize="13"
+      Padding="9,5" ToolTip="真实 SQLite RECORD：按同一 ECU 编号查看检测与复检的完整证据"/>
     </StackPanel>
     <Menu Background="Transparent" VerticalAlignment="Center" FontSize="13"
      Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}"

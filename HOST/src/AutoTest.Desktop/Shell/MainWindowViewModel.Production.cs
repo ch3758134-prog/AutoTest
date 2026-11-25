@@ -44,6 +44,10 @@ public sealed partial class MainWindowViewModel
     public DelegateCommand ShowEngineeringFullRunMonitorCommand { get; private set; } = null!;
     public DelegateCommand ConfirmProductionConfigurationCommand { get; private set; } = null!;
     public DelegateCommand OpenProductionPreparationCommand { get; private set; } = null!;
+    /// <summary>The first-level task entry stays available even when starting
+    /// in production. It first goes through the existing safe mode transition,
+    /// then opens the single preparation workbench; it never creates a recipe.</summary>
+    public DelegateCommand NavigateProductionPreparationCommand { get; private set; } = null!;
     private ProductionPreparationWindow? _productionPreparationWindow;
 
     private void InitializeProductionWorkspace()
@@ -78,6 +82,18 @@ public sealed partial class MainWindowViewModel
             async () => await ShowDeveloperAsync());
         ShowProductionWorkspaceCommand = new DelegateCommand(
             async () => await ShowAutomaticTestAsync());
+        NavigateProductionPreparationCommand = new DelegateCommand(async () =>
+        {
+            if (_realTest.IsRunning || _automaticTestHome.IsOperatorRunning ||
+                _hardware.IsTestRunApproved || _hardware.IsFlashSecuritySensitive ||
+                _hardware.HasManualCanRowLeases)
+            {
+                StatusMessage = "当前工位存在实际运行或设备资源占用；请先完成安全收尾再进入生产准备。";
+                return;
+            }
+            await ShowDeveloperAsync();
+            if (IsEngineerWorkspace) OpenProductionPreparationWindow();
+        });
     }
 
     private void OpenProductionPreparationWindow()
@@ -331,6 +347,7 @@ public sealed partial class MainWindowViewModel
         ShowEngineeringFullRunMonitorCommand?.RaiseCanExecuteChanged();
         ConfirmProductionConfigurationCommand?.RaiseCanExecuteChanged();
         OpenProductionPreparationCommand?.RaiseCanExecuteChanged();
+        NavigateProductionPreparationCommand?.RaiseCanExecuteChanged();
         StatusMessage = automaticTest
             ? "自动测试使用当前保存的 ECU 工程。"
             : "开发与调试工作区：可独立打开、编辑 ECU 工程。";

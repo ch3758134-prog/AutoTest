@@ -7,6 +7,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Data;
 using Microsoft.Win32;
 using AutoTest.Records.Exports;
 using AutoTest.Records.Operations;
@@ -265,7 +266,13 @@ public partial class RecordHistoryWindow : Window
             }
             var visible = rows.OrderByDescending(row => row.Source.StartedUtc)
                 .ThenBy(row => row.Source.RunId, StringComparer.Ordinal).Take(500).ToArray();
-            HistoryGrid.ItemsSource = visible;
+            // One DUT can own multiple committed or interrupted attempts.
+            // Group the existing immutable query rows by their real DUT ID;
+            // do not infer a new UUT from each scan or merge separate Runs.
+            var grouped = CollectionViewSource.GetDefaultView(visible);
+            grouped.GroupDescriptions?.Add(
+                new PropertyGroupDescription(nameof(RecordHistoryDisplayRow.DutId)));
+            HistoryGrid.ItemsSource = grouped;
             ClearSelectedFacts();
             SelectionSummary.Text = visible.Length == 0
                 ? "未找到符合条件的归档记录" : "选择一条记录查看详情";
