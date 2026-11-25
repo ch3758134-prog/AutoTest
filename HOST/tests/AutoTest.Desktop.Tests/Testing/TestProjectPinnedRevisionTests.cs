@@ -67,4 +67,18 @@ public sealed class TestProjectPinnedRevisionTests
         Assert.False(row.RunSelected);
         Assert.True(row.ToEntry().Enabled);
     }
+
+    [Fact]
+    public void OlderResourceRevisionCannotDowngradePinnedExecution()
+    {
+        var item = new TestProjectEntry(Guid.NewGuid(), Guid.NewGuid(), 8,
+            new string('E', 64), "驻车检查", true);
+        var row = new TestProjectPackageRow(item);
+        row.RefreshAvailableRevision(6, new string('F', 64));
+        Assert.False(row.CanAdoptLatest);
+        Assert.Contains("修订倒退", row.PinStatus);
+        row.AdoptCurrentRevision();
+        Assert.Equal(8, row.ToEntry().PackageRevision);
+        Assert.Equal(new string('E', 64), row.ToEntry().PackageSha256);
+    }
 }
