@@ -369,10 +369,12 @@ public sealed class ProductionOrchestrationTests
     {
         public int TestCalls { get; private set; }
         public ValueTask<ProductionStageResult> ExecuteFlashAsync(
-            ProductionJobSnapshot job, CancellationToken ct) =>
-            throw cancelled
-                ? new OperationCanceledException("Operator stop during FLASH")
-                : new IOException("Real FLASH transport failure");
+            ProductionJobSnapshot job, CancellationToken ct)
+        {
+            if (cancelled)
+                throw new OperationCanceledException("Operator stop during FLASH");
+            throw new IOException("Real FLASH transport failure");
+        }
         public ValueTask<ProductionStageResult> ExecuteTestAsync(
             ProductionJobSnapshot job, CancellationToken ct)
         {
