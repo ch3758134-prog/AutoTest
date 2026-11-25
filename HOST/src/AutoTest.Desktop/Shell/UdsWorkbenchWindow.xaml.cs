@@ -47,6 +47,9 @@ public partial class UdsWorkbenchWindow : Window
     private bool _dirty;
     private bool _closing;
     private bool _closeApproved;
+    private bool? _compactLayout;
+    private long _documentRevision;
+    private long _replayRevision;
 
     public UdsWorkbenchWindow()
     {
@@ -63,10 +66,45 @@ public partial class UdsWorkbenchWindow : Window
             try { await SaveCurrentAsync(_documentPath, silent: true); }
             catch (Exception error) { StatusText.Text = "自动保存未完成：" + error.Message; }
         };
-        Loaded += (_, _) => _autosave.Start();
+        Loaded += (_, _) => { _autosave.Start(); ApplyResponsiveLayout(); };
+        SizeChanged += (_, _) => ApplyResponsiveLayout();
         Closing += ClosingGuard;
         Closed += (_, _) => _autosave.Stop();
         ServiceRows.CollectionChanged += (_, _) => { MarkDirty(); UpdateReplayAvailability(); };
+    }
+
+    private void ApplyResponsiveLayout()
+    {
+        if (!IsLoaded || ActualWidth <= 0) return;
+        var compact = ActualWidth < 1120;
+        if (_compactLayout == compact) return;
+        _compactLayout = compact;
+        if (compact)
+        {
+            UdsEditorColumn.Width = new GridLength(1, GridUnitType.Star);
+            UdsGapColumn.Width = new GridLength(0);
+            UdsReplayColumn.Width = new GridLength(0);
+            UdsPrimaryRow.Height = new GridLength(1.3, GridUnitType.Star);
+            UdsReplayRow.Height = new GridLength(1, GridUnitType.Star);
+            UdsColumnSplitter.Visibility = Visibility.Collapsed;
+            UdsRowSplitter.Visibility = Visibility.Visible;
+            Grid.SetRow(UdsReplayPanel, 1);
+            Grid.SetColumn(UdsReplayPanel, 0);
+            UdsReplayPanel.Margin = new Thickness(0, 8, 0, 0);
+        }
+        else
+        {
+            UdsEditorColumn.Width = new GridLength(1.15, GridUnitType.Star);
+            UdsGapColumn.Width = new GridLength(7);
+            UdsReplayColumn.Width = new GridLength(1, GridUnitType.Star);
+            UdsPrimaryRow.Height = new GridLength(1, GridUnitType.Star);
+            UdsReplayRow.Height = new GridLength(0);
+            UdsColumnSplitter.Visibility = Visibility.Visible;
+            UdsRowSplitter.Visibility = Visibility.Collapsed;
+            Grid.SetRow(UdsReplayPanel, 0);
+            Grid.SetColumn(UdsReplayPanel, 2);
+            UdsReplayPanel.Margin = new Thickness(0);
+        }
     }
 
     private void SetEditorInputsEnabled(bool enabled)
@@ -131,6 +169,13 @@ public partial class UdsWorkbenchWindow : Window
     {
         if (_loading) return;
         _dirty = true;
+        _documentRevision++;
+        if (_replay is not null && _replayRevision != _documentRevision)
+        {
+            ReplayOutcome.Text = "序列已编辑；旧回放匹配不再有效";
+            ReplayExplanation.Text = "请重新载入对应的真实回放记录后再次逐项核对。";
+            UpdateReplayAvailability();
+        }
         _lastEditUtc = DateTime.UtcNow;
         SourceLabel.Text = (_documentPath ?? "未保存的独立 UDS 序列") + " · 已修改";
     }
@@ -381,6 +426,7 @@ public partial class UdsWorkbenchWindow : Window
             var replay = new UdsReplayWorkspace();
             await replay.LoadAsync(picker.FileName);
             _replay = replay;
+            _replayRevision = _documentRevision;
             ReplayFileLabel.Text = Path.GetFullPath(picker.FileName) + " · " +
                 replay.Count + " 项录制交换";
             ReplayOutcome.Text = "文件回放已载入；尚未进行请求匹配";
@@ -399,12 +445,13 @@ public partial class UdsWorkbenchWindow : Window
         finally { SetEditorInputsEnabled(true); _busy = false; }
     }
     private void UpdateReplayAvailability() =>
-        ReplayNext.IsEnabled = _replay is not null &&
+        ReplayNext.IsEnabled = _replay is not null && _replayRevision == _documentRevision &&
             _replay.Position < _replay.Count && _replay.Position < ServiceRows.Count;
 
     private void NextReplay_Click(object sender, RoutedEventArgs e)
     {
-        if (_replay is null || !FinishGrid() || _replay.Position >= ServiceRows.Count) return;
+        if (_replay is null || _replayRevision != _documentRevision ||
+            !FinishGrid() || _replay.Position >= ServiceRows.Count) return;
         try
         {
             var position = _replay.Position;
