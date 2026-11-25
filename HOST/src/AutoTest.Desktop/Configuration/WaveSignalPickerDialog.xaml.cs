@@ -18,6 +18,7 @@ public partial class WaveSignalPickerDialog : Window
     {
         _all = choices ?? throw new ArgumentNullException(nameof(choices));
         InitializeComponent();
+        Loaded += (_, _) => AutoTest.Desktop.Shell.DesktopWindowSizing.FitToVisibleWorkspace(this);
         DataContext = this;
         Refresh("");
     }
