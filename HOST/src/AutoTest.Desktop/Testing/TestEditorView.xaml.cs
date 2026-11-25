@@ -16,8 +16,10 @@ public partial class TestEditorView : UserControl
     private bool _inspectorInitialized;
     private bool _restoringStepRow;
     private IReadOnlyList<TestActionOption> _paletteActions = Array.Empty<TestActionOption>();
+    // These names MUST match TestStepInspector's authored action groups.
+    // A previous UI-only taxonomy made all non-favorite categories empty.
     private static readonly string[] PaletteGroups =
-        ["常用步骤", "CAN 与数据", "工位操作", "UDS 服务", "波形分析", "流程与计算"];
+        ["常用步骤", "外部操作", "读取与观察", "分析与判断", "流程控制"];
     private bool _focusNameOnNextInspector;
     private bool _committingQuickValue;
     private StepRowProjection? _activeQuickRow;
@@ -222,7 +224,7 @@ public partial class TestEditorView : UserControl
             Math.Min(height - 85, SystemParameters.WorkArea.Height - 65), 280, 530);
         PaletteList.MaxHeight = Math.Max(165, PaletteSurface.MaxHeight - 175);
         _paletteActions = TestStepInspector.PaletteActions(caseOnly);
-        PaletteCategories.SelectedIndex = caseOnly ? 5 : 0;
+        PaletteCategories.SelectedIndex = 0;
         var target = _viewModel.SelectedItem;
         PaletteHint.Text = caseOnly
             ? "当前插入位置：SWITCH / CASE 分支"
