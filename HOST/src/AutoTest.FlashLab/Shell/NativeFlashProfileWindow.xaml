@@ -155,8 +155,9 @@
   <DockPanel Grid.Row="2" Margin="0,12,0,0">
    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
     <Button Content="校验配置" Click="Preview_Click" Padding="12,8" Margin="0,0,8,0"/>
-    <Button Content="保存" Click="Save_Click" Padding="15,8" Margin="0,0,8,0"/>
-    <Button Content="关闭" Click="Close_Click" Padding="15,8"/>
+    <Button Content="完成" Click="Close_Click" Padding="15,8"/>
+    <TextBlock Text="有效参数自动保存" Foreground="#567766" FontSize="12"
+     VerticalAlignment="Center" Margin="10,0,4,0"/>
    </StackPanel>
    <TextBlock x:Name="StatusLabel" Text="工程配置待读取" Foreground="#375B73"
               TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,14,0"
