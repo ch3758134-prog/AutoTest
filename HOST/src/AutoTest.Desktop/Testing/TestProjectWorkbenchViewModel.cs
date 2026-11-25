@@ -38,9 +38,15 @@ public sealed class TestProjectPackageRow : BindableBase
     public string Sha256 { get => _sha256; private set => SetProperty(ref _sha256, value); }
     public int? LatestRevision => _latestRevision;
     public string? LatestSha256 => _latestSha256;
-    public bool CanAdoptLatest => false;
-    public string PinStatus => _latestRevision is null ? "用例文件缺失" : "当前用例";
-    public string PinDetail => PinStatus;
+    public bool CanAdoptLatest => _latestRevision is > 0 &&
+        !string.IsNullOrWhiteSpace(_latestSha256) &&
+        (_latestRevision != Revision ||
+         !string.Equals(_latestSha256, Sha256, StringComparison.OrdinalIgnoreCase));
+    public string PinStatus => _latestRevision is null ? "用例资源缺失" :
+        CanAdoptLatest ? "用例有新修订 · 待确认更新" : "修订一致";
+    public string PinDetail => _latestRevision is null ? "当前工程已找不到此 TEST 定义" :
+        "项目固定 r" + Revision + " / " + Sha256 +
+        "；当前资源 r" + _latestRevision + " / " + _latestSha256;
 
     public void RefreshAvailableRevision(int? revision, string? sha256)
     {
@@ -48,11 +54,21 @@ public sealed class TestProjectPackageRow : BindableBase
         _latestSha256 = sha256;
         RaisePropertyChanged(nameof(LatestRevision));
         RaisePropertyChanged(nameof(LatestSha256));
+        RaisePropertyChanged(nameof(CanAdoptLatest));
         RaisePropertyChanged(nameof(PinStatus));
         RaisePropertyChanged(nameof(PinDetail));
     }
 
-    public void AdoptCurrentRevision() { }
+    public void AdoptCurrentRevision()
+    {
+        if (!CanAdoptLatest || _latestRevision is not { } revision ||
+            string.IsNullOrWhiteSpace(_latestSha256)) return;
+        Revision = revision;
+        Sha256 = _latestSha256;
+        RaisePropertyChanged(nameof(CanAdoptLatest));
+        RaisePropertyChanged(nameof(PinStatus));
+        RaisePropertyChanged(nameof(PinDetail));
+    }
     public string Name { get; }
     public TestProjectPackageRow(TestProjectEntry item)
     {
@@ -728,13 +744,17 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         {
             var changed = Compose();
             changed.Validate();
-            var selection = Packages.ToDictionary(x => x.ItemId, x => x.RunSelected);
+            var selectedItem = SelectedPackage;
+            var selectedAvailableId = SelectedAvailable?.Asset.Id;
             _session = await _workspace.SaveTestProjectEditorAsync(_session, changed);
-            Name = _session.Document.Name;
-            LoadRows(_session.Document);
-            foreach (var row in Packages)
-                if (selection.TryGetValue(row.ItemId, out var selected)) row.RunSelected = selected;
+            // Do not reconstruct bound rows after each autosave: preserves selection,
+            // scroll, keyboard focus and transient engineer-only checkboxes.
             RefreshAvailable();
+            if (selectedAvailableId is { } targetId)
+                SelectedAvailable = AvailablePackages.FirstOrDefault(x => x.Asset.Id == targetId)
+                    ?? SelectedAvailable;
+            if (selectedItem is not null && Packages.Contains(selectedItem))
+                SelectedPackage = selectedItem;
             _ = RefreshStepCountsAsync();
             RaisePropertyChanged(nameof(Revision));
             StatusMessage = "测试项目已保存。用例列表引用当前修订；不会自动运行或连接台架。";
