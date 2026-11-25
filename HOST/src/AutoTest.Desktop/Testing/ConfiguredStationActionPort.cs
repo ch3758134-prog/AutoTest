@@ -26,10 +26,11 @@ public sealed partial class ConfiguredStationActionPort : ITestActuationPort, IT
     private readonly HardwareConnectionService _hardware;
     private readonly ProjectWorkspaceService _projects;
     private readonly SemaphoreSlim _serial = new(1, 1);
-    private readonly Dictionary<string, (EcuControlProfile Profile, StateReference State)>
-        _buttons = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, (TestTargetMapping Target, DbcMessage Message)> _can =
-        new(StringComparer.OrdinalIgnoreCase);
+    // Use pinned identity rather than TEST document-local display aliases.
+    private readonly Dictionary<TestTargetMapping, (EcuControlProfile Profile, StateReference State)>
+        _buttons = new();
+    private readonly Dictionary<TestTargetMapping, (TestTargetMapping Target, DbcMessage Message)>
+        _can = new();
     private ImmutableArray<StateReference> _active = ImmutableArray<StateReference>.Empty;
     private EcuControlProfile? _activeProfile;
     private HardwareKeyPolicy? _policy;
@@ -93,7 +94,7 @@ public sealed partial class ConfiguredStationActionPort : ITestActuationPort, IT
                 _policy = profile.KeyHardwarePolicy?.Validate() ??
                     throw new ProjectDataException("CTRL_HARDWARE_NOT_CONFIGURED",
                         "真实按键执行要求工程师先配置可用 Key 和禁止组合规则。");
-                _buttons.Add(target.Name, (profile, reference));
+                _buttons.Add(target, (profile, reference));
             }
             else if (target.Kind == TestTargetKind.CanMessage)
             {
@@ -106,7 +107,7 @@ public sealed partial class ConfiguredStationActionPort : ITestActuationPort, IT
                 if (message.IsExtended != target.Extended ||
                     message.ArbitrationId != target.CanId)
                     throw new ProjectDataException("CAN_MAPPING_FORMAT", target.Name);
-                _can.Add(target.Name, (target, message));
+                _can.Add(target, (target, message));
             }
         }
         if (_hasRawKey && _buttons.Count > 0)
@@ -164,7 +165,7 @@ public sealed partial class ConfiguredStationActionPort : ITestActuationPort, IT
                 }
                 else if (target.Kind == TestTargetKind.CanMessage)
                 {
-                    if (!_can.TryGetValue(target.Name, out var mapping) || mapping.Target != target)
+                    if (!_can.TryGetValue(target, out var mapping) || mapping.Target != target)
                         throw new InvalidOperationException("DBC 报文绑定无效。");
                     _ = DbcCanMessageEncoder.Encode(mapping.Message, action);
                 }
@@ -291,7 +292,7 @@ public sealed partial class ConfiguredStationActionPort : ITestActuationPort, IT
                 byte[] payload;
                 if (target.Kind == TestTargetKind.CanMessage)
                 {
-                    if (!_can.TryGetValue(target.Name, out var bound) || bound.Target != target)
+                    if (!_can.TryGetValue(target, out var bound) || bound.Target != target)
                         throw new InvalidOperationException("周期 CAN 报文的 DBC 绑定已失效。");
                     payload = DbcCanMessageEncoder.Encode(bound.Message, fields[3]);
                 }
@@ -421,7 +422,7 @@ public sealed partial class ConfiguredStationActionPort : ITestActuationPort, IT
             }
             if (target.Kind == TestTargetKind.CanMessage)
             {
-                if (!_can.TryGetValue(target.Name, out var bound) || bound.Target != target)
+                if (!_can.TryGetValue(target, out var bound) || bound.Target != target)
                     throw new InvalidOperationException("CAN mapping was changed during run.");
                 // The full mapped DBC message is the source of truth for physical-value
                 // writes. HEX remains an explicitly recognizable engineering option.
@@ -431,7 +432,7 @@ public sealed partial class ConfiguredStationActionPort : ITestActuationPort, IT
                 return Ack("CAN_TX_ACK");
             }
             if (target.Kind != TestTargetKind.Button ||
-                !_buttons.TryGetValue(target.Name, out var button) ||
+                !_buttons.TryGetValue(target, out var button) ||
                 button.State.ControllerId != target.ControllerId ||
                 button.State.StateId != target.StateId || _policy is null)
                 throw new InvalidOperationException("Configured button mapping is unavailable.");

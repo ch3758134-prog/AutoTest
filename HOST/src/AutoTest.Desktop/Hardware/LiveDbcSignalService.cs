@@ -25,7 +25,7 @@ public sealed class LiveDbcSignalService : ITestSignalPort, IWaveSignalSource, I
         DbcLiveSignalDecoder Decoder);
     private sealed class Sink
     {
-        public required string Name;
+        public required TestTargetMapping Mapping;
         public required Channel<TestSignalResult> Channel;
         public long Dropped;
     }
@@ -33,8 +33,9 @@ public sealed class LiveDbcSignalService : ITestSignalPort, IWaveSignalSource, I
     private readonly HardwareConnectionService _hardware;
     private readonly ProjectWorkspaceService _projects;
     private readonly object _gate = new();
-    private readonly Dictionary<string, Bound> _bindings = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, TestSignalResult> _latest = new(StringComparer.OrdinalIgnoreCase);
+    // Full typed pins distinguish same-name signals from different cases.
+    private readonly Dictionary<TestTargetMapping, Bound> _bindings = new();
+    private readonly Dictionary<TestTargetMapping, TestSignalResult> _latest = new();
     private readonly HashSet<Sink> _sinks = new();
     private bool _disposed;
     private long _generation;
@@ -89,7 +90,7 @@ public sealed class LiveDbcSignalService : ITestSignalPort, IWaveSignalSource, I
     public async Task BindAsync(IEnumerable<TestTargetMapping> mappings, CancellationToken ct = default)
     {
         var project = _projects.Current ?? throw new InvalidOperationException("请先加载工程。");
-        var next = new Dictionary<string, Bound>(StringComparer.OrdinalIgnoreCase);
+        var next = new Dictionary<TestTargetMapping, Bound>();
         var dbcs = new Dictionary<AssetId, (AssetEntry Asset, DbcDatabase Dbc)>();
         foreach (var mapping in mappings)
         {
@@ -117,7 +118,7 @@ public sealed class LiveDbcSignalService : ITestSignalPort, IWaveSignalSource, I
                 throw new ProjectDataException("MAPPING_DBC_SIGNAL", mapping.Name);
             var reference = new SignalRef(asset.ToReference(), mapping.Role,
                 mapping.CanId, mapping.SignalName, mapping.Unit);
-            if (!next.TryAdd(mapping.Name, new Bound(mapping, reference,
+            if (!next.TryAdd(mapping, new Bound(mapping, reference,
                     new DbcLiveSignalDecoder(asset, entry.Dbc))))
                 throw new ProjectDataException("MAPPING_DUPLICATE", mapping.Name);
         }
@@ -139,7 +140,7 @@ public sealed class LiveDbcSignalService : ITestSignalPort, IWaveSignalSource, I
     {
         lock (_gate)
         {
-            if (!_bindings.TryGetValue(mapping.Name, out var bound) ||
+            if (!_bindings.TryGetValue(mapping, out var bound) ||
                 bound.Mapping != mapping)
                 throw new InvalidOperationException("DBC mapping is not bound to the active project.");
             return bound.Ref;
@@ -169,10 +170,10 @@ public sealed class LiveDbcSignalService : ITestSignalPort, IWaveSignalSource, I
                         ? TestSignalStatus.Valid : TestSignalStatus.DecodeError;
                 var result = new TestSignalResult(state, observation, state.ToString());
                 _latest[item.Key] = result;
-                ready.Add((item.Key, result));
+                ready.Add((b.Mapping.Name, result));
                 foreach (var sink in _sinks)
                 {
-                    if (sink.Name != item.Key) continue;
+                    if (sink.Mapping != item.Key) continue;
                     if (sink.Dropped != 0)
                     {
                         var loss = new TestSignalResult(TestSignalStatus.LostFrames,
@@ -196,9 +197,9 @@ public sealed class LiveDbcSignalService : ITestSignalPort, IWaveSignalSource, I
         {
             if (_generation != _hardware.CurrentStationEpoch)
                 return new(TestSignalStatus.NoFrame, null, "No frame from the current physical connection");
-            if (!_bindings.TryGetValue(target.Name, out var b) || b.Mapping != target)
+            if (!_bindings.TryGetValue(target, out var b) || b.Mapping != target)
                 return new(TestSignalStatus.DecodeError, null, "Unbound or changed DBC mapping");
-            if (!_latest.TryGetValue(target.Name, out var found))
+            if (!_latest.TryGetValue(target, out var found))
                 return new(TestSignalStatus.NoFrame, null, "No target frame observed");
             if (found.Observation is { } signal && DateTimeOffset.UtcNow - signal.Time.Utc > maxAge)
                 return new(TestSignalStatus.Stale, signal, "CAN signal has not been refreshed");
@@ -235,13 +236,13 @@ public sealed class LiveDbcSignalService : ITestSignalPort, IWaveSignalSource, I
     {
         var sink = new Sink
         {
-            Name = target.Name,
+            Mapping = target,
             Channel = Channel.CreateBounded<TestSignalResult>(new BoundedChannelOptions(1024)
                 { SingleReader = true, SingleWriter = false, FullMode = BoundedChannelFullMode.Wait })
         };
         lock (_gate)
         {
-            if (!_bindings.TryGetValue(target.Name, out var b) || b.Mapping != target)
+            if (!_bindings.TryGetValue(target, out var b) || b.Mapping != target)
                 throw new InvalidOperationException("DBC mapping unavailable or stale.");
             if (_disposed) throw new ObjectDisposedException(nameof(LiveDbcSignalService));
             _sinks.Add(sink);
@@ -262,7 +263,7 @@ public sealed class LiveDbcSignalService : ITestSignalPort, IWaveSignalSource, I
         TestTargetMapping mapping;
         lock (_gate)
         {
-            mapping = _bindings.Values.SingleOrDefault(b => b.Ref == signal)?.Mapping
+            mapping = _bindings.Values.FirstOrDefault(b => b.Ref == signal)?.Mapping
                 ?? throw new WaveCaptureException("SIGNAL_SOURCE_UNAVAILABLE", "Signal not bound to a TEST mapping.");
         }
         var epoch = _hardware.CurrentStationEpoch;

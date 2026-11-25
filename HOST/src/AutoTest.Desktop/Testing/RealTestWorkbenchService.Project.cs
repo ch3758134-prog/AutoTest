@@ -38,8 +38,8 @@ public sealed partial class RealTestWorkbenchService
                 throw new IOException("整组 TEST 必须绑定已连接的真实主控 USB 会话。");
             _hardware.RequireConfiguredEcuCanBitrate();
             var pinned = new List<(TestDocumentId Id, string Sha)>();
-            var maps = new Dictionary<string, TestTargetMapping>(
-                StringComparer.OrdinalIgnoreCase);
+            // Local mapping aliases are NOT global resource identities.
+            var maps = new HashSet<TestTargetMapping>();
             foreach (var source in orderedCases)
             {
                 var plan = Prepare(source);
@@ -62,14 +62,10 @@ public sealed partial class RealTestWorkbenchService
                     // draft case need not participate in developer preflight.
                     await AutomaticTestResourceContract.ValidateMappingAsync(
                         project, mapping, ct).ConfigureAwait(false);
-                    if (maps.TryGetValue(mapping.Name, out var old) &&
-                        !EqualityComparer<TestTargetMapping>.Default.Equals(old, mapping))
-                        throw new InvalidDataException(
-                            "用例使用同名不同版本的硬件目标，无法冻结项目授权：" + mapping.Name);
-                    maps[mapping.Name] = mapping;
+                    maps.Add(mapping);
                 }
             }
-            var union = maps.Values.ToArray();
+            var union = maps.ToArray();
             await _signals.BindAsync(union, ct);
             actions = new ConfiguredStationActionPort(_hardware, _projects);
             await actions.PrepareAsync(union, ct);
