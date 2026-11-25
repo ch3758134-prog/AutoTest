@@ -59,7 +59,7 @@ public static class ProductionPreparationService
 {
     public static async Task<ProductionPreparationDecision> PrepareAsync(
         OpenProjectContext project, string scannedModelCode, string dutSerial,
-        CancellationToken ct = default, bool requireProductionDeployment = false)
+        CancellationToken ct = default, bool requireProductionDeployment = true)
     {
         try
         {
