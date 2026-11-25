@@ -450,6 +450,18 @@ public sealed partial class AutomaticTestHomeViewModel
                 Math.Max(0, _operatorEventTotal - OperatorEvents.Count)));
         }
 
+        void RequireFrozenCanRate()
+        {
+            ct.ThrowIfCancellationRequested();
+            if (!_hardware.IsConnected ||
+                _hardware.CurrentStationEpoch != sessionEpoch ||
+                !_hardware.IsEcuCanBitrateApplied ||
+                _hardware.RequestedEcuCanBitrateKbps != frozen.EcuCanKbps ||
+                _hardware.ConfirmedEcuCanBitrateKbps != frozen.EcuCanKbps)
+                throw new IOException("ECU CAN 主控会话或波特率不再符合本次冻结的 " +
+                    frozen.EcuCanKbps + " kbit/s；停止本次真实执行，不能使用旧授权。");
+        }
+
         try
         {
             outcome = "执行中";
@@ -497,6 +509,7 @@ public sealed partial class AutomaticTestHomeViewModel
                 frozen.Fixture?.BeforeStart ?? [], _hardware, ct,
                 AddOperatorEvent);
             AddOperatorEvent("工位前置动作 USB ACK；夹具实际到位仍需真实传感器验证");
+            RequireFrozenCanRate();
 
             OperatorRunState = "前置烧录 · 正在擦写 ECU";
             flashState = "烧录已启动 · 后续若中断 ECU 状态可能未知";
@@ -518,8 +531,7 @@ public sealed partial class AutomaticTestHomeViewModel
             for (var i = 0; i < programs.Cases.Count; i++)
             {
                 ct.ThrowIfCancellationRequested();
-                if (_hardware.CurrentStationEpoch != sessionEpoch || !_hardware.IsConnected)
-                    throw new IOException("主控 USB 会话切换，不能继续使用本次烧录结果。");
+                RequireFrozenCanRate();
                 var item = programs.Cases[i];
                 activeCaseIndex = i;
                 _operatorActiveCaseIndex = i;
