@@ -131,15 +131,14 @@
         </ComboBox>
        </StackPanel>
       </UniformGrid>
-      <TextBlock Text="块长、UDS 服务及擦除实现由既有 HydEPB 方法内部管理，不在此配置文件中增设字段。"
-                 Foreground="#73879A" TextWrapping="Wrap" FontSize="11" Margin="0,11,0,0"/>
       <Border Background="#FFF4DF" BorderBrush="#EED6A3" BorderThickness="1"
               CornerRadius="6" Padding="11" Margin="0,13,0,0">
        <StackPanel>
         <TextBlock Text="烧录镜像提醒 · 已验证的 HydEPB 特殊工艺"
                    FontWeight="SemiBold" Foreground="#8B5817"/>
-        <TextBlock Text="当 APP/Boot ID、地址范围及 512 字节块长符合已实测 HydEPB 工艺时，烧录计划会在 0x1006FFFC～0x1006FFFF 强制写入 12 34 56 78，必要时增加末尾 512 字节块；可能覆盖 HEX 原字节。此行为不属于导入 XML 的字段。请先查看下方真实烧录计划。"
-                   Foreground="#765722" TextWrapping="Wrap" FontSize="11" Margin="0,5,0,0"/>
+        <TextBlock Text="可能覆盖 HEX 末尾 4 字节；校验时必须查看实际烧录计划。"
+                   ToolTip="当已验证的 HydEPB 工艺命中 512 字节块长、APP/Boot ID 和地址范围时，计划可能在 0x1006FFFC～0x1006FFFF 写入 12 34 56 78，并增加末尾块；与原始 HEX 的差异必须核对。"
+                   Foreground="#765722" TextWrapping="Wrap" FontSize="12" Margin="0,5,0,0"/>
        </StackPanel>
       </Border>
       <TextBlock Text="校验结果 · 实际待下载计划" FontWeight="SemiBold"
