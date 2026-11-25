@@ -106,7 +106,7 @@ public sealed class TestEditorViewModel : BindableBase
             () => !IsBusy && !IsDirty && !HasNewStepDraft);
         RunSelectedStepCommand = new DelegateCommand(
             async () => await RunSelectedStepInteractiveAsync(),
-            () => !IsBusy && !IsDirty && !HasNewStepDraft &&
+            () => !IsBusy && !HasNewStepDraft &&
                 SelectedItem?.Kind == StepTreeItemKind.Step);
         StopRunCommand = new DelegateCommand(() =>
         {
@@ -974,7 +974,8 @@ public sealed class TestEditorViewModel : BindableBase
     /// A FLASH step still needs its explicit physical FLASH consent.</summary>
     private async Task RunCurrentCaseInteractiveAsync()
     {
-        if (IsBusy || IsDirty || HasNewStepDraft || !CanProceed()) return;
+        if (IsBusy || HasNewStepDraft || !CanProceed()) return;
+        if (!await SaveForCloseAsync()) return;
         await SynchronizeSavedRevisionAsync();
         if (IsBusy || IsDirty || _workspace.Current?.Definition.Assets.SingleOrDefault(a => a.Id == _session.AssetId)?.Revision != _session.AssetRevision) return;
         bool needsPreparation = _preparedRunDocument is null || _preparedStepId is not null ||
@@ -1000,8 +1001,9 @@ public sealed class TestEditorViewModel : BindableBase
 
     private async Task RunSelectedStepInteractiveAsync()
     {
-        if (IsBusy || IsDirty || HasNewStepDraft || !CanProceed()) return;
+        if (IsBusy || HasNewStepDraft || !CanProceed()) return;
         var selected = SelectedItem?.Step?.Id;
+        if (!await SaveForCloseAsync()) return;
         await SynchronizeSavedRevisionAsync();
         if (IsBusy || IsDirty || _workspace.Current?.Definition.Assets.SingleOrDefault(a => a.Id == _session.AssetId)?.Revision != _session.AssetRevision) return;
         if (selected is not null && SelectedItem?.Step?.Id != selected) { StatusMessage = "用例已更新，请重新选择运行步骤。"; return; }
