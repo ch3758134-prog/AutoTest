@@ -22,6 +22,8 @@ public partial class ManualBenchWindow : Window
     private bool _keyAutosaveBusy;
     private bool _propertyOverlayClosing;
     private ManualBenchKeyActionWindow? _keyActionDialog;
+    private readonly Dictionary<ManualBenchViewModel.BenchCanRow,
+        ManualBenchCanPropertiesWindow> _canPropertyWindows = new();
     private bool _benchClosePending;
     private bool _benchCloseScheduled;
     private DispatcherTimer? _keyPadClickTimer;
@@ -277,6 +279,16 @@ public partial class ManualBenchWindow : Window
                 !await keyEditor.PrepareForParentShutdownAsync())
                 throw new InvalidOperationException(
                     "KEY 动作浮窗仍有待保存或正在进行的编辑，不能关闭工位。");
+            // Close CAN property windows while the backing project and
+            // CAN row objects are still alive; their Closed callbacks remove
+            // dictionary entries, so iterate an immutable snapshot.
+            foreach (var canEditor in _canPropertyWindows.Values.ToArray())
+            {
+                if (canEditor.IsVisible &&
+                    !await canEditor.PrepareForParentShutdownAsync())
+                    throw new InvalidOperationException(
+                        "CAN 属性浮窗还有未保存配置，不能结束手动工位。");
+            }
             await _model.SaveCanRowsForCloseAsync();
             if (_model.CanRowsDirty)
                 throw new InvalidOperationException("CAN 报文配置未能持久化，已阻止退出。");
@@ -562,9 +574,28 @@ public partial class ManualBenchWindow : Window
             return;
         }
         _model.SelectedCanRow = row;
-        var view = new ManualBenchCanPropertiesView(_model);
-        view.CloseRequested += async (_, _) => await ClosePropertyOverlayAsync();
-        OpenPropertyOverlay(view);
+        if (_canPropertyWindows.TryGetValue(row, out var existing) &&
+            existing.IsVisible)
+        {
+            existing.Activate();
+            existing.Focus();
+            return;
+        }
+        // Each popup keeps its own pinned row. Selecting another CAN message
+        // in the background must not redirect an in-progress DATA edit.
+        var popup = new ManualBenchCanPropertiesWindow(_model, row)
+        {
+            Owner = this
+        };
+        _canPropertyWindows[row] = popup;
+        popup.Closed += (_, _) =>
+        {
+            if (_canPropertyWindows.TryGetValue(row, out var current) &&
+                ReferenceEquals(current, popup))
+                _canPropertyWindows.Remove(row);
+        };
+        popup.Show();
+        popup.Activate();
     }
 
     private void AddCanRow_Click(object sender, RoutedEventArgs e)
