@@ -193,8 +193,8 @@ public sealed partial class AutomaticTestHomeViewModel
     private static AutomaticTestStep ResetStepProjection(AutomaticTestStep step) =>
         step with
         {
-            State = step.State == "步骤已禁用（不执行)" ||
-                step.State == "步骤已禁用（不执行）" ? step.State : "未执行",
+            State = step.State == "步骤已禁用（不执行）" ?
+                step.State : "未执行",
             Children = step.Children.Select(ResetStepProjection).ToArray()
         };
 
