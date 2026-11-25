@@ -94,7 +94,7 @@ public partial class WaveWorkbenchWindow : Window
         {
             await _model.PrepareForToolCloseAsync();
             _toolClosePrepared = true;
-            Dispatcher.BeginInvoke(new Action(Close));
+            _ = Dispatcher.BeginInvoke(new Action(Close));
         }
         catch (Exception error)
         {
