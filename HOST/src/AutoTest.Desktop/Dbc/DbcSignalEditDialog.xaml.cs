@@ -13,6 +13,7 @@ public partial class DbcSignalEditDialog : Window
     public DbcSignalEditDialog(DbcSignal signal, bool protectName = false)
     {
         InitializeComponent();
+        Loaded += (_, _) => AutoTest.Desktop.Shell.DesktopWindowSizing.FitToVisibleWorkspace(this);
         _existing = signal;
         NameBox.Text = signal.Name;
         NameBox.IsReadOnly = protectName;
