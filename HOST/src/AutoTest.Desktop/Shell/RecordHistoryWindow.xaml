@@ -136,8 +136,12 @@
      <Grid>
       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
       <StackPanel Grid.Column="0">
-       <TextBlock x:Name="SelectionSummary" Text="选择一条记录查看详情" FontWeight="SemiBold"/>
-       <TextBlock x:Name="FailureDetail" TextWrapping="Wrap" Foreground="#9C5018" Margin="0,5,12,0"/>
+       <TextBlock x:Name="SelectionSummary" Text="选择一条记录查看详情"
+        FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+        ToolTip="{Binding Text,RelativeSource={RelativeSource Self}}"/>
+       <TextBlock x:Name="FailureDetail" TextWrapping="Wrap" Foreground="#9C5018"
+        TextTrimming="CharacterEllipsis" MaxHeight="60" Margin="0,5,12,0"
+        ToolTip="{Binding Text,RelativeSource={RelativeSource Self}}"/>
       </StackPanel>
       <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
        <Button x:Name="ViewReport" Content="打开完整报告" Click="OpenReport_Click"
