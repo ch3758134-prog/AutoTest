@@ -100,6 +100,10 @@ internal static class DesktopWindowSizing
         var desiredTop = owner is not null
             ? owner.Top + (owner.ActualHeight - dialog.Height) / 2
             : area.Top + (area.Height - dialog.Height) / 2;
+        if (!double.IsFinite(desiredLeft))
+            desiredLeft = area.Left + (area.Width - dialog.Width) / 2;
+        if (!double.IsFinite(desiredTop))
+            desiredTop = area.Top + (area.Height - dialog.Height) / 2;
         dialog.Left = Math.Clamp(desiredLeft, area.Left + margin,
             area.Right - dialog.Width - margin);
         dialog.Top = Math.Clamp(desiredTop, area.Top + margin,
