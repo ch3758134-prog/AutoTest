@@ -223,8 +223,9 @@ public partial class WaveWorkbenchWindow : Window
                     26, 50, 15, "#60758B");
                 return;
             }
+            var timeSpan = Math.Max(1e-9, range.Max - range.Min);
             double X(double time) => LeftMargin + (time - range.Min) /
-                (range.Max - range.Min) * chartWidth;
+                timeSpan * chartWidth;
 
             // All lanes share the same observation time axis.
             for (var tick = 0; tick <= 6; tick++)
@@ -243,10 +244,19 @@ public partial class WaveWorkbenchWindow : Window
                 var upper = sectionTop + 24;
                 var lower = sectionTop + LaneHeight - 28;
                 var trackHeight = lower - upper;
-                var visibleActual = lane.Actual.Where(p =>
-                    p.Seconds >= range.Min && p.Seconds <= range.Max).ToArray();
-                var visibleReference = (lane.Reference ?? Array.Empty<WaveChartPoint>()).Where(p =>
-                    p.Seconds >= range.Min && p.Seconds <= range.Max).ToArray();
+                var visibleActualRaw = lane.Actual.Where(p =>
+                    double.IsFinite(p.Seconds) && p.Seconds >= range.Min &&
+                    p.Seconds <= range.Max).ToArray();
+                var visibleReferenceRaw = (lane.Reference ?? Array.Empty<WaveChartPoint>()).Where(p =>
+                    double.IsFinite(p.Seconds) && p.Seconds >= range.Min &&
+                    p.Seconds <= range.Max).ToArray();
+                // Invalid values remain in the polyline input so the renderer
+                // knows where to BREAK the trace; they are excluded only from
+                // numeric scaling and from the tolerance polygon.
+                var visibleActual = visibleActualRaw.Where(p =>
+                    double.IsFinite(p.Value)).ToArray();
+                var visibleReference = visibleReferenceRaw.Where(p =>
+                    double.IsFinite(p.Value)).ToArray();
                 var allValues = visibleActual.Select(p => p.Value).Concat(
                     visibleReference.Select(p => p.Value)).ToArray();
                 var minValue = allValues.Length == 0 ? 0 : allValues.Min();
@@ -301,7 +311,9 @@ public partial class WaveWorkbenchWindow : Window
                 // Reference and its tolerance envelope share exactly this lane's unit.
                 if (visibleReference.Length > 0)
                 {
-                    if (lane.Tolerance is { } band && band >= 0 && visibleReference.Length >= 2)
+                    if (lane.Tolerance is { } band && band >= 0 &&
+                        visibleReference.Length >= 2 &&
+                        !TraceHasDiscontinuities(visibleReferenceRaw))
                     {
                         var points = new PointCollection();
                         foreach (var point in visibleReference)
@@ -316,11 +328,11 @@ public partial class WaveWorkbenchWindow : Window
                             IsHitTestVisible = false
                         });
                     }
-                    DrawTrace(visibleReference, X, Y, "#718AA8", 1.7, true, lane.StepStyle);
+                    DrawTrace(visibleReferenceRaw, X, Y, "#718AA8", 1.7, true, lane.StepStyle);
                     AtText("参考", width - 73, sectionTop + 8, 11, "#60758B");
                 }
                 if (visibleActual.Length > 0)
-                    DrawTrace(visibleActual, X, Y, lane.Color, 2.3, false, lane.StepStyle);
+                    DrawTrace(visibleActualRaw, X, Y, lane.Color, 2.3, false, lane.StepStyle);
                 else
                     AtText("无真实采样（当前信号尚未更新）",
                         LeftMargin + 15, sectionTop + 71, 13, "#60758B");
