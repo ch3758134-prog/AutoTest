@@ -26,6 +26,7 @@ public partial class ManualBenchKeyActionWindow : Window
         _model = model ?? throw new ArgumentNullException(nameof(model));
         DataContext = model;
         InitializeComponent();
+        Loaded += (_, _) => AutoTest.Desktop.Shell.DesktopWindowSizing.FitToVisibleWorkspace(this);
         _model.IsKeyEditorExpanded = true;
         PreviewMouseDown += (_, _) => _lastInteractionUtc = DateTime.UtcNow;
         PreviewKeyDown += (_, _) => _lastInteractionUtc = DateTime.UtcNow;
