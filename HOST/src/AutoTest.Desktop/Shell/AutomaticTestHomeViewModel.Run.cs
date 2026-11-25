@@ -105,9 +105,12 @@ public sealed partial class AutomaticTestHomeViewModel
     public void DisarmEngineeringVerification()
     {
         if (IsOperatorRunning) return;
-        if (!_engineeringVerificationArmed) return;
+        // Production must show the immutable authored TEST plan, NEVER the
+        // latest engineering real-run colours/verdicts left in the shared
+        // projection. Rebuild even if another callback already disarmed us.
         _engineeringVerificationArmed = false;
-        InvalidateScan("已返回自动测试；上一轮工程验证扫码身份已失效。");
+        RebuildCases();
+        InvalidateScan("已返回自动测试；开发验证扫码身份已失效，请重新扫码。");
         RefreshOperatorCommands();
     }
 
