@@ -279,7 +279,7 @@
   <Grid Grid.Row="2" Background="#FFFFFF"
    Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}">
    <Grid.ColumnDefinitions>
-    <ColumnDefinition x:Name="TreeColumn" Width="320" MinWidth="255" MaxWidth="480"/>
+    <ColumnDefinition x:Name="TreeColumn" Width="320" MinWidth="210" MaxWidth="480"/>
     <ColumnDefinition Width="4"/>
     <ColumnDefinition Width="*" MinWidth="460"/>
    </Grid.ColumnDefinitions>
