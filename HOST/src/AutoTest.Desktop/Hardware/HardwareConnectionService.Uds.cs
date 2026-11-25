@@ -41,7 +41,7 @@ public sealed partial class HardwareConnectionService
             RequireConfiguredEcuCanBitrate();
             var epoch = CurrentStationEpoch;
             var usbGeneration = _usb.Generation;
-            using var transport = new StationDidIsoTpLink(this, endpoint, usbGeneration);
+            using var transport = new StationDidIsoTpLink(this, endpoint, did, usbGeneration);
             var request = ImmutableArray.Create((byte)0x22, (byte)(did >> 8), (byte)did);
             var client = new UdsClient(new IsoTpUdsMessageChannel(
                 new IsoTpConversation(transport)));
@@ -89,6 +89,10 @@ public sealed partial class HardwareConnectionService
         private readonly HardwareConnectionService _owner;
         private readonly UdsEndpointProfile _endpoint;
         private readonly long _generation;
+        private readonly ushort _did;
+        private int _requestIssued;
+        private int _flowCount;
+        private DateTimeOffset _requestStartedUtc;
         private readonly long _originalBridgeDrops;
         private readonly long _originalHubDrops;
         private readonly Channel<byte[]> _frames =
@@ -102,10 +106,11 @@ public sealed partial class HardwareConnectionService
         private int _failed;
 
         public StationDidIsoTpLink(HardwareConnectionService owner,
-            UdsEndpointProfile endpoint, long usbGeneration)
+            UdsEndpointProfile endpoint, ushort did, long usbGeneration)
         {
             _owner = owner;
             _endpoint = endpoint;
+            _did = did;
             _generation = usbGeneration;
             _originalBridgeDrops = owner._bridge!.DroppedBeforeDecode;
             _originalHubDrops = owner._hub!.TotalDropped;
@@ -129,6 +134,8 @@ public sealed partial class HardwareConnectionService
         private void OnObserved(CanObservation observation)
         {
             if (Volatile.Read(ref _disposed) != 0 ||
+                Volatile.Read(ref _requestIssued) == 0 ||
+                observation.Time.Utc < _requestStartedUtc ||
                 observation.Frame.Role != BusRole.DutCan ||
                 observation.Frame.Id != _endpoint.ResponseCanId)
                 return;
@@ -155,8 +162,23 @@ public sealed partial class HardwareConnectionService
             // An operator-authorized DID read permits exactly one 0x22 SF,
             // followed only by the authenticated response's ISO-TP FC frames.
             // The hardware fence is a SECOND independent byte-level check.
+            var raw = bytes.ToArray();
+            if (Volatile.Read(ref _requestIssued) == 0)
+            {
+                if (raw.Length != 4 || raw[0] != 3 || raw[1] != 0x22 ||
+                    raw[2] != (byte)(_did >> 8) || raw[3] != (byte)_did)
+                    throw new UnauthorizedAccessException("只允许已确认的单次 0x22 DID 读取。");
+                _requestStartedUtc = DateTimeOffset.UtcNow;
+                Volatile.Write(ref _requestIssued, 1);
+            }
+            else
+            {
+                if (raw.Length != 3 || raw[0] != 0x30 || raw[1] != 8 ||
+                    raw[2] != 0 || ++_flowCount > 75)
+                    throw new UnauthorizedAccessException("DID 会话仅允许有界的 0x30 08 00 流控。");
+            }
             var frame = CanFrame.Create(BusRole.DutCan,
-                _endpoint.RequestCanId > 0x7FF, _endpoint.RequestCanId, bytes.Span);
+                _endpoint.RequestCanId > 0x7FF, _endpoint.RequestCanId, raw);
             var payload = CanFrameCodec.ToUsbPayload(frame, StationCanWiring.Current);
             var usb = _owner._usb ?? throw new IOException("USB 已断开。");
             if (usb.Generation != _generation || usb.State != UsbSessionState.Connected)
@@ -164,7 +186,7 @@ public sealed partial class HardwareConnectionService
             await usb.RequestAsync(MainControllerCodec.CanSend, payload,
                 TimeSpan.FromSeconds(3), ct);
             _trace.Enqueue("TX ECU CAN 0x" + frame.Id.ToString("X") +
-                " [" + frame.Dlc + "] " + Convert.ToHexString(bytes.ToArray()) +
+                " [" + frame.Dlc + "] " + Convert.ToHexString(raw) +
                 " · USB ACK（不是 ECU ACK）");
         }
 
