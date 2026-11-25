@@ -62,6 +62,45 @@ public partial class ManualBenchKeyActionWindow : Window
         finally { _autosaveTask = null; _autosaveBusy = false; }
     }
 
+    /// <summary>
+    /// Parent workbench must close this persistent editor BEFORE it tears
+    /// down the shared KEY ViewModel and the hardware session. Await any
+    /// pending timer autosave, then persist the latest valid editor draft.
+    /// </summary>
+    public async Task<bool> PrepareForParentShutdownAsync()
+    {
+        if (_closingForSave) return false;
+        _closingForSave = true;
+        _autosaveTimer.Stop();
+        IsEnabled = false;
+        try
+        {
+            if (_autosaveTask is { } pending) await pending;
+            if (_model.KeyActionsDirty)
+                await _model.SaveKeyActionsForCloseAsync();
+            if (_model.KeyActionsDirty)
+                throw new InvalidOperationException("KEY 动作仍有未保存修改，保留编辑窗口与工程。");
+            _closeApproved = true;
+            Close();
+            return !IsVisible;
+        }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            MessageBox.Show(this, "KEY 动作未能完整保存：\n" + error.Message,
+                "保留当前编辑", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+        finally
+        {
+            _closingForSave = false;
+            if (!_closeApproved)
+            {
+                IsEnabled = true;
+                if (IsLoaded) _autosaveTimer.Start();
+            }
+        }
+    }
+
     private void SaveAndClose_Click(object sender, RoutedEventArgs e) => Close();
     private void CloseKeyEditor_Click(object sender, RoutedEventArgs e) => Close();
 
