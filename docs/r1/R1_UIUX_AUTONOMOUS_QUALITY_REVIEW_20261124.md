@@ -14,7 +14,7 @@
 
 ## 1. 最终结论先行
 
-**初始 46/100 → 第二轮 63/100 → 第三轮 66/100 → 第四轮 69/100 → 第五轮 73/100 → 第六轮 76/100 → 第七轮 77/100 → 第八轮 79/100。** 全部为静态审查评分；不把源码改动自动等同于实际改善，不设没有依据的满分。最终 UI 设计交付门槛 90 分**未达到**；生产物理 START、完整生产真实 Inspection/证据/报告及部分独立专业工具后端仍阻断。任何阶段均不得记作 UI_PASS、PRODUCTION_PASS 或 GATE_PASS。
+**初始 46/100 → 第二轮 63/100 → 第三轮 66/100 → 第四轮 69/100 → 第五轮 73/100 → 第六轮 76/100 → 第七轮 77/100 → 第八轮 79/100 → 第九轮 82/100。** 全部为静态审查评分；不把源码改动自动等同于实际改善，不设没有依据的满分。最终 UI 设计交付门槛 90 分**未达到**；生产物理 START、完整生产真实 Inspection/证据/报告及部分独立专业工具后端仍阻断。任何阶段均不得记作 UI_PASS、PRODUCTION_PASS 或 GATE_PASS。
 
 发生实质变化的项目：生产页面不再列出 COM 配置、独立工程验证及软件 START；将完整 TEST 树作为核心监视；开发整组实测从生产入口移入工程工具菜单，重新经过真实扫码/硬件冻结；对现有 RealStepFact 使用正式 StepId 做 UI 投影而不是用日志名字猜测；主控自动预检和流程/测量更清楚；FlashLab/Wave 及部分手动台架的高 DPI/密度问题进行实际 XAML 修复。未实现的正式执行状态不显示 PASS、进度、真实数据或隐含完成。
 
@@ -238,7 +238,7 @@
 
 ## 10. 质量准出判断与继续规则
 
-- **最新第八轮静态评分：79/100，等级：基本可用候选（仅源码层）。** 不是设计交付候选，不符合 90 分目标，也不等于 Windows 运行通过。
+- **最新第九轮静态评分：82/100，等级：工程使用候选（仅源码层，未实测）。** 不是设计交付候选，不符合 90 分目标，也不等于 Windows 运行通过。
 - **准出检查：FAIL/BLOCKED。** 已触发“核心产线真实路径未完成”“未接线专业工具”“未经过 WPF 常见 DPI 验证”“正式记录缺闭环”等多个否决项。
 - **代码与验证：R1 源码已提交；BUILD=NOT_RUN；WPF_HANDS_ON=NOT_RUN；USB/CAN/ECU=NOT_RUN；CI=NOT_RUN。** 不把静态无错、代码 commit、Gate 历史记录当作本轮通过。
 - **后续自主迭代顺序：**（1）本地 Windows UI-01/02/03 等真实证据→消灭编译与控件实际问题；（2）完成剩余 UI/状态接线及单页高频操作→再盲测；（3）等待正式生产物理与 RECORD 合同接通后，重新校准生产 UX，达到 90+ 并完成独立验收。不可依靠主观提分。
@@ -451,3 +451,49 @@
 ### 18.4 KEY_SIM 保持语义独立回查（不加分）
 
 额外回读 Shell/ManualBenchKeyActions.cs、Devices/Station/RawKeyAction.cs、Devices.Tests/ManualKeySequenceFenceTests.cs：真实动作库运行器只对非 WaitOnly 段授权并发送 KEY CAN；WaitOnly 只等待不生成掩码清零帧；保持时间结束后代码没有追加隐式 Release。明确掩码零才下发 ReleaseAll；Stop 取消任务并撤销 KEY 授权，没有伪造“已释放实际按键板电压”的 ACK。可见日志明确“主控 ACK 非五路实际电压”。这与现有 20 KEY／5 路电压和状态继续保持的已批准语义一致，但**不证明实物按键板保持/电压、断线异常状态已通过测试**。本轮未修改该链，未增加评分。
+
+
+## 19. 第九轮——工业级实际编辑流程、异步关闭与工程整组实测监视（82/100）
+
+继续审查基线为 2026-11-24 第八轮 R1 SHA 966385ff764b29785b9d5adbb7f4f4bd75e177f9。本轮全部实施仅在 R1，不操作 main 和固件。不运行 Windows 构建、CI、软件测试或实体硬件。代码差异、提交数按 GitHub R1 compare 实际值回读。
+
+### 19.1 手动台架：真正的 CAN/KEY 浮窗，弃用遮罩
+
+原手动台架虽然已有独立属性 Window 类，实际运行时仍从台架打开临时遮罩式 UserControl，遮住工位信息，CAN/KEY 两类的属性模型、用户关闭操作不统一。已在 ManualBenchWindow.xaml(.cs) 中将动作按钮双击/编辑改为持续存在的 ManualBenchKeyActionWindow；CAN 行属性使用 ManualBenchCanPropertiesWindow，复用原 CAN DATA 主导、DBC 辅助完整 ManualBenchCanPropertiesView。各个 CAN 浮窗根据初次打开时确定的 BenchCanRow 编辑，后台切换选中行不会错误地把字节更改写到另一报文。相同行只激活原有浮窗；CAN 其他行可各自同时打开。无效的遮罩层与相应 code-behind 删除。
+
+CAN 浮窗关闭前持久保存原项目 CAN 草稿；KEY 浮窗先等待已有定时自动保存，再保存编辑增量；两类都避免在 WPF 首次 Closing 回调的同步阶段重复调用 Close。手动台架退出前等待子浮窗保存后再释放共享 ViewModel；失败则拒绝退出、保留草稿和可见错误。KEY 20 Key 持续保持、纯等待不发 CAN、显式零掩码释放的硬件语义未改变。
+
+**场景未验证：** 多浮窗焦点/双击与单击是否误触发、窗口层叠、KEY 实物 ACK/保持、周期 CAN 停发/保存冲突及 WPF 输入法。
+
+### 19.2 主屏、副屏和 DPI 可达性
+
+DesktopWindowSizing.cs、FlashWindowSizing.cs 不再仅凭主屏 SystemParameters.WorkArea 或 owner 宽高猜测窗口工作区，改通过 Windows MonitorFromWindow / GetMonitorInfo 得到窗口所属显示器物理 WorkArea，并按 PresentationSource 的 TransformFromDevice 转换为该窗 WPF DIP 坐标，限制第一次显示的位置及尺寸，不永久覆盖用户手动拖拽几何信息。仍需要在 Windows 的主副屏不同 DPI、1366×768/150%、1920×1080/100%、任务栏位于屏幕侧边时实测。
+
+### 19.3 全工程真实实测不再“启动后看不见”
+
+独立增加 EngineeringVerificationWindow.xaml(.cs)：只观察既有 AutomaticTestHomeViewModel 所暴露的真实 OperatorRunState、OperatorFlashState、OperatorRecordState、OperatorRunEvidence、OperatorCurrentCase/Step、OperatorActual/Expected/Failure、Cases 用例/步骤树与 OperatorEvents。具备跟随执行、手动选择步骤、显示事件和明确停止请求。没有制造第二套 TEST 执行器、工位数据、真实生产 START、PASS 或 RECORD。
+
+MainWindowViewModel.Production.cs 在“准备本台扫码身份”时打开工程实测监视器，运行菜单可随时激活，回生产页面时关闭工程监视器。MainWindowViewModel.cs 的工程关闭/切换保护新增 IsOperatorRunning，覆盖之前单独 _realTest.IsRunning 没有覆盖的“FLASH 进行中，尚未正式进入 TEST”的窗口关闭风险，防止破坏硬件上下文。
+
+AutomaticTestHomeViewModel.Run.cs 返回生产时重新从只读原始工程构建用例树，开发整组实测的“实测通过”不残留到操作员正式生产界面。AutomaticTestHomeViewModel.cs 在主控 USB session 改变时使已接受扫码身份和未完成异步核对失效，必须重新核对真实 ECU；同一工程不能依靠旧 USB 会话的扫码身份执行新运行。
+
+### 19.4 DBC 规范/小数易用性
+
+DbcMessageEditDialog、DbcSignalEditDialog 的原始报文/信号/发送节点名称使用 ASCII DBC 标识符约束，而非 Unicode \w 模式；中文显示名仍使用用户独立别名。允许改 CAN ID 时，>0x7FF 合法标识自动选择 29 位扩展帧。DBC 信号比例、偏移、上下限以易读 G12 编辑，未编辑的数值回写时保存原二进制值，杜绝改名顺带让精度尾数发生默默变化。
+
+### 19.5 第九轮评分与独立源码检查
+
+逐一源代码回读 EngineeringVerificationWindow、MainWindow、ManualBenchWindow、ManualBenchCanPropertiesView/Window、ManualBenchKeyActionWindow、两个 DBC 属性编辑器的 XAML 与 C# 事件处理；简单标签栈检查、命名事件和主窗口约 30 个命令绑定匹配未发现缺失。**这不是 MSBuild、WPF 资源绑定、键鼠和真实 ECU 验收。**
+
+| 维度 | 八轮 | 九轮 | 依据 |
+|---|---:|---:|---|
+| 信息架构 /20 | 14 | 14 | 实体生产全流程仍缺必要数据合同 |
+| 操作效率 /20 | 15 | 16 | +1 真正多 CAN/KEY 浮窗、单一工程整组监视入口 |
+| 状态反馈 /15 | 13 | 14 | +1 真正的工程 FLASH/TEST 步骤可观测，明确不冒充生产 |
+| 空间布局 /15 | 13 | 13 | 多显示器仅完成源码逻辑，无真实 DPI 截图 |
+| 视觉规范 /10 | 7 | 7 | 没有足够实际布局和主题验收 |
+| 编辑细节 /10 | 8 | 9 | +1 浮窗编辑固定对象、保存和明确关闭 |
+| 异常恢复 /10 | 9 | 9 | 竞争保护在源码可见，但真实故障回归尚缺 |
+| **总分** | **79** | **82** | **未达 90 分，所有产品准出仍被阻断** |
+
+**第九轮决定：静态 82/100、UI_DESIGN_GATE=BLOCKED、PRODUCTION_GATE=BLOCKED、BUILD=NOT_RUN、TESTS=NOT_RUN、WPF_HANDS_ON=NOT_RUN、HARDWARE=NOT_RUN、CI=NOT_RUN。** 不得把报告加分当实体投产通行证。
