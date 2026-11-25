@@ -13,6 +13,18 @@ public sealed partial class MainWindowViewModel
     private AutomaticTestPlanService _automaticTestPlans = null!;
     private AutomaticTestHomeViewModel _automaticTestHome = null!;
     private bool _productionWorkspace = true;
+    private bool _compactShell;
+    /// <summary>
+    /// Desktop chrome density only. Does not change the active ECU project,
+    /// TEST program, scanner selection or device state.
+    /// </summary>
+    public bool IsCompactShell => _compactShell;
+    public void SetCompactShell(bool compact)
+    {
+        if (_compactShell == compact) return;
+        _compactShell = compact;
+        RaisePropertyChanged(nameof(IsCompactShell));
+    }
     private bool _developerRestored;
 
     public AutomaticTestHomeView AutomaticTestView { get; private set; } = null!;
