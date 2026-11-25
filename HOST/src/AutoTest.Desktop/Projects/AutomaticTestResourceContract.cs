@@ -70,19 +70,9 @@ public static class AutomaticTestResourceContract
                 var target = assets.SingleOrDefault(a => a.Id.Value == entry.PackageAssetId &&
                     a.Kind == ProjectWorkspaceService.TestProgramKind)
                     ?? throw new InvalidDataException("用例源资源不存在。");
-                // The formal project's invocation pin is separate from the
-                // asset index. Both MUST match before this case enters a
-                // production preparation. Reading the latest valid asset alone
-                // would silently upgrade a case without operator confirmation.
-                if (entry.PackageRevision != target.Revision ||
-                    !string.Equals(entry.PackageSha256, target.Sha256,
-                        StringComparison.OrdinalIgnoreCase))
-                    throw new InvalidDataException(
-                        "测试项目固定 r" + entry.PackageRevision +
-                        " / " + entry.PackageSha256 + "，当前用例资源 r" +
-                        target.Revision + " / " + target.Sha256 +
-                        "；版本或 SHA256 不一致，须在工程编辑中核对并更新引用。" +
-                        "正式生产禁止自动换用最新版。");
+                // Production must not substitute the latest TEST asset for
+                // the entry's explicitly frozen revision and SHA256.
+                RequirePinnedInvocation(entry, target);
                 var source = await ReadPinnedAsync(project, target, ct);
                 var program = ProjectWorkspaceService.BindCurrentRunResources(TestDocumentCodec.Deserialize(
                     new UTF8Encoding(false, true).GetString(source)), project);
@@ -118,6 +108,26 @@ public static class AutomaticTestResourceContract
             }
         }
         return new(projectAsset, cases.AsReadOnly(), issues.AsReadOnly());
+    }
+
+    /// <summary>
+    /// Production project entry provenance is independent from the physical
+    /// source asset's own verified hash. Both sides must agree; only the
+    /// engineer may explicitly adopt a new revision in TEST Project editor.
+    /// </summary>
+    public static void RequirePinnedInvocation(TestProjectEntry entry, AssetEntry asset)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+        ArgumentNullException.ThrowIfNull(asset);
+        if (entry.PackageAssetId != asset.Id.Value ||
+            entry.PackageRevision != asset.Revision ||
+            !string.Equals(entry.PackageSha256, asset.Sha256, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException(
+                "测试项目调用实例「" + entry.DisplayName + "」固定 r" +
+                entry.PackageRevision + " / " + entry.PackageSha256 +
+                "，当前 TEST 资源 r" + asset.Revision + " / " + asset.Sha256 +
+                "；ID、修订或 SHA256 不一致。必须在工程编辑中核对并更新引用，" +
+                "正式生产禁止静默替换最新版本。");
     }
 
     public static async Task<byte[]> ReadPinnedAsync(OpenProjectContext project,
