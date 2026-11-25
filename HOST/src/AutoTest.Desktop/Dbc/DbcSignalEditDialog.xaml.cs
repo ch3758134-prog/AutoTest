@@ -48,7 +48,7 @@ public partial class DbcSignalEditDialog : Window
         const string dbcIdentifier = @"^[A-Za-z_][A-Za-z0-9_]*$";
         if (!Regex.IsMatch(name, dbcIdentifier) ||
             !Regex.IsMatch(receiver, dbcIdentifier) ||
-            (mux.Length > 0 && mux != "M" && !Regex.IsMatch(mux, @"^m[0-9]+$"))
+            (mux.Length > 0 && mux != "M" && !Regex.IsMatch(mux, @"^m[0-9]+$")))
         {
             ErrorText.Text = "信号名称/接收节点须是 DBC 标识符；复用标记只能为空、M 或 m数字。";
             return;
