@@ -5,6 +5,8 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
 using System.Windows.Threading;
 using AutoTest.Specialists.Uds.Workbench;
 using Microsoft.Win32;
@@ -67,6 +69,64 @@ public partial class UdsWorkbenchWindow : Window
         ServiceRows.CollectionChanged += (_, _) => { MarkDirty(); UpdateReplayAvailability(); };
     }
 
+    private void SetEditorInputsEnabled(bool enabled)
+    {
+        SequenceName.IsEnabled = enabled;
+        EcuIdentity.IsEnabled = enabled;
+        RequestCanId.IsEnabled = enabled;
+        ResponseCanId.IsEnabled = enabled;
+        P2Input.IsEnabled = enabled;
+        P2StarInput.IsEnabled = enabled;
+        ServiceGrid.IsEnabled = enabled;
+    }
+
+    private void Workbench_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (_busy) return;
+        if (Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            switch (e.Key)
+            {
+                case Key.S:
+                    SaveDocument_Click(this, new RoutedEventArgs());
+                    e.Handled = true;
+                    return;
+                case Key.O:
+                    OpenDocument_Click(this, new RoutedEventArgs());
+                    e.Handled = true;
+                    return;
+                case Key.N:
+                    NewDocument_Click(this, new RoutedEventArgs());
+                    e.Handled = true;
+                    return;
+                case Key.D when ServiceGrid.IsKeyboardFocusWithin:
+                    CopyService_Click(this, new RoutedEventArgs());
+                    e.Handled = true;
+                    return;
+            }
+        }
+        if (Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift) &&
+            e.Key == Key.S)
+        {
+            SaveAsDocument_Click(this, new RoutedEventArgs());
+            e.Handled = true;
+            return;
+        }
+        if (!ServiceGrid.IsKeyboardFocusWithin || e.OriginalSource is TextBoxBase)
+            return;
+        if (Keyboard.Modifiers == ModifierKeys.None && e.Key == Key.Insert)
+        {
+            AddService_Click(this, new RoutedEventArgs());
+            e.Handled = true;
+        }
+        else if (Keyboard.Modifiers == ModifierKeys.None && e.Key == Key.Delete &&
+            SelectedRow is not null)
+        {
+            DeleteService_Click(this, new RoutedEventArgs());
+            e.Handled = true;
+        }
+    }
+
     private void MarkDirty()
     {
         if (_loading) return;
@@ -124,6 +184,7 @@ public partial class UdsWorkbenchWindow : Window
         };
         if (picker.ShowDialog(this) != true) return;
         _busy = true;
+        SetEditorInputsEnabled(false);
         try
         {
             var source = Path.GetFullPath(picker.FileName);
@@ -156,7 +217,7 @@ public partial class UdsWorkbenchWindow : Window
         {
             StatusText.Text = "打开 UDS 文档失败，原草稿未被覆盖：" + error.Message;
         }
-        finally { _busy = false; }
+        finally { SetEditorInputsEnabled(true); _busy = false; }
     }
 
     private static uint ParseHexCanId(string text, string name)
@@ -196,6 +257,10 @@ public partial class UdsWorkbenchWindow : Window
         try
         {
             var document = CaptureDocument();
+            // Capture the committed edit before the first await. Prevent
+            // further typing from being lost when the async save finishes
+            // and clears the dirty flag.
+            SetEditorInputsEnabled(false);
             var absolute = Path.GetFullPath(destination);
             if (File.Exists(absolute))
             {
@@ -227,7 +292,7 @@ public partial class UdsWorkbenchWindow : Window
                 error.Message + "；草稿仍保留。";
             return false;
         }
-        finally { _busy = false; }
+        finally { SetEditorInputsEnabled(true); _busy = false; }
     }
 
     private async void SaveDocument_Click(object sender, RoutedEventArgs e)
@@ -310,6 +375,7 @@ public partial class UdsWorkbenchWindow : Window
         };
         if (picker.ShowDialog(this) != true) return;
         _busy = true;
+        SetEditorInputsEnabled(false);
         try
         {
             var replay = new UdsReplayWorkspace();
@@ -330,7 +396,7 @@ public partial class UdsWorkbenchWindow : Window
         {
             StatusText.Text = "回放文件无法使用，原序列未修改：" + error.Message;
         }
-        finally { _busy = false; }
+        finally { SetEditorInputsEnabled(true); _busy = false; }
     }
     private void UpdateReplayAvailability() =>
         ReplayNext.IsEnabled = _replay is not null &&
