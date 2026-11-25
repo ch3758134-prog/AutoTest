@@ -486,6 +486,19 @@ public partial class RecordHistoryWindow : Window
         }
     }
 
+    private void HistoryGrid_DoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        // Double-click a concrete record, never a header, blank area, or a
+        // multiple-selection batch. Explicit buttons still support keyboard use.
+        if (_busy || e.ChangedButton != MouseButton.Left ||
+            HistoryGrid.SelectedItems.Count != 1 ||
+            e.OriginalSource is not FrameworkElement
+            { DataContext: RecordHistoryDisplayRow row } ||
+            !ReferenceEquals(HistoryGrid.SelectedItem, row)) return;
+        e.Handled = true;
+        OpenReport_Click(this, new RoutedEventArgs());
+    }
+
     private void StepFactsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         StepDetailText.Text = StepFactsGrid.SelectedItem is not ArchivedStepDisplayRow row
