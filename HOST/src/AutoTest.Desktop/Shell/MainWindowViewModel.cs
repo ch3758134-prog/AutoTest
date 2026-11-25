@@ -1739,7 +1739,7 @@ public sealed partial class MainWindowViewModel : BindableBase
             }
             var opened = await _workspace.OpenTestEditorAsync(caseAsset.Id);
             var editor = new TestEditorViewModel(_workspace, _testDialogs, opened, _realTest);
-            ActivateEditor("test|" + caseAsset.Id, new TestEditorView(editor),
+            ActivateEditor("test|" + caseAsset.Id, new TestEditorView(editor, this),
                 "测试用例 · " + caseAsset.Name, editor.ConfirmClose);
             SelectAsset(caseAsset.Id);
             StatusMessage = "已将空白用例加入当前项目并保存固定引用，可直接编写步骤。";
@@ -1829,7 +1829,7 @@ public sealed partial class MainWindowViewModel : BindableBase
 
             var opened = await _workspace.OpenTestEditorAsync(caseAsset.Id);
             var editor = new TestEditorViewModel(_workspace, _testDialogs, opened, _realTest);
-            ActivateEditor("test|" + caseAsset.Id, new TestEditorView(editor),
+            ActivateEditor("test|" + caseAsset.Id, new TestEditorView(editor, this),
                 "测试用例 · " + caseAsset.Name, editor.ConfirmClose);
             SelectAsset(caseAsset.Id);
             StatusMessage = "已建立唯一测试项目和第一条正式用例引用，可直接编辑真实测试步骤。";
@@ -2009,7 +2009,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         {
             var session = await _workspace.OpenTestEditorAsync(asset.Id);
             var editor = new TestEditorViewModel(_workspace, _testDialogs, session, _realTest);
-            ActivateEditor("test|" + asset.Id, new TestEditorView(editor),
+            ActivateEditor("test|" + asset.Id, new TestEditorView(editor, this),
                 asset.Name, editor.ConfirmClose);
             StatusMessage = "已打开测试程序：" + asset.Name;
         });
