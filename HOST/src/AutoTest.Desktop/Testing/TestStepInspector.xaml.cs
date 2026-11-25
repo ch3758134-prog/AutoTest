@@ -203,6 +203,7 @@ public partial class TestStepInspector : UserControl
     public ObservableCollection<TestSignalInputField> SignalValues { get; } = new();
      public StepCompositionResult? Result { get; private set; }
     public Func<StepCompositionResult, bool>? ApplyRequested { get; set; }
+    public Func<string>? ApplyFailureReason { get; set; }
     public Action<string>? StepActionRequested { get; set; }
     public event Action? Cancelled;
     /// <summary>
@@ -1712,7 +1713,7 @@ public partial class TestStepInspector : UserControl
             if (ApplyRequested?.Invoke(Result) != true)
             {
                 HasPendingEdits = true;
-                ErrorText.Text = "步骤属性未应用。请检查测试程序状态栏中的错误，修改后重试。";
+                ErrorText.Text = "无法保存此步骤：" + (ApplyFailureReason?.Invoke() ?? "测试程序拒绝了本次修改。");
                 return false;
             }
             HasPendingEdits = false;
