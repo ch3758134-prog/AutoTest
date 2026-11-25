@@ -41,6 +41,49 @@ public sealed class TestMappingContractTests
             .WithProperty("target", "Button").WithProperty("value", "Hold"));
         Assert.Throws<InvalidOperationException>(() => tx.RemoveMapping("Button"));
     }
+    [Fact]
+    public void ExplicitSameDbcRevisionRebindPreservesOtherStepsAndIsOneUndo()
+    {
+        var asset = AssetId.New();
+        var original = new TestTargetMapping("VCU_EPB_Command1",
+            TestTargetKind.CanMessage, asset, 1, new string('A', 64),
+            BusRole.DutCan, 0x18FF5027, Extended: true);
+        var revised = original with { AssetRevision = 2,
+            AssetSha256 = new string('B', 64) };
+        var tx = new StepEditTransaction(TestDocument.Create("Pinned DBC"));
+        var first = StepNode.Create("Write").WithProperty("target", original.Name)
+            .WithProperty("value", "HEX:0020320000000000");
+        var second = StepNode.Create("Write").WithProperty("target", original.Name)
+            .WithProperty("value", "HEX:FFEE000000000000");
+        tx.InsertWithMapping(TestPhase.Test, null, null, 0, first, original);
+        tx.Insert(TestPhase.Test, null, null, 1, second);
+        Assert.Throws<InvalidOperationException>(() =>
+            tx.ReplaceWithMapping(first.Id, first.WithProperty("value",
+                "HEX:0000000000000000"), revised));
+        Assert.Equal(original, tx.Current.Mappings.Single());
+        Assert.True(StepEditTransaction.CanRebindSamePhysicalIdentity(original, revised));
+        Assert.False(StepEditTransaction.CanRebindSamePhysicalIdentity(original,
+            revised with { CanId = 0x18FF5028 }));
+        Assert.False(StepEditTransaction.CanRebindSamePhysicalIdentity(original,
+            revised with { Asset = AssetId.New() }));
+        tx.ReplaceWithExplicitRebind(first.Id,
+            first.WithProperty("value", "HEX:0000000000000000"), revised);
+        Assert.Single(tx.Current.Mappings);
+        Assert.Equal(revised, tx.Current.Mappings.Single());
+        Assert.Equal(2, tx.Current.Walk().Count(step =>
+            step.Properties.GetValueOrDefault("target", "") == original.Name));
+        Assert.Equal("HEX:0000000000000000",
+            tx.Current.Walk().Single(step => step.Id == first.Id)
+                .Properties["value"]);
+        tx.Undo();
+        Assert.Equal(original, tx.Current.Mappings.Single());
+        Assert.Equal("HEX:0020320000000000",
+            tx.Current.Walk().Single(step => step.Id == first.Id)
+                .Properties["value"]);
+        tx.Redo();
+        Assert.Equal(revised, tx.Current.Mappings.Single());
+    }
+
     [Theory]
     [InlineData(false, 0x7FFu, true)]
     [InlineData(false, 0x800u, false)]
