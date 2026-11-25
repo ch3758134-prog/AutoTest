@@ -371,7 +371,13 @@ public partial class UdsWorkbenchWindow : Window
     {
         // XAML TextChanged may run during InitializeComponent before these
         // named controls have been constructed.
-        if (DidScopeText is null || DidConsentInput is null || ReadDidButton is null) return;
+        if (DidScopeText is null || DidConsentInput is null ||
+            ReadDidButton is null || DidHardwareStatus is null) return;
+        DidHardwareStatus.Text = !_hardware.IsConnected
+            ? "主控 USB 未连接，无法实体发送"
+            : !_hardware.IsEcuCanBitrateApplied
+                ? "主控已连接；先应用并读回 ECU CAN 码率"
+                : "主控 USB 和 ECU CAN 码率已确认（不代表 ECU 已响应）";
         if (!TryGetDidScope(out _, out _, out var confirmation))
         {
             DidScopeText.Text = "仅支持选中 22 HH LL，请设置合法的 ECU CAN 请求/响应 ID 和 P2 超时。";
