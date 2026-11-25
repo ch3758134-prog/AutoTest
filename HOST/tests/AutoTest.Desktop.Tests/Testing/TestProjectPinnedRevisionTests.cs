@@ -41,4 +41,30 @@ public sealed class TestProjectPinnedRevisionTests
         Assert.Equal(3, row.Revision);
         Assert.Equal(item.PackageSha256, row.Sha256);
     }
+
+    [Fact]
+    public void SameRevisionDifferentHashStillRequiresExplicitRebind()
+    {
+        var item = new TestProjectEntry(Guid.NewGuid(), Guid.NewGuid(), 4,
+            new string('A', 64), "功能检查", true);
+        var row = new TestProjectPackageRow(item);
+        row.RefreshAvailableRevision(4, new string('B', 64));
+        Assert.True(row.CanAdoptLatest);
+        Assert.Equal(new string('A', 64), row.ToEntry().PackageSha256);
+        row.AdoptCurrentRevision();
+        Assert.False(row.CanAdoptLatest);
+        Assert.Equal(new string('B', 64), row.ToEntry().PackageSha256);
+    }
+
+    [Fact]
+    public void RevisionRefreshDoesNotAlterTemporaryDevelopmentSelection()
+    {
+        var item = new TestProjectEntry(Guid.NewGuid(), Guid.NewGuid(), 1,
+            new string('C', 64), "释放检查", true);
+        var row = new TestProjectPackageRow(item) { RunSelected = false };
+        row.RefreshAvailableRevision(2, new string('D', 64));
+        row.AdoptCurrentRevision();
+        Assert.False(row.RunSelected);
+        Assert.True(row.ToEntry().Enabled);
+    }
 }
