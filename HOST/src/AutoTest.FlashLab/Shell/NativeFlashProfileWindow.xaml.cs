@@ -78,6 +78,8 @@ public partial class NativeFlashProfileWindow : Window
                 !string.Equals(_draft.EcuModelCode, _expectedModel, StringComparison.Ordinal))
                 throw new InvalidDataException("原生烧录配置绑定型号与当前工程型号不同，不允许静默替换。");
             ModelBox.Text = _draft.EcuModelCode;
+            MethodScopeNotice.Visibility = string.Equals(_draft.EcuModelCode, "HYDEPB",
+                StringComparison.Ordinal) ? Visibility.Collapsed : Visibility.Visible;
             AppTxBox.Text = Format(_draft.AppRequestCanId);
             AppRxBox.Text = Format(_draft.AppResponseCanId);
             BootTxBox.Text = Format(_draft.BootRequestCanId);
