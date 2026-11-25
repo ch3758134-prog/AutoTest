@@ -106,57 +106,124 @@ public partial class ManualBenchWindow : Window
         };
     }
 
-    private bool? _narrowBenchLayout;
+    private int _benchLayoutMode = -1;
+    private int _compactTabIndex;
 
     /// <summary>
-    /// Narrow/DPI-scaled windows preserve the real CAN table, KEY controls and
-    /// monitor without allowing the original three hard-minimum columns to
-    /// grow beyond the usable work area. Only panel positions change; each
-    /// control keeps the same ViewModel and WinUSB session.
+    /// Wide: CAN / KEY / RX parallel. Medium: CAN & KEY plus RX below.
+    /// Compact: full-width task panes, so a 1366x768 @150% DPI station
+    /// can still read complete CAN data without hiding its send actions.
+    /// All panes keep the SAME real device session, running periodic CAN
+    /// tasks and persistent KEY state when their visual tab is hidden.
     /// </summary>
     private void ApplyBenchAdaptiveLayout()
     {
-        if (!IsInitialized) return;
-        var narrow = ActualWidth < 1200;
-        if (_narrowBenchLayout == narrow) return;
-        _narrowBenchLayout = narrow;
-        if (narrow)
+        if (!IsInitialized || ActualWidth <= 0) return;
+        var mode = ActualWidth < 1060 || ActualHeight < 625 ? 2
+            : ActualWidth < 1200 ? 1 : 0;
+        if (_benchLayoutMode == mode) return;
+        _benchLayoutMode = mode;
+
+        BenchCompactNavigation.Visibility = mode == 2 ? Visibility.Visible : Visibility.Collapsed;
+        BenchBaudStatusText.Visibility = mode == 0 ? Visibility.Visible : Visibility.Collapsed;
+        BenchSendColumn.MinWidth = BenchKeyColumn.MinWidth = BenchMonitorColumn.MinWidth = 0;
+
+        if (mode == 2)
+        {
+            BenchSendColumn.Width = new GridLength(1, GridUnitType.Star);
+            BenchSendSplitterColumn.Width = new GridLength(0);
+            BenchKeyColumn.Width = new GridLength(0);
+            BenchMonitorSplitterColumn.Width = new GridLength(0);
+            BenchMonitorColumn.Width = new GridLength(0);
+            BenchPrimaryRow.Height = new GridLength(1, GridUnitType.Star);
+            BenchMonitorRow.Height = new GridLength(0);
+            BenchSendSplitter.Visibility = Visibility.Collapsed;
+            BenchMonitorSplitter.Visibility = Visibility.Collapsed;
+            Grid.SetRowSpan(BenchSendSplitter, 1);
+            Grid.SetRowSpan(BenchKeyPanel, 1);
+            Grid.SetColumn(BenchSendPanel, 0);
+            Grid.SetColumn(BenchKeyPanel, 0);
+            Grid.SetColumn(BenchMonitorPanel, 0);
+            Grid.SetRow(BenchSendPanel, 0);
+            Grid.SetRow(BenchKeyPanel, 0);
+            Grid.SetRow(BenchMonitorPanel, 0);
+            BenchSendPanel.Margin = BenchKeyPanel.Margin = BenchMonitorPanel.Margin = new Thickness(0);
+            ShowCompactBenchPane();
+            return;
+        }
+
+        BenchSendPanel.Visibility = BenchKeyPanel.Visibility =
+            BenchMonitorPanel.Visibility = Visibility.Visible;
+        BenchSendSplitter.Visibility = Visibility.Visible;
+        Grid.SetColumn(BenchSendPanel, 0);
+        Grid.SetRow(BenchSendPanel, 0);
+        Grid.SetColumn(BenchKeyPanel, 2);
+        Grid.SetRow(BenchKeyPanel, 0);
+        BenchSendPanel.Margin = BenchKeyPanel.Margin = new Thickness(0, 0, 4, 0);
+        BenchMonitorPanel.Margin = new Thickness(0);
+
+        if (mode == 1)
         {
             BenchSendColumn.MinWidth = 370;
             BenchKeyColumn.MinWidth = 320;
             BenchSendColumn.Width = new GridLength(55, GridUnitType.Star);
             BenchKeyColumn.Width = new GridLength(45, GridUnitType.Star);
-            BenchMonitorColumn.MinWidth = 0;
+            BenchSendSplitterColumn.Width = new GridLength(6);
             BenchMonitorColumn.Width = new GridLength(0);
             BenchMonitorSplitterColumn.Width = new GridLength(0);
             BenchPrimaryRow.Height = new GridLength(3, GridUnitType.Star);
             BenchMonitorRow.Height = new GridLength(2, GridUnitType.Star);
-            Grid.SetRow(BenchKeyPanel, 0);
             Grid.SetRowSpan(BenchKeyPanel, 2);
+            Grid.SetRowSpan(BenchSendSplitter, 2);
             Grid.SetRow(BenchMonitorPanel, 1);
             Grid.SetColumn(BenchMonitorPanel, 0);
-            Grid.SetRowSpan(BenchSendSplitter, 2);
             BenchMonitorSplitter.Visibility = Visibility.Collapsed;
-            BenchBaudStatusText.Visibility = Visibility.Collapsed;
         }
         else
         {
-            Grid.SetRowSpan(BenchKeyPanel, 1);
-            Grid.SetRow(BenchMonitorPanel, 0);
-            Grid.SetColumn(BenchMonitorPanel, 4);
-            Grid.SetRowSpan(BenchSendSplitter, 1);
-            BenchMonitorSplitter.Visibility = Visibility.Visible;
-            BenchBaudStatusText.Visibility = Visibility.Visible;
             BenchSendColumn.MinWidth = 420;
             BenchKeyColumn.MinWidth = 335;
             BenchMonitorColumn.MinWidth = 330;
             BenchSendColumn.Width = new GridLength(37, GridUnitType.Star);
             BenchKeyColumn.Width = new GridLength(29, GridUnitType.Star);
-            BenchMonitorSplitterColumn.Width = new GridLength(6);
             BenchMonitorColumn.Width = new GridLength(34, GridUnitType.Star);
+            BenchSendSplitterColumn.Width = new GridLength(6);
+            BenchMonitorSplitterColumn.Width = new GridLength(6);
             BenchPrimaryRow.Height = new GridLength(1, GridUnitType.Star);
             BenchMonitorRow.Height = new GridLength(0);
+            Grid.SetRowSpan(BenchKeyPanel, 1);
+            Grid.SetRowSpan(BenchSendSplitter, 1);
+            Grid.SetRow(BenchMonitorPanel, 0);
+            Grid.SetColumn(BenchMonitorPanel, 4);
+            BenchMonitorSplitter.Visibility = Visibility.Visible;
         }
+    }
+
+    private void BenchShowCanTab_Click(object sender, RoutedEventArgs e)
+    {
+        _compactTabIndex = 0;
+        ShowCompactBenchPane();
+    }
+    private void BenchShowKeyTab_Click(object sender, RoutedEventArgs e)
+    {
+        _compactTabIndex = 1;
+        ShowCompactBenchPane();
+    }
+    private void BenchShowMonitorTab_Click(object sender, RoutedEventArgs e)
+    {
+        _compactTabIndex = 2;
+        ShowCompactBenchPane();
+    }
+
+    private void ShowCompactBenchPane()
+    {
+        if (_benchLayoutMode != 2) return;
+        BenchSendPanel.Visibility = _compactTabIndex == 0 ? Visibility.Visible : Visibility.Collapsed;
+        BenchKeyPanel.Visibility = _compactTabIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
+        BenchMonitorPanel.Visibility = _compactTabIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
+        BenchShowCanTab.FontWeight = _compactTabIndex == 0 ? FontWeights.SemiBold : FontWeights.Normal;
+        BenchShowKeyTab.FontWeight = _compactTabIndex == 1 ? FontWeights.SemiBold : FontWeights.Normal;
+        BenchShowMonitorTab.FontWeight = _compactTabIndex == 2 ? FontWeights.SemiBold : FontWeights.Normal;
     }
 
     private async void OnKeyAutosaveTick(object? sender, EventArgs e)
