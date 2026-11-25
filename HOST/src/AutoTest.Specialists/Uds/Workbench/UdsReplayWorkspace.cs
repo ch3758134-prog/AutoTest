@@ -49,8 +49,11 @@ public sealed class UdsReplayWorkspace
         var file=new FileInfo(path);
         if (!file.Exists || file.Length>8*1024*1024)
             throw new InvalidDataException("Replay file missing or exceeds 8 MiB.");
-        var doc=JsonSerializer.Deserialize<UdsReplayDocument>(
-            await File.ReadAllBytesAsync(path,ct).ConfigureAwait(false))
+        var bytes = await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false);
+        // A file can grow between FileInfo.Length and the actual read.
+        if (bytes.Length > 8 * 1024 * 1024)
+            throw new InvalidDataException("Replay file exceeds 8 MiB.");
+        var doc = JsonSerializer.Deserialize<UdsReplayDocument>(bytes)
             ?? throw new InvalidDataException("Invalid replay JSON.");
         Load(doc);
     }
@@ -71,7 +74,9 @@ public sealed class UdsReplayWorkspace
         byte? nrc=final.Length==3 && final[0]==0x7F? final[2]:null;
         return new("Replay",UdsHex.Format(request),UdsHex.Format(final),outcome,
             nrc.HasValue?$"0x{nrc.Value:X2}":"—",
-            expected is null?null:final.SequenceEqual(expected),Guid.NewGuid(),
+            // The replay file carries no original correlation ID. Never
+            // invent a new GUID and present it as a measured ECU event.
+            expected is null?null:final.SequenceEqual(expected),Guid.Empty,
             record.Frames.ToArray(),final.Length==0?"REPLAY_NO_FINAL_RESPONSE":"");
     }
 }
