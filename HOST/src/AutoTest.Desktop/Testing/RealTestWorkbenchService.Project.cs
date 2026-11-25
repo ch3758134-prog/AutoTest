@@ -27,6 +27,7 @@ public sealed partial class RealTestWorkbenchService
         if (!await _station.WaitAsync(0, ct))
             throw new InvalidOperationException("工位正在由另一测试任务占用。");
         ConfiguredStationActionPort? actions = null;
+        ProjectExecutionSession? pending = null;
         try
         {
             var project = _projects.Current ??
@@ -77,6 +78,7 @@ public sealed partial class RealTestWorkbenchService
                 SHA256.HashData(Encoding.UTF8.GetBytes(grantMaterial)));
             var session = new ProjectExecutionSession(this, actions, project,
                 projectRunId, dutIdentity, epoch, fingerprint, pinned);
+            pending = session;
             // Durable parent receipt before the first physical TEST write.
             await session.PersistAsync("PREPARED", CancellationToken.None);
             await actions.AuthorizeProjectAsync(fingerprint,
@@ -98,6 +100,12 @@ public sealed partial class RealTestWorkbenchService
                 // Otherwise the next run could inherit an unowned USB fence.
                 try { await _hardware.RevokeTestRunAsync(); }
                 catch { /* Disconnect is UNKNOWN; preserve original failure. */ }
+            }
+            if (pending is not null)
+            {
+                try { await pending.PersistAsync("REJECTED_OR_AUTHORIZATION_FAILED",
+                    CancellationToken.None); }
+                catch { /* Failure is still raised; no success may be claimed. */ }
             }
             _projectSession = null;
             _station.Release();
