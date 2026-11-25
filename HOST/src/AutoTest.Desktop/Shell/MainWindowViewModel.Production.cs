@@ -23,6 +23,9 @@ public sealed partial class MainWindowViewModel
     public DelegateCommand ShowProductionWorkspaceCommand { get; private set; } = null!;
     public DelegateCommand ShowEngineerWorkspaceCommand { get; private set; } = null!;
     public DelegateCommand ConfigureAutomaticTestCommand { get; private set; } = null!;
+    public DelegateCommand ArmEngineeringFullRunCommand { get; private set; } = null!;
+    public DelegateCommand RunEngineeringFullRunCommand { get; private set; } = null!;
+    public DelegateCommand StopEngineeringFullRunCommand { get; private set; } = null!;
 
     private void InitializeProductionWorkspace()
     {
@@ -32,6 +35,13 @@ public sealed partial class MainWindowViewModel
             () => { _ = ShowDeveloperAsync(); },
             OpenSerialScannerWindow, () => IsProductionWorkspace);
         AutomaticTestView = new AutomaticTestHomeView { DataContext = _automaticTestHome };
+        ArmEngineeringFullRunCommand = new DelegateCommand(() =>
+        {
+            _automaticTestHome.ArmEngineeringVerification();
+            StatusMessage = "工程整组验证：先扫码核对当前 ECU，确认后从运行菜单启动真实 FLASH 和全量 TEST。";
+        }, () => IsEngineerWorkspace && !_automaticTestHome.IsOperatorRunning);
+        RunEngineeringFullRunCommand = _automaticTestHome.StartOperatorVerificationCommand;
+        StopEngineeringFullRunCommand = _automaticTestHome.StopOperatorVerificationCommand;
         ConfigureAutomaticTestCommand = new DelegateCommand(
             async () => await ShowDeveloperAsync());
         ShowEngineerWorkspaceCommand = new DelegateCommand(
@@ -106,6 +116,8 @@ public sealed partial class MainWindowViewModel
         RaisePropertyChanged(nameof(IsProductionWorkspace));
         RaisePropertyChanged(nameof(IsEngineerWorkspace));
         RaisePropertyChanged(nameof(WindowTitle));
+        ArmEngineeringFullRunCommand?.RaiseCanExecuteChanged();
+        RunEngineeringFullRunCommand?.RaiseCanExecuteChanged();
         StatusMessage = automaticTest
             ? "自动测试使用当前保存的 ECU 工程。"
             : "开发与调试工作区：可独立打开、编辑 ECU 工程。";
