@@ -941,6 +941,11 @@ public sealed partial class MainWindowViewModel : BindableBase
     /// before the shared hardware service is disposed.</summary>
     public async Task<bool> PrepareToolWindowsForCloseAsync(bool exitingApplication = false)
     {
+        // The engineering run monitor is an observer only. Stop/revoke the
+        // physical run before reaching this point; disposal cannot rely on a
+        // separately open monitor window.
+        if (_automaticTestHome?.IsOperatorRunning == true) return false;
+        CloseEngineeringVerificationMonitor();
         if (!await PrepareDbcWindowsForCloseAsync(exitingApplication)) return false;
         if (exitingApplication && _udsWorkbenchWindow is { IsVisible: true } uds &&
             !await uds.PrepareForParentShutdownAsync()) return false;
@@ -1095,7 +1100,8 @@ public sealed partial class MainWindowViewModel : BindableBase
             {
                 var documents = (subset ?? OpenEditors).Select(x => x.CloseDraft).ToList();
             documents.Insert(0, new CloseDraftDocument("当前工程/设备操作",
-                () => IsBusy || _savingActive || _hardwareBusy || _realTest.IsRunning,
+                () => IsBusy || _savingActive || _hardwareBusy ||
+                    _realTest.IsRunning || (_automaticTestHome?.IsOperatorRunning ?? false),
                 () => false, () => Task.FromResult(true)));
                 return await CloseDraftGuard.PrepareWithAutoSaveAsync(documents, ReportCloseBlocked);
             }
