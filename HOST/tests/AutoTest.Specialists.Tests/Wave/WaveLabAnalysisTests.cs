@@ -67,6 +67,45 @@ public sealed class WaveLabAnalysisTests
     }
 
     [Fact]
+    public void DisplayContinuity_DetectsSub200MsDropoutAt10MsCadence()
+    {
+        // This tests only presentation continuity, not source acquisition.
+        var source = Enumerable.Range(0, 6)
+            .Select(i => new WaveChartPoint(i * .01, i)).Concat([
+                new WaveChartPoint(.16, 6), new WaveChartPoint(.17, 7)
+            ]).ToArray();
+        Assert.InRange(WaveDisplayContinuity.GapLimit(source), .059, .061);
+        Assert.True(WaveDisplayContinuity.HasDiscontinuities(source));
+        Assert.False(WaveDisplayContinuity.CanMeasure(source, .02, .17));
+        Assert.True(WaveDisplayContinuity.CanMeasure(source, .0, .03));
+    }
+
+    [Fact]
+    public void DisplayCursorRejectsDuplicateOutOfOrderAndNonFiniteValues()
+    {
+        var duplicate = new[] { new WaveChartPoint(0, 0),
+            new WaveChartPoint(.01, 1), new WaveChartPoint(.01, 2) };
+        var reordered = new[] { new WaveChartPoint(0, 0),
+            new WaveChartPoint(.02, 2), new WaveChartPoint(.01, 1) };
+        var invalid = new[] { new WaveChartPoint(0, 0),
+            new WaveChartPoint(.01, double.NaN), new WaveChartPoint(.02, 2) };
+        foreach (var points in new[] { duplicate, reordered, invalid })
+        {
+            Assert.True(WaveDisplayContinuity.HasDiscontinuities(points));
+            Assert.False(WaveDisplayContinuity.CanMeasure(points, 0, .02));
+        }
+    }
+
+    [Fact]
+    public void DisplayCursorAcceptsOrderedFiniteObservations()
+    {
+        var points = Enumerable.Range(0, 11)
+            .Select(i => new WaveChartPoint(i * .01, i * .3)).ToArray();
+        Assert.False(WaveDisplayContinuity.HasDiscontinuities(points));
+        Assert.True(WaveDisplayContinuity.CanMeasure(points, .01, .09));
+    }
+
+    [Fact]
     public void HighPrecisionRejectsHostArrivalEvenWithIdenticalSamples()
     {
         var host = Series([0, .1, .2, .3], source: TimeSource.HostArrival);
