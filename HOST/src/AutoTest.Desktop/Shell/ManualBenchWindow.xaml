@@ -375,7 +375,6 @@
          <DataTemplate>
           <Button Style="{StaticResource BenchKeyActionPad}"
            Tag="{Binding}"
-           IsEnabled="{Binding DataContext.CanPressKeyPad,RelativeSource={RelativeSource AncestorType=Window}}"
            Click="KeyPad_Click"
             PreviewMouseLeftButtonDown="KeyPad_PreviewMouseLeftButtonDown"
             PreviewMouseRightButtonDown="KeyPad_PreviewMouseRightButtonDown"
