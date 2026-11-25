@@ -203,7 +203,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         {
             _session.Document.Model.Validate();
             _ = _session.Document.ExportText();
-            StatusMessage = "DBC 结构校验通过；保存时仍会核对文件与工程资源修订。";
+            StatusMessage = "DBC 结构校验通过；自动保存继续核对文件与工程资源修订。";
         }
         catch (Exception error) when (error is ProjectDataException or ArgumentException or FormatException)
         { StatusMessage = "DBC 检查失败：" + error.Message; }
@@ -361,8 +361,8 @@ public sealed class DbcWorkbenchViewModel : BindableBase
 
     public bool IsIndependentFile => _workspace is null;
     public string SourceDescription => IsIndependentFile
-        ? "独立 DBC 文件 · 保存到原始文件，不会自动加入 ECU 工程"
-        : "当前 ECU 工程 DBC · 保存将更新工程资源修订";
+        ? "独立 DBC 文件 · 修改自动保存回原文件，不加入 ECU 工程"
+        : "当前 ECU 工程 DBC · 有效修改自动保存并更新资源修订";
 
     public ObservableCollection<DbcMessageRow> Messages { get; } = new();
     public ObservableCollection<DbcSignalRow> Signals { get; } = new();
@@ -428,7 +428,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
             try
             {
                 _session.Document.SetMessageAlias(message.Message.Id, value);
-                StatusMessage = "报文中文别名已修改，请保存 DBC。";
+                StatusMessage = "报文中文别名已修改，等待自动保存。";
                 RefreshCommands();
             }
             catch (ProjectDataException error) { StatusMessage = error.Message; }
@@ -444,7 +444,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
             try
             {
                 _session.Document.SetMessageSummary(message.Message.Id, value);
-                StatusMessage = "报文功能摘要已修改（与名称及原始 CM_ 定义分开），请保存 DBC。";
+                StatusMessage = "报文功能摘要已修改，等待自动保存。";
                 RefreshCommands();
             }
             catch (ProjectDataException error) { StatusMessage = error.Message; }
@@ -460,7 +460,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
             try
             {
                 _session.Document.SetSignalSummary(message.Message.Id, signal.Name, value);
-                StatusMessage = "信号功能摘要已修改，请保存 DBC。";
+                StatusMessage = "信号功能摘要已修改，等待自动保存。";
                 RefreshCommands();
             }
             catch (ProjectDataException error) { StatusMessage = error.Message; }
@@ -476,7 +476,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
             try
             {
                 _session.Document.SetMessageComment(message.Message.Id, value);
-                StatusMessage = "报文详细注释已修改 · 保存后写回标准 CM_ BO_。";
+                StatusMessage = "报文详细注释已修改，将自动写入 CM_ BO_。";
                 RefreshCommands();
             }
             catch (ProjectDataException error) { StatusMessage = error.Message; }
@@ -493,7 +493,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
             try
             {
                 _session.Document.SetSignalComment(message.Message.Id, signal.Name, value);
-                StatusMessage = "信号详细注释已修改 · 保存后写回标准 CM_ SG_。";
+                StatusMessage = "信号详细注释已修改，将自动写入 CM_ SG_。";
                 RefreshCommands();
             }
             catch (ProjectDataException error) { StatusMessage = error.Message; }
@@ -510,7 +510,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
             _session.Document.SetMessageAlias(message.Message.Id, alias);
             RefreshMessages(message.Message.Id);
             Remember(before);
-            StatusMessage = "报文中文别名已修改 · Ctrl+S 保存。";
+            StatusMessage = "报文中文别名已修改，等待自动保存。";
             RefreshCommands();
             return true;
         }
@@ -531,7 +531,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
             _session.Document.SetSignalAlias(message.Message.Id, signal.Name, alias);
             RefreshSignals(signal.Name);
             Remember(before);
-            StatusMessage = "信号中文别名已修改 · Ctrl+S 保存。";
+            StatusMessage = "信号中文别名已修改，等待自动保存。";
             RefreshCommands();
             return true;
         }
@@ -556,7 +556,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
             try
             {
                 _session.Document.SetSignalAlias(message.Message.Id, signal.Name, value);
-                StatusMessage = "信号中文别名已修改，请保存 DBC。";
+                StatusMessage = "信号中文别名已修改，等待自动保存。";
                 RefreshCommands();
             }
             catch (ProjectDataException error) { StatusMessage = error.Message; }
@@ -699,7 +699,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
             _session.Document.UpdateMessage(chosen.Message.Id, edited);
             RefreshDocument(edited.Id, null);
             Remember(before);
-            StatusMessage = "报文参数已修改（尚未保存）";
+            StatusMessage = "报文参数已修改，等待自动保存。";
         }
         catch (Exception error) when (error is ProjectDataException or ArgumentException)
         {
@@ -720,7 +720,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
             _session.Document.UpdateSignal(message.Message.Id, chosen.Name, edited);
             RefreshDocument(message.Message.Id, edited.Name);
             Remember(before);
-            StatusMessage = "信号参数已修改（尚未保存）";
+            StatusMessage = "信号参数已修改，等待自动保存。";
         }
         catch (Exception error) when (error is ProjectDataException or ArgumentException)
         {
@@ -798,7 +798,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
             else row.Accept(original);
             if (ReferenceEquals(row, SelectedSignal)) RefreshAliasInputs();
             RaisePropertyChanged(nameof(CurrentMessageModel));
-            StatusMessage = "已应用信号参数；未保存的更改可撤销。";
+            StatusMessage = "信号参数已更新，自动保存后仍可撤销。";
             RefreshCommands();
             return true;
         }
