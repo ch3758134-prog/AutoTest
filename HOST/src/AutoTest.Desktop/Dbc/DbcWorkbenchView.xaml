@@ -65,7 +65,8 @@
      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
      <StackPanel Margin="10,9">
       <DockPanel><TextBlock DockPanel.Dock="Right" Text="{Binding MessageCount}" Foreground="#62778D"/><TextBlock Text="报文" FontSize="15" FontWeight="SemiBold"/></DockPanel>
-      <TextBlock Text="搜索 ID、名称或信号" FontSize="11" Foreground="#62778D" Margin="0,8,0,0"/>
+      <TextBlock Text="按 ID、别名、名称或信号检索" FontSize="11"
+       Foreground="#62778D" Margin="0,5,0,0"/>
       <TextBox x:Name="MessageSearch" Text="{Binding MessageSearchText,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" ToolTip="搜索报文名称、中文别名、CAN ID 或信号" Margin="0,4,0,4" MinHeight="30"/>
      </StackPanel>
      <DataGrid x:Name="MessageGrid" Grid.Row="1" Style="{StaticResource Matrix}" ItemsSource="{Binding Messages}" SelectedItem="{Binding SelectedMessage,Mode=TwoWay}" IsReadOnly="True" SelectionUnit="FullRow" MouseDoubleClick="Message_DoubleClick" RowHeight="42">
@@ -150,7 +151,7 @@
        <DataGridTextColumn x:Name="DbcDescriptionColumn" Visibility="Collapsed" Header="说明" Binding="{Binding Summary}" IsReadOnly="True" Width="170"/>
       </DataGrid.Columns>
      </DataGrid>
-     <Expander Grid.Row="2" Header="位布局 · 选中信号联动" IsExpanded="True" Margin="8,4,8,8" Padding="2">
+     <Expander Grid.Row="2" Header="位布局（按需展开）" IsExpanded="False" Margin="8,4,8,8" Padding="2">
       <Border Background="#F8FAFC" CornerRadius="5" Padding="8">
        <ScrollViewer MaxHeight="250" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
         <StackPanel HorizontalAlignment="Left">
@@ -163,8 +164,10 @@
     </Grid>
    </Border>
   </Grid>
-  <Border Grid.Row="3" Background="White" BorderBrush="#DFE6EE" BorderThickness="0,1,0,0" Padding="10,6">
-   <DockPanel><TextBlock DockPanel.Dock="Right" Text="常用字段直接编辑（含中文别名） · Tab 连续修改 · Ctrl+S 保存" Foreground="#62778D" FontSize="11" Margin="10,0,0,0"/><TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Foreground="#405870" FontSize="12"/></DockPanel>
+  <Border Grid.Row="3" Background="White" BorderBrush="#DFE6EE"
+   BorderThickness="0,1,0,0" Padding="10,6">
+   <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap"
+    Foreground="#405870" FontSize="12"/>
   </Border>
   <Grid x:Name="PropertyOverlay" Grid.RowSpan="4" Panel.ZIndex="100" Background="#40F1F5F9" Visibility="Collapsed" MouseLeftButtonDown="Overlay_Backdrop">
    <Border x:Name="PropertyCard" Background="White" BorderBrush="#D5E0EB" BorderThickness="1" CornerRadius="9" Width="610" MaxHeight="610" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="16" Padding="16">
@@ -190,7 +193,7 @@
      </StackPanel></ScrollViewer>
      <DockPanel Grid.Row="2" Margin="0,12,0,0">
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"><Button Content="取消" Click="CancelOverlay_Click" Margin="0,0,6,0"/><Button Content="应用" Click="FinishOverlay_Click" MinWidth="74"/></StackPanel>
-      <TextBlock Text="点击外部即可完成有效修改" Foreground="#62778D" FontSize="11" VerticalAlignment="Center"/>
+      <TextBlock Text="应用或取消后关闭；点击外部不丢失草稿" Foreground="#62778D" FontSize="11" VerticalAlignment="Center"/>
      </DockPanel>
     </Grid>
    </Border>
