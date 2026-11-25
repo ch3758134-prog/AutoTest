@@ -51,8 +51,9 @@ public sealed class EditorTabModel(string key, string title, UserControl view, F
             new(Title, () => flow.IsBusy, () => flow.IsDirty, flow.SaveForCloseAsync),
         TestProjectWorkbenchView when Editor is TestProjectWorkbenchViewModel projectVm =>
             new(Title, () => projectVm.IsBusy, () => projectVm.IsDirty, projectVm.SaveForCloseAsync),
-        DbcWorkbenchView when Editor is DbcWorkbenchViewModel dbcVm =>
-            new(Title, () => dbcVm.IsBusy, () => dbcVm.IsDirty, dbcVm.SaveForCloseAsync),
+        DbcWorkbenchView dbcView when Editor is DbcWorkbenchViewModel dbcVm =>
+            new(Title, () => dbcVm.IsBusy, () => dbcVm.IsDirty,
+                async () => dbcView.TryFinishEditing() && await dbcVm.SaveForCloseAsync()),
         ConfigurationWorkbenchView when Editor is ConfigurationWorkbenchViewModel configVm =>
             new(Title, () => configVm.IsBusy, () => configVm.IsDirty, configVm.SaveForCloseAsync),
         ProjectConfigurationOverviewView configurationOverview =>
@@ -806,7 +807,7 @@ public sealed partial class MainWindowViewModel : BindableBase
                 TestProjectWorkbenchView project when project.DataContext is TestProjectWorkbenchViewModel projectModel
                     => await projectModel.SaveForCloseAsync(),
                 DbcWorkbenchView dbc when dbc.DataContext is DbcWorkbenchViewModel dbcModel
-                    => await dbcModel.SaveForCloseAsync(),
+                    => dbc.TryFinishEditing() && await dbcModel.SaveForCloseAsync(),
                 ConfigurationWorkbenchView config when config.DataContext is ConfigurationWorkbenchViewModel configModel
                     => await configModel.SaveForCloseAsync(),
                 ProjectConfigurationOverviewView overview => await overview.SaveForCloseAsync(),
