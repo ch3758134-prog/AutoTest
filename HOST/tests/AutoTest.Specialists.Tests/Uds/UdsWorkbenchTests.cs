@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using AutoTest.Specialists.Uds.Workbench;
 using Xunit;
 
@@ -34,6 +35,11 @@ public sealed class UdsWorkbenchTests
             var loaded=await UdsToolDocumentStore.LoadAsync(path);
             Assert.Equal("Read VIN",Assert.Single(loaded.Services).Name);
             Assert.Equal(original.Profile,loaded.Profile);
+            var snapshot = await UdsToolDocumentStore.LoadSnapshotAsync(path);
+            Assert.Equal(original.Profile, snapshot.Document.Profile);
+            Assert.Equal("Read VIN", Assert.Single(snapshot.Document.Services).Name);
+            Assert.Equal(Convert.ToHexString(SHA256.HashData(
+                await File.ReadAllBytesAsync(path))), snapshot.Sha256);
             Assert.Throws<ArgumentException>(() => UdsToolDocumentStore.Validate(
                 original with { Profile=original.Profile with { TxId=original.Profile.RxId } }));
         }
@@ -51,6 +57,7 @@ public sealed class UdsWorkbenchTests
         Assert.Equal(0,replay.Position);
         var result=replay.Consume("22 F1 90");
         Assert.Equal("Replay",result.Source);
+        Assert.Equal(Guid.Empty, result.CorrelationId); // no invented physical-event identity
         Assert.Equal("Accepted",result.Outcome);
         Assert.Equal(1,replay.Position);
         Assert.Single(result.Frames);
