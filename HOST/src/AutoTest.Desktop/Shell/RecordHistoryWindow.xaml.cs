@@ -1,4 +1,6 @@
+using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Text.Json;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -24,15 +26,19 @@ public sealed record RecordHistoryDisplayRow(
         "Diagnostic" => "独立诊断",
         _ => Source.Mode
     };
-    public string VerdictLabel => Source.Verdict switch
-    {
-        "Pass" => "通过",
-        "Fail" => "失败",
-        "Error" => "错误",
-        "Inconclusive" => "待确认",
-        "Skipped" => "未执行",
-        _ => "未知"
-    };
+    // Even a stored verdict must not appear as a FINAL PASS until the
+    // append-only record is durably committed.
+    public string VerdictLabel => Source.PersistenceState != "Committed"
+        ? Source.PersistenceState == "Writing" ? "未结案" : "中断／未结案"
+        : Source.Verdict switch
+        {
+            "Pass" => "通过",
+            "Fail" => "失败",
+            "Error" => "错误",
+            "Inconclusive" => "待确认",
+            "Skipped" => "未执行",
+            _ => "未知"
+        };
     public string PersistenceLabel => Source.PersistenceState switch
     {
         "Committed" => "已归档",
@@ -45,6 +51,20 @@ public sealed record RecordHistoryDisplayRow(
 }
 
 /// <summary>
+/// A row is an immutable view of a real exported StepOccurrence, never a
+/// second TEST result or local re-interpretation of the recorded verdict.
+/// </summary>
+public sealed record ArchivedStepDisplayRow(
+    int Number, string Path, string State, string Actual, string Expected,
+    string Quality, string When, string Occurrence, string Evidence, string Detail)
+{
+    public string StepLabel => string.IsNullOrWhiteSpace(Path) ? "步骤 " + Number : Path;
+    public string FailureHint => string.IsNullOrWhiteSpace(Detail) ? "" : Detail;
+}
+public sealed record ArchivedEventDisplayRow(
+    int Number, string When, string Kind, string Description, string Quality);
+
+/// <summary>
 /// Read-only browser over the existing append-only RECORD database. No second
 /// record model, fake history, production state changes or implicit commits.
 /// </summary>
@@ -55,10 +75,16 @@ public partial class RecordHistoryWindow : Window
     private readonly Dictionary<string, IRecordHistoryToolSource> _sources =
         new(StringComparer.OrdinalIgnoreCase);
     private bool _busy;
+    private int _detailRequestRevision;
+    private CancellationTokenSource? _detailCancellation;
+    private readonly ObservableCollection<ArchivedStepDisplayRow> _archivedSteps = new();
+    private readonly ObservableCollection<ArchivedEventDisplayRow> _archivedEvents = new();
 
     public RecordHistoryWindow(string? projectRoot)
     {
         InitializeComponent();
+        StepFactsGrid.ItemsSource = _archivedSteps;
+        EventFactsGrid.ItemsSource = _archivedEvents;
         if (!string.IsNullOrWhiteSpace(projectRoot))
         {
             var candidate = Path.Combine(projectRoot, "test-records", "r1-records.sqlite");
@@ -117,6 +143,7 @@ public partial class RecordHistoryWindow : Window
                 new ArtifactRepository(Path.Combine(directory, "artifacts")))));
         SourceLabel.Text = "已选择 " + _sources.Count + " 个真实工程记录库";
         HistoryGrid.ItemsSource = null;
+        ClearSelectedFacts();
         SelectionSummary.Text = "选择一条记录查看详情";
         FailureDetail.Text = "";
         ViewReport.IsEnabled = false;
@@ -136,6 +163,7 @@ public partial class RecordHistoryWindow : Window
         if (_busy) return;
         _sources.Clear();
         HistoryGrid.ItemsSource = null;
+        ClearSelectedFacts();
         SourceLabel.Text = "尚未选择记录库";
         SelectionSummary.Text = "选择一条记录查看详情";
         FailureDetail.Text = "";
@@ -205,6 +233,7 @@ public partial class RecordHistoryWindow : Window
             var visible = rows.OrderByDescending(row => row.Source.StartedUtc)
                 .ThenBy(row => row.Source.RunId, StringComparer.Ordinal).Take(500).ToArray();
             HistoryGrid.ItemsSource = visible;
+            ClearSelectedFacts();
             SelectionSummary.Text = visible.Length == 0
                 ? "未找到符合条件的归档记录" : "选择一条记录查看详情";
             FailureDetail.Text = "";
@@ -223,6 +252,7 @@ public partial class RecordHistoryWindow : Window
         {
             StatusText.Text = "查询失败，未修改原始记录：" + error.Message;
             HistoryGrid.ItemsSource = null;
+            ClearSelectedFacts();
             ViewReport.IsEnabled = false;
             ExportReport.IsEnabled = false;
         }
