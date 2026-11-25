@@ -13,10 +13,12 @@ namespace AutoTest.Desktop.Shell;
 public partial class EngineeringVerificationWindow : Window
 {
     private readonly AutomaticTestHomeViewModel _model;
+    private readonly Action _openReports;
 
-    public EngineeringVerificationWindow(AutomaticTestHomeViewModel model)
+    public EngineeringVerificationWindow(AutomaticTestHomeViewModel model, Action openReports)
     {
         _model = model ?? throw new ArgumentNullException(nameof(model));
+        _openReports = openReports ?? throw new ArgumentNullException(nameof(openReports));
         InitializeComponent();
         DataContext = model;
         Loaded += (_, _) => DesktopWindowSizing.FitToVisibleWorkspace(this);
@@ -99,5 +101,6 @@ public partial class EngineeringVerificationWindow : Window
 
     // Closing this observer does not stop CAN, FLASH or TEST. The separate
     // explicit Stop command remains the only operator stop request.
+    private void OpenReports_Click(object sender, RoutedEventArgs e) => _openReports();
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
 }
