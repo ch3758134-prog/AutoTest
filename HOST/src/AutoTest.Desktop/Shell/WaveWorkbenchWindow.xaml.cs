@@ -360,43 +360,11 @@ public partial class WaveWorkbenchWindow : Window
         finally { _isRendering = false; }
     }
 
-    private static double VisualGapLimit(IReadOnlyList<WaveChartPoint> raw)
-    {
-        // Derive cadence from the real input BEFORE visual decimation. A gap
-        // in the original sample clock must never become a connecting line
-        // merely because the preview was downsampled.
-        var intervals = new List<double>(512);
-        for (var i = 1; i < raw.Count && intervals.Count < 512; i++)
-        {
-            var previous = raw[i - 1];
-            var current = raw[i];
-            if (!double.IsFinite(previous.Seconds) || !double.IsFinite(current.Seconds))
-                continue;
-            var gap = current.Seconds - previous.Seconds;
-            if (gap > 0 && double.IsFinite(gap)) intervals.Add(gap);
-        }
-        if (intervals.Count == 0) return 0.2;
-        intervals.Sort();
-        // The old hard 200 ms floor hid an 80–150 ms dropout in a 10 ms
-        // ECU signal stream. This is VISUAL continuity only, not TEST quality.
-        return Math.Clamp(intervals[intervals.Count / 2] * 6d, 0.02, 2d);
-    }
+    private static double VisualGapLimit(IReadOnlyList<WaveChartPoint> raw) =>
+        WaveDisplayContinuity.GapLimit(raw);
 
-    private static bool TraceHasDiscontinuities(IReadOnlyList<WaveChartPoint> raw)
-    {
-        var limit = VisualGapLimit(raw);
-        for (var i = 0; i < raw.Count; i++)
-        {
-            var current = raw[i];
-            if (!double.IsFinite(current.Value) || !double.IsFinite(current.Seconds))
-                return true;
-            if (i != 0 &&
-                (current.Seconds <= raw[i - 1].Seconds ||
-                 current.Seconds - raw[i - 1].Seconds > limit))
-                return true;
-        }
-        return false;
-    }
+    private static bool TraceHasDiscontinuities(IReadOnlyList<WaveChartPoint> raw) =>
+        WaveDisplayContinuity.HasDiscontinuities(raw);
 
     private void DrawTrace(IReadOnlyList<WaveChartPoint> points,
         Func<double, double> x, Func<double, double> y,
@@ -473,27 +441,8 @@ public partial class WaveWorkbenchWindow : Window
     // Validate the complete order because WaveChartAnalysis.Nearest uses a
     // binary search and assumes monotonically increasing time coordinates.
     private static bool HasReliableCursorInterval(
-        IReadOnlyList<WaveChartPoint> raw, double first, double second)
-    {
-        if (raw.Count == 0 || !double.IsFinite(first) || !double.IsFinite(second))
-            return false;
-        var left = Math.Min(first, second);
-        var right = Math.Max(first, second);
-        var maximumGap = VisualGapLimit(raw);
-        for (var i = 0; i < raw.Count; i++)
-        {
-            var current = raw[i];
-            if (!double.IsFinite(current.Seconds) || !double.IsFinite(current.Value))
-                return false;
-            if (i == 0) continue;
-            var previous = raw[i - 1];
-            if (current.Seconds <= previous.Seconds) return false;
-            if (previous.Seconds <= right && current.Seconds >= left &&
-                current.Seconds - previous.Seconds > maximumGap)
-                return false;
-        }
-        return true;
-    }
+        IReadOnlyList<WaveChartPoint> raw, double first, double second) =>
+        WaveDisplayContinuity.CanMeasure(raw, first, second);
 
     private void WavePlot_Click(object sender, MouseButtonEventArgs e)
     {
