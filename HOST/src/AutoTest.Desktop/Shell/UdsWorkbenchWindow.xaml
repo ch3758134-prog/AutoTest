@@ -113,7 +113,10 @@
    <Border x:Name="UdsEditorPanel" Background="White" BorderBrush="#DFE6EF"
     BorderThickness="1" CornerRadius="6">
     <Grid>
-     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+     <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+     </Grid.RowDefinitions>
      <DockPanel Margin="12,10" LastChildFill="True">
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
        <Button Content="新增" Click="AddService_Click" Style="{StaticResource UdsAction}"
@@ -127,7 +130,30 @@
       </StackPanel>
       <TextBlock Text="服务序列" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
      </DockPanel>
-     <DataGrid x:Name="ServiceGrid" Grid.Row="1" AutoGenerateColumns="False"
+     <Border Grid.Row="1" BorderBrush="#DCE7EE" BorderThickness="0,1,0,1"
+      Background="#F7FBFE" Padding="11,8" Margin="0,0,0,5">
+      <StackPanel>
+       <DockPanel LastChildFill="True">
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+         <Button x:Name="ReadDidButton" Content="读取选中 DID" Click="ReadDid_Click"
+          Style="{StaticResource AtPrimaryButton}" Padding="11,5"
+          ToolTip="仅允许当前选中的 22 HH LL；需要精确输入下面展示的授权文本" IsEnabled="False"/>
+         <Button x:Name="CancelDidButton" Content="停止" Click="CancelDid_Click"
+          Style="{StaticResource UdsAction}" IsEnabled="False" Margin="7,0,0,0"/>
+        </StackPanel>
+        <StackPanel>
+         <TextBlock Text="真实 ECU · 单次只读 DID" FontWeight="SemiBold" FontSize="13"/>
+         <TextBlock x:Name="DidScopeText" Text="选择 22 HH LL 服务，并配置 ECU CAN 端点"
+          FontFamily="Consolas" FontSize="11" TextWrapping="Wrap"
+          Foreground="#486780" Margin="0,3,0,4"/>
+        </StackPanel>
+       </DockPanel>
+       <TextBox x:Name="DidConsentInput" MinHeight="29" Padding="6,4" FontFamily="Consolas"
+        ToolTip="粘贴上方完整的 AUTHORIZE DID 授权文字；仅授权当前一次 0x22 读取"
+        TextChanged="DidConsentChanged" Margin="0,4,0,0"/>
+      </StackPanel>
+     </Border>
+     <DataGrid x:Name="ServiceGrid" Grid.Row="2" AutoGenerateColumns="False"
       CanUserAddRows="False" CanUserDeleteRows="False"
       ItemsSource="{Binding ServiceRows}" SelectionMode="Single" RowHeight="37"
       ColumnHeaderHeight="35" GridLinesVisibility="Horizontal" RowHeaderWidth="0"
@@ -157,9 +183,9 @@
       <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/><RowDefinition Height="*"/>
      </Grid.RowDefinitions>
-     <TextBlock Text="已保存的诊断报文回放" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,5"/>
+     <TextBlock Text="真实诊断与离线回放" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,5"/>
      <TextBlock Grid.Row="1" TextWrapping="Wrap" Foreground="#66788B" FontSize="12"
-      Text="离线回放 · 不向 ECU 发送报文"
+      Text="单次 DID 显示主控真实接收；文件回放独立且不会发送 CAN"
       Margin="0,0,0,11"/>
      <WrapPanel Grid.Row="2" Margin="0,0,0,10">
       <Button Content="载入回放…" Click="LoadReplay_Click" Style="{StaticResource UdsAction}"/>
@@ -170,6 +196,19 @@
      </WrapPanel>
      <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
       <StackPanel>
+       <Border Background="#F4FAF6" BorderBrush="#D9E9DF"
+        BorderThickness="1" CornerRadius="5" Padding="10" Margin="0,0,0,12">
+        <StackPanel>
+         <TextBlock Text="实时 0x22 读取（非正式 TEST 判定）"
+          FontWeight="SemiBold" FontSize="13" Margin="0,0,0,6"/>
+         <TextBlock x:Name="DidOutcomeText" Text="尚未发起实体诊断"
+          TextWrapping="Wrap" Foreground="#38614D" Margin="0,0,0,6"/>
+         <TextBlock x:Name="DidResponseText" FontFamily="Consolas"
+          TextWrapping="Wrap" Margin="0,0,0,6"/>
+         <ListBox x:Name="DidFrames" FontFamily="Consolas"
+          FontSize="11" MaxHeight="165" MinHeight="44"/>
+        </StackPanel>
+       </Border>
        <TextBlock x:Name="ReplayFileLabel" Text="尚未加载回放文件" Foreground="#5C7189"
         TextWrapping="Wrap" Margin="0,0,0,10"/>
        <TextBlock x:Name="ReplayOutcome" FontSize="15" FontWeight="SemiBold"
