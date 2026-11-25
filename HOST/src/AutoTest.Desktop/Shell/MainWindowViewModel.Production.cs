@@ -1,4 +1,6 @@
 using System.IO;
+using AutoTest.FlashLab.Programming;
+using System.Windows;
 using AutoTest.Desktop.Projects;
 using AutoTest.Projects.Project;
 using Prism.Commands;
@@ -40,6 +42,7 @@ public sealed partial class MainWindowViewModel
     public DelegateCommand RunEngineeringFullRunCommand { get; private set; } = null!;
     public DelegateCommand StopEngineeringFullRunCommand { get; private set; } = null!;
     public DelegateCommand ShowEngineeringFullRunMonitorCommand { get; private set; } = null!;
+    public DelegateCommand ConfirmProductionConfigurationCommand { get; private set; } = null!;
 
     private void InitializeProductionWorkspace()
     {
@@ -59,12 +62,80 @@ public sealed partial class MainWindowViewModel
         StopEngineeringFullRunCommand = _automaticTestHome.StopOperatorVerificationCommand;
         ShowEngineeringFullRunMonitorCommand = new DelegateCommand(
             ShowEngineeringVerificationMonitor, () => IsEngineerWorkspace);
+        ConfirmProductionConfigurationCommand = new DelegateCommand(
+            async () => await ConfirmProductionConfigurationAsync(),
+            () => IsEngineerWorkspace && !_realTest.IsRunning &&
+                !_automaticTestHome.IsOperatorRunning);
         ConfigureAutomaticTestCommand = new DelegateCommand(
             async () => await ShowDeveloperAsync());
         ShowEngineerWorkspaceCommand = new DelegateCommand(
             async () => await ShowDeveloperAsync());
         ShowProductionWorkspaceCommand = new DelegateCommand(
             async () => await ShowAutomaticTestAsync());
+    }
+
+    /// <summary>
+    /// One explicit acceptance of THIS saved ECU project and its immutable
+    /// FLASH release. Not another test plan and never a physical START.
+    /// Edits after confirmation invalidate the deployment automatically.
+    /// </summary>
+    private async Task ConfirmProductionConfigurationAsync()
+    {
+        if (!IsEngineerWorkspace || _realTest.IsRunning ||
+            _automaticTestHome.IsOperatorRunning || _hardware.IsFlashSecuritySensitive ||
+            _hardware.IsManualCanBatchApproved || _hardware.IsManualKeyActionApproved)
+        {
+            StatusMessage = "工位仍有实体任务；请结束并核实状态后再确认正式检测工程。";
+            return;
+        }
+        if (!await PrepareEditorsForCloseAsync()) return;
+        var project = _workspace.Current;
+        if (project is null)
+        {
+            StatusMessage = "没有打开 ECU 工程，无法确认生产配置。";
+            return;
+        }
+        try
+        {
+            var draft = await NativeFlashProfileStore.LoadAsync(project.RootDirectory)
+                ?? throw new InvalidDataException("该 ECU 工程尚未保存原生烧录工艺。");
+            var job = NativeFlashJobBuilder.Freeze(draft.Profile, project.RootDirectory);
+            if (!string.Equals(draft.Profile.EcuModelCode,
+                    project.Definition.EcuModelCode, StringComparison.Ordinal))
+                throw new InvalidDataException("原生烧录工艺与当前 ECU 工程型号不一致。");
+            var decision = MessageBox.Show(
+                global::System.Windows.Application.Current?.MainWindow,
+                "即将核对并冻结当前 ECU 工程作为本工位正式生产配置。\n" +
+                "无需创建第二套测试方案，正式检测仍执行工程内全部有序 TEST。\n\n" +
+                "型号：" + project.Definition.EcuModelCode + "\n" +
+                "工程：" + project.Definition.Name + "\n" +
+                "FLASH 固件 SHA256：" + job.FirmwareSha256 + "\n" +
+                "原生工艺 SHA256：" + draft.ProfileSha256 + "\n\n" +
+                "确认不会操作实体主控或烧录 ECU。确认后任何工程、" +
+                "工艺或固件更改均需重新核对。",
+                "确认当前工程用于正式检测", MessageBoxButton.YesNo,
+                MessageBoxImage.Question, MessageBoxResult.No);
+            if (decision != MessageBoxResult.Yes) return;
+            // Publish the exact observed draft, then bind the station to the
+            // verified manifest + ordered TEST + firmware/seed/key fingerprints.
+            // On failure the former station pin cannot silently accept a new
+            // release: StationDeploymentStore.VerifyAsync will reject it.
+            await NativeFlashPublicationStore.PublishAsync(
+                project.RootDirectory, draft.ProfileSha256);
+            var deployed = await StationDeploymentStore.DeployAsync(project);
+            StatusMessage = "当前 ECU 工程已确认用于正式检测：" +
+                deployed.Project.Definition.EcuModelCode +
+                "；下一步仅在真实扫码、实体 START 与生产 RECORD 均通过后允许启动。";
+            await RefreshEngineeringSetupAsync();
+        }
+        catch (Exception error) when (error is IOException or InvalidDataException or
+            UnauthorizedAccessException or ArgumentException or InvalidOperationException or
+            AutoTest.Projects.Project.ProjectDataException or FormatException or
+            NotSupportedException or System.Text.Json.JsonException)
+        {
+            StatusMessage = "正式生产配置确认失败，没有取得新的生产执行许可：" +
+                error.Message;
+        }
     }
 
     private void ShowEngineeringVerificationMonitor()
@@ -166,6 +237,7 @@ public sealed partial class MainWindowViewModel
         ArmEngineeringFullRunCommand?.RaiseCanExecuteChanged();
         RunEngineeringFullRunCommand?.RaiseCanExecuteChanged();
         ShowEngineeringFullRunMonitorCommand?.RaiseCanExecuteChanged();
+        ConfirmProductionConfigurationCommand?.RaiseCanExecuteChanged();
         StatusMessage = automaticTest
             ? "自动测试使用当前保存的 ECU 工程。"
             : "开发与调试工作区：可独立打开、编辑 ECU 工程。";
