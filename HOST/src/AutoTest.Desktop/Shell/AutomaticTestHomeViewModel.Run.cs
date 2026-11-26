@@ -698,12 +698,23 @@ public sealed partial class AutomaticTestHomeViewModel
                 await projectScope.Actions.CheckHealthAsync(ct);
                 var ongoing = projectScope.PeriodicTasks
                     .Where(x => x.StoppedUtc is null).ToArray();
+                var stoppedInCase = projectScope.LastCaseStoppedPeriodic;
                 OperatorPeriodicStatus = ongoing.Length == 0
                     ? "当前没有活动的周期 CAN 任务"
                     : "持续发送 " + ongoing.Length + " 条 · " +
                       string.Join("；", ongoing.Take(4).Select(x =>
                           "0x" + x.CanId.ToString("X") + " / " + x.PeriodMs +
                           " ms · USB ACK " + x.UsbAcks));
+                if (stoppedInCase.Count > 0)
+                {
+                    var stoppedText = string.Join("；", stoppedInCase.Take(6).Select(x =>
+                        "0x" + x.CanId.ToString("X") + " " + x.StopReason +
+                        "（源用例 " + x.SourceCaseId + "）"));
+                    OperatorPeriodicStatus += " · 本用例停止 " + stoppedInCase.Count + " 条";
+                    AddOperatorEvent("周期 CAN 停止原因 · " + stoppedText +
+                        "；如果它是下一个用例需要的环境报文，请检查 TEST 的" +
+                        "持续时长、CanStopPeriodic 和运行入口。");
+                }
                 AddOperatorEvent("项目周期 CAN · " + OperatorPeriodicStatus +
                     "（ACK 不是 ECU 接收证据）");
             }
