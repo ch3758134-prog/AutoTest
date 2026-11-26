@@ -259,12 +259,17 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
         Closing += OnClosing;
         Closed += (_, _) =>
         {
-            if (_scanner is not null) _scanner.CompleteBarcodeReceived -= OnRealSample;
+            if (_scanner is not null)
+            {
+                _scanner.CompleteBarcodeReceived -= OnRealSample;
+                _scanner.PropertyChanged -= OnGuidedScannerPropertyChanged;
+            }
             _autosave.Stop();
         };
         if (_scanner is not null)
         {
             _scanner.CompleteBarcodeReceived += OnRealSample;
+            _scanner.PropertyChanged += OnGuidedScannerPropertyChanged;
             ConnectionHint = _scanner.IsConnected
                 ? "真实扫码设备：" + _scanner.ConnectedPort + " · 仅离线试扫"
                 : "扫码枪未连接：仍可手动试扫；连接在独立扫码设备工具中完成";
@@ -278,7 +283,8 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
             if (!IsVisible || !_ready || _busy) return;
             var lines = PreviewInput.Text.Split(['\r', '\n'],
                 StringSplitOptions.RemoveEmptyEntries).Length;
-            if (lines >= 199) return;
+            if (lines >= 199)
+                PreviewInput.Clear(); // Keep the latest physical observation.
             PreviewInput.AppendText((PreviewInput.Text.Length > 0 &&
                 !PreviewInput.Text.EndsWith("\n", StringComparison.Ordinal) ? "\n" : "") +
                 raw + "\n");
@@ -479,6 +485,7 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
                     ? _scanner.ConnectedPort : "未连接") +
                 " · START/STOP/机械到位：仅已登记输入来源，未完成真实电气验证";
         }
+        await RefreshGuidedOverviewAsync();
     }
 
     private async void Refresh_Click(object sender, RoutedEventArgs e)
