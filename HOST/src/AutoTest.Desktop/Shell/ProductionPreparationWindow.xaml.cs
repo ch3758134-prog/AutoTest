@@ -145,7 +145,7 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
     private readonly SerialScannerWorkbenchViewModel? _scanner;
     private readonly Action? _onPublished;
     private readonly Func<ProductionPublishedProduct, Task<string>>? _activateProject;
-    private readonly Func<Task<string>>? _publishProject;
+    private readonly Func<Task<bool>>? _publishProject;
     private readonly Action? _openSpecialProcedure;
     private long _editGeneration;
     private readonly Func<bool> _mayEdit;
@@ -224,7 +224,7 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
     public ProductionPreparationWindow(ProjectWorkspaceService workspace, Func<bool> mayEdit,
         SerialScannerWorkbenchViewModel? scanner = null, Action? onPublished = null,
         Func<ProductionPublishedProduct, Task<string>>? activateProject = null,
-        Func<Task<string>>? publishProject = null,
+        Func<Task<bool>>? publishProject = null,
         Action? openSpecialProcedure = null)
     {
         _workspace = workspace;
@@ -282,8 +282,13 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
             PreviewInput.AppendText((PreviewInput.Text.Length > 0 &&
                 !PreviewInput.Text.EndsWith("\n", StringComparison.Ordinal) ? "\n" : "") +
                 raw + "\n");
-            PreparationTabs.SelectedIndex = 3;
-            Preview_Click(this, new RoutedEventArgs());
+            // An actual scan is previewed in the same guided context. Do not
+            // jump the user to another page or treat it as physical START.
+            _lastRealBarcode = raw;
+            _lastRealBarcodePort = _scanner?.ConnectedPort ?? "";
+            _lastRealBarcodeUtc = DateTimeOffset.UtcNow;
+            if (_guidedManualInput is not null) _guidedManualInput.Text = raw;
+            _ = PreviewGuidedBarcodeAsync(raw, true);
         }));
     }
 
@@ -399,7 +404,13 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
     {
         if (_publishProject is null) { Status = "工程发布入口尚未接入。"; return; }
         if (!await SaveAsync()) return;
-        try { Status = await _publishProject(); await RefreshOverviewAsync(); }
+        try
+        {
+            var success = await _publishProject();
+            Status = success ? "当前 ECU 工程已核对并冻结，未执行实体测试。" :
+                "工程发布已取消或校验未通过；未取得新生产发布资格。";
+            await RefreshOverviewAsync();
+        }
         catch (Exception error) { Status = "工程发布未完成：" + error.Message; }
     }
 
