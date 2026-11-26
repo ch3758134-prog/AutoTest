@@ -69,7 +69,7 @@
     </StackPanel>
     <StackPanel>
      <TextBlock Text="工程整组实测" FontWeight="SemiBold" FontSize="18"/>
-     <TextBlock Text="连接设备 → 扫描 ECU → 确认真实动作 → 自动整组实测（非生产）"
+     <TextBlock Text="扫码立即显示原文 → 核对编号和资源 → 确认真实动作 → 自动整组实测（非生产）"
       FontSize="11" Foreground="#667F94" Margin="0,3,0,0"/>
      <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
       <TextBlock Text="{Binding ControllerLabel}" Foreground="#41627D" FontSize="11" Margin="0,0,12,0"/>
@@ -87,12 +87,19 @@
      <ColumnDefinition Width="1*"/>
     </Grid.ColumnDefinitions>
     <StackPanel Grid.Column="0">
-     <TextBlock Text="当前 ECU" Style="{StaticResource EngCaption}"/>
-     <TextBlock Text="{Binding DutSerial}" FontSize="16" FontWeight="SemiBold"
-      TextTrimming="CharacterEllipsis" ToolTip="{Binding DutSerial}"/>
+     <TextBlock Text="最近扫码 · 原始内容" Style="{StaticResource EngCaption}"/>
+     <TextBlock Text="{Binding LastObservedBarcode}" FontSize="17" FontWeight="SemiBold"
+      Foreground="#155D91" TextTrimming="CharacterEllipsis"
+      ToolTip="{Binding LastObservedBarcode}"/>
+     <TextBlock Text="{Binding LastObservedAt,StringFormat='接收时间：{0}'}"
+      Style="{StaticResource EngCaption}"/>
+     <TextBlock Text="{Binding DutSerial,StringFormat='识别编号：{0}'}"
+      FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+      ToolTip="{Binding DutSerial}"/>
      <TextBlock Text="{Binding ScanStatus}" Style="{StaticResource EngCaption}"
-      MaxHeight="32" TextTrimming="CharacterEllipsis"
-      ToolTip="{Binding ScanStatus}"/>
+      TextWrapping="Wrap" MaxHeight="48" ToolTip="{Binding ScanStatus}"/>
+     <TextBlock Text="{Binding ScannerDiagnostic}" Style="{StaticResource EngCaption}"
+      TextWrapping="Wrap" MaxHeight="38" ToolTip="{Binding ScannerDiagnostic}"/>
     </StackPanel>
     <StackPanel Grid.Column="1" Margin="12,0">
      <TextBlock Text="执行阶段" Style="{StaticResource EngCaption}"/>
