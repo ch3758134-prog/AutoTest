@@ -24,7 +24,13 @@
      <ComboBox Margin="0,0,10,0" MinWidth="180" MaxWidth="300"
       ItemsSource="{Binding DataContext.ActionOptions,RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
       DisplayMemberPath="Label" SelectedValuePath="Kind"
-      SelectedValue="{Binding Kind,Mode=TwoWay}"/>
+      SelectedValue="{Binding Kind,Mode=TwoWay}">
+      <ComboBox.ItemContainerStyle>
+       <Style TargetType="ComboBoxItem">
+        <Setter Property="IsEnabled" Value="{Binding Selectable}"/>
+       </Style>
+      </ComboBox.ItemContainerStyle>
+     </ComboBox>
     </DockPanel>
    </Border>
   </DataTemplate>
@@ -33,7 +39,7 @@
   <StackPanel Margin="0,5,0,5">
    <TextBlock Text="本 ECU 的工位动作（工程草稿）" FontSize="14" FontWeight="SemiBold"
     Foreground="#223B54" Margin="0,0,0,7"/>
-   <TextBlock Text="配置检测前准备和检测后收尾动作。"
+   <TextBlock Text="这里仅编辑 IGN、等待等工程特殊动作。标准夹具1/2的装夹和释放在“生产准备 → 自动测试夹具工艺”配置，并由整组执行器自动完成；旧夹具动作须移除，禁止重复驱动。"
     Foreground="#65798B" TextWrapping="Wrap" Margin="0,0,0,12"/>
    <DockPanel LastChildFill="True" Margin="0,0,0,7">
     <Button DockPanel.Dock="Right" Content="＋ 添加准备动作" Command="{Binding AddBeforeCommand}"
@@ -61,7 +67,7 @@
     <TextBlock Text="{Binding SaveStatus}" Foreground="#526F8C" TextWrapping="Wrap"
      VerticalAlignment="Center"/>
    </DockPanel>
-   <TextBlock Text="夹具实际到位及 START 输入须经现场验证。"
+   <TextBlock Text="无机械位置传感器时，MCU GPIO 读回只能证明控制请求，不能作为正式生产装夹到位或 START 证据。"
     Foreground="#9A6C29" TextWrapping="Wrap" Margin="0,12,0,0"/>
   </StackPanel>
  </ScrollViewer>
