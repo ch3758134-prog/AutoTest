@@ -147,11 +147,7 @@ public static class WaveComparator
         if (end - begin <= 1e-12 || referenceDuration <= 0)
             return new Evaluation(shift, 0, 0, 0, 0, 0, 0, 0);
 
-        var boundaries = new List<double>(rt.Length + at.Length + 2) { begin, end };
-        boundaries.AddRange(rt.Where(t => t > begin && t < end));
-        boundaries.AddRange(at.Select(t => t - shift)
-            .Where(t => t > begin && t < end));
-        boundaries.Sort();
+        var boundaries = MergeObservedKnots(rt, at, shift, begin, end);
         var count = 0;
         var passed = 0;
         var max = 0.0;
@@ -210,11 +206,7 @@ public static class WaveComparator
         if (end - begin <= 1e-12 || referenceDuration <= 0)
             return new Evaluation(shift, 0, 0, 0, 0, 0, 0, 0);
 
-        var boundaries = new List<double>(rt.Length + at.Length + 2) { begin, end };
-        boundaries.AddRange(rt.Where(t => t > begin && t < end));
-        boundaries.AddRange(at.Select(t => t - shift)
-            .Where(t => t > begin && t < end));
-        boundaries.Sort();
+        var boundaries = MergeObservedKnots(rt, at, shift, begin, end);
         var count = 0;
         var passed = 0;
         var outside = 0.0;
@@ -248,6 +240,41 @@ public static class WaveComparator
         return new Evaluation(shift, count, passed, errorSeconds, max,
             outside, duration, duration / referenceDuration,
             duration, passingSeconds);
+    }
+
+    /// <summary>Merge the two already quality-checked monotonically ordered
+    /// timestamp sequences in O(n+m), not a full sort per alignment candidate.
+    /// Every knot originates in actual/reference observation evidence.</summary>
+    private static List<double> MergeObservedKnots(double[] referenceTimes,
+        double[] actualTimes, double shift, double begin, double end)
+    {
+        var knots = new List<double>(referenceTimes.Length + actualTimes.Length + 2)
+        {
+            begin
+        };
+        var i = 0;
+        var j = 0;
+        while (i < referenceTimes.Length && referenceTimes[i] <= begin + 1e-12) i++;
+        while (j < actualTimes.Length && actualTimes[j] - shift <= begin + 1e-12) j++;
+        var previous = begin;
+        while (true)
+        {
+            var fromReference = i < referenceTimes.Length
+                ? referenceTimes[i] : double.PositiveInfinity;
+            var fromActual = j < actualTimes.Length
+                ? actualTimes[j] - shift : double.PositiveInfinity;
+            var next = Math.Min(fromReference, fromActual);
+            if (next >= end - 1e-12) break;
+            if (next > previous + 1e-12)
+            {
+                knots.Add(next);
+                previous = next;
+            }
+            if (fromReference <= next + 1e-12) i++;
+            if (fromActual <= next + 1e-12) j++;
+        }
+        knots.Add(end);
+        return knots;
     }
 
     private static double HeldValue(double[] times, WaveSeries series, double at)
