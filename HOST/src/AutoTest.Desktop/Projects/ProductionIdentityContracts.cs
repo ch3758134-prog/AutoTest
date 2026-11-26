@@ -173,7 +173,8 @@ public sealed record ProductionFixtureConfiguration(
     string StationSlotId, bool UseClamp1, bool UseClamp2,
     string Clamp1Output, string Clamp2Output, string ClampClosedFeedback,
     string ClampOpenFeedback, string StartInput, string StopInput,
-    string InterlockInput, int MovementTimeoutMs, string ReleasePolicy)
+    string InterlockInput, int MovementTimeoutMs, string ReleasePolicy,
+    int FirstClamp = 0)
 {
     public static ProductionFixtureConfiguration Draft => new(
         "SLOT-01", false, false, "MCU:PTB1/J1-B5",
@@ -190,6 +191,9 @@ public sealed record ProductionFixtureConfiguration(
             MovementTimeoutMs is < 100 or > 120000 ||
             ReleasePolicy != "AFTER_DURABLE_RECORD_AND_SAFE_RELEASE_CONFIRMATION")
             throw new InvalidDataException("工位槽位、夹具通道或安全释放合同无效。");
+        if (FirstClamp is < 0 or > 2 ||
+            (UseClamp1 && UseClamp2 && FirstClamp == 0))
+            throw new InvalidDataException("同时启用两路夹具时，必须明确选择先操作哪一路（1 或 2）。");
         if (StartInput is null || StopInput is null ||
             InterlockInput is null || ClampClosedFeedback is null ||
             ClampOpenFeedback is null)
