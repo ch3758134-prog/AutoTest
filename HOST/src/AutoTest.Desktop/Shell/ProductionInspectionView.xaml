@@ -14,7 +14,7 @@
       only when an observed step supplies evidence; idle has no empty rail. -->
  <Grid Margin="11,9,11,10">
   <Grid.RowDefinitions>
-   <RowDefinition Height="69"/>
+   <RowDefinition Height="94"/>
    <RowDefinition Height="*"/>
   </Grid.RowDefinitions>
 
@@ -29,10 +29,13 @@
      <ColumnDefinition Width="2*"/>
     </Grid.ColumnDefinitions>
     <StackPanel Grid.Column="0">
-     <TextBlock Text="ECU 编号" Style="{StaticResource LabelCaption}"/>
-     <TextBlock Text="{Binding DutSerial}" FontSize="17" FontWeight="SemiBold"
+     <TextBlock Text="最近扫码原文" Style="{StaticResource LabelCaption}"/>
+     <TextBlock Text="{Binding LastScannerRaw}" FontSize="17" FontWeight="SemiBold"
       Margin="0,3,12,0" TextTrimming="CharacterEllipsis"
-      Foreground="#263A4F"/>
+      ToolTip="{Binding LastScannerDiagnostic}" Foreground="#235B8B"/>
+     <TextBlock Text="{Binding DutSerial,StringFormat='已核对编号：{0}'}"
+      FontSize="11" Margin="0,3,12,0" Foreground="#52677D"
+      TextTrimming="CharacterEllipsis" ToolTip="{Binding DutSerial}"/>
     </StackPanel>
     <StackPanel Grid.Column="1">
      <TextBlock Text="ECU 型号" Style="{StaticResource LabelCaption}"/>
