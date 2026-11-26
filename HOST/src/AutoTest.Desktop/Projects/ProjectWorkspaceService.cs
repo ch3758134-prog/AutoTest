@@ -98,9 +98,8 @@ public sealed partial class ProjectWorkspaceService
         catch (Exception) { return "工程路径暂不可用"; }
     }
 
-    // The bare project API is retained for existing import, migration and
-    // backend tests. The normal desktop New Project command instead creates
-    // a ready-to-edit TEST case with no mock or hardware output.
+    // Desktop New Project creates one empty TEST project; no fabricated cases,
+    // model field, or legacy scanner matching configuration.
     public Task<OpenProjectContext> CreateAsync(
         string name, string parentDirectory, CancellationToken cancellationToken = default) =>
         CreateCoreAsync(name, parentDirectory, false, cancellationToken);
