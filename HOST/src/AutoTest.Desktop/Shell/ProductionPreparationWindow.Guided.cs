@@ -1,6 +1,8 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Data;
 using System.Windows.Media;
 using AutoTest.Desktop.Projects;
 using AutoTest.FlashLab.Programming;
@@ -19,6 +21,7 @@ public partial class ProductionPreparationWindow
     private TextBlock? _guidedScan;
     private TextBlock? _guidedPublication;
     private TextBlock? _guidedBlocker;
+    private TextBlock? _guidedFixturePlan;
 
     // A successful barcode read belongs to one concrete scanner/COM session.
     // A disconnect or COM rebind invalidates the proof even if the port name
@@ -129,6 +132,63 @@ public partial class ProductionPreparationWindow
         deviceBody.Children.Add(GuidedText(
             "夹具反馈、实体 START 和互锁必须来自可验证的硬件输入；填写来源名称不能代替接线或到位确认。"));
 
+        root.Children.Add(GuidedCard("自动测试夹具工艺", out var fixtureBody));
+        fixtureBody.Children.Add(GuidedText(
+            "以下配置参与真实整组实测：先装夹，再烧录和完整 TEST。" +
+            "未选择通道就不会自动控制夹具；不允许 TEST 自己重复进行标准装夹。"));
+        var clampChoices = new WrapPanel();
+        foreach (var clamp in new[] { (1, "夹具 1 · 主控 PTB1 / J1-B5"),
+                                      (2, "夹具 2 · 主控 PTC2 / J1-B4") })
+        {
+            var check = new CheckBox
+            {
+                Content = clamp.Item2,
+                Margin = new Thickness(0, 5, 25, 8),
+                MinHeight = 25,
+                VerticalContentAlignment = VerticalAlignment.Center
+            };
+            check.SetBinding(ToggleButton.IsCheckedProperty,
+                new Binding(clamp.Item1 == 1 ? "Fixture.UseClamp1" : "Fixture.UseClamp2")
+                {
+                    Mode = BindingMode.TwoWay,
+                    UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
+                });
+            check.Checked += (_, _) => OnGuidedFixtureChanged();
+            check.Unchecked += (_, _) => OnGuidedFixtureChanged();
+            clampChoices.Children.Add(check);
+        }
+        fixtureBody.Children.Add(clampChoices);
+        var orderRow = new WrapPanel { Margin = new Thickness(0, 1, 0, 6) };
+        orderRow.Children.Add(new TextBlock
+        {
+            Text = "双路压紧顺序",
+            VerticalAlignment = VerticalAlignment.Center,
+            Foreground = GuidedMuted,
+            Margin = new Thickness(0, 0, 12, 0)
+        });
+        var order = new ComboBox
+        {
+            Width = 225, MinHeight = 31,
+            ItemsSource = ClampOrderChoices,
+            DisplayMemberPath = nameof(ClampOrderChoice.Label),
+            SelectedValuePath = nameof(ClampOrderChoice.Value)
+        };
+        order.SetBinding(Selector.SelectedValueProperty,
+            new Binding("Fixture.FirstClamp")
+            {
+                Mode = BindingMode.TwoWay,
+                UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
+            });
+        order.SelectionChanged += (_, _) => OnGuidedFixtureChanged();
+        orderRow.Children.Add(order);
+        fixtureBody.Children.Add(orderRow);
+        _guidedFixturePlan = GuidedText("正在读取已选夹具输出…");
+        fixtureBody.Children.Add(_guidedFixturePlan);
+        fixtureBody.Children.Add(GuidedText(
+            "两路同时启用时必须指定顺序，释放时反向执行。单路只控制所选输出。" +
+            "USB ACK 和 0x19 仅能证明 MCU GPIO，不等于气缸到位；" +
+            "无可靠机械反馈时只允许工程验证，不允许正式生产放行。"));
+
         root.Children.Add(GuidedCard("发布与生产准入", out var releaseBody));
         _guidedPublication = GuidedText("正在检查发布记录…");
         releaseBody.Children.Add(_guidedPublication);
@@ -156,6 +216,39 @@ public partial class ProductionPreparationWindow
             Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
             Content = root
         };
+    }
+
+    private void OnGuidedFixtureChanged()
+    {
+        if (!_ready) return;
+        if (!_mayEdit() || _busy)
+        {
+            Status = "当前工位正在执行或配置锁定，不能修改夹具工艺。";
+            return;
+        }
+        MarkDirty();
+        UpdateGuidedFixtureText();
+    }
+
+    private void UpdateGuidedFixtureText()
+    {
+        if (_guidedFixturePlan is null) return;
+        try
+        {
+            var plan = StationFixtureExecutionPlan.From(Fixture.ToModel());
+            _guidedFixturePlan.Text = plan.Press.Count == 0
+                ? "尚未启用夹具输出 · 自动测试不会压紧或释放。"
+                : "自动压紧：" + string.Join(" → ",
+                    plan.Press.Select(x => "夹具" + x.Clamp)) +
+                  "；收尾释放：" + string.Join(" → ",
+                    plan.Release.Select(x => "夹具" + x.Clamp)) +
+                  "；每次动作与 MCU GPIO 回读超时：" +
+                  plan.MovementTimeoutMs + "ms。";
+        }
+        catch (Exception error)
+        {
+            _guidedFixturePlan.Text = "夹具工艺需要修正：" + error.Message;
+        }
     }
 
     private string _guidedProjectDiagnostics = "";
@@ -346,6 +439,7 @@ public partial class ProductionPreparationWindow
     private async Task RefreshGuidedOverviewAsync()
     {
         if (_guidedProject is null || !_ready) return;
+        UpdateGuidedFixtureText();
         var current = _workspace.Current;
         if (current is null)
         {
