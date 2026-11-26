@@ -30,8 +30,10 @@ public static class StationProductionConfigurationStore
         var bytes = await File.ReadAllBytesAsync(DraftPath, ct).ConfigureAwait(false);
         if (bytes.Length is < 1 or > 24_000_000)
             throw new InvalidDataException("生产配置草稿文件缺失或超出限制。");
-        return JsonSerializer.Deserialize<StationProductionConfiguration>(bytes, Json)
-            ?? throw new InvalidDataException("生产配置草稿为空。");
+        var draft = JsonSerializer.Deserialize<StationProductionConfiguration>(bytes, Json)
+            ?? throw new InvalidDataException("工位配置为空。");
+        draft.ValidateDraft(); // No legacy JSON migration or silent fallback.
+        return draft;
     }
 
     public static async Task SaveDraftAsync(StationProductionConfiguration draft,
@@ -61,7 +63,7 @@ public static class StationProductionConfigurationStore
             throw new InvalidDataException("工位正式发布配置文件长度异常。");
         var published = JsonSerializer.Deserialize<PublishedStationProductionConfiguration>(
             bytes, Json) ?? throw new InvalidDataException("工位正式发布配置为空。");
-        if (published.SchemaVersion != 1 || published.PublicationId == Guid.Empty ||
+        if (published.SchemaVersion != StationProductionConfiguration.CurrentSchema || published.PublicationId == Guid.Empty ||
             published.Configuration is null ||
             published.Projects is null || published.Projects.Count == 0)
             throw new InvalidDataException("已发布生产配置的版本或工程绑定无效。");
@@ -149,16 +151,16 @@ public static class StationProductionConfigurationStore
     {
         var manifest = Path.GetFullPath(binding.ManifestPath);
         if (!File.Exists(manifest))
-            throw new FileNotFoundException("产品工程清单不存在：" + binding.ModelCode, manifest);
+            throw new FileNotFoundException("工程清单不存在：" + binding.ProjectId, manifest);
         var before = await File.ReadAllBytesAsync(manifest, ct).ConfigureAwait(false);
         var definition = await ProjectRepository.OpenDefinitionAsync(manifest, ct)
             .ConfigureAwait(false);
         var after = await File.ReadAllBytesAsync(manifest, ct).ConfigureAwait(false);
         if (!SHA256.HashData(before).AsSpan().SequenceEqual(SHA256.HashData(after)))
-            throw new IOException("工程清单在生产发布过程中改变：" + binding.ModelCode);
-        if (!string.Equals(definition.EcuModelCode, binding.ModelCode,
-            StringComparison.Ordinal))
-            throw new InvalidDataException("绑定的型号与 ECU 工程不一致：" + binding.ModelCode);
+            throw new IOException("工程清单在冻结期间改变：" + binding.ProjectId);
+        if (definition.Id.Value != binding.ProjectId)
+            throw new InvalidDataException(
+                "工程清单的 ProjectId 与工位绑定不一致，禁止按文件名替代。");
         var opened = new OpenProjectContext(definition, manifest,
             Convert.ToHexString(SHA256.HashData(after)));
         var test = await AutomaticTestResourceContract.ResolveAsync(opened, ct)
@@ -166,9 +168,7 @@ public static class StationProductionConfigurationStore
         test.RequireExecutable();
         var flash = await NativeFlashPublicationStore.LoadPublishedAsync(
             opened.RootDirectory, ct).ConfigureAwait(false)
-            ?? throw new InvalidDataException("工程尚未发布原生 FLASH 工艺：" + binding.ModelCode);
-        if (flash.Profile.EcuModelCode != binding.ModelCode)
-            throw new InvalidDataException("原生 FLASH 型号与绑定工程不一致。");
+            ?? throw new InvalidDataException("工程尚未冻结真实原生 FLASH 工艺：" + binding.ProjectId);
         var job = NativeFlashPublicationStore.FreezePublished(opened.RootDirectory, flash);
         var fixture = definition.Assets.Where(x =>
             x.Kind == ProjectWorkspaceService.InspectionKind).ToArray();
@@ -194,7 +194,7 @@ public static class StationProductionConfigurationStore
                     string.Join("、", conflicts) +
                     "）；请在工程设置中移除旧夹紧/释放动作，改由生产准备标准夹具配置管理。");
         }
-        return new ProductionPublishedProduct(binding.ModelCode, binding.HardwareCode,
+        return new ProductionPublishedProduct(binding.ProductKey, binding.HardwareCode,
             manifest, definition.Id.Value, opened.ManifestSha256,
             test.TestProjectAsset.Id.Value, test.TestProjectAsset.Sha256,
             flash.ProfileSha256, job.Fingerprint, job.FirmwareSha256,
@@ -213,7 +213,7 @@ public static class StationProductionConfigurationStore
         var pinned = new List<ProductionPublishedProduct>();
         foreach (var binding in config.Products)
             pinned.Add(await FreezeProjectAsync(binding, ct).ConfigureAwait(false));
-        var publication = new PublishedStationProductionConfiguration(1,
+        var publication = new PublishedStationProductionConfiguration(StationProductionConfiguration.CurrentSchema,
             ConfigurationSha(config), Guid.NewGuid(), DateTimeOffset.UtcNow,
             config, pinned.ToArray());
         await WriteGate.WaitAsync(ct).ConfigureAwait(false);
@@ -250,7 +250,7 @@ public static class StationProductionConfigurationStore
         ProductionPublishedProduct pin, CancellationToken ct = default)
     {
         var current = await FreezeProjectAsync(
-            new(pin.ModelCode, pin.HardwareCode, pin.ManifestPath), ct)
+            new(pin.ProductKey, pin.HardwareCode, pin.ManifestPath, pin.ProjectId), ct)
             .ConfigureAwait(false);
         if (current.ProjectId != pin.ProjectId ||
             current.TestProjectId != pin.TestProjectId ||
@@ -330,47 +330,52 @@ public static class ProductionIdentityResolver
         foreach (var matched in matches)
         {
             var f = matched.Fields;
-            string model, hardware, basis;
+            string key = "", hardware = "", basis;
+            ProductionPublishedProduct? project;
             if (config.Mode == StationProductionConfiguration.FixedStation)
             {
-                model = config.FixedModel;
-                hardware = config.FixedHardware;
-                basis = "FIXED_STATION_MODEL";
-            }
-            else if (config.Mode == StationProductionConfiguration.BarcodeModel)
-            {
-                model = f.Model;
-                hardware = f.Hardware;
-                basis = "PUBLISHED_BARCODE_MODEL_FIELD";
-                if (string.IsNullOrWhiteSpace(model))
-                    return Reject("BARCODE_MODEL_MISSING",
-                        "匹配编码形制没有提供可信型号字段。");
+                project = release.Projects.SingleOrDefault(x =>
+                    x.ProjectId == config.FixedProjectId);
+                basis = "FIXED_PROJECT_ID";
             }
             else
             {
-                var row = registry.Lookup(f.Serial);
-                if (row is null)
-                    return Reject("IDENTITY_REGISTRY_NOT_FOUND",
-                        "该编号在已发布身份登记表中不存在或已过期。");
-                model = row.ModelCode;
-                hardware = row.HardwareCode;
-                basis = "PUBLISHED_IDENTITY_REGISTRY";
+                if (config.Mode == StationProductionConfiguration.BarcodeModel)
+                {
+                    key = f.Model; // Parsed product segment, never ProjectId.
+                    hardware = f.Hardware;
+                    basis = "BARCODE_PRODUCT_KEY";
+                    if (string.IsNullOrWhiteSpace(key))
+                        return Reject("PRODUCT_KEY_MISSING",
+                            "条码没有可信产品识别字段，不能自动猜工程。");
+                }
+                else
+                {
+                    var row = registry.Lookup(f.Serial);
+                    if (row is null)
+                        return Reject("IDENTITY_REGISTRY_NOT_FOUND",
+                            "编号在受控工程归属表中不存在或已过期。");
+                    key = row.ProductKey;
+                    hardware = row.HardwareCode;
+                    basis = "REGISTRY_PRODUCT_KEY";
+                }
+                if ((!string.IsNullOrEmpty(f.Model) && f.Model != key) ||
+                    (!string.IsNullOrEmpty(f.Hardware) && f.Hardware != hardware))
+                    return Reject("PRODUCT_KEY_CONFLICT",
+                        "条码产品字段与受控工程归属冲突。");
+                var candidates = release.Projects.Where(x =>
+                    x.ProductKey == key && x.HardwareCode == hardware).ToArray();
+                project = candidates.Length == 1 ? candidates[0] : null;
             }
-            if (!string.IsNullOrEmpty(f.Model) && f.Model != model ||
-                !string.IsNullOrEmpty(f.Hardware) && f.Hardware != hardware)
-                return Reject("BARCODE_MODEL_CONFLICT",
-                    "编码内型号/硬件版本与工位或编号登记的可信结果冲突。");
-            var products = release.Projects.Where(x =>
-                x.ModelCode == model && x.HardwareCode == hardware).ToArray();
-            if (products.Length != 1)
-                return Reject("MODEL_PUBLICATION_NOT_UNIQUE",
-                    "已识别型号，但不存在唯一对应硬件版本的已发布 ECU 工程。");
+            if (project is null)
+                return Reject("PROJECT_MAPPING_NOT_UNIQUE",
+                    "扫码没有匹配到唯一且已冻结的工程。");
             resolutions.Add(new("PRODUCTION_IDENTITY_RESOLVED",
-                "唯一编号 → 型号 → 已发布工程；未取得实体启动许可。",
+                "ECU 编号 → 唯一已冻结工程；尚未取得实体启动许可。",
                 raw, matched.Rule.RuleId, matched.Rule.Revision, f.Serial,
-                model, hardware, f.Batch, basis, products[0]));
+                key, hardware, f.Batch, basis, project));
         }
-        if (resolutions.Select(x => x.Serial + "\u001f" + x.Model + "\u001f" +
+        if (resolutions.Select(x => x.Serial + "\u001f" + x.ProductKey + "\u001f" +
                 x.Hardware + "\u001f" + x.Batch + "\u001f" + x.Project!.ProjectId)
             .Distinct(StringComparer.Ordinal).Count() != 1)
             return Reject("BARCODE_RULE_CONFLICT",

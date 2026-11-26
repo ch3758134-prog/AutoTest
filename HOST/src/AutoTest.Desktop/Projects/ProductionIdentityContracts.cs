@@ -160,12 +160,14 @@ public sealed record ProductionBarcodeFields(
     bool Accepted, string Code, string Explanation, string Serial,
     string Model, string Hardware, string Batch);
 
+// A registry entry specifies a trusted product key, never a firmware or TEST.
 public sealed record ProductionIdentityRow(
-    string Serial, string ModelCode, string HardwareCode,
+    string Serial, string ProductKey, string HardwareCode,
     DateTimeOffset? ExpiresUtc = null, string Batch = "");
 
+// The stable project ID prevents a renamed folder from becoming a different ECU.
 public sealed record ProductionProductBinding(
-    string ModelCode, string HardwareCode, string ManifestPath);
+    string ProductKey, string HardwareCode, string ManifestPath, Guid ProjectId);
 
 /// <summary>One DUT position with two optional clamp outputs. An output ACK
 /// is not evidence of mechanical closure. START is not a safety interlock.</summary>
@@ -225,48 +227,61 @@ public sealed record ProductionFixtureConfiguration(
     }
 }
 
+/// <summary>
+/// R2 workcell contract: fixed station binds one stable ProjectId, not an
+/// operator-entered ECU model. Mixed-line product keys are optional and used
+/// ONLY when the barcode/registry can actually identify the product.
+/// Schema 1 is intentionally not accepted or migrated.
+/// </summary>
 public sealed record StationProductionConfiguration(
-    int SchemaVersion, int Revision, string Mode, string FixedModel,
-    string FixedHardware, IReadOnlyList<ProductionBarcodeRule> Rules,
+    int SchemaVersion, int Revision, string Mode, Guid FixedProjectId,
+    IReadOnlyList<ProductionBarcodeRule> Rules,
     IReadOnlyList<ProductionIdentityRow> IdentityRows,
     IReadOnlyList<ProductionProductBinding> Products,
     ProductionFixtureConfiguration Fixture)
 {
-    public const string FixedStation = "FixedStation";
-    public const string BarcodeModel = "BarcodeModel";
-    public const string RegistryModel = "RegistryModel";
+    public const int CurrentSchema = 2;
+    public const string FixedStation = "FixedProject";
+    public const string BarcodeModel = "BarcodeProduct";
+    public const string RegistryModel = "RegistryProject";
+
     public static StationProductionConfiguration New() => new(
-        1, 1, FixedStation, "", "",
-        [ProductionBarcodeRule.NewSerial()], [],
-        [], ProductionFixtureConfiguration.Draft);
+        CurrentSchema, 1, FixedStation, Guid.Empty,
+        [ProductionBarcodeRule.NewSerial()], [], [],
+        ProductionFixtureConfiguration.Draft);
 
     public void ValidateDraft()
     {
-        if (SchemaVersion != 1 || Revision < 1 ||
+        if (SchemaVersion != CurrentSchema || Revision < 1 ||
             Mode is not (FixedStation or BarcodeModel or RegistryModel) ||
             Rules is null || IdentityRows is null || Products is null ||
             Fixture is null || Rules.Count > 200 || IdentityRows.Count > 100000 ||
             Products.Count > 256 || !Rules.Any(x => x.Enabled))
-            throw new InvalidDataException("生产配置版本、身份来源或规则列表不完整。");
+            throw new InvalidDataException(
+                "工位配置格式不正确。旧版型号绑定配置不兼容，请重新配置本工位。");
         Fixture.Validate();
-        var ruleIds = new HashSet<string>(StringComparer.Ordinal);
+        var ids = new HashSet<string>(StringComparer.Ordinal);
         foreach (var rule in Rules)
         {
             rule.Validate();
-            if (!ruleIds.Add(rule.RuleId))
-                throw new InvalidDataException("多个编码规则使用了相同 ID：" + rule.RuleId);
+            if (!ids.Add(rule.RuleId))
+                throw new InvalidDataException("扫码规则 ID 重复。");
         }
-
-        var productKeys = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var x in Products)
+        var keys = new HashSet<string>(StringComparer.Ordinal);
+        var projectIds = new HashSet<Guid>();
+        foreach (var item in Products)
         {
-            if (string.IsNullOrWhiteSpace(x.ModelCode) ||
-                !Regex.IsMatch(x.ModelCode, @"\A[A-Z0-9]{2,16}\z",
-                    RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(80)) ||
-                string.IsNullOrWhiteSpace(x.ManifestPath) ||
-                !Path.IsPathFullyQualified(x.ManifestPath) ||
-                !productKeys.Add(x.ModelCode + "\u001f" + x.HardwareCode))
-                throw new InvalidDataException("型号/硬件版本到 ECU 工程的映射重复或非法。");
+            if (item.ProjectId == Guid.Empty || string.IsNullOrWhiteSpace(item.ManifestPath) ||
+                !Path.IsPathFullyQualified(item.ManifestPath) ||
+                item.ProductKey.Length > 64 || item.HardwareCode.Length > 64 ||
+                !keys.Add(item.ProductKey + "\u001f" + item.HardwareCode) ||
+                !projectIds.Add(item.ProjectId))
+                throw new InvalidDataException("工程绑定重复、缺少真实 ProjectId 或路径无效。");
+            if (Mode != FixedStation &&
+                (string.IsNullOrWhiteSpace(item.ProductKey) ||
+                 !Regex.IsMatch(item.ProductKey, @"\A[A-Z0-9]{2,16}\z",
+                     RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(80))))
+                throw new InvalidDataException("混线工程需要来自可信条码或登记表的产品识别码。");
         }
         var serials = new HashSet<string>(StringComparer.Ordinal);
         foreach (var row in IdentityRows)
@@ -274,10 +289,10 @@ public sealed record StationProductionConfiguration(
             if (string.IsNullOrWhiteSpace(row.Serial) || row.Serial.Length > 64 ||
                 row.ExpiresUtc is { } expired && expired <= DateTimeOffset.UtcNow ||
                 !serials.Add(row.Serial))
-                throw new InvalidDataException("编号绑定表存在重复编号或无效行：" + row.Serial);
-            if (!Products.Any(x => x.ModelCode == row.ModelCode &&
-                x.HardwareCode == row.HardwareCode))
-                throw new InvalidDataException("编号绑定表引用未登记产品：" + row.Serial);
+                throw new InvalidDataException("登记表中的 ECU 编号无效、过期或重复。");
+            if (!Products.Any(x => x.ProductKey == row.ProductKey &&
+                                   x.HardwareCode == row.HardwareCode))
+                throw new InvalidDataException("登记编号没有可信工程归属：" + row.Serial);
         }
     }
 
@@ -285,18 +300,25 @@ public sealed record StationProductionConfiguration(
     {
         ValidateDraft();
         if (Fixture.AutoClampEnabled && !Fixture.UseClamp1 && !Fixture.UseClamp2)
-            throw new InvalidDataException(
-                "自动夹具已启用但没有配置实体输出，不能发布。请在硬件设置中选择输出，或关闭自动夹具。");
-        if (Products.Count == 0)
-            throw new InvalidDataException("正式发布至少需要绑定一份完整 ECU 工程。");
-        if (Mode == FixedStation &&
-            !Products.Any(x => x.ModelCode == FixedModel && x.HardwareCode == FixedHardware))
-            throw new InvalidDataException("固定型号工位未对应唯一已发布的产品工程。");
+            throw new InvalidDataException("自动夹具未选择输出，禁止发布。");
+        if (Mode == FixedStation)
+        {
+            if (FixedProjectId == Guid.Empty || Products.Count != 1 ||
+                Products[0].ProjectId != FixedProjectId ||
+                Products[0].ProductKey.Length != 0 ||
+                Products[0].HardwareCode.Length != 0)
+                throw new InvalidDataException(
+                    "固定工位必须且只能绑定一份 ProjectId，不要求 ECU 型号或产品识别码。");
+        }
+        else if (Products.Count == 0)
+            throw new InvalidDataException("混线工位至少需要一份有可信产品识别码的工程绑定。");
+        else if (FixedProjectId != Guid.Empty)
+            throw new InvalidDataException("混线工位不能偷偷使用固定工程作为匹配回退。");
     }
 }
 
 public sealed record ProductionPublishedProduct(
-    string ModelCode, string HardwareCode, string ManifestPath, Guid ProjectId,
+    string ProductKey, string HardwareCode, string ManifestPath, Guid ProjectId,
     string ManifestSha256, Guid TestProjectId, string TestProjectSha256,
     string NativeFlashSha256, string FlashJobFingerprint,
     string FirmwareSha256, int EcuCanKbps, string FixtureSha256,
@@ -309,8 +331,8 @@ public sealed record PublishedStationProductionConfiguration(
 
 public sealed record ProductionIdentityDecision(
     string Code, string Detail, string Raw, string RuleId, int RuleRevision,
-    string Serial, string Model, string Hardware, string Batch,
-    string ModelBasis, ProductionPublishedProduct? Project)
+    string Serial, string ProductKey, string Hardware, string Batch,
+    string ProjectBasis, ProductionPublishedProduct? Project)
 {
     public bool Accepted => Code == "PRODUCTION_IDENTITY_RESOLVED" && Project is not null;
 }
