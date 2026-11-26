@@ -39,6 +39,8 @@ public sealed partial class MainWindowViewModel
     public DelegateCommand ShowEngineerWorkspaceCommand { get; private set; } = null!;
     public DelegateCommand ConfigureAutomaticTestCommand { get; private set; } = null!;
     public DelegateCommand ArmEngineeringFullRunCommand { get; private set; } = null!;
+    /// <summary>Single obvious engineering verification entry. Never grants USB writes or START by itself.</summary>
+    public DelegateCommand EnterEngineeringVerificationCommand { get; private set; } = null!;
     public DelegateCommand RunEngineeringFullRunCommand { get; private set; } = null!;
     public DelegateCommand StopEngineeringFullRunCommand { get; private set; } = null!;
     public DelegateCommand ShowEngineeringFullRunMonitorCommand { get; private set; } = null!;
@@ -62,6 +64,10 @@ public sealed partial class MainWindowViewModel
             () => { _ = ShowDeveloperAsync(); },
             OpenSerialScannerWindow, () => IsProductionWorkspace);
         AutomaticTestView = new AutomaticTestHomeView { DataContext = _automaticTestHome };
+        EnterEngineeringVerificationCommand = new DelegateCommand(
+            async () => await EnterEngineeringVerificationAsync(),
+            () => !_realTest.IsRunning && !_automaticTestHome.IsOperatorRunning &&
+                !_hardware.IsFlashSecuritySensitive);
         ArmEngineeringFullRunCommand = new DelegateCommand(() =>
         {
             _automaticTestHome.ArmEngineeringVerification();
@@ -250,6 +256,51 @@ public sealed partial class MainWindowViewModel
         }
     }
 
+    /// <summary>
+    /// A test operator should not need to navigate production preparation,
+    /// engineering menus, and a second "arm scan" step merely to inspect
+    /// one real ECU. Switching here only changes UI context, refreshes the
+    /// existing pinned resource snapshot, and arms real COM barcode reception.
+    /// USB clamp/CAN/FLASH writes still require the existing explicit physical
+    /// action consent and the full preflight inside StartOperatorVerificationAsync.
+    /// </summary>
+    private async Task EnterEngineeringVerificationAsync()
+    {
+        if (_realTest.IsRunning || _automaticTestHome.IsOperatorRunning ||
+            _hardware.IsFlashSecuritySensitive ||
+            _hardware.IsTestRunApproved ||
+            _hardware.HasManualCanRowLeases ||
+            _hardware.IsManualCanBatchApproved ||
+            _hardware.IsManualKeyActionApproved)
+        {
+            StatusMessage = "设备正在执行任务或资源被占用，请先安全停止后进入工程实测。";
+            return;
+        }
+        try
+        {
+            // Do not open IDE documents or ask the user to prepare a second
+            // test plan. The engineering runner still uses the published
+            // project, barcode binding and real TEST/FLASH execution service.
+            if (IsProductionWorkspace)
+            {
+                SetWorkspaceMode(false);
+                if (_workspace.Current is null)
+                    await RestoreAutomaticTestAtStartupAsync();
+            }
+            await _automaticTestHome.RestoreAsync();
+            _automaticTestHome.ArmEngineeringVerification();
+            ShowEngineeringVerificationMonitor();
+            StatusMessage = "工程实测已就绪：连接主控与扫码枪，扫描本台 ECU 编号。" +
+                "扫码成功后点击“开始实测”，真实烧录前仍需明确确认。";
+        }
+        catch (Exception error) when (error is IOException or InvalidDataException or
+            UnauthorizedAccessException or InvalidOperationException or
+            ArgumentException or ProjectDataException or FormatException)
+        {
+            StatusMessage = "工程实测入口未就绪：" + error.Message;
+        }
+    }
+
     private void ShowEngineeringVerificationMonitor()
     {
         if (!IsEngineerWorkspace) return;
@@ -352,6 +403,7 @@ public sealed partial class MainWindowViewModel
         RaisePropertyChanged(nameof(IsEngineerWorkspace));
         RaisePropertyChanged(nameof(WindowTitle));
         ArmEngineeringFullRunCommand?.RaiseCanExecuteChanged();
+        EnterEngineeringVerificationCommand?.RaiseCanExecuteChanged();
         RunEngineeringFullRunCommand?.RaiseCanExecuteChanged();
         ShowEngineeringFullRunMonitorCommand?.RaiseCanExecuteChanged();
         ConfirmProductionConfigurationCommand?.RaiseCanExecuteChanged();
