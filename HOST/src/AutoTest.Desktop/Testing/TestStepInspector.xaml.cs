@@ -1045,7 +1045,11 @@ public partial class TestStepInspector : UserControl
             "   通过比例 ≥ " + cfg.MinimumPassRatio.ToString("P1") +
             "\n最大时间偏移  " + (cfg.MaximumShiftSeconds * 1000).ToString("G") + " ms" +
             "\n最大连续越界  " + (cfg.MaximumOutOfToleranceSeconds * 1000).ToString("G") + " ms" +
+            "\n比较类型  " + (cfg.InterpolationMode == WaveInterpolationMode.StepHold
+                ? "离散状态（阶梯保持）" : "连续数值（线性插值）") +
             "\n配置修订  " + choice.Mapping.AssetRevision +
+            "\n新版算法批准  " + (settings.IsComparisonReviewCurrent
+                ? "已复核" : "未复核 · 正式 TEST 将阻断") +
             "\n判定参数由所引用的工程波形配置维护；此处仅核对。";
         if (string.IsNullOrWhiteSpace(settings.ReferenceName) || !settings.DbcAssetId.HasValue)
         {
@@ -1685,9 +1689,9 @@ public partial class TestStepInspector : UserControl
                 if (_selected.TargetCategory == "wave")
                 {
                     node = node.WithProperty("profile", mapping?.Name ?? "");
-                    if (mapping is null && string.IsNullOrWhiteSpace(
-                        node.Properties.GetValueOrDefault("reference", "")))
-                        throw new ArgumentException("波形分析需要选择已配置方案，或填写命名参考波形。");
+                    if (mapping is null)
+                        throw new ArgumentException("请先选择已复核并保存修订的 WAVE 判定配置，" +
+                            "不能只填写参考名称或临时容差进行自动 TEST。");
                 }
                 else if (mapping is not null)
                     node = node.WithProperty("target", mapping.Name);
