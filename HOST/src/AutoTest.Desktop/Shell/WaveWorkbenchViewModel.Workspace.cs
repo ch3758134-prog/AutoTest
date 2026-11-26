@@ -105,6 +105,7 @@ public sealed record WavePlotLane(string Name, string Unit, string Color,
     double? Tolerance, bool StepStyle, string Detail);
 
 public sealed record WaveTimeChoice(int Seconds, string Label);
+public sealed record WaveCompareModeChoice(WaveInterpolationMode Mode, string Label);
 
 public sealed record WaveSessionItem(Guid Id, DateTimeOffset Started, Guid[] EvidenceIds,
     string[] Names)
@@ -135,6 +136,23 @@ public sealed partial class WaveWorkbenchViewModel
     private string _comparisonSummary = "选择一条已保存的实际波形和对应参考，然后执行比较。";
     private string _absoluteToleranceText = "";
     private string _minimumCoverageText = "0.95";
+    private WaveCompareModeChoice _selectedCompareMode =
+        new(WaveInterpolationMode.Linear, "连续数值（线性插值）");
+
+    public IReadOnlyList<WaveCompareModeChoice> CompareModes { get; } =
+    [
+        new(WaveInterpolationMode.Linear, "连续数值（线性插值）"),
+        new(WaveInterpolationMode.StepHold, "离散状态（阶梯保持）")
+    ];
+    public WaveCompareModeChoice SelectedCompareMode
+    {
+        get => _selectedCompareMode;
+        set
+        {
+            if (value is not null && SetProperty(ref _selectedCompareMode, value))
+                CompareCommand?.RaiseCanExecuteChanged();
+        }
+    }
 
     public ObservableCollection<WaveSignalTrack> Tracks { get; } = new();
     public ObservableCollection<WaveSessionItem> Sessions { get; } = new();
@@ -414,6 +432,7 @@ public sealed partial class WaveWorkbenchViewModel
             ComparisonSummary = "请填写合法的非负绝对容差与 0～1 的最小覆盖率（使用小数点）。";
             return;
         }
+        var interpolation = SelectedCompareMode.Mode;
         var actual = _series;
         var selected = Selected;
         var root = WaveSourceRoot!;
@@ -431,7 +450,10 @@ public sealed partial class WaveWorkbenchViewModel
                 if (source.Kind != "Capture")
                     throw new InvalidDataException("只能对真实采集记录进行新的参考比较。");
                 var settings = new WaveComparisonConfig(tolerance, 0, coverage,
-                    1, 0.05, 1.6, 0, 0);
+                    1, 0.05, 1.6, 0, 0)
+                {
+                    InterpolationMode = interpolation
+                };
                 var engine = new WaveCaptureService(_liveSignals, evidenceStore, referenceStore);
                 var handle = new WaveEvidenceRef(source.Id,
                     source.Actual.SourceRevision, source.Actual.Signal.Unit,
@@ -455,6 +477,8 @@ public sealed partial class WaveWorkbenchViewModel
             _referenceOverlay = details.Code == "SIGNAL_REVISION_MISMATCH" ? null :
                 completed.Reference;
             ComparisonSummary = "分析结果 " + details.Verdict +
+                " · " + (interpolation == WaveInterpolationMode.StepHold
+                    ? "离散状态 · 按跳变区间计时" : "连续数值 · 线性插值") +
                 " · 覆盖率 " + details.Coverage.ToString("P1") +
                 " · RMSE " + details.Rmse.ToString("G4") +
                 " · 最大偏差 " + details.MaximumAbsoluteError.ToString("G4") +
