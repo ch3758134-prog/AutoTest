@@ -75,6 +75,75 @@ public sealed class WaveComparatorTests
     }
 
     [Fact]
+    public void StepHold_IdenticalObservedStateTransitionsPassWithoutInventingIntermediateValues()
+    {
+        var discrete = Strict with
+        {
+            InterpolationMode = WaveInterpolationMode.StepHold,
+            MaximumShiftSeconds = 0
+        };
+        var series = Series(values: [0, 0, 1, 1, 1]);
+        var result = WaveComparator.Compare(series, series, discrete);
+        Assert.Equal(Verdict.Pass, result.Verdict);
+        Assert.Equal(1, result.Coverage, 8);
+        Assert.Equal(0, result.OutsideToleranceSeconds, 8);
+    }
+
+    [Fact]
+    public void StepHold_CatchesShortWrongStateBetweenReferenceSamples()
+    {
+        var discrete = Strict with
+        {
+            InterpolationMode = WaveInterpolationMode.StepHold,
+            MaximumShiftSeconds = 0,
+            MinimumCoveredDurationSeconds = .35
+        };
+        var reference = Series(values: [0, 0, 0, 0, 0]);
+        var actual = Series([0, .1, .15, .17, .2, .3, .4],
+                            [0, 0, 1, 0, 0, 0, 0]);
+        var result = WaveComparator.Compare(actual, reference, discrete);
+        Assert.Equal(Verdict.Fail, result.Verdict);
+        Assert.Equal("WAVE_OUT_OF_TOLERANCE", result.Code);
+        Assert.InRange(result.OutsideToleranceSeconds, .019, .021);
+        Assert.InRange(result.PassRatio, .94, .96);
+    }
+
+    [Fact]
+    public void StepHold_DifferentObservedTransitionTimeFailsByActualDuration()
+    {
+        var discrete = Strict with
+        {
+            InterpolationMode = WaveInterpolationMode.StepHold,
+            MaximumShiftSeconds = 0
+        };
+        var reference = Series(values: [0, 0, 1, 1, 1]);
+        var actual = Series([0, .1, .2, .25, .3, .4],
+                            [0, 0, 0, 1, 1, 1]);
+        var result = WaveComparator.Compare(actual, reference, discrete);
+        Assert.Equal(Verdict.Fail, result.Verdict);
+        Assert.InRange(result.OutsideToleranceSeconds, .049, .051);
+    }
+
+    [Fact]
+    public void StepHold_UnconfirmedFinalTransitionCannotPass()
+    {
+        var discrete = Strict with { InterpolationMode = WaveInterpolationMode.StepHold };
+        var reference = Series(values: [0, 0, 0, 0, 1]);
+        var result = WaveComparator.Compare(reference, reference, discrete);
+        Assert.Equal(Verdict.Inconclusive, result.Verdict);
+        Assert.Equal("UNCONFIRMED_TERMINAL_STATE", result.Code);
+    }
+
+    [Fact]
+    public void UnknownInterpolationModeIsErrorNotDefaultedToLinear()
+    {
+        var config = Strict with { InterpolationMode = (WaveInterpolationMode)99 };
+        var result = WaveComparator.Compare(Series(), Series(), config);
+        Assert.Equal(Verdict.Error, result.Verdict);
+        Assert.Equal("INVALID_INTERPOLATION_MODE", result.Code);
+    }
+
+    [Fact]
     public void E3_T03_MissingSampleDoesNotGetInterpolatedIntoPass()
     {
         var missing = Series([0, .1, .3, .4], [0, 1, 1, 0]);
