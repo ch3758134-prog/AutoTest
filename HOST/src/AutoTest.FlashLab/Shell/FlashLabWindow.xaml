@@ -165,21 +165,21 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto"
       HorizontalScrollBarVisibility="Disabled">
      <StackPanel Margin="1">
-      <Button Content="工程原生烧录配置…" Click="OpenNativeProfile_Click"
+      <Button Content="编辑烧录配置…" Click="OpenNativeProfile_Click"
         Background="#E7F4EF" BorderBrush="#D9E9E1" Foreground="#225845"
         FontWeight="SemiBold" Margin="3,3,3,8"
         ToolTip="手动编辑、自动保存到工程固定位置；独立工具可使用本地专属原生配置"
         HorizontalAlignment="Stretch"/>
       <TextBlock x:Name="NativeProfileLabel" Margin="7,0,7,5" Foreground="#375B73"
         TextWrapping="Wrap" FontSize="11" Text="未加载烧录配置"/>
-      <Expander Header="兼容历史 CanTool XML / JSON 导入" IsExpanded="False"
+      <Expander Header="导入参考烧录资料（调试用）" IsExpanded="False"
         Margin="3,0,3,6">
        <StackPanel>
       <Button Content="导入烧录配置目录…" Click="ImportThreeFiles_Click"
         Background="#E7F4EF" BorderBrush="#E7EFFB" Foreground="#3478D6" FontWeight="SemiBold" Margin="3,3,3,8"
         ToolTip="选择包含 Configuration.xml、HEX/S19/BIN 固件、SafetyFile.dll 的文件夹（包括常见子目录）。只读取并验证文件，不连接或擦写 ECU。"
         HorizontalAlignment="Stretch"/>
-      <TextBlock Text="CanTool 配置文件" FontWeight="SemiBold" Margin="4,4,4,2"/>
+      <TextBlock Text="参考配置文件" FontWeight="SemiBold" Margin="4,4,4,2"/>
       <StackPanel Orientation="Horizontal">
        <Button Content="打开 XML" Click="LoadXml_Click" Padding="9,5"/>
        <Button Content="导入 JSON" Click="LoadJson_Click" Padding="9,5"/>
@@ -211,11 +211,11 @@
        <TextBlock Text="安全文件" FontWeight="SemiBold" VerticalAlignment="Center"
          Margin="4,0"/>
       </DockPanel>
-      <TextBlock x:Name="SafetyDllStatusLabel" Text="自动从 XML 目录查找 SafetyFile.dll"
+      <TextBlock x:Name="SafetyDllStatusLabel" Text="尚未选择安全算法文件"
         TextTrimming="CharacterEllipsis" Margin="7,0,7,4"
         FontSize="11" Foreground="#62768B"/>
 
-      <TextBlock Text="Seed/Key 使用 CanTool 参考内部算法；SafetyFile 会从配置目录自动识别。"
+      <TextBlock Text="参考调试配置可导入文件；正式工程烧录使用已保存的工程配置。"
         TextWrapping="Wrap" Margin="7,5,7,5" FontSize="11" Foreground="#627C9D"/>
 
       <Separator Margin="5,5"/>
@@ -257,7 +257,7 @@
      Background="#E4EAE6" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext"/>
 
    <!-- B：烧录过程作为工作区 -->
-   <GroupBox x:Name="FlashWorkflowPanel" Grid.Column="2" Header="烧录流程 · UDS 调试">
+   <GroupBox x:Name="FlashWorkflowPanel" Grid.Column="2" Header="烧录流程">
     <Grid Margin="2">
      <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
