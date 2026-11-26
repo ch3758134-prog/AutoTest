@@ -619,10 +619,12 @@ public sealed partial class AutomaticTestHomeViewModel
                     movement.CancelAfter(fixturePlan.MovementTimeoutMs);
                     AddOperatorEvent("夹具" + action.Clamp + " 请求压紧 · 限时 " +
                         fixturePlan.MovementTimeoutMs + "ms");
+                    Snapshot(); // durable intent before energized output command
                     var bits = await _hardware.SendStationFixtureAsync(
                         action.Clamp, true, frozen.PreparationFingerprint, movement.Token);
                     AddOperatorEvent("夹具" + action.Clamp + " MCU GPIO 回读 0x" +
                         bits.ToString("X2") + "；机械位置未验证（非生产到位证据）");
+                    Snapshot();
                 }
                 fixturePressComplete = true;
             }
@@ -864,6 +866,9 @@ public sealed partial class AutomaticTestHomeViewModel
                             "按工程师本次授权执行受控夹具释放。");
                         foreach (var action in fixturePlan.Release)
                         {
+                            AddOperatorEvent("夹具" + action.Clamp +
+                                " 释放请求即将发出，记录已持久化。");
+                            Snapshot();
                             using var movement = new CancellationTokenSource(
                                 TimeSpan.FromMilliseconds(fixturePlan.MovementTimeoutMs));
                             var bits = await _hardware.SendStationFixtureAsync(
@@ -871,6 +876,7 @@ public sealed partial class AutomaticTestHomeViewModel
                                 movement.Token);
                             AddOperatorEvent("夹具" + action.Clamp + " 请求释放并读回 GPIO 0x" +
                                 bits.ToString("X2") + "；实际机械释放仍未测量。");
+                            Snapshot();
                         }
                         OperatorRunState = outcome + " · 夹具释放请求完成";
                     }
