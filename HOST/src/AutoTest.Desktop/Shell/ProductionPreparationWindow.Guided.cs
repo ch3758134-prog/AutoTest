@@ -210,22 +210,26 @@ public partial class ProductionPreparationWindow
             return;
         }
         if (_guidedFixtureEnabled?.IsChecked is not bool enabled) return;
-        var current = Fixture.UseClamp1 || Fixture.UseClamp2;
+        var current = Fixture.AutoClampEnabled &&
+            (Fixture.UseClamp1 || Fixture.UseClamp2);
         if (enabled == current) return;
         if (enabled)
-            Fixture.UseClamp1 = true; // first-use default, advanced wiring can select channel 2
-        else
         {
-            Fixture.UseClamp1 = false;
-            Fixture.UseClamp2 = false;
+            // First installation defaults to output 1. Re-enabling a station
+            // preserves its explicitly installed output 2/dual routing.
+            if (!Fixture.UseClamp1 && !Fixture.UseClamp2)
+                Fixture.UseClamp1 = true;
+            Fixture.AutoClampEnabled = true;
         }
+        else Fixture.AutoClampEnabled = false;
         MarkDirty();
         UpdateGuidedFixtureText();
     }
 
     private void UpdateGuidedFixtureText()
     {
-        var active = Fixture.UseClamp1 || Fixture.UseClamp2;
+        var active = Fixture.AutoClampEnabled &&
+            (Fixture.UseClamp1 || Fixture.UseClamp2);
         if (_guidedFixtureEnabled is not null)
         {
             _syncingGuidedFixture = true;
