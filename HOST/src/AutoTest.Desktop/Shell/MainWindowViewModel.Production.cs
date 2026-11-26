@@ -113,27 +113,27 @@ public sealed partial class MainWindowViewModel
             current.Activate();
             return;
         }
-        var window = new ProductionPreparationWindow(_workspace,
+        var window = new ProductionPreparationWindow(
+            _workspace,
             () => IsEngineerWorkspace && !_realTest.IsRunning &&
                 !_automaticTestHome.IsOperatorRunning &&
                 !_hardware.IsFlashSecuritySensitive &&
                 !_hardware.IsManualCanBatchApproved &&
                 !_hardware.IsManualKeyActionApproved,
-            _scannerWorkbench, () => _automaticTestHome.OnPublishedConfigurationChanged(),
-            ActivatePublishedProjectAsync,
+            _scannerWorkbench,
+            () => _automaticTestHome.OnPublishedConfigurationChanged(),
             async () => await ConfirmProductionConfigurationAsync(singleApply: true),
-            () => OpenInspectionProcedureCommand.Execute(),
-            () => !_hardware.IsConnected
-                ? "主控 USB：未连接（不影响工程发布）"
-                : "主控 USB：已连接 · ECU CAN：" +
-                  (_hardware.IsEcuCanBitrateApplied
-                      ? "已回读确认 " + _hardware.ConfirmedEcuCanBitrateKbps + " kbit/s"
-                      : "码率尚未在本次 USB 会话中确认"),
             () => OpenFirstAssetAsync(ProjectWorkspaceService.TestProjectKind,
                 CreateTestProjectAsync),
             OpenNativeFlashProfile,
             () => ShowAutomaticTestAsync(),
-            () => EnterEngineeringVerificationAsync())
+            () => EnterEngineeringVerificationAsync(),
+            OpenSerialScannerWindow,
+            () => !_hardware.IsConnected ? "主控未连接" :
+                _hardware.IsEcuCanBitrateApplied
+                    ? "主控已连接 · ECU CAN " +
+                      _hardware.ConfirmedEcuCanBitrateKbps + " kbit/s"
+                    : "主控已连接 · ECU CAN 尚未回读确认")
         { Owner = global::System.Windows.Application.Current?.MainWindow };
         _productionPreparationWindow = window;
         window.Closed += (_, _) =>
