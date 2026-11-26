@@ -15,6 +15,14 @@ public sealed partial class AutomaticTestHomeViewModel
     private long _acceptedStationEpoch;
     private string _dutSerial = "等待扫码";
     private string _scanStatus = "请使用工位扫码枪扫描 ECU 编号";
+    private string _lastObservedBarcode = "";
+    private string _lastObservedAt = "";
+
+    // Raw observation is intentionally independent of identity matching,
+    // published rules, an open ECU project, and permission to run hardware.
+    public string LastObservedBarcode => string.IsNullOrEmpty(_lastObservedBarcode)
+        ? "尚未收到扫码内容" : _lastObservedBarcode;
+    public string LastObservedAt => _lastObservedAt;
     private string? _lastIdentity;
     private FrozenProductionPreparation? _prepared;
     private IReadOnlyDictionary<string, string> _scanMappedFields =
@@ -45,11 +53,40 @@ public sealed partial class AutomaticTestHomeViewModel
             });
         else if (e.PropertyName == nameof(SerialScannerWorkbenchViewModel.IsConnected))
             OnUi(UpdateConnection);
+        else if (e.PropertyName == nameof(SerialScannerWorkbenchViewModel.Status))
+            OnUi(Notify);
     }
 
-    private void OnCompleteBarcodeReceived(string raw) =>
-        OnUi(() => { if (!IsOperatorRunning && (_isProductionWorkspace() || _engineeringVerificationArmed))
-            _ = InspectRealBarcodeAsync(raw); });
+    private void OnCompleteBarcodeReceived(string raw) => OnUi(() =>
+    {
+        if (string.IsNullOrEmpty(raw)) return;
+        // Always echo the physical COM observation before any business gate.
+        // A rejected identity or missing publication must never look like
+        // the scanner was ignored. A scan alone never starts physical work.
+        _lastObservedBarcode = raw;
+        _lastObservedAt = DateTimeOffset.Now.ToString("HH:mm:ss");
+        if (IsOperatorRunning)
+        {
+            _scanStatus = "已收到扫码原文；工位正在执行，不能替换本次 ECU 身份。";
+            Notify();
+            return;
+        }
+        if (!_isProductionWorkspace() && !_engineeringVerificationArmed)
+        {
+            _scanStatus = "已收到扫码原文；打开工程实测后可核验并运行。";
+            Notify();
+            return;
+        }
+        if (_plans.Current is null)
+        {
+            _scanStatus = "已收到扫码原文；当前没有可运行 ECU 工程，不能开始测试。";
+            Notify();
+            return;
+        }
+        _scanStatus = "已收到扫码原文，正在核对 ECU 编号与工程资源。";
+        Notify();
+        _ = InspectRealBarcodeAsync(raw);
+    });
 
     private static void OnUi(Action action)
     {
