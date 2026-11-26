@@ -33,6 +33,11 @@ public sealed class SerialBarcodeFrameDecoder
             throw new ArgumentOutOfRangeException(nameof(maximumInterByteGap));
     }
 
+    // Read-only incomplete data for a visible scanner diagnostic. It is
+    // never a complete barcode and must not authorize identity or actions.
+    public string PendingText => _buffer.ToString();
+    public string PendingRawHex => Convert.ToHexString(_rawBytes.ToArray());
+
     public void Reset()
     {
         _buffer.Clear();
