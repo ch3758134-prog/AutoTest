@@ -392,8 +392,15 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         IsBusy = true;
         try
         {
-            await _plans.RestoreAsync(_engineering.Current,
-                requireProductionDeployment: _isProductionWorkspace());
+            if (_isProductionWorkspace())
+            {
+                // Production has no dependence on the engineer's recent file.
+                // A physical barcode is the only way to select a package.
+                _plans.ClearForProductionScan();
+            }
+            else
+                await _plans.RestoreAsync(_engineering.Current,
+                    requireProductionDeployment: false);
             await RefreshDraftPreviewAsync();
         }
         finally { IsBusy = false; }
@@ -435,6 +442,9 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     private void OnEngineeringProjectChanged(object? sender, EventArgs e) =>
         OnUi(() =>
         {
+            // Engineering edits must not silently replace an installed
+            // production package selected by the station scanner.
+            if (_isProductionWorkspace()) return;
             if (IsOperatorRunning)
             {
                 AddOperatorEvent("运行期间工程内容变化；请求停止，防止旧冻结资源与当前编辑混用。");
