@@ -14,7 +14,8 @@ public sealed record PeriodicCanTaskEvidence(
     byte Dlc, string DataHex, int PeriodMs, int DurationMs,
     DateTimeOffset StartedUtc, DateTimeOffset? StoppedUtc, string StopReason,
     string SourceCaseId, string SourceStepId, Guid SourceStepOccurrenceId,
-    long HostRequests, long UsbAcks, double LongestAckIntervalMs,
+    long HostRequests, long UsbAcks, DateTimeOffset? LastUsbAckUtc,
+    double LongestAckIntervalMs,
     long SkippedPeriods, string? Fault);
 
 public sealed partial class ConfiguredStationActionPort
@@ -23,6 +24,7 @@ public sealed partial class ConfiguredStationActionPort
     private StepId _currentStepId;
     private Guid _currentStepOccurrence;
     private readonly List<PeriodicTracker> _periodicHistory = new();
+    private readonly object _periodicHistoryGate = new();
 
     public void BindStep(TestDocumentId caseId, StepId stepId, Guid stepOccurrenceId)
     {
@@ -44,6 +46,7 @@ public sealed partial class ConfiguredStationActionPort
         private string _stopReason = "";
         private string? _fault;
         private long _requests, _acks, _skipped, _lastAckTicks;
+        private DateTimeOffset? _lastAckUtc;
         private double _longest;
 
         internal PeriodicTracker(CanFrame frame, int period, int duration,
@@ -66,6 +69,7 @@ public sealed partial class ConfiguredStationActionPort
                     _longest = Math.Max(_longest,
                         Stopwatch.GetElapsedTime(_lastAckTicks, timestamp).TotalMilliseconds);
                 _lastAckTicks = timestamp;
+                _lastAckUtc = DateTimeOffset.UtcNow;
                 _acks++;
             }
         }
@@ -94,22 +98,28 @@ public sealed partial class ConfiguredStationActionPort
                     _frame.Id, _frame.ExtendedId, _frame.Dlc,
                     Convert.ToHexString(_frame.Data.ToArray()), _period, _duration,
                     _begin, _end, _stopReason, _case, _step, _occurrence,
-                    _requests, _acks, _longest, _skipped, _fault);
+                    _requests, _acks, _lastAckUtc, _longest, _skipped, _fault);
         }
     }
 
     private PeriodicTracker BeginPeriodicEvidence(CanFrame frame, int period, int duration)
     {
-        if (_periodicHistory.Count >= 4000)
-            throw new InvalidOperationException("周期 CAN 任务创建/替换次数超出证据容量；终止整组，不得丢弃追溯记录。");
-        var meter = new PeriodicTracker(frame, period, duration,
-            _currentCaseId, _currentStepId, _currentStepOccurrence);
-        _periodicHistory.Add(meter);
-        return meter;
+        lock (_periodicHistoryGate)
+        {
+            if (_periodicHistory.Count >= 4000)
+                throw new InvalidOperationException("周期 CAN 任务创建/替换次数超出证据容量；终止整组，不得丢弃追溯记录。");
+            var meter = new PeriodicTracker(frame, period, duration,
+                _currentCaseId, _currentStepId, _currentStepOccurrence);
+            _periodicHistory.Add(meter);
+            return meter;
+        }
     }
 
     /// <summary>Bounded by the number of task starts/replacements; snapshots
     /// are copied after foreground steps and again after project cleanup.</summary>
-    public IReadOnlyList<PeriodicCanTaskEvidence> PeriodicEvidenceSnapshot() =>
-        _periodicHistory.Select(x => x.Snapshot()).ToArray();
+    public IReadOnlyList<PeriodicCanTaskEvidence> PeriodicEvidenceSnapshot()
+    {
+        lock (_periodicHistoryGate)
+            return _periodicHistory.Select(x => x.Snapshot()).ToArray();
+    }
 }
