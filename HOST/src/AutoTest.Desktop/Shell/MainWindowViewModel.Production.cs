@@ -288,10 +288,11 @@ public sealed partial class MainWindowViewModel
                     await RestoreAutomaticTestAtStartupAsync();
             }
             await _automaticTestHome.RestoreAsync();
-            _automaticTestHome.ArmEngineeringVerification();
+            _automaticTestHome.ArmEngineeringVerification(
+                startWithExplicitConsentOnScan: true);
             ShowEngineeringVerificationMonitor();
-            StatusMessage = "工程实测已就绪：连接主控与扫码枪，扫描本台 ECU 编号。" +
-                "扫码成功后点击“开始实测”，真实烧录前仍需明确确认。";
+            StatusMessage = "工程实测已准备：连接主控与扫码枪，扫描本台 ECU 编号。" +
+                "扫码和资源预检通过后自动弹出真实夹具/烧录授权确认；拒绝不会发送物理指令。";
         }
         catch (Exception error) when (error is IOException or InvalidDataException or
             UnauthorizedAccessException or InvalidOperationException or
