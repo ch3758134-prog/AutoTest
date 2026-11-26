@@ -15,6 +15,7 @@ public partial class ProductionProjectLibraryWindow : Window
     private readonly ProductionProjectCatalog _catalog;
     private readonly ProjectWorkspaceService _workspace;
     private readonly Func<bool> _canModify;
+    private readonly Func<bool> _canExport;
     private readonly Action _configurationChanged;
     private bool _busy;
     private bool _loading;
@@ -25,13 +26,15 @@ public partial class ProductionProjectLibraryWindow : Window
 
     public ProductionProjectLibraryWindow(ProductionProjectCatalog catalog,
         ProjectWorkspaceService workspace, Func<bool> canModify,
-        Action configurationChanged)
+        Func<bool> canExport, Action configurationChanged)
     {
         _catalog = catalog;
         _workspace = workspace;
         _canModify = canModify;
+        _canExport = canExport;
         _configurationChanged = configurationChanged;
         InitializeComponent();
+        ExportButton.Visibility = _canExport() ? Visibility.Visible : Visibility.Collapsed;
         Loaded += async (_, _) => await ReloadAsync();
     }
 
@@ -149,6 +152,11 @@ public partial class ProductionProjectLibraryWindow : Window
 
     private async void Export_Click(object sender, RoutedEventArgs e)
     {
+        if (!_canExport())
+        {
+            Say("工程导出只能在工程工作区使用。");
+            return;
+        }
         if (_workspace.Current is not { } project)
         {
             Say("请先在工程工作区打开需要导出的工程。");
