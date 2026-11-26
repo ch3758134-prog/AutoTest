@@ -54,6 +54,45 @@ public sealed class StationFixtureExecutionPlanTests
         Assert.Equal(6500, plan.MovementTimeoutMs);
     }
 
+    [Theory]
+    [InlineData(true, true, false)]
+    [InlineData(false, false, true)]
+    public void OneLogicalFixturePressReleaseRespectsElectricalPolarity(
+        bool pressHigh, bool expectedHighWhenPress, bool expectedHighWhenReleased)
+    {
+        var config = ProductionFixtureConfiguration.Draft with
+        {
+            UseClamp1 = true, Clamp1PressHigh = pressHigh,
+            SettleDelayMs = 500
+        };
+        var plan = StationFixtureExecutionPlan.From(config);
+        Assert.Equal(expectedHighWhenPress, plan.OutputLevelHigh(plan.Press.Single()));
+        Assert.Equal(expectedHighWhenReleased, plan.OutputLevelHigh(plan.Release.Single()));
+        Assert.Equal(500, plan.SettleDelayMs);
+    }
+
+    [Fact]
+    public void Output2PolarityIsIndependentOfOutput1()
+    {
+        var plan = StationFixtureExecutionPlan.From(ProductionFixtureConfiguration.Draft with
+        {
+            UseClamp2 = true, Clamp1PressHigh = true, Clamp2PressHigh = false
+        });
+        Assert.False(plan.OutputLevelHigh(plan.Press.Single()));
+        Assert.True(plan.OutputLevelHigh(plan.Release.Single()));
+    }
+
+    [Fact]
+    public void ExcessiveStabilizationDelayIsInvalidNotSilentlyClamped()
+    {
+        var config = ProductionFixtureConfiguration.Draft with
+        {
+            UseClamp1 = true, SettleDelayMs = 30001
+        };
+        Assert.Throws<System.IO.InvalidDataException>(
+            () => StationFixtureExecutionPlan.From(config));
+    }
+
     [Fact]
     public void DualClampMustNotSilentlyChooseOrder()
     {
