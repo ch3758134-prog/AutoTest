@@ -93,6 +93,8 @@ public static class StationProductionConfigurationStore
             if (!rule.Samples.Any(s => s.ShouldAccept) ||
                 !rule.Samples.Any(s => !s.ShouldAccept))
                 issues.Add(rule.Name + "：正式发布前必须有正例和反例。");
+            if (rule.Samples.Any(s => string.IsNullOrWhiteSpace(s.Raw)))
+                issues.Add(rule.Name + "：编码校验样例不能留空，空字符串不得作为有效拒绝样例。");
             foreach (var sample in rule.Samples)
             {
                 var match = rule.Parse(sample.Raw);
