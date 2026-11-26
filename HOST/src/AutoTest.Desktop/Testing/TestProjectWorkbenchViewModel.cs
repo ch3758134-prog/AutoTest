@@ -643,7 +643,23 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
                     throw new InvalidDataException("当前用例数据无效或运行被中止，" +
                         "不能安全继续后续物理动作：" +
                         item.Entry.DisplayName + " · " + result.Verdict);
-                if (shared is not null) await shared.Actions.CheckHealthAsync(token);
+                if (shared is not null)
+                {
+                    await shared.Actions.CheckHealthAsync(token);
+                    var activeCan = shared.PeriodicTasks
+                        .Where(x => x.StoppedUtc is null).ToArray();
+                    BatchResults.Add("项目周期 CAN：正在发送 " + activeCan.Length +
+                        " 条" + (activeCan.Length == 0 ? "" : " · " +
+                        string.Join("；", activeCan.Take(6).Select(x =>
+                            "0x" + x.CanId.ToString("X") + " / " +
+                            x.PeriodMs + "ms / USB ACK " + x.UsbAcks))));
+                    if (shared.LastCaseStoppedPeriodic.Count > 0)
+                        BatchResults.Add("本用例停止周期 CAN：" +
+                            string.Join("；", shared.LastCaseStoppedPeriodic.Select(x =>
+                                "0x" + x.CanId.ToString("X") + " " + x.StopReason +
+                                "（源用例 " + x.SourceCaseId + "）")) +
+                            "；如后续用例依赖该报文，请检查显式停止和持续时间。");
+                }
             }
             shared?.MarkCompleted();
             StatusMessage = functionalFailure
