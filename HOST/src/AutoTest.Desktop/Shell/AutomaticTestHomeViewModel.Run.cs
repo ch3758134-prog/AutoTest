@@ -613,7 +613,8 @@ public sealed partial class AutomaticTestHomeViewModel
                     Snapshot(); // durable intent before energized output command
                     var bits = await _hardware.SendStationFixtureAsync(
                         action.Clamp, fixturePlan.OutputLevelHigh(action),
-                        frozen.PreparationFingerprint, movement.Token);
+                        frozen.PreparationFingerprint, movement.Token,
+                        logicalPress: true);
                     AddOperatorEvent("夹具" + action.Clamp + " MCU GPIO 回读 0x" +
                         bits.ToString("X2") + "；机械位置未验证（非生产到位证据）");
                     Snapshot();
@@ -871,7 +872,8 @@ public sealed partial class AutomaticTestHomeViewModel
                                 TimeSpan.FromMilliseconds(fixturePlan.MovementTimeoutMs));
                             var bits = await _hardware.SendStationFixtureAsync(
                                 action.Clamp, fixturePlan.OutputLevelHigh(action),
-                                frozen.PreparationFingerprint, movement.Token);
+                                frozen.PreparationFingerprint, movement.Token,
+                                logicalPress: false);
                             AddOperatorEvent("夹具" + action.Clamp + " 请求释放并读回 GPIO 0x" +
                                 bits.ToString("X2") + "；实际机械释放仍未测量。");
                             Snapshot();
