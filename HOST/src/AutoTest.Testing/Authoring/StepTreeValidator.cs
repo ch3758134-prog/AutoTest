@@ -143,6 +143,25 @@ public static class StepTreeValidator
                     !double.IsFinite(coverage) || coverage is < 0 or > 1)
                     errors.Add($"{location}: waveform coverage must be within 0..1");
             }
+            if (!allowIncompleteSteps && n.Type == "Switch")
+            {
+                var cases = n.Slots.TryGetValue("cases", out var switchCases)
+                    ? switchCases.Where(StepExecutionPolicy.IsEnabled).ToArray()
+                    : [];
+                if (cases.Length == 0)
+                    errors.Add($"{location}: SWITCH 没有启用的 CASE；请添加至少一个匹配分支。");
+                if (cases.Length > 64)
+                    errors.Add($"{location}: SWITCH 最多允许 64 个 CASE。");
+                foreach (var group in cases.GroupBy(
+                             x => x.Properties.GetValueOrDefault("equals", "").Trim(),
+                             StringComparer.OrdinalIgnoreCase))
+                {
+                    if (group.Count() > 1)
+                        errors.Add($"{location}: SWITCH 存在重复 CASE：{group.Key}；每个值只能命中一个分支。");
+                    if (group.Key.StartsWith("$", StringComparison.Ordinal))
+                        errors.Add($"{location}: CASE 比较值必须是固定字面值，不能使用未冻结的变量引用。");
+                }
+            }
             if (n.Type == "Case" && parent != "Switch") errors.Add($"{location}: Case outside Switch");
             if (!allowIncompleteSteps && n.Type == "Loop" && (!n.Properties.TryGetValue("count", out var count) ||
                 !int.TryParse(count, out var loops) || loops < 0 || loops > 1000))
