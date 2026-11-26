@@ -376,98 +376,95 @@ public partial class ProductionPreparationWindow
 
     private async Task GuidedPublishAsync()
     {
-        if (!_ready || !_mayEdit() || _busy) { Status = "工位正在运行或配置未就绪，无法发布。"; return; }
-        if (_workspace.Current is not { } project)
-        { Status = "先打开并保存完整 ECU 工程。"; return; }
-        if (IdentityMode != StationProductionConfiguration.FixedStation || Products.Count != 1)
+        if (!_ready || !_mayEdit() || _busy)
         {
-            Status = "当前属于多型号/高级配置；请在高级识别确认映射后进入发布详情。";
-            PreparationTabs.SelectedIndex = 2;
+            Status = "工位配置尚未就绪，或正在进行真实硬件操作，不能发布。";
             return;
         }
-        if (Products[0].ModelCode != project.Definition.EcuModelCode ||
+        var project = _workspace.Current;
+        if (project is null || string.IsNullOrWhiteSpace(project.Definition.EcuModelCode))
+        {
+            Status = "请先在开发与调试打开并保存具有正式型号的 ECU 工程。";
+            return;
+        }
+        // The ordinary path publishes the selected engineering project.
+        // No user-maintained duplicate model/manifest binding is required.
+        // Existing advanced multi-model relations are never erased silently.
+        if (IdentityMode != StationProductionConfiguration.FixedStation ||
+            Products.Count > 1)
+        {
+            Status = "当前使用多型号或高级身份配置；请在高级配置核对型号映射，" +
+                "然后通过发布详情的受控流程处理。不会自动覆盖现有型号关系。";
+            return;
+        }
+        var model = project.Definition.EcuModelCode;
+        if (Products.Count == 0)
+        {
+            FixedModel = model;
+            Products.Add(new ProductRow
+            {
+                ModelCode = model, HardwareCode = FixedHardware,
+                ManifestPath = project.ManifestPath
+            });
+            MarkDirty();
+        }
+        else if (FixedModel != model ||
+            Products[0].ModelCode != model ||
             Products[0].HardwareCode != FixedHardware ||
             !string.Equals(Products[0].ManifestPath, project.ManifestPath,
-                StringComparison.OrdinalIgnoreCase) ||
-            FixedModel != project.Definition.EcuModelCode)
+                StringComparison.OrdinalIgnoreCase))
         {
-            Status = "当前绑定与打开的 ECU 工程不一致。请先点击“使用当前打开的工程”。";
+            Status = "已保存的工位工程绑定与当前 ECU 工程不一致。为防错型号，" +
+                "不会静默替换；请进入高级配置核对并明确调整。";
             return;
         }
-        if (_scanner?.IsConnected != true || string.IsNullOrEmpty(_lastRealBarcode) ||
-            _lastRealBarcodePort != _scanner.ConnectedPort ||
-            _lastRealBarcodeUtc is not { } scanned ||
-            DateTimeOffset.UtcNow - scanned > TimeSpan.FromMinutes(30))
-        {
-            Status = "尚无本次连接会话的有效真实扫码（30 分钟内）。" +
-                "请先连接已绑定的 USB COM 扫码枪并现场试扫；手动输入不算。";
-            return;
-        }
+
         try
         {
-            var bound = StationScannerDeviceBinding.Load();
-            var actual = bound is null ? null : StationScannerDeviceBinding.Match(bound);
-            if (actual is null ||
-                !string.Equals(actual.PortName, _scanner.ConnectedPort,
-                    StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException("当前 COM 不是已绑定的实体扫码枪；" +
-                    "请在扫码与工位设备中完成“记住当前扫码枪”。");
-            if (!string.Equals(_lastRealBarcodePnp, actual.PnpInstanceId,
-                StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException("本次扫码发生于设备绑定之前，或扫码后实体设备身份已变化；" +
-                    "请使用已绑定扫码枪重新扫描 ECU 编号。");
             if (!await SaveAsync()) return;
             var config = await StationProductionConfigurationStore.LoadDraftAsync();
             var issues = StationProductionConfigurationStore.InspectRules(config);
-            if (issues.Count != 0)
-                throw new InvalidDataException("编码规则/样例还未通过：" +
-                    string.Join("；", issues.Take(5)));
+            if (issues.Count > 0)
+                throw new InvalidDataException("发布预检未通过：" +
+                    string.Join("；", issues.Take(3)) +
+                    "。复杂编码规则请在高级配置中核对。");
             if (_publishProject is null)
-                throw new InvalidOperationException("工程发布功能尚未接线。");
-            var frozenEditGeneration = _editGeneration;
-            var frozenRealScan = _lastRealBarcode;
-            var frozenPort = _lastRealBarcodePort;
-            var frozenPnp = _lastRealBarcodePnp;
+                throw new InvalidOperationException("原生 ECU 工程发布入口未连接。");
+
+            // Saving and publishing are different actions. A real scanner is
+            // deliberately NOT required to publish this offline project.
+            // Runtime still enforces the exact bound COM/PnP observation.
+            var generation = _editGeneration;
             _busy = true;
-            // UI's owner is responsible for saving floating editors, asking
-            // the engineer to confirm, publishing FLASH and pinning TEST.
-            // A cancelled dialog MUST return false; never publish the station
-            // mapping on a stale previous release.
-            var accepted = await _publishProject();
-            if (!accepted)
+            var projectAccepted = await _publishProject();
+            if (!projectAccepted)
             {
-                Status = "已取消工程发布；工位配置没有发布，不能进入正式生产。";
+                Status = "已取消 ECU 工程发布；工位识别配置未发布。";
                 return;
             }
-            var deployment = await StationDeploymentStore.RestoreAsync()
-                ?? throw new InvalidDataException("工程发布后工位部署指针不存在。");
-            if (deployment.Project.Definition.Id != project.Definition.Id ||
-                !string.Equals(deployment.Project.ManifestSha256,
-                    project.ManifestSha256, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException("工程发布后的版本/身份不等于准备时核对的 ECU 工程。");
-            if (_editGeneration != frozenEditGeneration ||
-                _lastRealBarcode != frozenRealScan ||
-                _scanner?.IsConnected != true || _scanner.ConnectedPort != frozenPort ||
-                _lastRealBarcodePnp != frozenPnp)
-                throw new IOException("发布过程中工位配置或真实扫码来源发生变化，请重新核对后发布。");
-            var testScan = await StationProductionConfigurationStore.PreviewDraftAsync(
-                config, frozenRealScan!);
-            if (!testScan.Accepted || testScan.Project is null ||
-                testScan.Project.ProjectId != deployment.Project.Definition.Id.Value)
-                throw new InvalidDataException("真实扫码没有唯一指向刚冻结的 ECU 工程：" +
-                    testScan.Detail);
-            var released = await StationProductionConfigurationStore.PublishAsync(config);
+            var deployed = await StationDeploymentStore.RestoreAsync()
+                ?? throw new InvalidDataException("已发布工程的工位部署记录不存在。");
+            if (deployed.Project.Definition.Id != project.Definition.Id ||
+                !string.Equals(deployed.Project.ManifestSha256, project.ManifestSha256,
+                    StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("工程版本在发布过程中发生变化。请重新打开工程核对。");
+            if (_editGeneration != generation ||
+                _workspace.Current?.ManifestSha256 != project.ManifestSha256)
+                throw new IOException("发布过程中工程或工位配置被修改，已阻止发布工位映射。");
+            // The station publication still re-verifies every TEST/DBC/WAVE
+            // and immutable FLASH SHA. Offline publication != physical scan.
+            var release = await StationProductionConfigurationStore.PublishAsync(config);
             _onPublished?.Invoke();
-            Status = "工程、原生 FLASH、TEST 与本工位编码绑定已发布 · " +
-                released.PublicationId.ToString("N")[..10] +
-                "。正式生产仍需实体 START、夹具真实反馈与 Inspection 接线验收。";
+            Status = "生产配置发布成功 · " +
+                release.PublicationId.ToString("N")[..10] +
+                "；工程、原生 FLASH、TEST 与型号绑定已冻结。" +
+                "扫码枪及实体 START/夹具/Inspection 仍须在运行前验收。";
             await RefreshOverviewAsync();
         }
         catch (Exception error) when (error is not OutOfMemoryException)
         {
-            // A hardware/registry/COM exception must never escape an async
-            // WPF Click event or be reinterpreted as a successful publication.
-            Status = "工位整体发布未完成（不代表已获生产资格）：" + error.Message;
+            Status = "生产配置没有完整发布：" + error.Message +
+                "；如果工程快照已单独更新，也不代表工位正式准入成功。";
         }
         finally { _busy = false; }
     }
