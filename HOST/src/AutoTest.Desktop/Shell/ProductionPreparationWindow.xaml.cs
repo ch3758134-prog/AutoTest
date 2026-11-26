@@ -26,10 +26,6 @@ public partial class ProductionPreparationWindow : Window
     private readonly SerialScannerWorkbenchViewModel _scanner;
     private readonly Action _onPublished;
     private readonly Func<Task<bool>> _publishProject;
-    private readonly Func<Task> _openTestEditor;
-    private readonly Action _openFlashEditor;
-    private readonly Func<Task> _openProductionMonitor;
-    private readonly Func<Task> _openEngineeringVerification;
     private readonly Action _openScannerSettings;
     private readonly Func<string> _hardwareStatus;
     private readonly DispatcherTimer _autosave = new()
@@ -44,8 +40,6 @@ public partial class ProductionPreparationWindow : Window
     public ProductionPreparationWindow(ProjectWorkspaceService workspace,
         Func<bool> mayEdit, SerialScannerWorkbenchViewModel scanner,
         Action onPublished, Func<Task<bool>> publishProject,
-        Func<Task> openTestEditor, Action openFlashEditor,
-        Func<Task> openProductionMonitor, Func<Task> openEngineeringVerification,
         Action openScannerSettings, Func<string> hardwareStatus)
     {
         _workspace = workspace;
@@ -53,10 +47,6 @@ public partial class ProductionPreparationWindow : Window
         _scanner = scanner;
         _onPublished = onPublished;
         _publishProject = publishProject;
-        _openTestEditor = openTestEditor;
-        _openFlashEditor = openFlashEditor;
-        _openProductionMonitor = openProductionMonitor;
-        _openEngineeringVerification = openEngineeringVerification;
         _openScannerSettings = openScannerSettings;
         _hardwareStatus = hardwareStatus;
         InitializeComponent();
@@ -83,26 +73,29 @@ public partial class ProductionPreparationWindow : Window
         foreach (var field in new[]
         {
             StartInput, StopInput, InterlockInput, ClosedFeedback,
-            OpenFeedback, SettleDelayInput, ProductKeyInput, HardwareInput,
-            PositiveSample, NegativeSample
+            OpenFeedback, SettleDelayInput, PositiveSample, NegativeSample
         })
             field.TextChanged += ConfigChanged;
     }
 
     private void Say(string message) => StatusText.Text = message;
 
+    // Raw COM observation is visible even if the rule or project is invalid.
+    // Preview only checks identity routing and never authorizes physical work.
     private void OnRawBarcode(string raw) =>
         Dispatcher.BeginInvoke(new Action(() =>
         {
             ScanRaw.Text = raw;
-            PreviewStatus.Text = "已收到真实扫码原文；未因此获得生产 START 许可。";
+            ScanObservedAt.Text = "真实扫码 · " + DateTime.Now.ToString("HH:mm:ss");
+            PreviewBarcode(raw, manual: false);
         }));
 
     private void OnIncompleteBarcode(string raw) =>
         Dispatcher.BeginInvoke(new Action(() =>
         {
             ScanRaw.Text = raw;
-            PreviewStatus.Text = "串口收到内容但没有形成完整条码；检查结束符。";
+            ScanObservedAt.Text = "串口接收不完整 · " + DateTime.Now.ToString("HH:mm:ss");
+            PreviewStatus.Text = "已收到数据，但没有完整条码结束符，请检查扫码枪设置。";
         }));
 
     private void OnScannerPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -118,20 +111,81 @@ public partial class ProductionPreparationWindow : Window
 
     private void RefreshDevices()
     {
-        ScannerState.Text = (_scanner.IsConnected
-            ? "扫码枪已连接 · " + _scanner.ConnectedPort
-            : "扫码枪未连接") + "   |   " + _hardwareStatus();
-        if (!string.IsNullOrEmpty(_scanner.LastRaw)) ScanRaw.Text = _scanner.LastRaw;
+        ScannerState.Text = _scanner.IsConnected
+            ? "已连接 · " + _scanner.ConnectedPort
+            : "未连接 · 请点击“连接设置”选择扫码枪";
+        MainBoardState.Text = _hardwareStatus();
+        if (!string.IsNullOrEmpty(_scanner.LastRaw) &&
+            ScanRaw.Text == "等待扫码…")
+        {
+            ScanRaw.Text = _scanner.LastRaw;
+            ScanObservedAt.Text = "当前扫码会话的最近内容";
+        }
     }
 
     private void RefreshProject()
     {
         var current = _workspace.Current;
-        ProjectSummary.Text = current is null
-            ? "未打开 ECU 工程；扫码测试和手动台架仍可独立使用。"
-            : current.Definition.Name + " · " +
-              current.Definition.Id.Value.ToString("D") +
-              "\nTEST、FLASH、DBC 和波形都来自此工程。";
+        if (MatchMode.SelectedIndex is 1 or 2)
+        {
+            ProjectSummary.Text = current?.Definition.Name ?? "尚未打开工程";
+            BoundProjectSummary.Text = "多工程对应关系在下方高级设置中维护。";
+            BindCurrentButton.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var selected = _products.Count == 1 ? _products[0] : null;
+        if (selected is null)
+        {
+            ProjectSummary.Text = current?.Definition.Name ?? "尚未选择检测工程";
+            BoundProjectSummary.Text = current is null
+                ? "请先在主窗口打开工程。"
+                : "当前工程将用于此工位；不需要填写 ECU 型号。";
+        }
+        else if (current is not null &&
+                 selected.ProjectId == current.Definition.Id.Value)
+        {
+            ProjectSummary.Text = current.Definition.Name;
+            BoundProjectSummary.Text =
+                "已关联当前工程 · TEST、FLASH、DBC 和波形均使用工程中的资源。";
+        }
+        else
+        {
+            ProjectSummary.Text = Path.GetFileName(
+                Path.GetDirectoryName(selected.ManifestPath)) ?? "已关联工程";
+            BoundProjectSummary.Text = current is null
+                ? "这是本工位已关联的工程。"
+                : "工位仍关联上述工程；当前打开的是“" + current.Definition.Name +
+                  "”。如需调整请点击“使用当前工程”。";
+        }
+        BindCurrentButton.Visibility = current is not null &&
+            (selected is null || selected.ProjectId != current.Definition.Id.Value)
+                ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void UpdateModePresentation(bool selectionChanged)
+    {
+        var mixed = MatchMode.SelectedIndex is 1 or 2;
+        MatchSummary.Text = MatchMode.SelectedIndex switch
+        {
+            1 => "多工程：按条码内产品字段匹配工程。",
+            2 => "多工程：按完整编号查询登记表匹配工程。",
+            _ => "单工程：整条扫码内容直接作为 ECU 唯一编号。"
+        };
+        if (selectionChanged)
+        {
+            MixedOptions.IsExpanded = mixed;
+            if (mixed) AdvancedMatching.IsExpanded = true;
+        }
+        var use1 = Clamp1.IsChecked == true;
+        var use2 = Clamp2.IsChecked == true;
+        FixtureSummary.Text = AutoClamp.IsChecked != true
+            ? "未启用自动夹具。可先通过手动台架验证压紧和释放。"
+            : !use1 && !use2
+                ? "已启用自动夹具，请在下方指定实际输出通道。"
+                : "自动夹具使用：" + (use1 ? "输出 1" : "") +
+                  (use1 && use2 ? "、" : "") + (use2 ? "输出 2" : "") +
+                  "。真实动作由工位执行器控制。";
     }
 
     private async Task LoadAsync()
