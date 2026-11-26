@@ -105,34 +105,34 @@ public partial class ProductionPreparationWindow
         };
         root.Children.Add(new TextBlock
         {
-            Text = "生产准备",
+            Text = "工位设置",
             Foreground = GuidedInk,
             FontSize = 21,
             FontWeight = FontWeights.SemiBold,
             Margin = new Thickness(0, 0, 0, 5)
         });
         root.Children.Add(GuidedText(
-            "工程在开发区编辑；这里确认工程版本、工位设备，然后发布。扫码枪离线不影响工程发布。"));
+            "首次安装或更换 ECU 型号时设置一次。平时直接扫码检测，无需进入这里。"));
 
-        root.Children.Add(GuidedCard("当前产品工程", out var projectBody));
+        root.Children.Add(GuidedCard("当前检测工程", out var projectBody));
         _guidedProject = GuidedText("正在检查 ECU 工程…");
         projectBody.Children.Add(_guidedProject);
         var projectActions = new WrapPanel();
-        var projectIssues = GuidedButton("查看工程问题");
+        var projectIssues = GuidedButton("工程检查详情");
         projectIssues.Click += (_, _) => ShowGuidedProjectDiagnostics();
         projectActions.Children.Add(projectIssues);
         projectBody.Children.Add(projectActions);
 
-        root.Children.Add(GuidedCard("工位设备", out var deviceBody));
+        root.Children.Add(GuidedCard("扫码枪与设备", out var deviceBody));
         _guidedDevice = GuidedText("正在读取设备状态…");
         deviceBody.Children.Add(_guidedDevice);
-        _guidedScan = GuidedText("尚未扫码。设备试扫用于连接验收，不是工程发布的前置条件。");
+        _guidedScan = GuidedText("尚未收到扫码；扫码成功后直接显示原文。");
         deviceBody.Children.Add(_guidedScan);
-        var connect = GuidedButton("连接和验证扫码枪");
+        var connect = GuidedButton("连接扫码枪");
         connect.Click += (_, _) => PreparationTabs.SelectedIndex = 1;
         deviceBody.Children.Add(connect);
-        deviceBody.Children.Add(GuidedText(
-            "夹具反馈、实体 START 和互锁必须来自可验证的硬件输入；填写来源名称不能代替接线或到位确认。"));
+        // Detailed physical interlocks live under hardware settings; the
+        // first-use page focuses on the actual task, not protocol prose.
 
         root.Children.Add(GuidedCard("自动夹具", out var fixtureBody));
         _guidedFixtureEnabled = new CheckBox
@@ -164,32 +164,31 @@ public partial class ProductionPreparationWindow
         fixtureBody.Children.Add(process);
         _guidedFixturePlan = GuidedText("尚未加载工位夹具设置。");
         fixtureBody.Children.Add(_guidedFixturePlan);
-        var settings = GuidedButton("硬件设置");
+        var settings = GuidedButton("夹具硬件设置");
         settings.Click += (_, _) => PreparationTabs.SelectedIndex = 1;
         fixtureBody.Children.Add(settings);
         fixtureBody.Children.Add(GuidedText(
-            "此处只配置自动检测流程，不会立即操作夹具。异常中断不会擅自释放，" +
-            "实际机械到位须由独立反馈确认。"));
+            "这里不会立即执行夹具动作；异常中断后须现场确认机械状态。"));
 
-        root.Children.Add(GuidedCard("发布与生产准入", out var releaseBody));
+        root.Children.Add(GuidedCard("正式生产使用", out var releaseBody));
         _guidedPublication = GuidedText("正在检查发布记录…");
         releaseBody.Children.Add(_guidedPublication);
         _guidedBlocker = GuidedText("正式生产准入还需要实体 START、夹具反馈和 Inspection 记录闭环。");
         releaseBody.Children.Add(_guidedBlocker);
         var publishActions = new WrapPanel();
-        var publish = GuidedButton("核对并发布当前工程", primary: true);
+        var publish = GuidedButton("保存并设为当前生产工程", primary: true);
         publish.Click += async (_, _) => await GuidedPublishAsync();
         publishActions.Children.Add(publish);
-        var advanced = GuidedButton("高级配置 / 多型号");
+        var advanced = GuidedButton("高级型号/编号规则");
         advanced.Click += (_, _) => PreparationTabs.SelectedIndex = 2;
         publishActions.Children.Add(advanced);
-        var details = GuidedButton("发布详情");
+        var details = GuidedButton("核验详情");
         details.Click += (_, _) => PreparationTabs.SelectedIndex = 3;
         publishActions.Children.Add(details);
         releaseBody.Children.Add(publishActions);
         releaseBody.Children.Add(GuidedText(
-            "发布只冻结当前工程的 FLASH、TEST、资源以及单型号工位识别配置；" +
-            "不会操作夹具、启动烧录、运行 TEST，也不代表允许正式生产放行。"));
+            "只需在首次使用或工程变更后确认一次。后台核对 TEST、FLASH、DBC、波形版本；" +
+            "不会立即控制夹具或烧录 ECU。"));
 
         return new ScrollViewer
         {
