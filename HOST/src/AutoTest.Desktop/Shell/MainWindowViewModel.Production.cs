@@ -110,11 +110,7 @@ public sealed partial class MainWindowViewModel
                 !_hardware.IsManualKeyActionApproved,
             _scannerWorkbench, () => _automaticTestHome.OnPublishedConfigurationChanged(),
             ActivatePublishedProjectAsync,
-            async () =>
-            {
-                await ConfirmProductionConfigurationAsync();
-                return StatusMessage;
-            },
+            async () => await ConfirmProductionConfigurationAsync(),
             () => OpenInspectionProcedureCommand.Execute())
         { Owner = global::System.Windows.Application.Current?.MainWindow };
         _productionPreparationWindow = window;
@@ -174,16 +170,16 @@ public sealed partial class MainWindowViewModel
     /// FLASH release. Not another test plan and never a physical START.
     /// Edits after confirmation invalidate the deployment automatically.
     /// </summary>
-    private async Task ConfirmProductionConfigurationAsync()
+    private async Task<bool> ConfirmProductionConfigurationAsync()
     {
         if (!IsEngineerWorkspace || _realTest.IsRunning ||
             _automaticTestHome.IsOperatorRunning || _hardware.IsFlashSecuritySensitive ||
             _hardware.IsManualCanBatchApproved || _hardware.IsManualKeyActionApproved)
         {
             StatusMessage = "工位仍有实体任务；请结束并核实状态后再确认正式检测工程。";
-            return;
+            return false;
         }
-        if (!await PrepareEditorsForCloseAsync()) return;
+        if (!await PrepareEditorsForCloseAsync()) return false;
         // Native FLASH is an owned floating editor, not a main document tab.
         // Commit and close its current draft before computing publication SHA;
         // otherwise the operator could confirm stale bytes while editing.
@@ -191,13 +187,13 @@ public sealed partial class MainWindowViewModel
             !await profileWindow.PrepareForParentShutdownAsync())
         {
             StatusMessage = "原生 FLASH 编辑尚未保存完成，生产确认已取消。";
-            return;
+            return false;
         }
         var project = _workspace.Current;
         if (project is null)
         {
             StatusMessage = "没有打开 ECU 工程，无法确认生产配置。";
-            return;
+            return false;
         }
         try
         {
@@ -219,7 +215,11 @@ public sealed partial class MainWindowViewModel
                 "工艺或固件更改均需重新核对。",
                 "确认当前工程用于正式检测", MessageBoxButton.YesNo,
                 MessageBoxImage.Question, MessageBoxResult.No);
-            if (decision != MessageBoxResult.Yes) return;
+            if (decision != MessageBoxResult.Yes)
+            {
+                StatusMessage = "已取消本次 ECU 工程发布；工位绑定不变。";
+                return false;
+            }
             // Publish the exact observed draft, then bind the station to the
             // verified manifest + ordered TEST + firmware/seed/key fingerprints.
             // On failure the former station pin cannot silently accept a new
@@ -231,6 +231,7 @@ public sealed partial class MainWindowViewModel
                 deployed.Project.Definition.EcuModelCode +
                 "；下一步仅在真实扫码、实体 START 与生产 RECORD 均通过后允许启动。";
             await RefreshEngineeringSetupAsync();
+            return true;
         }
         catch (Exception error) when (error is IOException or InvalidDataException or
             UnauthorizedAccessException or ArgumentException or InvalidOperationException or
@@ -239,6 +240,7 @@ public sealed partial class MainWindowViewModel
         {
             StatusMessage = "正式生产配置确认失败，没有取得新的生产执行许可：" +
                 error.Message;
+            return false;
         }
     }
 
