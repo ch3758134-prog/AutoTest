@@ -820,7 +820,10 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                     // Never carry approval forward across any editing operation;
                     // a new SHA is only minted on explicit author confirmation.
                     ApprovedAlgorithmRevision = 0,
-                    ReviewedCriteriaSha256 = null
+                    ReviewedCriteriaSha256 = null,
+                    ApprovedReferenceAssetId = null,
+                    ApprovedReferenceAssetRevision = null,
+                    ApprovedReferenceAssetSha256 = null
                 };
                 if (confirmWaveReview)
                 {
@@ -829,7 +832,32 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                         string.IsNullOrWhiteSpace(candidate.ReferenceName))
                         throw new ProjectDataException("WAVE_REVIEW",
                             "必须先绑定实际 DBC 信号和命名参考，才能批准用于 TEST 的波形判据。");
-                    candidate = candidate.ApproveCurrentComparison();
+                    var project = _workspace.Current ??
+                        throw new InvalidOperationException("请先打开当前 ECU 工程。");
+                    var catalog = new WaveReferenceCatalog(Path.Combine(
+                        project.RootDirectory, "wave-records", "references"));
+                    var matchingReferences = catalog.List().Where(entry =>
+                        entry.Name == candidate.ReferenceName &&
+                        entry.Signal.DbcAsset.Id.Value == candidate.DbcAssetId &&
+                        entry.Signal.DbcAsset.Revision.Value == candidate.DbcAssetRevision &&
+                        string.Equals(entry.Signal.DbcAsset.Fingerprint.Sha256,
+                            candidate.DbcAssetFingerprint, StringComparison.OrdinalIgnoreCase) &&
+                        entry.Signal.Role == candidate.Bus &&
+                        entry.Signal.FrameId == candidate.CanId &&
+                        entry.Signal.SignalName == candidate.SignalName &&
+                        entry.Signal.Unit == candidate.Unit).ToArray();
+                    if (matchingReferences.Length != 1)
+                        throw new ProjectDataException("WAVE_REVIEW_REFERENCE",
+                            "无法唯一核对标准波形资产的修订/SHA，请重新选择已保存的真实参考。");
+                    var referenceAsset = matchingReferences[0].Reference.Asset;
+                    // Read+verify immutable reference bytes before approving.
+                    _ = catalog.Load(matchingReferences[0].Reference);
+                    candidate = (candidate with
+                    {
+                        ApprovedReferenceAssetId = referenceAsset.Id.Value,
+                        ApprovedReferenceAssetRevision = referenceAsset.Revision.Value,
+                        ApprovedReferenceAssetSha256 = referenceAsset.Fingerprint.Sha256
+                    }).ApproveCurrentComparison();
                 }
                 next = candidate;
             }
