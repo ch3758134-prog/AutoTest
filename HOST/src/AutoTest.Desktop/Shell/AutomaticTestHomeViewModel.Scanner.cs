@@ -360,7 +360,7 @@ public sealed partial class AutomaticTestHomeViewModel
             };
             _scanAlertRequired = false;
             _scanStatus = repeated
-                ? "再次收到相同 ECU 编号；不会重复登记."
+                ? "再次收到相同 ECU 编号；不会重复登记。"
                 : "编号及工程资源已确认；" +
                   "等待工位启动条件。";
             _status = "身份与工程资源已核对 · 工位执行待验";
