@@ -67,7 +67,8 @@ public sealed partial class MainWindowViewModel
         _automaticTestHome = new AutomaticTestHomeViewModel(_automaticTestPlans, _hardware,
             _scannerWorkbench, _workspace, _realTest,
             () => { _ = ShowDeveloperAsync(); },
-            OpenSerialScannerWindow, () => IsProductionWorkspace);
+            OpenSerialScannerWindow, () => IsProductionWorkspace,
+            _productionCatalog, ActivateCatalogPackageAsync);
         AutomaticTestView = new AutomaticTestHomeView { DataContext = _automaticTestHome };
         EnterEngineeringVerificationCommand = new DelegateCommand(
             async () => await EnterEngineeringVerificationAsync(),
@@ -173,6 +174,54 @@ public sealed partial class MainWindowViewModel
             _ = RefreshEngineeringSetupAsync();
         };
         window.Show(); window.Activate();
+    }
+
+    /// <summary>
+    /// Loads a verified library package into the production plan without
+    /// touching the engineering editor's open project. This is metadata and
+    /// CAN bitrate selection only: no fixture, START or FLASH authorization.
+    /// </summary>
+    private async Task<bool> ActivateCatalogPackageAsync(
+        InstalledProductionPackage selected)
+    {
+        if (!IsProductionWorkspace ||
+            _hardwareBusy || _ecuCanBaudApplying ||
+            _realTest.IsRunning || _automaticTestHome.IsOperatorRunning ||
+            _hardware.IsTestRunApproved || _hardware.HasManualCanRowLeases ||
+            _hardware.IsFlashSecuritySensitive ||
+            _hardware.IsManualCanBatchApproved ||
+            _hardware.IsManualKeyActionApproved)
+            throw new InvalidOperationException(
+                "工位正在运行或设备被占用，请先完成当前检测。");
+        await _productionCatalog.VerifySelectionAsync(selected);
+        var path = Path.GetFullPath(selected.ManifestPath);
+        var bytes = await File.ReadAllBytesAsync(path);
+        var project = await ProjectRepository.OpenDefinitionAsync(path);
+        if (project.Id.Value != selected.ProjectId ||
+            project.Revision != selected.ProjectRevision)
+            throw new InvalidDataException("已安装工程版本与工程库记录不一致。");
+        var context = new OpenProjectContext(project, path,
+            Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)));
+        // Frozen TEST/FLASH and the one current deployed package are verified
+        // again before the runtime plan may change.
+        await StationDeploymentStore.DeployAsync(context);
+        await _automaticTestPlans.RestoreAsync(context,
+            requireProductionDeployment: true);
+        if (_automaticTestPlans.Current is null)
+            throw new InvalidDataException(_automaticTestPlans.Issue);
+        var native = await NativeFlashPublicationStore.LoadPublishedAsync(
+            context.RootDirectory)
+            ?? throw new InvalidDataException("检测工程缺少有效烧录配置。");
+        if (_hardware.IsConnected)
+        {
+            _hardware.SelectRequestedEcuCanBitrate(native.Profile.EcuCanKbps);
+            var confirmed = await _hardware.ApplyRequestedEcuCanBitrateAsync();
+            if (confirmed != native.Profile.EcuCanKbps)
+                throw new IOException("主控 CAN 波特率未确认，请检查连接后重新扫码。");
+        }
+        StatusMessage = "已选择检测工程：" + project.Name +
+            "。等待本台 ECU 的启动条件。";
+        return true;
     }
 
     /// <summary>Switch only an explicitly published exact product at an IDLE
