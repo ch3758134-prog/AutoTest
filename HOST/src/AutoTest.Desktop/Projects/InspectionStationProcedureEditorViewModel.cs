@@ -46,14 +46,19 @@ public sealed class InspectionStationProcedureEditorViewModel : BindableBase
     private long _editGeneration;
     public ObservableCollection<ActionEdit> BeforeStart { get; } = new();
     public ObservableCollection<ActionEdit> AfterFinish { get; } = new();
-    public sealed record ActionChoice(string Kind, string Label);
+    public sealed record ActionChoice(string Kind, string Label,
+        bool Selectable = true);
     public IReadOnlyList<ActionChoice> ActionOptions { get; } =
     [
         new("Wait", "仅等待"),
-        // Standard fixture control is station-owned and frozen at release.
-        // Do not offer conflicting Clamp1/2 actions in project-special stages.
         new("IgnOn", "IGN · ON"),
-        new("IgnOff", "IGN · OFF")
+        new("IgnOff", "IGN · OFF"),
+        // Visible for explicit cleanup of older projects, not selectable
+        // as a NEW operation. Standard clamps live in station preparation.
+        new("Clamp1Press", "旧版夹具1压紧 · 请移除", false),
+        new("Clamp1Release", "旧版夹具1释放 · 请移除", false),
+        new("Clamp2Press", "旧版夹具2压紧 · 请移除", false),
+        new("Clamp2Release", "旧版夹具2释放 · 请移除", false)
     ];
     public string SaveStatus
     {
@@ -79,6 +84,10 @@ public sealed class InspectionStationProcedureEditorViewModel : BindableBase
         var document = (InspectionStationProcedureDocument)session.Document;
         foreach (var action in document.BeforeStart) AddInternal(BeforeStart, new(action));
         foreach (var action in document.AfterFinish) AddInternal(AfterFinish, new(action));
+        if (BeforeStart.Concat(AfterFinish).Any(x =>
+                x.Kind.StartsWith("Clamp", StringComparison.Ordinal)))
+            SaveStatus = "检测到旧版夹具动作：标准装夹已归工位配置，" +
+                "请删除这些动作后再保存和发布。";
         AddBeforeCommand = new DelegateCommand(() => Add(BeforeStart));
         AddAfterCommand = new DelegateCommand(() => Add(AfterFinish));
         RemoveActionCommand = new DelegateCommand<ActionEdit>(Remove);
@@ -148,6 +157,10 @@ public sealed class InspectionStationProcedureEditorViewModel : BindableBase
                 BeforeStart.Select(x => x.ToDefinition()).ToList(),
                 AfterFinish.Select(x => x.ToDefinition()).ToList());
             draft.Validate();
+            if (draft.BeforeStart.Concat(draft.AfterFinish)
+                .Any(x => x.Kind.StartsWith("Clamp", StringComparison.Ordinal)))
+                throw new InvalidDataException("工程工位工艺含旧版夹具动作，" +
+                    "请移除旧压紧/释放操作；标准夹具由生产准备统一控制。");
             var before = _session;
             _session = await _workspace.SaveConfigurationAsync(before, draft);
             if (savedGeneration != _editGeneration)
