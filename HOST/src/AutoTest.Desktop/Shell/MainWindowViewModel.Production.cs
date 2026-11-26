@@ -73,7 +73,7 @@ public sealed partial class MainWindowViewModel
         ShowEngineeringFullRunMonitorCommand = new DelegateCommand(
             ShowEngineeringVerificationMonitor, () => IsEngineerWorkspace);
         ConfirmProductionConfigurationCommand = new DelegateCommand(
-            async () => await ConfirmProductionConfigurationAsync(),
+            async () => { await ConfirmProductionConfigurationAsync(); },
             () => IsEngineerWorkspace && !_realTest.IsRunning &&
                 !_automaticTestHome.IsOperatorRunning);
         ConfigureAutomaticTestCommand = new DelegateCommand(
