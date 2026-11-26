@@ -195,7 +195,7 @@ public sealed record ProductionFixtureConfiguration(
             ReleasePolicy != "AFTER_DURABLE_RECORD_AND_SAFE_RELEASE_CONFIRMATION")
             throw new InvalidDataException("工位槽位、夹具通道或安全释放合同无效。");
         if (FirstClamp is < 0 or > 2 ||
-            (UseClamp1 && UseClamp2 && FirstClamp == 0))
+            (AutoClampEnabled && UseClamp1 && UseClamp2 && FirstClamp == 0))
             throw new InvalidDataException("同时启用两路夹具时，必须明确选择先操作哪一路（1 或 2）。");
         if (StartInput is null || StopInput is null ||
             InterlockInput is null || ClampClosedFeedback is null ||
