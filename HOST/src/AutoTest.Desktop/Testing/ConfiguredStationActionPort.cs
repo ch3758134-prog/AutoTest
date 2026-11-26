@@ -222,10 +222,13 @@ public sealed partial class ConfiguredStationActionPort : ITestActuationPort, IT
                 // looser than CAN timing tolerance; it is NOT bus-period proof.
                 var latestAck = task.LastUsbAckUtc ?? task.StartedUtc;
                 var limitMs = Math.Max(3000L, (long)task.PeriodMs * 3L);
-                if (now - latestAck > TimeSpan.FromMilliseconds(limitMs))
-                    throw new IOException("持续周期 CAN 已无新 USB ACK，禁止将后续 ECU " +
+                if (now - latestAck > TimeSpan.FromMilliseconds(limitMs) ||
+                    task.LongestAckIntervalMs > limitMs)
+                    throw new IOException("持续周期 CAN 已发生严重 USB 发送间断，禁止将后续 ECU " +
                         "判定当作有效：" + task.Channel + " 0x" +
                         task.CanId.ToString("X") + "，周期 " + task.PeriodMs +
+                        "ms，最长 USB ACK 间隔 " +
+                        task.LongestAckIntervalMs.ToString("F0") +
                         "ms，最近 ACK " + latestAck.ToString("O") +
                         "；请检查独立 CAN 分析仪和整组运行记录。");
             }
