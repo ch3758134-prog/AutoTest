@@ -85,6 +85,7 @@ public sealed class PhysicalCommandFence
             _singleCanPayload = null; _authorizedConnection = 0; _canExpiry = default;
             _oneIgnState = null; _ignGeneration = 0; _ignExpiry = default;
             _singleClampPayload = null; _clampGeneration = 0; _clampExpiry = default;
+            _stationFixtureExact = null; // No pending 0x18 during FLASH.
             _singleLedPayload = null; _ledGeneration = 0; _ledExpiry = default;
             _baudPermit = null; _baudPermitEpoch = 0; _baudPermitExpires = default;
             var token=Guid.NewGuid();
@@ -274,6 +275,7 @@ public sealed class PhysicalCommandFence
             _singleClampPayload = null;
             _clampGeneration = 0;
             _clampExpiry = default;
+            _stationFixtureExact = null; // No pending 0x18 during TEST.
             _baudPermit = null;
             _baudPermitEpoch = 0;
             _baudPermitExpires = default;
@@ -371,8 +373,9 @@ public sealed class PhysicalCommandFence
         lock (_sync)
         {
             if (_runFingerprint is not null || _manualBatchCan is not null || _manualCanRows.Count != 0 ||
-                _programming is not null || _didGrant is not null)
-                throw new InvalidOperationException("Physical test or manual batch is already authorized.");
+                _programming is not null || _didGrant is not null ||
+                _stationFixtureFingerprint is not null)
+                throw new InvalidOperationException("Station execution or manual batch is already authorized.");
             _singleCanPayload = null;
             _oneIgnState = null;
             _singleClampPayload = null;
@@ -410,8 +413,9 @@ public sealed class PhysicalCommandFence
         lock (_sync)
         {
             if (_runFingerprint is not null || _manualKeySteps is not null ||
-                _programming is not null || _didGrant is not null)
-                throw new InvalidOperationException("Physical TEST or KEY action is already authorized.");
+                _programming is not null || _didGrant is not null ||
+                _stationFixtureFingerprint is not null)
+                throw new InvalidOperationException("Station execution or KEY action is already authorized.");
             _singleCanPayload = null;
             _manualKeySteps = frames.Select(x => x.ToArray()).ToArray();
             _manualKeyIndex = 0;
@@ -498,8 +502,9 @@ public sealed class PhysicalCommandFence
             throw new InvalidOperationException("Cannot authorize IGN without a live USB generation.");
         lock (_sync)
         {
-            if (_runFingerprint is not null || _programming is not null || _didGrant is not null)
-                throw new InvalidOperationException("Manual IGN is blocked while an automatic test run is authorized.");
+            if (_runFingerprint is not null || _programming is not null ||
+                _didGrant is not null || _stationFixtureFingerprint is not null)
+                throw new InvalidOperationException("Manual IGN is blocked while station execution is authorized.");
             _oneIgnState = on;
             _ignGeneration = connectionGeneration;
             _ignExpiry = DateTimeOffset.UtcNow.AddSeconds(15);
