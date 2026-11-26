@@ -57,7 +57,7 @@
     <TextBlock Text="设置一次，日常检测直接扫码" Style="{StaticResource SmallHint}" Margin="0,3,0,0"/>
    </StackPanel>
   </DockPanel>
-  <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+  <ScrollViewer x:Name="SettingsBody" Grid.Row="1" VerticalScrollBarVisibility="Auto"
    HorizontalScrollBarVisibility="Disabled">
    <StackPanel MaxWidth="950">
     <Border Style="{StaticResource Card}">
