@@ -24,6 +24,36 @@ public partial class ProductionPreparationWindow
     private DateTimeOffset? _lastRealBarcodeUtc;
     private int _guidedPreviewSequence;
 
+    // A successful barcode read belongs to one concrete scanner/COM session.
+    // A disconnect or COM rebind invalidates the proof even if the port name
+    // is later reused by another USB serial device.
+    private void OnGuidedScannerPropertyChanged(object? sender,
+        System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is not (nameof(SerialScannerWorkbenchViewModel.IsConnected) or
+            nameof(SerialScannerWorkbenchViewModel.ConnectedPort) or
+            nameof(SerialScannerWorkbenchViewModel.DeviceStatus))) return;
+        Dispatcher.BeginInvoke(new Action(async () =>
+        {
+            if (!IsVisible || _scanner is null) return;
+            if (!_scanner.IsConnected ||
+                (_lastRealBarcode is not null &&
+                 !string.Equals(_lastRealBarcodePort, _scanner.ConnectedPort,
+                     StringComparison.OrdinalIgnoreCase)))
+            {
+                _lastRealBarcode = null;
+                _lastRealBarcodePort = "";
+                _lastRealBarcodeUtc = null;
+                if (_guidedScan is not null)
+                    _guidedScan.Text = "扫码设备已断开或串口会话发生变化，旧实扫凭证失效。";
+            }
+            ConnectionHint = _scanner.IsConnected
+                ? "真实扫码设备：" + _scanner.ConnectedPort + " · 仅配置验证"
+                : "扫码枪未连接；手动输入不能用于真实扫码发布凭证";
+            await RefreshGuidedOverviewAsync();
+        }));
+    }
+
     private static readonly Brush GuidedInk =
         new SolidColorBrush(Color.FromRgb(38, 60, 79));
     private static readonly Brush GuidedMuted =
@@ -378,6 +408,9 @@ public partial class ProductionPreparationWindow
                     string.Join("；", issues.Take(5)));
             if (_publishProject is null)
                 throw new InvalidOperationException("工程发布功能尚未接线。");
+            var frozenEditGeneration = _editGeneration;
+            var frozenRealScan = _lastRealBarcode;
+            var frozenPort = _lastRealBarcodePort;
             _busy = true;
             // UI's owner is responsible for saving floating editors, asking
             // the engineer to confirm, publishing FLASH and pinning TEST.
@@ -395,8 +428,12 @@ public partial class ProductionPreparationWindow
                 !string.Equals(deployment.Project.ManifestSha256,
                     project.ManifestSha256, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("工程发布后的版本/身份不等于准备时核对的 ECU 工程。");
+            if (_editGeneration != frozenEditGeneration ||
+                _lastRealBarcode != frozenRealScan ||
+                _scanner?.IsConnected != true || _scanner.ConnectedPort != frozenPort)
+                throw new IOException("发布过程中工位配置或真实扫码来源发生变化，请重新核对后发布。");
             var testScan = await StationProductionConfigurationStore.PreviewDraftAsync(
-                config, _lastRealBarcode);
+                config, frozenRealScan!);
             if (!testScan.Accepted || testScan.Project is null ||
                 testScan.Project.ProjectId != deployment.Project.Definition.Id.Value)
                 throw new InvalidDataException("真实扫码没有唯一指向刚冻结的 ECU 工程：" +
