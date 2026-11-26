@@ -1,7 +1,7 @@
 <Window x:Class="AutoTest.Desktop.Shell.ProductionPreparationWindow"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- Title="工位设置 · 扫码枪、夹具与当前工程" Width="1120" Height="800"
+ Title="工位设置" Width="1120" Height="800"
  MinWidth="870" MinHeight="560" WindowStartupLocation="CenterOwner"
  Background="#F6F8FB" Foreground="#293E52" FontSize="13"
  UseLayoutRounding="True">
@@ -39,20 +39,25 @@
    CornerRadius="7" Padding="15,12" Margin="0,0,0,10">
    <DockPanel>
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-      <Button Content="保存并应用到工位" Click="ApplyStation_Click"
+      <Button Content="应用到工位" Click="ApplyStation_Click"
         Padding="18,9" Margin="0,0,10,0" Background="#266BB4"
         Foreground="White" BorderBrush="#266BB4" MinHeight="37"/>
       <Button Content="关闭" Click="Close_Click" Padding="13,8"/>
     </StackPanel>
     <StackPanel>
      <TextBlock Text="工位设置" FontSize="21" FontWeight="SemiBold"/>
-     <TextBlock Text="当前工程、扫码与身份、真实工位、夹具和发布检查都在同一页；修改自动保存"
+     <TextBlock Text="当前 ECU、扫码、夹具与应用状态"
       Foreground="#62788D" FontSize="12" Margin="0,4,0,0"/>
     </StackPanel>
    </DockPanel>
   </Border>
   <TabControl Grid.Row="1" x:Name="PreparationTabs" Background="White"
-    BorderBrush="#DBE5EF">
+    BorderThickness="0">
+   <TabControl.Template>
+    <ControlTemplate TargetType="{x:Type TabControl}">
+     <ContentPresenter ContentSource="SelectedContent"/>
+    </ControlTemplate>
+   </TabControl.Template>
    <TabItem Header="1  产品与工程">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
      <StackPanel Margin="19" MaxWidth="1080">
@@ -346,7 +351,7 @@
        BorderBrush="#DFE8F1" BorderThickness="1" Margin="0,0,0,12">
        <StackPanel>
         <TextBlock Text="工程与工位发布" FontWeight="SemiBold" Margin="0,0,0,7"/>
-        <TextBlock Text="所有工程、FLASH、TEST 和工位配置由页面底部“保存并设为当前生产工程”一次检查并应用；这里仅供查看高级诊断。"
+        <TextBlock Text="右上角一次应用当前工程与工位配置。"
          TextWrapping="Wrap" Foreground="#536F87" Margin="0,0,0,10"/>
         <WrapPanel>
          <Button Visibility="Collapsed" Content="① 确认当前 ECU 工程" Click="PublishProject_Click" Padding="12,8" Margin="0,0,10,0"/>
@@ -392,7 +397,7 @@
   <Border Grid.Row="2" Background="White" BorderBrush="#DEE6EF" BorderThickness="1"
    CornerRadius="5" Margin="0,9,0,0" Padding="10">
    <DockPanel>
-    <TextBlock DockPanel.Dock="Right" Text="{Binding ConnectionHint}"
+    <TextBlock DockPanel.Dock="Right" Text="修改自动保存"
      Foreground="#637A90" FontSize="11" VerticalAlignment="Center"/>
     <TextBlock Text="{Binding Status}" Foreground="#315B7B"
      TextTrimming="CharacterEllipsis" ToolTip="{Binding Status}"/>
