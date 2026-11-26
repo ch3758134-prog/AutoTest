@@ -500,8 +500,8 @@ public partial class ProductionPreparationWindow : Window
 
     private void Preview_Click(object sender, RoutedEventArgs e)
     {
-        var manual = !string.IsNullOrWhiteSpace(ScanTrial.Text);
-        var raw = manual ? ScanTrial.Text.Trim() : _scanner.LastRaw;
+        var manual = ScanTrial.Text.Length > 0;
+        var raw = manual ? ScanTrial.Text : _scanner.LastRaw;
         PreviewBarcode(raw, manual);
     }
 
@@ -515,7 +515,7 @@ public partial class ProductionPreparationWindow : Window
         }
         if (string.IsNullOrWhiteSpace(raw))
         {
-            PreviewStatus.Text = "请扫码，或输入一个编号试算。";
+            PreviewStatus.Text = "请连接扫码枪，或在上方输入测试编号。";
             return;
         }
         try
@@ -525,7 +525,7 @@ public partial class ProductionPreparationWindow : Window
             var parsed = rule.Parse(raw);
             if (!parsed.Accepted)
             {
-                PreviewStatus.Text = (manual ? "手工试算：" : "真实扫码：") +
+                PreviewStatus.Text = (manual ? "手动测试：" : "真实扫码：") +
                     raw + "\n未匹配：" + parsed.Explanation;
                 return;
             }
@@ -568,7 +568,7 @@ public partial class ProductionPreparationWindow : Window
                 return;
             }
             var selected = matches[0];
-            PreviewStatus.Text = (manual ? "手工试算：" : "真实扫码：") +
+            PreviewStatus.Text = (manual ? "手动测试：" : "真实扫码：") +
                 raw + "\nECU 编号：" + parsed.Serial +
                 "\n将匹配工程：" +
                 Path.GetFileName(Path.GetDirectoryName(selected.ManifestPath)) +
@@ -577,7 +577,7 @@ public partial class ProductionPreparationWindow : Window
         }
         catch (Exception error) when (error is not OutOfMemoryException)
         {
-            PreviewStatus.Text = "匹配试算失败：" + error.Message;
+            PreviewStatus.Text = "编号识别失败：" + error.Message;
         }
     }
 
@@ -753,8 +753,9 @@ public partial class ProductionPreparationWindow : Window
             var published = await StationProductionConfigurationStore.PublishAsync(candidate);
             previous = null;
             _onPublished();
-            Say("已应用完整工程 " + project.Definition.Name +
-                " · " + published.PublicationId.ToString("N")[..10]);
+            Say("已启用工位配置：" + project.Definition.Name +
+                "（TEST " + published.Projects.Sum(x => x.OrderedCaseNames.Count) +
+                " 个用例）。");
             await RefreshPublicationAsync();
         }
         catch (Exception error) when (error is not OutOfMemoryException)
@@ -787,21 +788,43 @@ public partial class ProductionPreparationWindow : Window
         {
             var published = await StationProductionConfigurationStore.LoadPublishedAsync();
             if (published is null)
-                PublicationState.Text = "尚无已应用的工程。";
+            {
+                PublicationState.Text = "尚未启用工位配置。已保存的草稿不会自动生效。";
+            }
+            else if (ContentKey(published.Configuration) != ContentKey(_draft))
+            {
+                PublicationState.Text =
+                    "当前设置已更改，但尚未启用。工位仍使用上次启用的配置。";
+            }
             else
-                PublicationState.Text = "版本 " +
-                    published.PublicationId.ToString("N")[..10] + " · " +
-                    string.Join(" / ", published.Projects.Select(x =>
-                        x.ProjectId.ToString("N")[..10] + " · TEST " +
-                        x.OrderedCaseNames.Count + " 用例"));
+            {
+                var current = _workspace.Current;
+                var active = current is null ? null :
+                    published.Projects.FirstOrDefault(x =>
+                        x.ProjectId == current.Definition.Id.Value);
+                if (active is not null &&
+                    !string.Equals(active.ManifestSha256, current!.ManifestSha256,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    PublicationState.Text =
+                        "当前工程已有更新，请重新启用工位配置后用于正式检测。";
+                }
+                else
+                {
+                    PublicationState.Text = "已启用配置 · " +
+                        published.Projects.Count + " 份工程，" +
+                        published.Projects.Sum(x => x.OrderedCaseNames.Count) +
+                        " 个测试用例。";
+                }
+            }
         }
-        catch (Exception error)
+        catch (Exception error) when (error is not OutOfMemoryException)
         {
-            PublicationState.Text = "旧版或损坏的工位配置不能使用：" +
-                error.Message;
+            PublicationState.Text = "工位配置不可用：" + error.Message;
         }
-        BlockerState.Text = "正式生产：实体 START 和持久化 Inspection 接线尚未完成，不能直接放行。" +
-            "\n工程实测：按现有明确授权机制执行真实 FLASH/TEST。";
+        BlockerState.Text =
+            "正式生产仍待实体 START、机械反馈及单台检测记录的现场验收；" +
+            "启用配置不代表已取得生产放行。";
     }
 
     private async void ResetOld_Click(object sender, RoutedEventArgs e)
