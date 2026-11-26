@@ -111,11 +111,37 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
             ModelLength, HardwareStart, HardwareLength, RegexExpression,
             Samples.Select(x => x.ToModel()).ToArray());
     }
-    public sealed class FixtureRow
+    public sealed record ClampOrderChoice(int Value, string Label);
+    public IReadOnlyList<ClampOrderChoice> ClampOrderChoices { get; } =
+    [
+        new(0, "请选择双路压紧顺序"),
+        new(1, "夹具 1 → 夹具 2"),
+        new(2, "夹具 2 → 夹具 1")
+    ];
+
+    public sealed class FixtureRow : INotifyPropertyChanged
     {
+        public event PropertyChangedEventHandler? PropertyChanged;
+        private bool _useClamp1, _useClamp2;
+        private int _firstClamp;
+        private void Changed(string propertyName) =>
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         public string StationSlotId { get; set; } = "SLOT-01";
-        public bool UseClamp1 { get; set; }
-        public bool UseClamp2 { get; set; }
+        public bool UseClamp1
+        {
+            get => _useClamp1;
+            set { if (_useClamp1 == value) return; _useClamp1 = value; Changed(nameof(UseClamp1)); }
+        }
+        public bool UseClamp2
+        {
+            get => _useClamp2;
+            set { if (_useClamp2 == value) return; _useClamp2 = value; Changed(nameof(UseClamp2)); }
+        }
+        public int FirstClamp
+        {
+            get => _firstClamp;
+            set { if (_firstClamp == value) return; _firstClamp = value; Changed(nameof(FirstClamp)); }
+        }
         public string ClampClosedFeedback { get; set; } = "NOT_WIRED";
         public string ClampOpenFeedback { get; set; } = "NOT_WIRED";
         public string StartInput { get; set; } = "NOT_WIRED";
@@ -125,7 +151,7 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
         public static FixtureRow From(ProductionFixtureConfiguration x) => new()
         {
             StationSlotId = x.StationSlotId, UseClamp1 = x.UseClamp1,
-            UseClamp2 = x.UseClamp2,
+            UseClamp2 = x.UseClamp2, FirstClamp = x.FirstClamp,
             ClampClosedFeedback = x.ClampClosedFeedback,
             ClampOpenFeedback = x.ClampOpenFeedback,
             StartInput = x.StartInput, StopInput = x.StopInput,
@@ -138,7 +164,8 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
                 ClampClosedFeedback.Trim(), ClampOpenFeedback.Trim(),
                 StartInput.Trim(), StopInput.Trim(), InterlockInput.Trim(),
                 MovementTimeoutMs,
-                "AFTER_DURABLE_RECORD_AND_SAFE_RELEASE_CONFIRMATION");
+                "AFTER_DURABLE_RECORD_AND_SAFE_RELEASE_CONFIRMATION",
+                FirstClamp);
     }
 
     private readonly ProjectWorkspaceService _workspace;
