@@ -6,6 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Prism.DryIoc" />
+    <PackageReference Include="Microsoft.Data.Sqlite" />
     <ProjectReference Include="../AutoTest.Projects/AutoTest.Projects.csproj" />
     <ProjectReference Include="../AutoTest.Testing/AutoTest.Testing.csproj" />
     <ProjectReference Include="../AutoTest.Application/AutoTest.Application.csproj" />
