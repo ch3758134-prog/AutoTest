@@ -90,9 +90,24 @@ public static class StationProductionConfigurationStore
                 rule.Samples.Any(x => x.Raw == "SN|BAD" && !x.ShouldAccept))
                 issues.Add(rule.Name + "：仍使用旧版虚构的正反例；" +
                     "请用本工位真实扫码替换，错误样例可明确使用人工构造的拒绝输入。");
-            if (!rule.Samples.Any(s => s.ShouldAccept) ||
-                !rule.Samples.Any(s => !s.ShouldAccept))
-                issues.Add(rule.Name + "：正式发布前必须有正例和反例。");
+            // Default single-model stations take the entire ASCII barcode as
+            // the unique serial. This is a deterministic parser contract, not
+            // a claim that a physical scanner was tested. Publishing a saved
+            // ECU project must NOT require a connected scanner or an invented
+            // sample. Advanced rules and any explicitly entered samples still
+            // require a valid positive/negative pair.
+            var plainFixedSerial =
+                config.Mode == StationProductionConfiguration.FixedStation &&
+                config.Rules.Count(x => x.Enabled) == 1 &&
+                rule.Format == ProductionBarcodeRule.Serial &&
+                rule.Prefix.Length == 0 && rule.ExactLength == 0 &&
+                rule.AllowedCharacters == @"[A-Za-z0-9_.-]+" &&
+                rule.ModelField == 0 && rule.HardwareField == 0 &&
+                rule.BatchField == 0;
+            if (!(plainFixedSerial && rule.Samples.Count == 0) &&
+                (!rule.Samples.Any(s => s.ShouldAccept) ||
+                 !rule.Samples.Any(s => !s.ShouldAccept)))
+                issues.Add(rule.Name + "：自定义编码规则发布前必须有正例和反例。");
             if (rule.Samples.Any(s => string.IsNullOrWhiteSpace(s.Raw)))
                 issues.Add(rule.Name + "：编码校验样例不能留空，空字符串不得作为有效拒绝样例。");
             foreach (var sample in rule.Samples)
