@@ -57,7 +57,7 @@
       ToolTip="撤销旧扫码，重新接收本台 ECU 的真实串口扫码身份；不执行 FLASH/TEST"/>
      <Button Content="开始整组实测" Command="{Binding StartOperatorVerificationCommand}"
       Style="{StaticResource AtPrimaryButton}" Padding="12,7" Margin="0,0,7,0"
-      ToolTip="仅在接受本次扫码且所有项目/码率/硬件预检通过时启用；开始前再次确认真机 FLASH"/>
+      ToolTip="扫码后会自动弹出一次真实操作确认；此按钮供扫码确认取消后的人工重试"/>
      <Button Content="扫码枪设置" Command="{Binding OpenScannerSettingsCommand}"
       Padding="12,7" Margin="0,0,7,0"
       ToolTip="首次安装扫码设备时设置一次 COM，正常复测不需要反复进入生产准备"/>
@@ -69,7 +69,7 @@
     </StackPanel>
     <StackPanel>
      <TextBlock Text="工程整组实测" FontWeight="SemiBold" FontSize="18"/>
-     <TextBlock Text="连接设备 → 扫描 ECU → 开始整组实测 · 不计入正式生产 PASS"
+     <TextBlock Text="连接设备 → 扫描 ECU → 确认真实动作 → 自动整组实测（非生产）"
       FontSize="11" Foreground="#667F94" Margin="0,3,0,0"/>
      <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
       <TextBlock Text="{Binding ControllerLabel}" Foreground="#41627D" FontSize="11" Margin="0,0,12,0"/>
