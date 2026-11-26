@@ -292,6 +292,21 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
             // jump the user to another page or treat it as physical START.
             _lastRealBarcode = raw;
             _lastRealBarcodePort = _scanner?.ConnectedPort ?? "";
+            _lastRealBarcodePnp = "";
+            try
+            {
+                var binding = StationScannerDeviceBinding.Load();
+                var device = binding is null ? null : StationScannerDeviceBinding.Match(binding);
+                if (device is not null &&
+                    string.Equals(device.PortName, _lastRealBarcodePort,
+                        StringComparison.OrdinalIgnoreCase))
+                    _lastRealBarcodePnp = device.PnpInstanceId;
+            }
+            catch (Exception error) when (error is not OutOfMemoryException)
+            {
+                // Preserve raw diagnostic input but not station-grade evidence.
+                Status = "原始扫码已读取，但设备身份未核实：" + error.Message;
+            }
             _lastRealBarcodeUtc = DateTimeOffset.UtcNow;
             if (_guidedManualInput is not null) _guidedManualInput.Text = raw;
             _ = PreviewGuidedBarcodeAsync(raw, true);
