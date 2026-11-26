@@ -103,6 +103,25 @@ public sealed class ProductionCatalogContractTests
         finally { Directory.Delete(root, recursive: true); }
     }
 
+    [Fact]
+    public async Task RepeatedSerialCannotSilentlyChangeProductOwnership()
+    {
+        var root = TempDirectory();
+        try
+        {
+            var catalog = new ProductionProjectCatalog(root);
+            await catalog.SetRegistryIdentityAsync("S00001", "EPB-A");
+            await catalog.SetRegistryIdentityAsync("S00001", "EPB-A");
+            await Assert.ThrowsAsync<InvalidDataException>(async () =>
+                await catalog.SetRegistryIdentityAsync("S00001", "EPB-B"));
+            await catalog.SaveSettingsAsync(new(
+                ProductionRoutingSettings.Registry, "|", 1, 2, 0));
+            var decision = await catalog.ResolveAsync("S00001");
+            Assert.Equal("PROJECT_NOT_MAPPED", decision.Code);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
     private static string TempDirectory()
     {
         var dir = Path.Combine(Path.GetTempPath(),
