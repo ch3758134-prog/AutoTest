@@ -182,7 +182,8 @@ public sealed record ProductionFixtureConfiguration(
         "SLOT-01", false, false, "MCU:PTB1/J1-B5",
         "MCU:PTC2/J1-B4", "NOT_WIRED", "NOT_WIRED",
         "NOT_WIRED", "NOT_WIRED", "NOT_WIRED", 3000,
-        "AFTER_DURABLE_RECORD_AND_SAFE_RELEASE_CONFIRMATION");
+        "AFTER_DURABLE_RECORD_AND_SAFE_RELEASE_CONFIRMATION",
+        0, true, true, 0, false); // New station drafts never implicitly energize a fixture.
 
     public void Validate()
     {
@@ -283,6 +284,9 @@ public sealed record StationProductionConfiguration(
     public void Validate()
     {
         ValidateDraft();
+        if (Fixture.AutoClampEnabled && !Fixture.UseClamp1 && !Fixture.UseClamp2)
+            throw new InvalidDataException(
+                "自动夹具已启用但没有配置实体输出，不能发布。请在硬件设置中选择输出，或关闭自动夹具。");
         if (Products.Count == 0)
             throw new InvalidDataException("正式发布至少需要绑定一份完整 ECU 工程。");
         if (Mode == FixedStation &&
