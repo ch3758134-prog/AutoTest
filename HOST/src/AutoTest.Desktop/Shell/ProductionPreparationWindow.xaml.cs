@@ -305,14 +305,14 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
         {
             if (_scanner is not null)
             {
-                _scanner.CompleteBarcodeReceived -= OnRealSample;
+                _scanner.RawBarcodeObserved -= OnRealSample;
                 _scanner.PropertyChanged -= OnGuidedScannerPropertyChanged;
             }
             _autosave.Stop();
         };
         if (_scanner is not null)
         {
-            _scanner.CompleteBarcodeReceived += OnRealSample;
+            _scanner.RawBarcodeObserved += OnRealSample;
             _scanner.PropertyChanged += OnGuidedScannerPropertyChanged;
             ConnectionHint = _scanner.IsConnected
                 ? "真实扫码设备：" + _scanner.ConnectedPort + " · 仅离线试扫"
@@ -324,7 +324,13 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
     {
         Dispatcher.BeginInvoke((Action)(() =>
         {
-            if (!IsVisible || !_ready || _busy) return;
+            if (!IsLoaded) return;
+            // Observation and identity admission are deliberately separate.
+            if (!_ready || _busy)
+            {
+                if (_guidedScan is not null) _guidedScan.Text = "扫码原文：" + raw;
+                return;
+            }
             var lines = PreviewInput.Text.Split(['\r', '\n'],
                 StringSplitOptions.RemoveEmptyEntries).Length;
             if (lines >= 199)
@@ -367,7 +373,7 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
             }
             RulesGrid.SelectedIndex = Rules.Count > 0 ? 0 : -1;
             _ready = true;
-            Status = "生产准备草稿已读取。配置保存不等于发布或实体工位确认。";
+            Status = "工位配置已加载";
             await RefreshOverviewAsync();
         }
         catch (Exception error)
@@ -402,7 +408,7 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
         _editGeneration++;
         _dirty = true;
         if (_busy) return;
-        Status = "草稿已修改 · 即将自动保存（未发布）";
+        Status = "已修改 · 自动保存中";
         _autosave.Stop();
         _autosave.Start();
         StationBlockerSummary = string.Join("；", Fixture.ToModel().PhysicalBlockers());
@@ -431,8 +437,7 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
             _revision = data.Revision;
             _dirty = generation != _editGeneration;
             if (_dirty) _autosave.Start();
-            Status = _dirty ? "保存期间有后续修改，继续保存新草稿。" :
-                "生产配置草稿已保存（尚未发布）";
+            Status = _dirty ? "正在继续保存更改" : "草稿已自动保存";
             await RefreshOverviewAsync();
             return true;
         }

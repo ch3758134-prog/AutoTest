@@ -37,11 +37,9 @@ public partial class ProductionPreparationWindow
         Dispatcher.BeginInvoke(new Action(async () =>
         {
             if (!IsVisible || _scanner is null) return;
-            if (!_scanner.IsConnected && _guidedScan is not null)
-                _guidedScan.Text = "扫码枪未连接；仍然可以离线发布工程。真实生产扫码需重新连接已绑定设备。";
+            // A COM disconnect must never erase the last real barcode.
             ConnectionHint = _scanner.IsConnected
-                ? "扫码枪：" + _scanner.ConnectedPort + " · 不影响工程发布"
-                : "扫码枪未连接 · 可离线发布工程";
+                ? "扫码枪：" + _scanner.ConnectedPort : "扫码枪：未连接";
             await RefreshGuidedOverviewAsync();
         }));
     }
@@ -58,7 +56,7 @@ public partial class ProductionPreparationWindow
             FontSize = prominent ? 14 : 12.5,
             FontWeight = prominent ? FontWeights.SemiBold : FontWeights.Normal,
             TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 3, 0, 6)
+            Margin = new Thickness(0, 1, 0, 4)
         };
 
     private static Border GuidedCard(string title, out StackPanel content)
@@ -71,8 +69,8 @@ public partial class ProductionPreparationWindow
             BorderBrush = new SolidColorBrush(Color.FromRgb(222, 230, 237)),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(8),
-            Padding = new Thickness(17, 14, 17, 14),
-            Margin = new Thickness(0, 0, 0, 12),
+            Padding = new Thickness(14, 10, 14, 10),
+            Margin = new Thickness(0, 0, 0, 10),
             Child = content
         };
     }
@@ -82,9 +80,10 @@ public partial class ProductionPreparationWindow
         var button = new Button
         {
             Content = name,
-            Padding = new Thickness(14, 8, 14, 8),
-            Margin = new Thickness(0, 6, 10, 0),
-            MinHeight = 34,
+            Padding = new Thickness(10, 5, 10, 5),
+            Margin = new Thickness(0, 5, 7, 0),
+            MinHeight = 30,
+            FontSize = 12.5,
             HorizontalAlignment = HorizontalAlignment.Left
         };
         if (primary)
@@ -151,7 +150,8 @@ public partial class ProductionPreparationWindow
         scanner.Margin = new Thickness(7, 0, 0, 12);
         _guidedDevice = GuidedText("检查扫码设备中…");
         scannerBody.Children.Add(_guidedDevice);
-        _guidedScan = GuidedText("等待扫码原文…", prominent: true);
+        _guidedScan = GuidedText(string.IsNullOrWhiteSpace(_scanner?.LastRaw)
+            ? "等待扫码原文…" : "扫码原文：" + _scanner.LastRaw, prominent: true);
         scannerBody.Children.Add(_guidedScan);
         var scanActions = new WrapPanel();
         var device = GuidedButton("扫码设备");
@@ -261,16 +261,14 @@ public partial class ProductionPreparationWindow
             var plan = StationFixtureExecutionPlan.From(Fixture.ToModel());
             _guidedFixturePlan.Text = plan.Press.Count switch
             {
-                0 => "未启用：检测不会自动压紧或释放。",
-                1 => "检测前压紧，正常完成并保存结果后释放。" +
-                     "通道和电平已保存在硬件设置中。",
-                _ => "这套夹具使用两路输出，按硬件设置中的顺序压紧、逆序释放。"
+                0 => "自动夹具未启用",
+                1 => "1 路夹具 · 检测前压紧，符合释放条件后松开",
+                _ => "2 路夹具 · 按配置顺序压紧、逆序释放"
             };
         }
         catch (Exception)
         {
-            _guidedFixturePlan.Text = "夹具硬件设置未完成：请在硬件设置中确认两路顺序、" +
-                "输出极性及稳定时间，完成前禁止启动。";
+            _guidedFixturePlan.Text = "夹具配置待核对 · 点击“夹具与实体按钮”";
         }
     }
 
