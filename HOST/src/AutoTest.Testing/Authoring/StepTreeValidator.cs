@@ -121,28 +121,17 @@ public static class StepTreeValidator
                     errors.Add($"{location}: CAN 信号判定超时应在 1～600000 毫秒内。");
             }
             if (!allowIncompleteSteps && n.Type is ("WaveAnalyze" or "WaveCompare") &&
-                string.IsNullOrWhiteSpace(n.Properties.GetValueOrDefault("profile", "")) &&
-                string.IsNullOrWhiteSpace(n.Properties.GetValueOrDefault("reference", "")))
-                errors.Add($"{location}: wave analysis requires a named reference or mapped profile");
+                string.IsNullOrWhiteSpace(n.Properties.GetValueOrDefault("profile", "")))
+                errors.Add($"{location}: wave analysis requires an explicitly reviewed and mapped WAVE profile");
             if (!allowIncompleteSteps && n.Type is ("WaveAnalyze" or "WaveCompare") &&
                 n.Properties.TryGetValue("profile", out var profileName) &&
                 !string.IsNullOrWhiteSpace(profileName) &&
                 !document.Mappings.Any(m => m.Kind == TestTargetKind.WaveProfile &&
                     string.Equals(m.Name, profileName, StringComparison.OrdinalIgnoreCase)))
                 errors.Add($"{location}: unmapped wave analysis profile {profileName}");
-            if (!allowIncompleteSteps && n.Type is ("WaveAnalyze" or "WaveCompare"))
-            {
-                var toleranceText = n.Properties.GetValueOrDefault("tolerance", "");
-                var coverageText = n.Properties.GetValueOrDefault("coverage", "");
-                if (!double.TryParse(toleranceText, System.Globalization.NumberStyles.Float,
-                        System.Globalization.CultureInfo.InvariantCulture, out var tolerance) ||
-                    !double.IsFinite(tolerance) || tolerance < 0)
-                    errors.Add($"{location}: waveform absolute tolerance must be finite and nonnegative");
-                if (!double.TryParse(coverageText, System.Globalization.NumberStyles.Float,
-                        System.Globalization.CultureInfo.InvariantCulture, out var coverage) ||
-                    !double.IsFinite(coverage) || coverage is < 0 or > 1)
-                    errors.Add($"{location}: waveform coverage must be within 0..1");
-            }
+            // Wave criteria are edited and versioned in the WAVE profile,
+            // not duplicated in free-form STEP properties. The actual profile
+            // is checked against immutable project resources before execution.
             if (!allowIncompleteSteps && n.Type == "Switch")
             {
                 var cases = n.Slots.TryGetValue("cases", out var switchCases)
