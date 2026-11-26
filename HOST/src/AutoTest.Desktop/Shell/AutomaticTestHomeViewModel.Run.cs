@@ -598,6 +598,14 @@ public sealed partial class AutomaticTestHomeViewModel
                         StringComparison.OrdinalIgnoreCase))
                     .Any())
                 throw new InvalidDataException("本次正式工程用例顺序已改变。");
+
+            // Wave profile approval, algorithm revision and reference closure
+            // must fail BEFORE ANY clamp/IGN/FLASH physical write, not when
+            // the first WaveCompare step happens after ECU erasure.
+            await _operatorEngine.VerifyProjectWaveProfilesBeforeHardwareAsync(
+                programs.OrderedExecutions().Select(x => x.Program).ToArray(), ct);
+            AddOperatorEvent("WAVE 前置核验完成：所调用用例的比较算法、已批准参数及参考波形可用");
+
             if (_hardware.IsManualCanBatchApproved || _hardware.IsManualKeyActionApproved)
                 throw new InvalidOperationException("手动任务仍占用工位；请先停止。");
 
