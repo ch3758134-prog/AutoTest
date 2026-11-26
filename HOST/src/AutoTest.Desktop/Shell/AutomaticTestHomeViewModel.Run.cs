@@ -42,6 +42,10 @@ public sealed partial class AutomaticTestHomeViewModel
     private string _operatorExpected = "—";
     private string _operatorFailure = "";
     private bool _engineeringVerificationArmed;
+    // Only the explicit top-level "工程实测" entry allows a valid real COM scan
+    // to open the existing physical-operation confirmation automatically.
+    // A scan alone NEVER grants fixture/CAN/FLASH permissions.
+    private bool _quickEngineeringStartOnScan;
     private int _operatorActiveCaseIndex = -1;
     private StepId? _operatorActiveStepId;
     private Guid _operatorRunId;
@@ -117,17 +121,21 @@ public sealed partial class AutomaticTestHomeViewModel
         // latest engineering real-run colours/verdicts left in the shared
         // projection. Rebuild even if another callback already disarmed us.
         _engineeringVerificationArmed = false;
+        _quickEngineeringStartOnScan = false;
         RebuildCases();
         InvalidateScan("已返回自动测试；开发验证扫码身份已失效，请重新扫码。");
         RefreshOperatorCommands();
     }
 
-    public void ArmEngineeringVerification()
+    public void ArmEngineeringVerification(bool startWithExplicitConsentOnScan = false)
     {
         if (_isProductionWorkspace() || IsOperatorRunning) return;
         _engineeringVerificationArmed = true;
+        _quickEngineeringStartOnScan = startWithExplicitConsentOnScan;
         InvalidateScan("工程整组验证已准备：请用工位串口扫码枪扫描本台 ECU。");
-        StartRequestStatus = "工程整组验证待扫码；验证资源后由工程师再次明确启动。";
+        StartRequestStatus = startWithExplicitConsentOnScan
+            ? "扫码资源核对成功后将显示一次真实夹具/烧录确认；只有明确同意才会执行。"
+            : "工程整组验证待扫码；扫码资源核对完成后明确启动。";
         RefreshOperatorCommands();
     }
 
