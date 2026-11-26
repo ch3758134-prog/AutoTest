@@ -234,13 +234,22 @@ public sealed class ProductionProjectCatalog
             cmd.CommandText = """
                 INSERT INTO serial_registry(serial,product_key,hardware)
                 VALUES($serial,$product,$hardware)
-                ON CONFLICT(serial) DO UPDATE SET
-                product_key=excluded.product_key,hardware=excluded.hardware
+                ON CONFLICT(serial) DO NOTHING
                 """;
             cmd.Parameters.AddWithValue("$serial", serial);
             cmd.Parameters.AddWithValue("$product", product);
             cmd.Parameters.AddWithValue("$hardware", hw);
-            await cmd.ExecuteNonQueryAsync(ct);
+            if (await cmd.ExecuteNonQueryAsync(ct) == 0)
+            {
+                using var verify = db.CreateCommand();
+                verify.CommandText = "SELECT product_key,hardware FROM serial_registry WHERE serial=$serial";
+                verify.Parameters.AddWithValue("$serial", serial);
+                await using var existing = await verify.ExecuteReaderAsync(ct);
+                if (!await existing.ReadAsync(ct) ||
+                    existing.GetString(0) != product || existing.GetString(1) != hw)
+                    throw new InvalidDataException(
+                        "该 ECU 编号已有其他产品归属，未覆盖原登记。");
+            }
         }
         finally { _writeGate.Release(); }
     }
