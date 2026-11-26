@@ -1,4 +1,6 @@
 using System.Collections.Specialized;
+using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
@@ -101,6 +103,27 @@ public partial class EngineeringVerificationWindow : Window
 
     // Closing this observer does not stop CAN, FLASH or TEST. The separate
     // explicit Stop command remains the only operator stop request.
+    private void OpenCurrentReport_Click(object sender, RoutedEventArgs e)
+    {
+        var path = _model.OperatorHtmlReportPath;
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+        {
+            MessageBox.Show(this, "本次尚无可打开的已保存 HTML 报告。工程执行结束后才能查看。", 
+                "工程实测报告", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        try
+        {
+            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+        }
+        catch (Exception error) when (error is IOException or
+            InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            MessageBox.Show(this, "无法打开已经保存的报告：" + error.Message,
+                "工程实测报告", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
     private void OpenReports_Click(object sender, RoutedEventArgs e) => _openReports();
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
 }

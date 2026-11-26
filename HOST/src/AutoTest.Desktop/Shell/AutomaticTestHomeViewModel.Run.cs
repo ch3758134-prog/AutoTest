@@ -29,6 +29,12 @@ public sealed partial class AutomaticTestHomeViewModel
     private string _operatorCurrentCase = "—";
     private string _operatorCurrentStep = "—";
     private string _operatorRunEvidence = "";
+    private string _operatorHtmlReportPath = "";
+    public string OperatorHtmlReportPath
+    {
+        get => _operatorHtmlReportPath;
+        private set => SetProperty(ref _operatorHtmlReportPath, value);
+    }
     private string _operatorFlashState = "尚未开始";
     private string _operatorRecordState = "尚无工程验证记录";
     private string _operatorStepStatus = "未执行";
@@ -597,6 +603,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
         var ct = _operatorStop.Token;
         OperatorEvents.Clear();
         _operatorEventTotal = 0;
+        OperatorHtmlReportPath = "";
         OperatorRunEvidence = "记录号 " + _operatorRunId.ToString("N");
         OperatorFlashState = "尚未开始";
         OperatorPeriodicStatus = "准备整组共享 CAN 发送会话";
@@ -1094,10 +1101,13 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
                 Cases[activeCaseIndex].State == "执行中")
                 ChangeCaseState(activeCaseIndex, outcome == "操作员停止；实体状态待核查"
                     ? "已停止" : "执行异常");
+            var jsonSaved = false;
             try
             {
                 Snapshot();
+                jsonSaved = true;
                 var htmlReport = SaveOperatorHtmlReceipt(opened.RootDirectory, CurrentReceipt());
+                OperatorHtmlReportPath = htmlReport;
                 OperatorRecordState = "真实工程记录和可读报告已保存（非正式生产结案）";
                 OperatorRunEvidence = "工程验证报告：" + htmlReport +
                     "\n真实原始记录：" +
@@ -1106,9 +1116,21 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
             }
             catch (Exception error)
             {
-                OperatorRunState = "记录保存失败；结果不可放行";
-                OperatorRecordState = "记录保存失败：" + error.Message;
-                AddOperatorEvent("本次真实运行汇总未能归档：" + error.Message);
+                if (jsonSaved)
+                {
+                    OperatorRecordState = "原始真实记录已保存，但 HTML 汇总生成失败：" +
+                        error.Message;
+                    OperatorRunEvidence = "原始 JSON：" +
+                        Path.Combine(opened.RootDirectory, "test-records",
+                            "operator-verifications", _operatorRunId.ToString("N") + ".json");
+                    AddOperatorEvent("工程报告生成失败；原始记录仍可查看：" + error.Message);
+                }
+                else
+                {
+                    OperatorRunState = "记录保存失败；结果不可放行";
+                    OperatorRecordState = "真实记录保存失败：" + error.Message;
+                    AddOperatorEvent("本次真实运行汇总未能归档：" + error.Message);
+                }
             }
             _operatorStop?.Dispose();
             _operatorStop = null;

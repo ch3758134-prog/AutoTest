@@ -63,7 +63,9 @@
       ToolTip="首次安装扫码设备时设置一次 COM，正常复测不需要反复进入生产准备"/>
      <Button Content="停止" Command="{Binding StopOperatorVerificationCommand}"
       Padding="12,7" Margin="0,0,7,0" ToolTip="请求停止并执行真实工位收尾，不擅自重试 FLASH"/>
-     <Button Content="记录与报告" Click="OpenReports_Click" Padding="12,7" Margin="0,0,7,0"
+     <Button Content="打开本次报告" Click="OpenCurrentReport_Click"
+         Padding="12,7" Margin="0,0,7,0" ToolTip="打开本次真实工程验证生成的 HTML；不是正式生产放行"/>
+       <Button Content="记录与报告" Click="OpenReports_Click" Padding="12,7" Margin="0,0,7,0"
       ToolTip="查询真实已经归档的运行证据和报告；进行中的步骤不会被视为已归档"/>
      <Button Content="关闭监视" Click="Close_Click" Padding="12,7"/>
     </StackPanel>
