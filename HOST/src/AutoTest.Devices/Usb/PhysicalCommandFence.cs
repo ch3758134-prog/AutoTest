@@ -22,6 +22,8 @@ public sealed class PhysicalCommandFence
     private long _stationFixtureGeneration;
     private DateTimeOffset _stationFixtureExpiry;
     private byte _stationFixtureMask;
+    private bool _stationFixtureIgnAllowed;
+    private bool? _stationFixtureIgnExact;
     private byte[]? _stationFixtureExact;
     private byte[]? _singleLedPayload;
     private long _ledGeneration;
@@ -86,6 +88,7 @@ public sealed class PhysicalCommandFence
             _oneIgnState = null; _ignGeneration = 0; _ignExpiry = default;
             _singleClampPayload = null; _clampGeneration = 0; _clampExpiry = default;
             _stationFixtureExact = null; // No pending 0x18 during FLASH.
+            _stationFixtureIgnExact = null;
             _singleLedPayload = null; _ledGeneration = 0; _ledExpiry = default;
             _baudPermit = null; _baudPermitEpoch = 0; _baudPermitExpires = default;
             var token=Guid.NewGuid();
@@ -276,6 +279,7 @@ public sealed class PhysicalCommandFence
             _clampGeneration = 0;
             _clampExpiry = default;
             _stationFixtureExact = null; // No pending 0x18 during TEST.
+            _stationFixtureIgnExact = null;
             _baudPermit = null;
             _baudPermitEpoch = 0;
             _baudPermitExpires = default;
@@ -517,11 +521,11 @@ public sealed class PhysicalCommandFence
     /// commands inside them; each actual write requires a new exact grant.
     /// </summary>
     public void AuthorizeStationFixtureScope(string fingerprint,
-        string confirmation, byte allowedMask, long generation)
+        string confirmation, byte allowedMask, bool allowIgn, long generation)
     {
         if (fingerprint.Length != 64 || !fingerprint.All(Uri.IsHexDigit) ||
             confirmation != "AUTHORIZE STATION FIXTURE " + fingerprint ||
-            allowedMask is < 1 or > 3 || generation <= 0)
+            allowedMask > 3 || (allowedMask == 0 && !allowIgn) || generation <= 0)
             throw new UnauthorizedAccessException("工位夹具运行许可必须绑定本次冻结工艺、输出和设备会话。");
         lock (_sync)
         {
@@ -533,8 +537,10 @@ public sealed class PhysicalCommandFence
             _stationFixtureFingerprint = fingerprint;
             _stationFixtureGeneration = generation;
             _stationFixtureMask = allowedMask;
+            _stationFixtureIgnAllowed = allowIgn;
             _stationFixtureExpiry = DateTimeOffset.UtcNow.AddMinutes(60);
             _stationFixtureExact = null;
+            _stationFixtureIgnExact = null;
             _singleClampPayload = null;
             _clampGeneration = 0;
             _clampExpiry = default;
@@ -560,6 +566,21 @@ public sealed class PhysicalCommandFence
         }
     }
 
+    public void AuthorizeStationIgnChange(string fingerprint, bool on, long generation)
+    {
+        lock (_sync)
+        {
+            if (_stationFixtureFingerprint != fingerprint ||
+                _stationFixtureGeneration != generation ||
+                !_stationFixtureIgnAllowed ||
+                DateTimeOffset.UtcNow >= _stationFixtureExpiry ||
+                _runFingerprint is not null || _programming is not null ||
+                _didGrant is not null)
+                throw new UnauthorizedAccessException("IGN 不属于当前工位已批准阶段或冻结动作。");
+            _stationFixtureIgnExact = on;
+        }
+    }
+
     public void RevokeStationFixtureScope(string fingerprint, long generation)
     {
         lock (_sync)
@@ -570,6 +591,8 @@ public sealed class PhysicalCommandFence
             _stationFixtureGeneration = 0;
             _stationFixtureExpiry = default;
             _stationFixtureMask = 0;
+            _stationFixtureIgnAllowed = false;
+            _stationFixtureIgnExact = null;
             _stationFixtureExact = null;
         }
     }
@@ -671,6 +694,17 @@ public sealed class PhysicalCommandFence
                 _ledExpiry = default;
                 return;
             }
+            if (request.Command == MainControllerCodec.SetIgn &&
+                request.Payload.Length == 1 && request.Payload[0] <= 1 &&
+                _stationFixtureIgnExact is { } ign &&
+                _stationFixtureGeneration == connectionGeneration &&
+                DateTimeOffset.UtcNow < _stationFixtureExpiry &&
+                _runFingerprint is null && _programming is null && _didGrant is null &&
+                ign == (request.Payload[0] == 1))
+            {
+                _stationFixtureIgnExact = null;
+                return;
+            }
             if (request.Command == MainControllerCodec.SetClamp &&
                 request.Payload.Length == 2 && _stationFixtureExact is not null &&
                 _stationFixtureGeneration == connectionGeneration &&
@@ -744,6 +778,7 @@ public sealed class PhysicalCommandFence
             _singleClampPayload = null; _clampExpiry = default; _clampGeneration = 0;
             _stationFixtureFingerprint = null; _stationFixtureGeneration = 0;
             _stationFixtureExpiry = default; _stationFixtureMask = 0;
+            _stationFixtureIgnAllowed = false; _stationFixtureIgnExact = null;
             _stationFixtureExact = null;
             _singleLedPayload = null; _ledExpiry = default; _ledGeneration = 0;
             _programming = null; _didGrant = null;
