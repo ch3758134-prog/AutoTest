@@ -180,16 +180,8 @@
      <MenuItem Header="运行">
       <MenuItem Header="检查当前开发调试范围" Command="{Binding CheckActiveCommand}"/>
       <Separator/>
-      <MenuItem Header="工程整组实测（非生产）">
-       <MenuItem Header="1. 准备本台扫码身份" Command="{Binding ArmEngineeringFullRunCommand}"
-        ToolTip="重新核对实体扫码和工程资源；不启动烧录和 TEST"/>
-       <MenuItem Header="2. 开始整组真实实测（含 FLASH）" Command="{Binding RunEngineeringFullRunCommand}"
-        ToolTip="仅在扫码与资源冻结后允许；仍需明确授权，结果不作为正式生产 PASS"/>
-       <MenuItem Header="查看工程实测进度／事件"
-        Command="{Binding ShowEngineeringFullRunMonitorCommand}"
-        ToolTip="完整真实 FLASH、TEST、逐步实测与过程事件；不作为生产报告"/>
-       <MenuItem Header="停止整组实测" Command="{Binding StopEngineeringFullRunCommand}"/>
-      </MenuItem>
+      <MenuItem Header="工程整组实测（非生产）" Command="{Binding EnterEngineeringVerificationCommand}"
+       ToolTip="一次进入扫码与真实台架整组执行窗口；实际 FLASH 前仍须确认"/>
      </MenuItem>
      <MenuItem Header="工具">
       <MenuItem Header="手动台架" Command="{Binding OpenManualBenchCommand}"/>
