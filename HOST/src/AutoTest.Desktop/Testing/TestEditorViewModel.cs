@@ -590,7 +590,7 @@ public sealed class TestEditorViewModel : BindableBase
             .ToArray() ?? [];
         // Resolve variables from the actual execution path before this node,
         // not from arbitrary DBC resources or later steps in the document.
-        var ifVariables = original?.Type == "If"
+        var ifVariables = original?.Type is ("If" or "Switch")
             ? TestVariableFlowValidator.Before(_transaction.Current, original.Id)
                 .Select(x => new TestStepFieldChoice(x.Name,
                     x.Name + "（来自：" + x.Source + "）")).ToArray()
