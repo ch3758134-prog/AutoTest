@@ -111,7 +111,13 @@ public sealed partial class MainWindowViewModel
             _scannerWorkbench, () => _automaticTestHome.OnPublishedConfigurationChanged(),
             ActivatePublishedProjectAsync,
             async () => await ConfirmProductionConfigurationAsync(),
-            () => OpenInspectionProcedureCommand.Execute())
+            () => OpenInspectionProcedureCommand.Execute(),
+            () => !_hardware.IsConnected
+                ? "主控 USB：未连接（不影响工程发布）"
+                : "主控 USB：已连接 · ECU CAN：" +
+                  (_hardware.IsEcuCanBitrateApplied
+                      ? "已回读确认 " + _hardware.ConfirmedEcuCanBitrateKbps + " kbit/s"
+                      : "码率尚未在本次 USB 会话中确认"))
         { Owner = global::System.Windows.Application.Current?.MainWindow };
         _productionPreparationWindow = window;
         window.Closed += (_, _) =>
