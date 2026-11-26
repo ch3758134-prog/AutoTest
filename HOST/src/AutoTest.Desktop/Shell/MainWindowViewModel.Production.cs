@@ -216,7 +216,17 @@ public sealed partial class MainWindowViewModel
                 throw new IOException("主控 CAN 波特率未确认，请检查连接后重新扫码。");
         }
 
-        var previous = await StationDeploymentStore.RestoreAsync();
+        StationDeploymentStore.Verified? previous = null;
+        try { previous = await StationDeploymentStore.RestoreAsync(); }
+        catch (Exception oldError) when (oldError is IOException or InvalidDataException or
+            UnauthorizedAccessException or AutoTest.Projects.Project.ProjectDataException)
+        {
+            // A removed development directory must not prevent loading a
+            // separately verified installed package. It is not a valid
+            // rollback target, and will never be used to authorize execution.
+            System.Diagnostics.Trace.TraceWarning(
+                "Previous production selection unavailable: " + oldError);
+        }
         var unchanged = previous is not null &&
             previous.Project.Definition.Id == context.Definition.Id &&
             string.Equals(previous.Project.ManifestSha256, context.ManifestSha256,
