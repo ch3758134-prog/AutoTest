@@ -111,88 +111,78 @@ public partial class ProductionPreparationWindow
     {
         var root = new StackPanel
         {
-            Margin = new Thickness(20, 18, 22, 15),
-            MaxWidth = 970
+            Margin = new Thickness(22, 17, 22, 17),
+            MaxWidth = 980
         };
         root.Children.Add(new TextBlock
         {
-            Text = "工位交付准备",
+            Text = "生产准备",
             Foreground = GuidedInk,
             FontSize = 21,
             FontWeight = FontWeights.SemiBold,
-            Margin = new Thickness(0, 0, 0, 4)
+            Margin = new Thickness(0, 0, 0, 5)
         });
         root.Children.Add(GuidedText(
-            "按当前 ECU 工程 → 实际扫码验证 → 核对发布。默认适用于一个型号的工位；复杂编码和多型号匹配在高级配置中。"));
+            "工程在开发区编辑；这里确认工程版本、工位设备，然后发布。扫码枪离线不影响工程发布。"));
 
-        root.Children.Add(GuidedCard("1  当前 ECU 工程", out var projectBody));
-        _guidedProject = GuidedText("正在读取当前工程…");
+        root.Children.Add(GuidedCard("当前产品工程", out var projectBody));
+        _guidedProject = GuidedText("正在检查 ECU 工程…");
         projectBody.Children.Add(_guidedProject);
         var projectActions = new WrapPanel();
-        var useCurrent = GuidedButton("使用当前打开的工程", primary: true);
-        useCurrent.Click += (_, _) => GuidedUseCurrentProject();
-        projectActions.Children.Add(useCurrent);
-        var advanced = GuidedButton("多型号或复杂绑定");
-        advanced.Click += (_, _) => PreparationTabs.SelectedIndex = 2;
-        projectActions.Children.Add(advanced);
+        var projectIssues = GuidedButton("查看工程问题");
+        projectIssues.Click += (_, _) => ShowGuidedProjectDiagnostics();
+        projectActions.Children.Add(projectIssues);
         projectBody.Children.Add(projectActions);
 
-        root.Children.Add(GuidedCard("2  扫码设备与编号验证", out var scanBody));
-        _guidedDevice = GuidedText("正在检查扫码设备…");
-        scanBody.Children.Add(_guidedDevice);
-        _guidedScan = GuidedText("尚未获得本次真实扫码数据。");
-        scanBody.Children.Add(_guidedScan);
-        var scannerActions = new WrapPanel();
-        var scanner = GuidedButton("连接或更换扫码枪");
-        scanner.Click += (_, _) => PreparationTabs.SelectedIndex = 1;
-        scannerActions.Children.Add(scanner);
-        var addReal = GuidedButton("使用最近真实扫码作校验样例");
-        addReal.Click += (_, _) => GuidedAdoptRealSample();
-        scannerActions.Children.Add(addReal);
-        scanBody.Children.Add(scannerActions);
-        scanBody.Children.Add(GuidedText(
-            "整串编号是默认方案。使用真实扫码作正例时，软件会明确生成一条非法字符拒绝反例；反例不是现场扫码。"));
-        var sampleRow = new WrapPanel { Margin = new Thickness(0, 5, 0, 0) };
-        _guidedManualInput = new TextBox
-        {
-            Width = 320, MinHeight = 34, VerticalContentAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, 5, 10, 0),
-            ToolTip = "手工输入用于离线预览，不能替代真实 USB COM 扫码。"
-        };
-        sampleRow.Children.Add(_guidedManualInput);
-        var preview = GuidedButton("手动输入试算");
-        preview.Click += async (_, _) =>
-        {
-            if (_guidedManualInput is not null)
-                await PreviewGuidedBarcodeAsync(_guidedManualInput.Text, false);
-        };
-        sampleRow.Children.Add(preview);
-        scanBody.Children.Add(sampleRow);
+        root.Children.Add(GuidedCard("工位设备", out var deviceBody));
+        _guidedDevice = GuidedText("正在读取设备状态…");
+        deviceBody.Children.Add(_guidedDevice);
+        _guidedScan = GuidedText("尚未扫码。设备试扫用于连接验收，不是工程发布的前置条件。");
+        deviceBody.Children.Add(_guidedScan);
+        var connect = GuidedButton("连接和验证扫码枪");
+        connect.Click += (_, _) => PreparationTabs.SelectedIndex = 1;
+        deviceBody.Children.Add(connect);
+        deviceBody.Children.Add(GuidedText(
+            "夹具反馈、实体 START 和互锁必须来自可验证的硬件输入；填写来源名称不能代替接线或到位确认。"));
 
-        root.Children.Add(GuidedCard("3  工程版本与发布检查", out var releaseBody));
-        _guidedPublication = GuidedText("正在核对已发布版本…");
+        root.Children.Add(GuidedCard("发布与生产准入", out var releaseBody));
+        _guidedPublication = GuidedText("正在检查发布记录…");
         releaseBody.Children.Add(_guidedPublication);
-        _guidedBlocker = GuidedText("工位实体 START、机械反馈及正式 Inspection 仍需现场接通和验收。");
+        _guidedBlocker = GuidedText("正式生产准入还需要实体 START、夹具反馈和 Inspection 记录闭环。");
         releaseBody.Children.Add(_guidedBlocker);
         var publishActions = new WrapPanel();
-        var publish = GuidedButton("核对并发布当前工位配置", primary: true);
+        var publish = GuidedButton("核对并发布当前工程", primary: true);
         publish.Click += async (_, _) => await GuidedPublishAsync();
         publishActions.Children.Add(publish);
-        var details = GuidedButton("查看发布详情与批量试扫");
+        var advanced = GuidedButton("高级配置 / 多型号");
+        advanced.Click += (_, _) => PreparationTabs.SelectedIndex = 2;
+        publishActions.Children.Add(advanced);
+        var details = GuidedButton("发布详情");
         details.Click += (_, _) => PreparationTabs.SelectedIndex = 3;
         publishActions.Children.Add(details);
         releaseBody.Children.Add(publishActions);
         releaseBody.Children.Add(GuidedText(
-            "发布只冻结 ECU 工程、FLASH、TEST 与编码配置，不会压夹具、烧录或启动检测。当前正式生产 START/Inspection 门禁不会因发布而解除。"));
+            "发布只冻结当前工程的 FLASH、TEST、资源以及单型号工位识别配置；" +
+            "不会操作夹具、启动烧录、运行 TEST，也不代表允许正式生产放行。"));
 
-        var view = new ScrollViewer
+        return new ScrollViewer
         {
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
             Background = new SolidColorBrush(Color.FromRgb(248, 250, 252)),
             Content = root
         };
-        return view;
+    }
+
+    private string _guidedProjectDiagnostics = "";
+
+    private void ShowGuidedProjectDiagnostics()
+    {
+        var message = string.IsNullOrWhiteSpace(_guidedProjectDiagnostics)
+            ? "当前没有可用的工程检查详情；请打开 ECU 工程并刷新生产准备。"
+            : _guidedProjectDiagnostics;
+        MessageBox.Show(this, message.Length > 10000 ? message[..10000] : message,
+            "ECU 工程资源核查（仅诊断）", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private void GuidedUseCurrentProject()
