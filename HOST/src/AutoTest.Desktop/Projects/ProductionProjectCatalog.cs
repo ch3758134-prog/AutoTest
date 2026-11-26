@@ -262,15 +262,26 @@ public sealed class ProductionProjectCatalog
             serial = raw; product = ""; hardware = "";
             using var count = db.CreateCommand();
             count.CommandText = """
-                SELECT DISTINCT p.package_sha,p.project_id,p.project_name,p.revision,
+                SELECT p.package_sha,p.project_id,p.project_name,p.revision,
                     p.manifest_path,p.installed_at
                 FROM routes r JOIN packages p ON r.package_sha=p.package_sha
+                WHERE r.product_key='SINGLE' AND r.hardware=''
                 """;
-            // A single mode must have exactly one selected project; aliases may
-            // refer to the same installed package, not create new candidates.
             var packages = new List<InstalledProductionPackage>();
             await using (var reader = await count.ExecuteReaderAsync(ct))
                 while (await reader.ReadAsync(ct)) packages.Add(ReadPackage(reader));
+            if (packages.Count == 0)
+            {
+                // When exactly one package is installed, no setup step is
+                // needed. Once multiple versions exist, select explicitly.
+                using var only = db.CreateCommand();
+                only.CommandText = """
+                    SELECT package_sha,project_id,project_name,revision,
+                        manifest_path,installed_at FROM packages
+                    """;
+                await using var reader = await only.ExecuteReaderAsync(ct);
+                while (await reader.ReadAsync(ct)) packages.Add(ReadPackage(reader));
+            }
             if (packages.Count != 1)
                 return Reject("SINGLE_NOT_UNIQUE",
                     "请在工程管理中指定唯一一份当前检测工程。");
