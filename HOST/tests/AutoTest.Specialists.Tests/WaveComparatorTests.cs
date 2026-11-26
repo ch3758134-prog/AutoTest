@@ -75,6 +75,20 @@ public sealed class WaveComparatorTests
     }
 
     [Fact]
+    public void LinearComparisonMustCatchARealObservedSpikeBetweenReferenceSamples()
+    {
+        var reference = Series(values: [0, 0, 0, 0, 0]);
+        var actual = Series([0, .1, .15, .17, .2, .3, .4],
+            [0, 0, 5, 0, 0, 0, 0]);
+        var config = Strict with { MaximumShiftSeconds = 0 };
+        var result = WaveComparator.Compare(actual, reference, config);
+        Assert.Equal(Verdict.Fail, result.Verdict);
+        Assert.True(result.OutsideToleranceSeconds > 0);
+        Assert.True(result.MaximumAbsoluteError >= 5);
+        Assert.Equal(1, result.Coverage, 8);
+    }
+
+    [Fact]
     public void StepHold_IdenticalObservedStateTransitionsPassWithoutInventingIntermediateValues()
     {
         var discrete = Strict with
