@@ -18,6 +18,8 @@ public partial class ProductionProjectLibraryWindow : Window
     private readonly Action _configurationChanged;
     private bool _busy;
     private bool _loading;
+    private IReadOnlyList<InstalledProductionPackage> _loadedPackages =
+        Array.Empty<InstalledProductionPackage>();
 
     private sealed record BindingDisplay(string Product, string Hardware, string Version);
 
@@ -47,7 +49,8 @@ public partial class ProductionProjectLibraryWindow : Window
             var packages = await _catalog.ListAsync();
             var settings = await _catalog.GetSettingsAsync();
             var bindings = await _catalog.ListBindingsAsync();
-            CatalogTable.ItemsSource = packages;
+            _loadedPackages = packages;
+            ApplySearchFilter();
             ModeBox.SelectedIndex = settings.Mode switch
             {
                 ProductionRoutingSettings.Single => 0,
@@ -73,6 +76,22 @@ public partial class ProductionProjectLibraryWindow : Window
             Say("无法读取工程库：" + error.Message);
         }
         finally { _loading = false; }
+    }
+
+    private void SearchChanged(object sender, TextChangedEventArgs e) =>
+        ApplySearchFilter();
+
+    private void ApplySearchFilter()
+    {
+        if (SearchBox is null) return;
+        var query = SearchBox.Text.Trim();
+        CatalogTable.ItemsSource = string.IsNullOrEmpty(query)
+            ? _loadedPackages
+            : _loadedPackages.Where(p =>
+                p.ProjectName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                p.PackageSha256.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                p.ProjectRevision.ToString().Contains(query, StringComparison.OrdinalIgnoreCase))
+                .ToArray();
     }
 
     private void CatalogSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -167,6 +186,19 @@ public partial class ProductionProjectLibraryWindow : Window
         });
     }
 
+    private async void RemoveBinding_Click(object sender, RoutedEventArgs e)
+    {
+        if (BindingsTable.SelectedItem is not BindingDisplay selected)
+        {
+            Say("请先选中需要删除的工程关联。");
+            return;
+        }
+        await ModifyAsync(async () =>
+        {
+            await _catalog.RemoveBindingAsync(selected.Product, selected.Hardware);
+        });
+    }
+
     private async void UseSingle_Click(object sender, RoutedEventArgs e)
     {
         if (Selection is not { } project)
@@ -211,6 +243,22 @@ public partial class ProductionProjectLibraryWindow : Window
         {
             await _catalog.SetRegistryIdentityAsync(
                 SerialRegistryInput.Text, ProductKeyInput.Text, HardwareInput.Text);
+        });
+    }
+
+    private async void ImportRegistry_Click(object sender, RoutedEventArgs e)
+    {
+        var picker = new OpenFileDialog
+        {
+            Title = "导入编号归属表",
+            Filter = "CSV 编号表 (*.csv)|*.csv"
+        };
+        if (picker.ShowDialog(this) != true) return;
+        await ModifyAsync(async () =>
+        {
+            var count = await _catalog.ImportRegistryCsvAsync(picker.FileName);
+            PreviewResult.Text = "已导入 " + count +
+                " 条编号归属。重新扫码时将使用最新登记关系。";
         });
     }
 
