@@ -174,7 +174,9 @@ public sealed record ProductionFixtureConfiguration(
     string Clamp1Output, string Clamp2Output, string ClampClosedFeedback,
     string ClampOpenFeedback, string StartInput, string StopInput,
     string InterlockInput, int MovementTimeoutMs, string ReleasePolicy,
-    int FirstClamp = 0)
+    int FirstClamp = 0,
+    bool Clamp1PressHigh = true, bool Clamp2PressHigh = true,
+    int SettleDelayMs = 0)
 {
     public static ProductionFixtureConfiguration Draft => new(
         "SLOT-01", false, false, "MCU:PTB1/J1-B5",
@@ -189,6 +191,7 @@ public sealed record ProductionFixtureConfiguration(
             Clamp1Output != "MCU:PTB1/J1-B5" ||
             Clamp2Output != "MCU:PTC2/J1-B4" ||
             MovementTimeoutMs is < 100 or > 120000 ||
+            SettleDelayMs is < 0 or > 30000 ||
             ReleasePolicy != "AFTER_DURABLE_RECORD_AND_SAFE_RELEASE_CONFIRMATION")
             throw new InvalidDataException("工位槽位、夹具通道或安全释放合同无效。");
         if (FirstClamp is < 0 or > 2 ||
