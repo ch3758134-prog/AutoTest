@@ -258,7 +258,7 @@ public sealed record StationProductionConfiguration(
             Fixture is null || Rules.Count != 1 || IdentityRows.Count > 100000 ||
             Products.Count > 256 || !Rules[0].Enabled)
             throw new InvalidDataException(
-                "工位配置格式不正确。旧版型号绑定配置不兼容，请重新配置本工位。");
+                "本机工位设置无效，请重新设置。");
         Fixture.Validate();
         var ids = new HashSet<string>(StringComparer.Ordinal);
         foreach (var rule in Rules)
@@ -276,7 +276,7 @@ public sealed record StationProductionConfiguration(
                 item.ProductKey.Length > 64 || item.HardwareCode.Length > 64 ||
                 !keys.Add(item.ProductKey + "\u001f" + item.HardwareCode) ||
                 !projectIds.Add(item.ProjectId))
-                throw new InvalidDataException("工程绑定重复、缺少真实 ProjectId 或路径无效。");
+                throw new InvalidDataException("检测工程关联重复，或工程文件无效。");
             if (Mode != FixedStation &&
                 (string.IsNullOrWhiteSpace(item.ProductKey) ||
                  !Regex.IsMatch(item.ProductKey, @"\A[A-Z0-9]{2,16}\z",
@@ -300,7 +300,7 @@ public sealed record StationProductionConfiguration(
     {
         ValidateDraft();
         if (Fixture.AutoClampEnabled && !Fixture.UseClamp1 && !Fixture.UseClamp2)
-            throw new InvalidDataException("自动夹具未选择输出，禁止发布。");
+            throw new InvalidDataException("已启用自动夹具，请选择实际使用的夹具输出。");
         if (Mode == FixedStation)
         {
             if (FixedProjectId == Guid.Empty || Products.Count != 1 ||
@@ -308,12 +308,12 @@ public sealed record StationProductionConfiguration(
                 Products[0].ProductKey.Length != 0 ||
                 Products[0].HardwareCode.Length != 0)
                 throw new InvalidDataException(
-                    "固定工位必须且只能绑定一份 ProjectId，不要求 ECU 型号或产品识别码。");
+                    "单工程工位必须关联一份有效的检测工程。");
         }
         else if (Products.Count == 0)
             throw new InvalidDataException("混线工位至少需要一份有可信产品识别码的工程绑定。");
         else if (FixedProjectId != Guid.Empty)
-            throw new InvalidDataException("混线工位不能偷偷使用固定工程作为匹配回退。");
+            throw new InvalidDataException("多工程工位存在互相冲突的工程关联，请检查匹配设置。");
     }
 }
 
