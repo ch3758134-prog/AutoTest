@@ -565,6 +565,16 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
             AddField("outside", "最大超差持续 秒", Format(wave.Comparison.MaximumOutOfToleranceSeconds));
             AddField("duration", "最小有效持续 秒", Format(wave.Comparison.MinimumCoveredDurationSeconds));
             AddField("sync", "要求硬件同步时间", wave.Comparison.RequireSynchronizedHardwareTime ? "是" : "否", "", YesNo);
+            AddField("approvalStatus", "当前判据的审查状态",
+                wave.IsComparisonReviewCurrent ? "已确认 · 算法版本 2" :
+                    "尚未复核新版算法，正式 TEST 禁止使用",
+                "旧版配置可以打开编辑，但不能在未复核阈值、DBC、参考波形的情况下用于实测判定。",
+                readOnly: true);
+            AddField("confirmReview", "确认已复核本次波形判据",
+                "否",
+                "选择“是”并保存后，会冻结本次 DBC 信号、命名参考、比较算法、容差和时间阈值的 SHA256。" +
+                "任何后续更改都会使原批准失效。此确认不代表真实 ECU 已通过验证。",
+                YesNo);
         }
         else if (_working is FlashSettingsDocument flash)
         {
@@ -786,7 +796,8 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
             {
                 var dbc = ResolvePinnedAsset(F("dbc"), ProjectWorkspaceService.DbcKind);
                 var reference = ResolvePinnedAsset(F("reference"), ProjectWorkspaceService.WaveKind);
-                next = wave with
+                var confirmWaveReview = Yes(F("confirmReview"));
+                var candidate = wave with
                 {
                     Name = F("name"), ReferenceName = F("referenceName"), DbcAssetId = dbc.Id,
                     DbcAssetRevision = dbc.Revision, DbcAssetFingerprint = dbc.Sha256,
@@ -805,8 +816,22 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                           "连续数值（线性插值）" => WaveInterpolationMode.Linear,
                           "离散状态（阶梯保持）" => WaveInterpolationMode.StepHold,
                           _ => throw new InvalidDataException("波形判定类型无效；不可静默采用另一种算法。")
-                      } }
+                      } },
+                    // Never carry approval forward across any editing operation;
+                    // a new SHA is only minted on explicit author confirmation.
+                    ApprovedAlgorithmRevision = 0,
+                    ReviewedCriteriaSha256 = null
                 };
+                if (confirmWaveReview)
+                {
+                    if (candidate.DbcAssetId is null ||
+                        string.IsNullOrWhiteSpace(candidate.SignalName) ||
+                        string.IsNullOrWhiteSpace(candidate.ReferenceName))
+                        throw new ProjectDataException("WAVE_REVIEW",
+                            "必须先绑定实际 DBC 信号和命名参考，才能批准用于 TEST 的波形判据。");
+                    candidate = candidate.ApproveCurrentComparison();
+                }
+                next = candidate;
             }
             else if (_working is FlashSettingsDocument flash)
             {
