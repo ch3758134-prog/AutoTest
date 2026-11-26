@@ -545,7 +545,21 @@ public partial class ProductionPreparationWindow
         }
         try
         {
-            var problems = StationProductionConfigurationStore.InspectRules(BuildDraft());
+            var probe = BuildDraft();
+            // Publishing will bind the single currently open ECU project; the
+            // first-use summary should evaluate that exact candidate without
+            // silently modifying the saved draft just to paint the UI.
+            if (current is not null &&
+                probe.Mode == StationProductionConfiguration.FixedStation &&
+                probe.Products.Count == 0)
+                probe = probe with
+                {
+                    FixedModel = current.Definition.EcuModelCode,
+                    Products = [new ProductionProductBinding(
+                        current.Definition.EcuModelCode, probe.FixedHardware,
+                        current.ManifestPath)]
+                };
+            var problems = StationProductionConfigurationStore.InspectRules(probe);
             if (_guidedBlocker is not null)
                 _guidedBlocker.Text = (problems.Count == 0
                         ? "编码规则：发布静态检查通过（不代表真扫码已验证）。"
@@ -556,7 +570,7 @@ public partial class ProductionPreparationWindow
         catch (Exception error)
         {
             if (_guidedBlocker is not null)
-                _guidedBlocker.Text = "配置还不能发布：" + error.Message +
+                _guidedBlocker.Text = "配置预检暂未通过，具体原因见发布详情。" +
                     "\n正式生产 START / Inspection 仍未接通。";
         }
     }
