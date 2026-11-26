@@ -20,6 +20,7 @@
 | [08｜执行管理、清理与变更规则](08_GOVERNANCE_MIGRATION_AND_OPEN_ITEMS.md) | 怎样避免历史文件/PR/分支/研究结论混入现行合同 |
 | [09｜来源与被覆盖档案索引](09_SOURCE_TRACEABILITY.md) | 回溯对应的原批准文件、专业设计、Git 分支 SHA 与历史错误状态 |
 | [10｜2026-11-26 全产品用户语言与操作流程重构](10_R1_PRODUCT_LANGUAGE_AND_WORKFLOW_RESTRUCTURE_20261126.md) | 当轮批准的全系统 UI/操作整改、实际 R1 源码与未通过验证门禁 |
+| [11｜2026-11-26 多工程生产库与扫码路由架构研究](11_R1_MULTI_PROJECT_PRODUCTION_ARCHITECTURE_RESEARCH_20261126.md) | 未来生产/工程双 EXE、当前单 EXE、多工程导入/版本/扫码选择的待实施研究方案 |
 
 ## 本次整理实际覆盖范围
 
