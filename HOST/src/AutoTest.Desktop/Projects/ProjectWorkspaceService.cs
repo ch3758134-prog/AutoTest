@@ -630,6 +630,13 @@ public sealed partial class ProjectWorkspaceService
             var entry = await Task.Run(async () =>
             {
                 await EnsureManifestUnchangedAsync(current, ct).ConfigureAwait(false);
+                // There is one authored execution order for one ECU project.
+                // Keep this at the storage boundary as well as in the UI:
+                // concurrent callers must never create a second TEST project.
+                if (kind == TestProjectKind && current.Definition.Assets.Any(x =>
+                    x.Kind == TestProjectKind))
+                    throw new InvalidDataException(
+                        "一个 ECU 工程只能有一份完整 TEST 项目。请直接打开并编辑已有 TEST。");
                 if (current.Definition.Assets.Any(x =>
                     x.Kind.Equals(kind, StringComparison.OrdinalIgnoreCase) &&
                     x.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))

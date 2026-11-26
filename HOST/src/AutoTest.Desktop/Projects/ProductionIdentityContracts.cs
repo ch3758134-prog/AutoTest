@@ -255,8 +255,8 @@ public sealed record StationProductionConfiguration(
         if (SchemaVersion != CurrentSchema || Revision < 1 ||
             Mode is not (FixedStation or BarcodeModel or RegistryModel) ||
             Rules is null || IdentityRows is null || Products is null ||
-            Fixture is null || Rules.Count > 200 || IdentityRows.Count > 100000 ||
-            Products.Count > 256 || !Rules.Any(x => x.Enabled))
+            Fixture is null || Rules.Count != 1 || IdentityRows.Count > 100000 ||
+            Products.Count > 256 || !Rules[0].Enabled)
             throw new InvalidDataException(
                 "工位配置格式不正确。旧版型号绑定配置不兼容，请重新配置本工位。");
         Fixture.Validate();
