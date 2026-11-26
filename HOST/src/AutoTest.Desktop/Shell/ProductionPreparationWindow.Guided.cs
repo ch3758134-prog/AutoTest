@@ -315,63 +315,54 @@ public partial class ProductionPreparationWindow
         _ = RefreshGuidedOverviewAsync();
     }
 
-    private async Task PreviewGuidedBarcodeAsync(string raw, bool actualDevice)
+    private Task PreviewGuidedBarcodeAsync(string raw, bool actualDevice)
     {
-        var current = ++_guidedPreviewSequence;
-        if (_guidedScan is null || !_ready) return;
+        if (_guidedScan is null || !_ready) return Task.CompletedTask;
+        var source = actualDevice ? "真实 COM 输入" : "手工试算";
         if (string.IsNullOrWhiteSpace(raw))
         {
-            _guidedScan.Text = "请输入完整编码，或连接扫码枪读取一条真实编号。";
-            return;
+            _guidedScan.Text = source + "：没有有效编号。";
+            return Task.CompletedTask;
         }
-        _guidedScan.Text = (actualDevice ? "真实 COM 扫码" : "手动模拟输入") +
-            "：" + raw + "；正在检查编号和已发布工程…";
-        string parsedSerial = "";
         try
         {
-            var draft = BuildDraft();
-            var parsed = draft.Rules.Where(x => x.Enabled)
+            // Preview the barcode parser only. A scanner read must not
+            // freeze FLASH/TEST assets, publish an ECU project or claim an
+            // authorized production identity/START.
+            var config = BuildDraft();
+            var matches = config.Rules.Where(x => x.Enabled)
                 .Select(x => (Rule: x, Parsed: x.Parse(raw)))
                 .Where(x => x.Parsed.Accepted).ToArray();
-            if (parsed.Length == 0)
+            if (matches.Length == 0)
             {
-                _guidedScan.Text = (actualDevice ? "真实扫码" : "手动试算") +
-                    "未匹配任何编码规则：" +
-                    string.Join("；", draft.Rules.Where(x => x.Enabled).Take(3)
-                        .Select(x => x.Name + "：" + x.Parse(raw).Code));
-                return;
+                _guidedScan.Text = source + "：" + raw +
+                    "\n编号识别失败。请核对编码规则；工位发布与扫码验证相互独立。";
+                return Task.CompletedTask;
             }
-            parsedSerial = parsed[0].Parsed.Serial;
-            var identityPreview = parsed.Select(x =>
-                x.Parsed.Serial + "/" + x.Parsed.Model + "/" +
-                x.Parsed.Hardware + "/" + x.Parsed.Batch)
-                .Distinct(StringComparer.Ordinal).ToArray();
-            if (identityPreview.Length != 1)
+            var unique = matches.Select(x =>
+                x.Parsed.Serial + "|" + x.Parsed.Model + "|" +
+                x.Parsed.Hardware + "|" + x.Parsed.Batch)
+                .Distinct(StringComparer.Ordinal).Count();
+            if (unique != 1)
             {
-                _guidedScan.Text = "多条规则给出不同编号/型号，拒绝自动匹配。请进入高级识别核对。";
-                return;
+                _guidedScan.Text = source + "：" + raw +
+                    "\n不同规则解析出不同身份，禁止自动选择。请在高级识别配置中消除冲突。";
+                return Task.CompletedTask;
             }
-            var result = await StationProductionConfigurationStore.PreviewDraftAsync(draft, raw);
-            if (current != _guidedPreviewSequence) return;
-            _guidedScan.Text = (actualDevice ? "真实 COM 扫码" : "手动模拟输入") +
-                "：" + raw + "\n编号：" + parsed[0].Parsed.Serial +
-                (result.Accepted
-                    ? "\n型号：" + result.Model +
-                      (string.IsNullOrEmpty(result.Hardware) ? "" : " / " + result.Hardware) +
-                      "\n候选 ECU 工程：" + Path.GetFileName(result.Project!.ManifestPath) +
-                      "；资源预览通过，但未取得生产启动授权。"
-                    : "\n发布资源/型号匹配尚未完成：" + result.Detail);
+            var decoded = matches[0].Parsed;
+            _guidedScan.Text = source + "：" + raw +
+                "\n解析出的 ECU 唯一编号：" + decoded.Serial +
+                (config.Mode == StationProductionConfiguration.FixedStation
+                    ? "\n固定型号来自工程/已发布工位配置；此处仅验证编号格式。"
+                    : "\n复杂型号映射仍须单独核对已发布的身份表和唯一工程。") +
+                "\n此结果不是生产身份放行，也不影响当前工程能否发布。";
         }
-        catch (Exception error) when (error is IOException or InvalidDataException or
-            ArgumentException or InvalidOperationException or FormatException or
-            System.Text.Json.JsonException or UnauthorizedAccessException)
+        catch (Exception error) when (error is not OutOfMemoryException)
         {
-            if (current == _guidedPreviewSequence)
-                _guidedScan.Text = (actualDevice ? "真实扫码已收到" :
-                    "手动试算已收到") + "：" + raw +
-                    (parsedSerial.Length == 0 ? "" : "\n已解析唯一编号：" + parsedSerial) +
-                    "\n尚未通过完整工程冻结检查：" + error.Message;
+            _guidedScan.Text = source + "：识别检查失败（" +
+                error.GetType().Name + "）；请检查高级编码规则。";
         }
+        return Task.CompletedTask;
     }
 
     private async Task GuidedPublishAsync()
