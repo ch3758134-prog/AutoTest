@@ -262,6 +262,11 @@
        Text="这里只绑定实际扫码设备、串口参数和查看原始输入；编码形制在第二阶段配置，扫码不能直接触发夹紧或 TEST。"/>
       <ContentControl x:Name="ProductionScannerDeviceHost" Height="330"
        Margin="0,0,0,12" HorizontalContentAlignment="Stretch"/>
+      <TextBlock Style="{StaticResource Help}" Margin="0,0,0,8"
+       Text="机械 START、到位反馈与互锁目前只有配置合同、没有可信实时来源；正式生产保持阻断。下方仅供硬件工程师维护。"/>
+      <Expander Header="硬件工程师设置 · 夹具输出和实体输入来源（高级）"
+       IsExpanded="False" Margin="0,0,0,10">
+       <StackPanel Margin="8,12,8,5">
       <TextBlock Text="一个 ECU 检测位置 · 两路夹具输出" Style="{StaticResource Section}"/>
       <TextBlock Style="{StaticResource Help}"
        Text="Clamp1 与 Clamp2 是同一工位可选的两路输出，不是两台 ECU。实际通道固定为 MCU PTB1、PTC2；不能在软件中随意改接线。"/>
@@ -303,6 +308,8 @@
        </StackPanel>
       </Border>
       <TextBlock Text="{Binding StationBlockerSummary}" Foreground="#9D4E2C" TextWrapping="Wrap"/>
+       </StackPanel>
+      </Expander>
      </StackPanel>
     </ScrollViewer>
    </TabItem>
