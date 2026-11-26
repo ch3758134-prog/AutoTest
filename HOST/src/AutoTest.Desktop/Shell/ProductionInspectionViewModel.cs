@@ -139,6 +139,10 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
         ? "扫码枪已连接 · " + _scanner.ConnectedPort
         : "扫码枪未连接 · 请在开发与调试中配置";
     public string DutSerial { get => _dutSerial; private set => SetProperty(ref _dutSerial, value); }
+    // A COM observation is distinct from accepted production identity.
+    public string LastScannerRaw => string.IsNullOrEmpty(_scanner.LastRaw)
+        ? "尚未收到" : _scanner.LastRaw;
+    public string LastScannerDiagnostic => _scanner.Status;
     public string Phase { get => _phase; private set => SetProperty(ref _phase, value); }
     public string ProductionReadiness { get => _productionReadiness; private set => SetProperty(ref _productionReadiness, value); }
     public string FlashState { get => _flashState; private set => SetProperty(ref _flashState, value); }
@@ -438,6 +442,13 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
         if (e.PropertyName is nameof(SerialScannerWorkbenchViewModel.IsConnected) or
             nameof(SerialScannerWorkbenchViewModel.ConnectedPort))
             OnUi(() => { RaisePropertyChanged(nameof(ScannerStatus)); NotifyOperatorDisplay(); });
+        if (e.PropertyName is nameof(SerialScannerWorkbenchViewModel.LastRaw) or
+            nameof(SerialScannerWorkbenchViewModel.Status))
+            OnUi(() =>
+            {
+                RaisePropertyChanged(nameof(LastScannerRaw));
+                RaisePropertyChanged(nameof(LastScannerDiagnostic));
+            });
         if (e.PropertyName != nameof(SerialScannerWorkbenchViewModel.LastDecision)) return;
         OnUi(() =>
         {
