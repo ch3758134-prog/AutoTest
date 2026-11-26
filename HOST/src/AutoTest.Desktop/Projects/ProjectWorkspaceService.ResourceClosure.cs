@@ -80,6 +80,11 @@ public sealed partial class ProjectWorkspaceService
             await EnsureManifestUnchangedAsync(current, ct).ConfigureAwait(false);
             if (!(await HashFileAsync(path, ct).ConfigureAwait(false)).Equals(actual, StringComparison.OrdinalIgnoreCase))
                 throw new IOException("保存前文件发生变化：" + source.Name);
+            // Preserve the exact previous bytes before replacing the ONLY
+            // current working file. A missing old revision must never be
+            // silently invented by binding to the newest asset.
+            await ProjectResourceRevisionArchive.PreserveCurrentAsync(
+                current.RootDirectory, source, path, ct).ConfigureAwait(false);
             ct.ThrowIfCancellationRequested();
             File.Replace(temporary, path, backup);
             replaced = true;
