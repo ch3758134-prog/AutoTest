@@ -550,6 +550,11 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                 WaveReferenceWorkspaceService.ReferenceNames(_workspace, wave));
             AddField("reference", "关联原始波形证据（不是参考）", AssetNameFor(wave.EvidenceAssetId),
                 "可选。用于关联已验证的波形证据；正式参考波形需另行采集并明确保存。", AssetNames(ProjectWorkspaceService.WaveKind));
+            AddField("mode", "正式波形判定类型",
+                wave.Comparison.InterpolationMode.ToString(),
+                "连续数值适用电压/电流；离散状态适用 KeyStat/Car_State 等枚举，" +
+                "按真实状态跳变持续时间判定。修改此项必须保存新的 WAVE 资源修订。",
+                Enum.GetNames<WaveInterpolationMode>());
             AddField("abs", "绝对容差", Format(wave.Comparison.AbsoluteTolerance));
             AddField("rel", "相对容差", Format(wave.Comparison.RelativeTolerance));
             AddField("coverage", "最小覆盖率（0~1）", Format(wave.Comparison.MinimumCoverage));
@@ -793,7 +798,8 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                         Number(F("abs")) ?? 0, Number(F("rel")) ?? 0, Number(F("coverage")) ?? 0,
                         Number(F("ratio")) ?? 0, Number(F("shift")) ?? 0, Number(F("gap")) ?? 0,
                         Number(F("outside")) ?? 0, Number(F("duration")) ?? 0)
-                    { RequireSynchronizedHardwareTime = Yes(F("sync")) }
+                    { RequireSynchronizedHardwareTime = Yes(F("sync")),
+                      InterpolationMode = Enum.Parse<WaveInterpolationMode>(F("mode"), true) }
                 };
             }
             else if (_working is FlashSettingsDocument flash)
