@@ -2,24 +2,25 @@
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  xmlns:local="clr-namespace:AutoTest.Desktop.Shell"
- Title="工程整组实测 · 非生产" Width="1180" Height="810"
- MinWidth="740" MinHeight="480" WindowStartupLocation="CenterOwner"
- FontFamily="{StaticResource UiFont}" FontSize="13"
- Background="#F5F7FA" Foreground="#263849" UseLayoutRounding="True">
+ Title="工程测试" Width="1150" Height="780" MinWidth="740" MinHeight="495"
+ WindowStartupLocation="CenterOwner" FontFamily="{StaticResource UiFont}"
+ FontSize="13" Background="#F6F8FB" Foreground="#24384C"
+ UseLayoutRounding="True">
  <Window.Resources>
-  <Style x:Key="EngFact" TargetType="TextBlock">
-   <Setter Property="TextWrapping" Value="Wrap"/>
-   <Setter Property="Foreground" Value="#293D52"/>
-  </Style>
-  <Style x:Key="EngCaption" TargetType="TextBlock">
-   <Setter Property="Foreground" Value="#64788B"/>
-   <Setter Property="FontSize" Value="11"/>
-  </Style>
   <Style x:Key="EngPanel" TargetType="Border">
    <Setter Property="Background" Value="White"/>
-   <Setter Property="BorderBrush" Value="#DEE6EF"/>
+   <Setter Property="BorderBrush" Value="#DAE4EC"/>
    <Setter Property="BorderThickness" Value="1"/>
-   <Setter Property="CornerRadius" Value="6"/>
+   <Setter Property="CornerRadius" Value="8"/>
+  </Style>
+  <Style x:Key="EngCaption" TargetType="TextBlock">
+   <Setter Property="Foreground" Value="#687C8F"/>
+   <Setter Property="FontSize" Value="12"/>
+   <Setter Property="TextWrapping" Value="Wrap"/>
+  </Style>
+  <Style x:Key="EngFact" TargetType="TextBlock">
+   <Setter Property="TextWrapping" Value="Wrap"/>
+   <Setter Property="Foreground" Value="#284157"/>
   </Style>
   <Style x:Key="EngState" TargetType="TextBlock">
    <Setter Property="Foreground" Value="#526A81"/>
@@ -38,94 +39,114 @@
      <Setter Property="Foreground" Value="#B42318"/>
      <Setter Property="FontWeight" Value="SemiBold"/>
     </DataTrigger>
+    <DataTrigger Binding="{Binding State}" Value="执行异常">
+     <Setter Property="Foreground" Value="#B42318"/>
+     <Setter Property="FontWeight" Value="SemiBold"/>
+    </DataTrigger>
    </Style.Triggers>
   </Style>
+  <Style x:Key="EngAction" TargetType="Button">
+   <Setter Property="Padding" Value="13,7"/>
+   <Setter Property="MinHeight" Value="34"/>
+   <Setter Property="Margin" Value="0,0,8,0"/>
+  </Style>
  </Window.Resources>
- <Grid Margin="12">
+ <Grid Margin="14">
   <Grid.RowDefinitions>
    <RowDefinition Height="Auto"/>
    <RowDefinition Height="Auto"/>
    <RowDefinition Height="*"/>
    <RowDefinition Height="Auto"/>
   </Grid.RowDefinitions>
-  <Border Style="{StaticResource EngPanel}" Padding="14,10" Margin="0,0,0,9">
-   <DockPanel LastChildFill="True">
-    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
-     VerticalAlignment="Center" Margin="12,0,0,0">
-     <Button Content="重新扫码" Command="{Binding ArmOperatorVerificationCommand}"
-      Padding="12,7" Margin="0,0,7,0"
-      ToolTip="撤销旧扫码，重新接收本台 ECU 的真实串口扫码身份；不执行 FLASH/TEST"/>
-     <Button Content="开始整组实测" Command="{Binding StartOperatorVerificationCommand}"
-      Style="{StaticResource AtPrimaryButton}" Padding="12,7" Margin="0,0,7,0"
-      ToolTip="扫码后会自动弹出一次真实操作确认；此按钮供扫码确认取消后的人工重试"/>
-     <Button Content="扫码枪设置" Command="{Binding OpenScannerSettingsCommand}"
-      Padding="12,7" Margin="0,0,7,0"
-      ToolTip="首次安装扫码设备时设置一次 COM，正常复测不需要反复进入生产准备"/>
-     <Button Content="停止" Command="{Binding StopOperatorVerificationCommand}"
-      Padding="12,7" Margin="0,0,7,0" ToolTip="请求停止并执行真实工位收尾，不擅自重试 FLASH"/>
-     <Button Content="打开本次报告" Click="OpenCurrentReport_Click"
-         Padding="12,7" Margin="0,0,7,0" ToolTip="打开本次真实工程验证生成的 HTML；不是正式生产放行"/>
-       <Button Content="记录与报告" Click="OpenReports_Click" Padding="12,7" Margin="0,0,7,0"
-      ToolTip="查询真实已经归档的运行证据和报告；进行中的步骤不会被视为已归档"/>
-     <Button Content="关闭监视" Click="Close_Click" Padding="12,7"/>
-    </StackPanel>
-    <StackPanel>
-     <TextBlock Text="工程整组实测" FontWeight="SemiBold" FontSize="18"/>
-     <TextBlock Text="扫码立即显示原文 → 核对编号和资源 → 确认真实动作 → 自动整组实测（非生产）"
-      FontSize="11" Foreground="#667F94" Margin="0,3,0,0"/>
-     <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
-      <TextBlock Text="{Binding ControllerLabel}" Foreground="#41627D" FontSize="11" Margin="0,0,12,0"/>
-      <TextBlock Text="{Binding ScannerLabel}" Foreground="#41627D" FontSize="11"/>
+
+  <!-- The only primary action is the same real TEST/FLASH execution command.
+       Device connection, scan identity and hardware authorization are still
+       enforced by the existing view model and executor. -->
+  <Border Grid.Row="0" Style="{StaticResource EngPanel}" Margin="0,0,0,10" Padding="16,12">
+   <StackPanel>
+    <DockPanel LastChildFill="True">
+     <Button DockPanel.Dock="Right" Content="关闭" Click="Close_Click"
+      Style="{StaticResource EngAction}" Margin="8,0,0,0"/>
+     <StackPanel>
+      <TextBlock Text="工程测试" FontWeight="SemiBold" FontSize="20"/>
+      <TextBlock Text="对当前工程的全部测试用例进行台架验证"
+       Style="{StaticResource EngCaption}" Margin="0,3,0,0"/>
      </StackPanel>
-    </StackPanel>
-   </DockPanel>
+    </DockPanel>
+    <WrapPanel Margin="0,12,0,0">
+     <Button Content="开始测试" Command="{Binding StartOperatorVerificationCommand}"
+      Style="{StaticResource AtPrimaryButton}" MinHeight="36" Padding="20,8"
+      Margin="0,0,9,0"
+      ToolTip="扫描 ECU 编号且设备就绪后启动；如涉及真实烧录和夹具动作，会先请求确认。"/>
+     <Button Content="重新扫码" Command="{Binding ArmOperatorVerificationCommand}"
+      Style="{StaticResource EngAction}"
+      ToolTip="为下一次工程测试重新接收 ECU 编号；不操作硬件。"/>
+     <Button Content="停止" Command="{Binding StopOperatorVerificationCommand}"
+      Style="{StaticResource EngAction}"
+      ToolTip="停止当前运行并按执行器规则进行收尾；停止本身不会自动重试烧录。"/>
+     <Button Content="扫码枪连接…" Command="{Binding OpenScannerSettingsCommand}"
+      Style="{StaticResource EngAction}"/>
+     <Button Content="本次报告" Click="OpenCurrentReport_Click"
+      Style="{StaticResource EngAction}" ToolTip="查看本次已保存的测试报告。"/>
+     <Button Content="历史记录" Click="OpenReports_Click"
+      Style="{StaticResource EngAction}" ToolTip="查询历史检测和调试记录。"/>
+    </WrapPanel>
+    <WrapPanel Margin="0,9,0,0">
+     <TextBlock Text="{Binding ControllerLabel}" Foreground="#536C82"
+      Margin="0,0,18,0"/>
+     <TextBlock Text="{Binding ScannerLabel}" Foreground="#536C82"
+      Margin="0,0,18,0"/>
+     <TextBlock Text="{Binding CanLabel}" Foreground="#536C82"/>
+    </WrapPanel>
+   </StackPanel>
   </Border>
-  <Border Grid.Row="1" Style="{StaticResource EngPanel}" Padding="13,10"
-   Margin="0,0,0,9">
+
+  <!-- Identity and the next action stay visible. Raw COM observations are
+       distinct from the accepted ECU identity, even on failed parsing. -->
+  <Border Grid.Row="1" Style="{StaticResource EngPanel}"
+   Margin="0,0,0,10" Padding="16,12">
    <Grid>
     <Grid.ColumnDefinitions>
-     <ColumnDefinition Width="1*"/>
-     <ColumnDefinition Width="1.1*"/>
-     <ColumnDefinition Width="1*"/>
+     <ColumnDefinition Width="1.15*"/>
+     <ColumnDefinition Width="0.9*"/>
+     <ColumnDefinition Width="0.75*"/>
     </Grid.ColumnDefinitions>
-    <StackPanel Grid.Column="0">
-     <TextBlock Text="最近扫码 · 原始内容" Style="{StaticResource EngCaption}"/>
-     <TextBlock Text="{Binding LastObservedBarcode}" FontSize="17" FontWeight="SemiBold"
-      Foreground="#155D91" TextTrimming="CharacterEllipsis"
-      ToolTip="{Binding LastObservedBarcode}"/>
+    <StackPanel Grid.Column="0" Margin="0,0,16,0">
+     <TextBlock Text="最近扫码内容" Style="{StaticResource EngCaption}"/>
+     <TextBlock Text="{Binding LastObservedBarcode}" FontFamily="Consolas,Microsoft YaHei"
+      FontSize="19" Foreground="#185D92" FontWeight="SemiBold"
+      TextTrimming="CharacterEllipsis" ToolTip="{Binding LastObservedBarcode}"
+      Margin="0,5,0,2"/>
      <TextBlock Text="{Binding LastObservedAt,StringFormat='接收时间：{0}'}"
       Style="{StaticResource EngCaption}"/>
-     <TextBlock Text="{Binding DutSerial,StringFormat='识别编号：{0}'}"
-      FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
-      ToolTip="{Binding DutSerial}"/>
+     <TextBlock Text="{Binding DutSerial,StringFormat='当前 ECU：{0}'}"
+      FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+      ToolTip="{Binding DutSerial}" Margin="0,7,0,0"/>
      <TextBlock Text="{Binding ScanStatus}" Style="{StaticResource EngCaption}"
-      TextWrapping="Wrap" MaxHeight="48" ToolTip="{Binding ScanStatus}"/>
-     <TextBlock Text="{Binding ScannerDiagnostic}" Style="{StaticResource EngCaption}"
-      TextWrapping="Wrap" MaxHeight="38" ToolTip="{Binding ScannerDiagnostic}"/>
+      Margin="0,5,0,0" MaxHeight="38" ToolTip="{Binding ScanStatus}"/>
     </StackPanel>
-    <StackPanel Grid.Column="1" Margin="12,0">
-     <TextBlock Text="执行阶段" Style="{StaticResource EngCaption}"/>
-     <TextBlock Text="{Binding OperatorRunState}" FontSize="14" FontWeight="SemiBold"
-      TextTrimming="CharacterEllipsis" ToolTip="{Binding OperatorRunState}"/>
-     <TextBlock Text="{Binding OperatorFlashState}" Style="{StaticResource EngCaption}"
-      MaxHeight="32" TextTrimming="CharacterEllipsis"
-      ToolTip="{Binding OperatorFlashState}"/>
+    <StackPanel Grid.Column="1" Margin="0,0,15,0">
+     <TextBlock Text="当前状态" Style="{StaticResource EngCaption}"/>
+     <TextBlock Text="{Binding OperatorRunState}" FontSize="16" FontWeight="SemiBold"
+      TextWrapping="Wrap" Margin="0,5,0,4"/>
+     <TextBlock Text="{Binding StartRequestStatus}" Style="{StaticResource EngCaption}"
+      TextWrapping="Wrap" MaxHeight="55"/>
     </StackPanel>
     <StackPanel Grid.Column="2">
-     <TextBlock Text="证据 / 记录" Style="{StaticResource EngCaption}"/>
-     <TextBlock Text="{Binding OperatorRecordState}" FontSize="12"
-      FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
-      ToolTip="{Binding OperatorRecordState}"/>
-     <TextBlock Text="{Binding OperatorRunEvidence}" Style="{StaticResource EngCaption}"
-      TextTrimming="CharacterEllipsis" ToolTip="{Binding OperatorRunEvidence}"/>
+     <TextBlock Text="烧录与报告" Style="{StaticResource EngCaption}"/>
+     <TextBlock Text="{Binding OperatorFlashState}" Style="{StaticResource EngFact}"
+      Margin="0,5,0,6" MaxHeight="54"/>
+     <TextBlock Text="{Binding OperatorRecordState}" Style="{StaticResource EngCaption}"
+      TextWrapping="Wrap" MaxHeight="44"/>
     </StackPanel>
    </Grid>
   </Border>
-  <Grid Grid.Row="2" Margin="0,0,0,9">
+
+  <Grid Grid.Row="2" Margin="0,0,0,10">
    <Grid.ColumnDefinitions>
-    <ColumnDefinition Width="1.15*" MinWidth="340"/>
+    <ColumnDefinition Width="1.1*" MinWidth="325"/>
     <ColumnDefinition Width="8"/>
-    <ColumnDefinition Width="0.85*" MinWidth="290"/>
+    <ColumnDefinition Width="0.9*" MinWidth="290"/>
    </Grid.ColumnDefinitions>
    <Border Grid.Column="0" Style="{StaticResource EngPanel}">
     <Grid>
@@ -133,17 +154,16 @@
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="*"/>
      </Grid.RowDefinitions>
-     <DockPanel Margin="12,10">
+     <DockPanel Margin="14,12,14,8">
       <TextBlock DockPanel.Dock="Right" Text="{Binding CaseCount,StringFormat='{}{0} 个用例'}"
-       Foreground="#64788B" FontSize="12"/>
+       Foreground="#64788B" VerticalAlignment="Center"/>
       <CheckBox x:Name="FollowEngineeringRun" DockPanel.Dock="Right"
-       Content="跟随" IsChecked="True" Margin="0,0,12,0"
-       VerticalAlignment="Center" FontSize="12"
-       ToolTip="跟随当前真实运行的用例和步骤；取消后自由查看历史"/>
-      <TextBlock Text="完整 TEST 用例及真实步骤" FontWeight="SemiBold" FontSize="14"/>
+       Content="跟随执行" IsChecked="True" VerticalAlignment="Center"
+       Margin="0,0,12,0" ToolTip="运行时定位当前步骤；取消后可以自由查看。"/>
+      <TextBlock Text="测试用例" FontWeight="SemiBold" FontSize="15"/>
      </DockPanel>
      <TreeView x:Name="EngineeringCasesTree" Grid.Row="1"
-      ItemsSource="{Binding Cases}" BorderThickness="0" Padding="6,4"
+      ItemsSource="{Binding Cases}" BorderThickness="0" Padding="7,4"
       SelectedItemChanged="EngineeringCasesTree_SelectedItemChanged"
       ScrollViewer.HorizontalScrollBarVisibility="Auto">
       <TreeView.ItemContainerStyle>
@@ -157,9 +177,9 @@
         ItemsSource="{Binding Children}">
         <Grid Margin="5,4" MinHeight="37">
          <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="40"/>
-          <ColumnDefinition Width="*" MinWidth="120"/>
-          <ColumnDefinition Width="148"/>
+          <ColumnDefinition Width="36"/>
+          <ColumnDefinition Width="*" MinWidth="110"/>
+          <ColumnDefinition Width="112"/>
          </Grid.ColumnDefinitions>
          <TextBlock Text="{Binding Index}" VerticalAlignment="Center"
           FontWeight="SemiBold" Foreground="#486581"/>
@@ -168,18 +188,17 @@
            TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}"/>
           <TextBlock Text="{Binding StepCountLabel}" Style="{StaticResource EngCaption}"/>
          </StackPanel>
-         <TextBlock Grid.Column="2" Text="{Binding State}"
-          Style="{StaticResource EngState}" VerticalAlignment="Center"
-          ToolTip="{Binding State}"/>
+         <TextBlock Grid.Column="2" Text="{Binding State}" Style="{StaticResource EngState}"
+          VerticalAlignment="Center" ToolTip="{Binding State}"/>
         </Grid>
        </HierarchicalDataTemplate>
        <HierarchicalDataTemplate DataType="{x:Type local:AutomaticTestStep}"
         ItemsSource="{Binding Children}">
         <Grid Margin="4,3" MinHeight="33">
          <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="34"/>
-          <ColumnDefinition Width="*" MinWidth="110"/>
-          <ColumnDefinition Width="148"/>
+          <ColumnDefinition Width="30"/>
+          <ColumnDefinition Width="*" MinWidth="100"/>
+          <ColumnDefinition Width="112"/>
          </Grid.ColumnDefinitions>
          <TextBlock Text="{Binding Index}" VerticalAlignment="Center"
           Foreground="#72879A" FontSize="11"/>
@@ -189,9 +208,8 @@
           <TextBlock Text="{Binding ActionSummary}" Style="{StaticResource EngCaption}"
            TextTrimming="CharacterEllipsis" ToolTip="{Binding ActionSummary}"/>
          </StackPanel>
-         <TextBlock Grid.Column="2" Text="{Binding State}"
-          Style="{StaticResource EngState}" VerticalAlignment="Center"
-          ToolTip="{Binding State}"/>
+         <TextBlock Grid.Column="2" Text="{Binding State}" Style="{StaticResource EngState}"
+          VerticalAlignment="Center" ToolTip="{Binding State}"/>
         </Grid>
        </HierarchicalDataTemplate>
       </TreeView.Resources>
@@ -200,58 +218,63 @@
    </Border>
    <GridSplitter Grid.Column="1" Width="8" HorizontalAlignment="Stretch"
     ResizeDirection="Columns" ResizeBehavior="PreviousAndNext"
-    Background="#E1E8F1"/>
+    Background="#E4EAF1"/>
    <Border Grid.Column="2" Style="{StaticResource EngPanel}">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-     <StackPanel Margin="14,11,14,15">
-      <TextBlock Text="当前真实步骤" FontSize="14" FontWeight="SemiBold"/>
+     <StackPanel Margin="15,13,15,15">
+      <TextBlock Text="当前步骤" FontSize="15" FontWeight="SemiBold"/>
       <TextBlock Text="{Binding OperatorCurrentCase}" Foreground="#52708D"
        TextTrimming="CharacterEllipsis" ToolTip="{Binding OperatorCurrentCase}"
-       Margin="0,8,0,0"/>
-      <TextBlock Text="{Binding OperatorCurrentStep}" FontSize="15"
-       FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,4,0,5"/>
+       Margin="0,11,0,0"/>
+      <TextBlock Text="{Binding OperatorCurrentStep}" FontSize="17"
+       FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,5,0,5"/>
       <TextBlock Text="{Binding OperatorStepStatus}" Foreground="#286B9C"
-       TextWrapping="Wrap" Margin="0,0,0,10"/>
-      <Border Height="1" Background="#E1E7EE" Margin="0,0,0,10"/>
+       TextWrapping="Wrap" Margin="0,0,0,12"/>
+      <Border Height="1" Background="#E4EAF0" Margin="0,0,0,13"/>
       <Grid>
        <Grid.ColumnDefinitions>
         <ColumnDefinition Width="*"/>
         <ColumnDefinition Width="*"/>
        </Grid.ColumnDefinitions>
-       <StackPanel Margin="0,0,7,0">
-        <TextBlock Text="实际值" Style="{StaticResource EngCaption}"/>
+       <StackPanel Margin="0,0,8,0">
+        <TextBlock Text="实际结果" Style="{StaticResource EngCaption}"/>
         <TextBlock Text="{Binding OperatorActual}" Style="{StaticResource EngFact}"
-         FontWeight="SemiBold" Margin="0,4,0,0"/>
+         FontWeight="SemiBold" Margin="0,5,0,0"/>
        </StackPanel>
        <StackPanel Grid.Column="1">
-        <TextBlock Text="期望／判据" Style="{StaticResource EngCaption}"/>
+        <TextBlock Text="期望结果" Style="{StaticResource EngCaption}"/>
         <TextBlock Text="{Binding OperatorExpected}" Style="{StaticResource EngFact}"
-         Margin="0,4,0,0"/>
+         Margin="0,5,0,0"/>
        </StackPanel>
       </Grid>
       <TextBlock Text="{Binding OperatorFailure}" Foreground="#B42318"
-       TextWrapping="Wrap" Margin="0,10,0,8"/>
-      <Border Height="1" Background="#E1E7EE" Margin="0,2,0,10"/>
-      <TextBlock Text="项目周期 CAN（主控 USB ACK 统计）" FontWeight="SemiBold" FontSize="12"/>
-      <TextBlock Text="{Binding OperatorPeriodicStatus}" Foreground="#44647F"
-       TextWrapping="Wrap" Margin="0,5,0,10"/>
-      <TextBlock Text="USB ACK 不代表 ECU 收到报文；实际 65ms 周期需外部 CAN 分析仪测量。"
-       FontSize="11" Foreground="#77889A" TextWrapping="Wrap" Margin="0,0,0,9"/>
-      <Border Height="1" Background="#E1E7EE" Margin="0,2,0,10"/>
-      <TextBlock Text="选中用例／步骤" FontSize="12" Foreground="#64788B"/>
-      <TextBlock Text="{Binding InspectedNode}" FontWeight="SemiBold"
-       Margin="0,4,0,2" TextWrapping="Wrap"/>
-      <TextBlock Text="{Binding InspectedStatus}" Foreground="#4A6178"
+       TextWrapping="Wrap" Margin="0,12,0,8"/>
+      <Border Height="1" Background="#E4EAF0" Margin="0,5,0,11"/>
+      <TextBlock Text="查看步骤" FontWeight="SemiBold" FontSize="12"/>
+      <TextBlock Text="{Binding InspectedNode}" Margin="0,7,0,3"
        TextWrapping="Wrap"/>
+      <TextBlock Text="{Binding InspectedStatus}" Style="{StaticResource EngCaption}"/>
+      <Expander Header="通信诊断" IsExpanded="False" Margin="0,15,0,0">
+       <StackPanel Margin="0,10,0,5">
+        <TextBlock Text="周期发送任务" FontWeight="SemiBold" FontSize="12"/>
+        <TextBlock Text="{Binding OperatorPeriodicStatus}" Foreground="#44647F"
+         TextWrapping="Wrap" Margin="0,6,0,8"/>
+        <TextBlock Text="发送确认仅表示主控接受命令，不等于 ECU 已收到 CAN 帧。"
+         Style="{StaticResource EngCaption}"/>
+        <TextBlock Text="{Binding ScannerDiagnostic}" Style="{StaticResource EngCaption}"
+         Margin="0,9,0,0"/>
+        <TextBlock Text="{Binding OperatorRunEvidence}" Style="{StaticResource EngCaption}"
+         Margin="0,7,0,0"/>
+       </StackPanel>
+      </Expander>
      </StackPanel>
     </ScrollViewer>
    </Border>
   </Grid>
-  <Border Grid.Row="3" Style="{StaticResource EngPanel}" Padding="8,5">
-   <Expander Header="实测阶段与步骤事件（来自当前工程运行，不是正式生产报告）"
-    IsExpanded="True" Foreground="#334963">
+  <Border Grid.Row="3" Style="{StaticResource EngPanel}" Padding="9,6">
+   <Expander Header="执行日志" IsExpanded="False" Foreground="#334963">
     <ListBox x:Name="OperatorEventsList" ItemsSource="{Binding OperatorEvents}"
-     MaxHeight="145" MinHeight="70" BorderThickness="0"
+     MaxHeight="150" MinHeight="70" BorderThickness="0"
      FontFamily="Consolas" FontSize="12"
      ScrollViewer.HorizontalScrollBarVisibility="Auto"/>
    </Expander>
