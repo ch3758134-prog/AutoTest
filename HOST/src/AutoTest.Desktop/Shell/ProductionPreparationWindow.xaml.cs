@@ -827,8 +827,8 @@ public partial class ProductionPreparationWindow : Window
             PublicationState.Text = "工位配置不可用：" + error.Message;
         }
         BlockerState.Text =
-            "正式生产仍待实体 START、机械反馈及单台检测记录的现场验收；" +
-            "启用配置不代表已取得生产放行。";
+            "正式检测暂不可用：启动输入、夹具反馈和单台记录功能尚未完成连接与验证。" +
+            "启用工位设置不代表可以开始正式检测。";
     }
 
     private async void ResetOld_Click(object sender, RoutedEventArgs e)
@@ -860,8 +860,8 @@ public partial class ProductionPreparationWindow : Window
             System.Diagnostics.Trace.TraceError(
                 "Unable to recover unreadable station settings: " + error);
             ResetOldConfig.Visibility = Visibility.Visible;
-            Say("无法重新设置工位。原有文件及当前已启用的配置未被主动覆盖；" +
-                "请检查本机文件访问权限，或查看诊断日志。");
+            Say("无法重新设置工位。原有设置没有被覆盖。" +
+                "请重新打开窗口；如果问题持续，请查看诊断日志。");
         }
         finally
         {
