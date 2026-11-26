@@ -281,6 +281,12 @@
          <CheckBox Content="使用夹具输出 2（PTC2 / J1-B4）" IsChecked="{Binding Fixture.UseClamp2}"
           Checked="DraftSelectionChanged" Unchecked="DraftSelectionChanged"/>
         </WrapPanel>
+        <TextBlock Text="双路夹具动作顺序（两路都启用时必须明确选择）"/>
+        <ComboBox Width="230" MinHeight="31" HorizontalAlignment="Left"
+         Margin="0,5,0,10" ItemsSource="{Binding ClampOrderChoices}"
+         DisplayMemberPath="Label" SelectedValuePath="Value"
+         SelectedValue="{Binding Fixture.FirstClamp,Mode=TwoWay}"
+         SelectionChanged="DraftSelectionChanged"/>
         <TextBlock Text="夹紧机械到位反馈来源（无可信输入填 NOT_WIRED）"/>
         <TextBox Margin="0,4,0,9" Text="{Binding Fixture.ClampClosedFeedback,UpdateSourceTrigger=PropertyChanged}" TextChanged="DraftChanged"/>
         <TextBlock Text="释放机械到位反馈来源"/>
