@@ -197,8 +197,21 @@ public partial class ProductionPreparationWindow : Window
         {
             _draft = await StationProductionConfigurationStore.LoadDraftAsync();
             ApplyToControls(_draft);
+            // Only a fresh unbound fixed station inherits the open project.
+            // Opening another project never rewrites an existing binding.
+            if (MatchMode.SelectedIndex == 0 && _products.Count == 0 &&
+                _workspace.Current is { } opened)
+            {
+                _products.Add(new("", "", opened.ManifestPath,
+                    opened.Definition.Id.Value));
+                _dirty = true;
+                _editGeneration++;
+                RefreshProject();
+                if (!await SaveAsync()) return;
+            }
             _ready = true;
-            Say("工位设置已加载，修改自动保存。");
+            RefreshProject();
+            Say("草稿自动保存。需要用于正式工位时，点击“启用工位配置”。");
         }
         catch (Exception error) when (error is not OutOfMemoryException)
         {
@@ -247,13 +260,19 @@ public partial class ProductionPreparationWindow : Window
         SettleDelayInput.Text = fixture.SettleDelayMs.ToString(CultureInfo.InvariantCulture);
         _ready = true;
         _dirty = false;
+        UpdateModePresentation(selectionChanged: true);
+        RefreshProject();
     }
 
     private void ConfigChanged(object sender, RoutedEventArgs e)
     {
         if (!_ready || _busy) return;
+        UpdateModePresentation(ReferenceEquals(sender, MatchMode));
+        RefreshProject();
         _dirty = true;
         _editGeneration++;
+        PublicationState.Text = "当前修改尚未启用；不改变原有工位版本。";
+        Say("设置已修改，正在自动保存草稿…");
         _autosave.Stop();
         _autosave.Start();
     }
@@ -385,6 +404,8 @@ public partial class ProductionPreparationWindow : Window
             {
                 await StationProductionConfigurationStore.SaveDraftAsync(next);
                 _draft = next;
+                PublicationState.Text =
+                    "修改已保存为草稿，点击“启用工位配置”后生效。";
             }
 
             _dirty = generation != _editGeneration;
@@ -412,7 +433,8 @@ public partial class ProductionPreparationWindow : Window
         _products.Clear();
         _products.Add(new("", "", current.ManifestPath, current.Definition.Id.Value));
         ConfigChanged(sender, e);
-        Say("已绑定当前工程：" + current.Definition.Name);
+        RefreshProject();
+        Say("已选择当前工程：" + current.Definition.Name);
     }
 
     private async void SelectProject_Click(object sender, RoutedEventArgs e)
@@ -432,7 +454,10 @@ public partial class ProductionPreparationWindow : Window
             _products.Clear();
             _products.Add(new("", "", file, project.Id.Value));
             ConfigChanged(sender, e);
-            Say("已选择工程：" + project.Name);
+            RefreshProject();
+            Say(_workspace.Current?.Definition.Id.Value == project.Id.Value
+                ? "已选择工程：" + project.Name
+                : "已选择“" + project.Name + "”。请在主窗口打开该工程后再启用工位配置。");
         }
         catch (Exception error) when (error is not OutOfMemoryException)
         { Say("所选工程无效：" + error.Message); }
@@ -451,7 +476,8 @@ public partial class ProductionPreparationWindow : Window
         _products.Add(new(key, HardwareInput.Text.Trim(),
             current.ManifestPath, current.Definition.Id.Value));
         ConfigChanged(sender, e);
-        Say("产品识别码 " + key + " 已绑定工程：" + current.Definition.Name);
+        RefreshProject();
+        Say("已添加产品识别码 " + key + " → " + current.Definition.Name);
     }
 
     private void RemoveMixedProject_Click(object sender, RoutedEventArgs e)
@@ -460,6 +486,7 @@ public partial class ProductionPreparationWindow : Window
         {
             _products.Remove(selected);
             ConfigChanged(sender, e);
+            RefreshProject();
         }
     }
 
@@ -475,7 +502,17 @@ public partial class ProductionPreparationWindow : Window
     {
         var manual = !string.IsNullOrWhiteSpace(ScanTrial.Text);
         var raw = manual ? ScanTrial.Text.Trim() : _scanner.LastRaw;
+        PreviewBarcode(raw, manual);
+    }
+
+    private void PreviewBarcode(string raw, bool manual)
+    {
         // Input samples are NOT real scanner observations.
+        if (!_ready)
+        {
+            PreviewStatus.Text = "已收到编号，工位设置尚未加载完成。";
+            return;
+        }
         if (string.IsNullOrWhiteSpace(raw))
         {
             PreviewStatus.Text = "请扫码，或输入一个编号试算。";
@@ -582,22 +619,6 @@ public partial class ProductionPreparationWindow : Window
         }
         catch (Exception error) when (error is not OutOfMemoryException)
         { Say("编号表导入失败：" + error.Message); }
-    }
-
-    private async void Test_Click(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            WindowState = WindowState.Minimized;
-            await _openTestEditor();
-        }
-        catch (Exception error) when (error is not OutOfMemoryException)
-        { Say("TEST 编辑器无法打开：" + error.Message); }
-    }
-    private void Flash_Click(object sender, RoutedEventArgs e)
-    {
-        WindowState = WindowState.Minimized;
-        _openFlashEditor();
     }
 
     private sealed record PointerSnapshot(string Path, byte[]? Bytes);
@@ -806,20 +827,6 @@ public partial class ProductionPreparationWindow : Window
         { Say("无法建立新版工位草稿：" + error.Message); }
     }
 
-    private async Task NavigateAsync(Func<Task> navigate)
-    {
-        if (_busy) { Say("请先结束工位配置操作。"); return; }
-        if (_dirty && !await SaveAsync()) return;
-        _allowClose = true;
-        Close();
-        try { await navigate(); }
-        catch (Exception error) when (error is not OutOfMemoryException)
-        { MessageBox.Show("切换工作区失败：" + error.Message, "AutoTest"); }
-    }
-    private async void Engineering_Click(object sender, RoutedEventArgs e) =>
-        await NavigateAsync(_openEngineeringVerification);
-    private async void Production_Click(object sender, RoutedEventArgs e) =>
-        await NavigateAsync(_openProductionMonitor);
     private async void Close_Click(object sender, RoutedEventArgs e)
     {
         if (_dirty && !await SaveAsync()) return;
