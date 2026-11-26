@@ -47,6 +47,14 @@ public static class WaveComparator
         if (!rq.CanJudge) return Reject(Verdict.Inconclusive, "REFERENCE_" + rq.Code, rq.Reason);
         var aq = WaveTimeQuality.ValidateForJudgement(actual);
         if (!aq.CanJudge) return Reject(Verdict.Inconclusive, "ACTUAL_" + aq.Code, aq.Reason);
+        // Comparable time coordinates must refer to the same clock domain.
+        // Two individually well-formed waveforms from HostArrival and DeviceSample
+        // cannot certify a measured transition delay between them.
+        if (actual.Origin.Source != reference.Origin.Source ||
+            actual.Origin.Quality != reference.Origin.Quality)
+            return Reject(Verdict.Inconclusive, "CLOCK_DOMAIN_MISMATCH",
+                "Reference and measured traces have incompatible timestamp origins; " +
+                "capture and explicitly approve a reference from the matching clock domain.");
         if (reference.Samples.Length < 2 || actual.Samples.Length < 2)
             return Reject(Verdict.Inconclusive, "INSUFFICIENT_SAMPLES", "At least two points required.");
         if (rq.MaximumIntervalSeconds > rq.MedianIntervalSeconds * config.MaximumGapFactor + 1e-9 ||
