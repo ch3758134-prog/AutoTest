@@ -158,7 +158,8 @@ public sealed partial class MainWindowViewModel
                 _hardware.IsEcuCanBitrateApplied
                     ? "主控已连接 · ECU CAN " +
                       _hardware.ConfirmedEcuCanBitrateKbps + " kbit/s"
-                    : "主控已连接 · CAN 波特率尚未确认")
+                    : "主控已连接 · CAN 波特率尚未确认",
+            () => _automaticTestHome.OnPublishedConfigurationChanged())
         { Owner = global::System.Windows.Application.Current?.MainWindow };
         _productionPreparationWindow = window;
         window.Closed += (_, _) =>
