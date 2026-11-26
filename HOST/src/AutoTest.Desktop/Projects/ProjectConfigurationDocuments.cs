@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Security.Cryptography;
 using System.Text.Json;
 using AutoTest.Contracts;
 using AutoTest.Core;
@@ -19,6 +20,38 @@ public sealed record WaveSettingsDocument(int SchemaVersion, string Name,
     /// <summary>Optional, explicitly approved named reference; empty means not selected.</summary>
     public string ReferenceName { get; init; } = "";
 
+    // 0 / missing is an old, unreviewed profile. Reading legacy WAVE assets
+    // is allowed for editing, but the real TEST runner cannot treat one as
+    // approved under a changed comparison algorithm.
+    public const int CurrentComparisonAlgorithmRevision = 2;
+    public int ApprovedAlgorithmRevision { get; init; }
+    public string? ReviewedCriteriaSha256 { get; init; }
+
+    /// <summary>Freeze the exact signal, reference and ALL comparison criteria.
+    /// A later edit cannot inherit approval from a previous safety judgement.</summary>
+    public string ComputeReviewFingerprint()
+    {
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            Algorithm = CurrentComparisonAlgorithmRevision,
+            DbcAssetId, DbcAssetRevision, DbcAssetFingerprint, Bus, CanId,
+            SignalName, Unit, ReferenceName, Comparison
+        });
+        return Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+    }
+
+    public bool IsComparisonReviewCurrent =>
+        ApprovedAlgorithmRevision == CurrentComparisonAlgorithmRevision &&
+        ReviewedCriteriaSha256 is { Length: 64 } &&
+        string.Equals(ReviewedCriteriaSha256, ComputeReviewFingerprint(),
+            StringComparison.OrdinalIgnoreCase);
+
+    public WaveSettingsDocument ApproveCurrentComparison() => this with
+    {
+        ApprovedAlgorithmRevision = CurrentComparisonAlgorithmRevision,
+        ReviewedCriteriaSha256 = ComputeReviewFingerprint()
+    };
+
     public static WaveSettingsDocument Create(string name) => new(1, name, null,
         BusRole.DutCan, 0, "", "", null,
         new WaveComparisonConfig(0, 0, 0.95, 1, 0.05, 1.6, 0, 0));
@@ -36,6 +69,11 @@ public sealed record WaveSettingsDocument(int SchemaVersion, string Name,
         if (Comparison is null || Comparison.ValidateThresholds() is { } issue)
             throw new ProjectDataException("WAVE_THRESHOLDS",
                 "波形判定参数无效：" + (Comparison?.ValidateThresholds() ?? "缺少参数"));
+        if (ApprovedAlgorithmRevision is < 0 or > CurrentComparisonAlgorithmRevision ||
+            ReviewedCriteriaSha256 is { } fingerprint &&
+            (fingerprint.Length != 64 || !fingerprint.All(Uri.IsHexDigit)))
+            throw new ProjectDataException("WAVE_APPROVAL",
+                "波形判据的算法批准版本或指纹无效。");
         if (DbcAssetId.HasValue && !ProjectConfigurationCodec.ValidPin(DbcAssetRevision, DbcAssetFingerprint))
             throw new ProjectDataException("WAVE_DBC_PIN", "已选择的 DBC 缺少资源修订与哈希。");
         if (EvidenceAssetId.HasValue &&
