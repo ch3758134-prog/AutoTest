@@ -22,18 +22,8 @@ public partial class ProductionPreparationWindow
     private TextBlock? _guidedPublication;
     private TextBlock? _guidedBlocker;
     private TextBlock? _guidedFixturePlan;
-    private ComboBox? _guidedClampMode;
-    private StackPanel? _guidedDualOrder;
-    private bool _syncingGuidedClampMode;
-
-    private sealed record GuidedClampOption(int Value, string Label);
-    private static readonly GuidedClampOption[] GuidedClampOptions =
-    [
-        new(0, "不使用夹具"),
-        new(1, "夹具 1"),
-        new(2, "夹具 2"),
-        new(3, "双路夹具")
-    ];
+    private CheckBox? _guidedFixtureEnabled;
+    private bool _syncingGuidedFixture;
 
     // A successful barcode read belongs to one concrete scanner/COM session.
     // A disconnect or COM rebind invalidates the proof even if the port name
@@ -145,77 +135,41 @@ public partial class ProductionPreparationWindow
             "夹具反馈、实体 START 和互锁必须来自可验证的硬件输入；填写来源名称不能代替接线或到位确认。"));
 
         root.Children.Add(GuidedCard("自动夹具", out var fixtureBody));
-        var fixtureSelect = new WrapPanel { Margin = new Thickness(0, 2, 0, 8) };
-        fixtureSelect.Children.Add(new TextBlock
+        _guidedFixtureEnabled = new CheckBox
         {
-            Text = "使用夹具",
-            Foreground = GuidedMuted,
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, 0, 12, 0)
-        });
-        _guidedClampMode = new ComboBox
-        {
-            Width = 195, MinHeight = 33,
-            ItemsSource = GuidedClampOptions,
-            DisplayMemberPath = nameof(GuidedClampOption.Label),
-            SelectedValuePath = nameof(GuidedClampOption.Value)
+            Content = "自动控制夹具",
+            FontSize = 14,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = GuidedInk,
+            Margin = new Thickness(0, 7, 0, 8),
+            MinHeight = 28
         };
-        _guidedClampMode.SelectionChanged += (_, _) => OnGuidedClampModeSelected();
-        fixtureSelect.Children.Add(_guidedClampMode);
-        fixtureBody.Children.Add(fixtureSelect);
-
-        var process = new WrapPanel { Margin = new Thickness(0, 3, 0, 10) };
-        var processSteps = new[]
+        _guidedFixtureEnabled.Checked += (_, _) => OnGuidedFixtureEnabledChanged();
+        _guidedFixtureEnabled.Unchecked += (_, _) => OnGuidedFixtureEnabledChanged();
+        fixtureBody.Children.Add(_guidedFixtureEnabled);
+        var process = new WrapPanel { Margin = new Thickness(0, 2, 0, 7) };
+        foreach (var item in new[]
         {
-            "检测前：压紧", " → ", "自动烧录 + TEST", " → ", "正常完成后：释放"
-        };
-        for (var i = 0; i < processSteps.Length; i++)
-        {
+            "检测前压紧", "  →  ", "自动烧录与完整 TEST", "  →  ", "正常完成后释放"
+        })
             process.Children.Add(new TextBlock
             {
-                Text = processSteps[i],
-                FontSize = 13,
-                FontWeight = i % 2 == 0 ? FontWeights.SemiBold : FontWeights.Normal,
-                Foreground = i % 2 == 0 ? GuidedInk : GuidedMuted,
+                Text = item,
+                FontSize = 13.5,
+                FontWeight = item.Contains("→") ? FontWeights.Normal :
+                    FontWeights.SemiBold,
+                Foreground = item.Contains("→") ? GuidedMuted : GuidedInk,
                 Margin = new Thickness(0, 3, 0, 3)
             });
-        }
         fixtureBody.Children.Add(process);
-        _guidedDualOrder = new StackPanel { Visibility = Visibility.Collapsed };
-        var orderRow = new WrapPanel { Margin = new Thickness(0, 2, 0, 8) };
-        orderRow.Children.Add(new TextBlock
-        {
-            Text = "两路夹具先后顺序",
-            VerticalAlignment = VerticalAlignment.Center,
-            Foreground = GuidedMuted,
-            Margin = new Thickness(0, 0, 12, 0)
-        });
-        var order = new ComboBox
-        {
-            Width = 225, MinHeight = 32,
-            ItemsSource = ClampOrderChoices,
-            DisplayMemberPath = nameof(ClampOrderChoice.Label),
-            SelectedValuePath = nameof(ClampOrderChoice.Value)
-        };
-        order.SetBinding(Selector.SelectedValueProperty,
-            new Binding("Fixture.FirstClamp")
-            {
-                Mode = BindingMode.TwoWay,
-                UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
-            });
-        order.SelectionChanged += (_, _) => OnGuidedFixtureChanged();
-        orderRow.Children.Add(order);
-        _guidedDualOrder.Children.Add(orderRow);
-        fixtureBody.Children.Add(_guidedDualOrder);
-
-        _guidedFixturePlan = GuidedText("正在读取夹具设置…");
+        _guidedFixturePlan = GuidedText("尚未加载工位夹具设置。");
         fixtureBody.Children.Add(_guidedFixturePlan);
-        var settings = GuidedButton("输出接线、超时与反馈设置");
+        var settings = GuidedButton("硬件设置");
         settings.Click += (_, _) => PreparationTabs.SelectedIndex = 1;
         fixtureBody.Children.Add(settings);
         fixtureBody.Children.Add(GuidedText(
-            "配置页面不会驱动夹具。仅在真实整组执行时才按已发布配置发出压紧/释放指令；" +
-            "异常停止不自动释放。输出 GPIO 回读不等于机械到位。"));
+            "此处只配置自动检测流程，不会立即操作夹具。异常中断不会擅自释放，" +
+            "实际机械到位须由独立反馈确认。"));
 
         root.Children.Add(GuidedCard("发布与生产准入", out var releaseBody));
         _guidedPublication = GuidedText("正在检查发布记录…");
@@ -246,53 +200,24 @@ public partial class ProductionPreparationWindow
         };
     }
 
-    private void OnGuidedClampModeSelected()
+    private void OnGuidedFixtureEnabledChanged()
     {
-        if (_guidedClampMode is null || _syncingGuidedClampMode || !_ready) return;
+        if (_syncingGuidedFixture || !_ready) return;
         if (!_mayEdit() || _busy)
-        {
-            SyncGuidedClampMode();
-            Status = "工位运行中或配置锁定，不能改变夹具选择。";
-            return;
-        }
-        if (_guidedClampMode.SelectedValue is not int choice || choice is < 0 or > 3)
-            return;
-        var first = choice is 1 or 3;
-        var second = choice is 2 or 3;
-        if (Fixture.UseClamp1 == first && Fixture.UseClamp2 == second)
         {
             UpdateGuidedFixtureText();
+            Status = "工位运行中或配置锁定，不能修改自动夹具设置。";
             return;
         }
-        var wasDual = Fixture.UseClamp1 && Fixture.UseClamp2;
-        Fixture.UseClamp1 = first;
-        Fixture.UseClamp2 = second;
-        if (choice == 3 && !wasDual)
-            Fixture.FirstClamp = 0; // never guess which valve should move first
-        MarkDirty();
-        UpdateGuidedFixtureText();
-    }
-
-    private void SyncGuidedClampMode()
-    {
-        if (_guidedClampMode is null) return;
-        var mode = (Fixture.UseClamp1 ? 1 : 0) |
-                   (Fixture.UseClamp2 ? 2 : 0);
-        _syncingGuidedClampMode = true;
-        try { _guidedClampMode.SelectedValue = mode; }
-        finally { _syncingGuidedClampMode = false; }
-        if (_guidedDualOrder is not null)
-            _guidedDualOrder.Visibility = mode == 3
-                ? Visibility.Visible : Visibility.Collapsed;
-    }
-
-    private void OnGuidedFixtureChanged()
-    {
-        if (!_ready || _syncingGuidedClampMode) return;
-        if (!_mayEdit() || _busy)
+        if (_guidedFixtureEnabled?.IsChecked is not bool enabled) return;
+        var current = Fixture.UseClamp1 || Fixture.UseClamp2;
+        if (enabled == current) return;
+        if (enabled)
+            Fixture.UseClamp1 = true; // first-use default, advanced wiring can select channel 2
+        else
         {
-            Status = "当前工位正在执行或配置锁定，不能修改夹具设置。";
-            return;
+            Fixture.UseClamp1 = false;
+            Fixture.UseClamp2 = false;
         }
         MarkDirty();
         UpdateGuidedFixtureText();
@@ -300,27 +225,29 @@ public partial class ProductionPreparationWindow
 
     private void UpdateGuidedFixtureText()
     {
-        SyncGuidedClampMode();
+        var active = Fixture.UseClamp1 || Fixture.UseClamp2;
+        if (_guidedFixtureEnabled is not null)
+        {
+            _syncingGuidedFixture = true;
+            try { _guidedFixtureEnabled.IsChecked = active; }
+            finally { _syncingGuidedFixture = false; }
+        }
         if (_guidedFixturePlan is null) return;
         try
         {
             var plan = StationFixtureExecutionPlan.From(Fixture.ToModel());
             _guidedFixturePlan.Text = plan.Press.Count switch
             {
-                0 => "未使用自动夹具，测试前后都不会发送夹具动作。",
-                1 => "检测前压紧夹具 " + plan.Press[0].Clamp +
-                     "；检测正常完成且记录保存后释放夹具 " +
-                     plan.Release[0].Clamp + "。",
-                _ => "压紧：" + string.Join(" → ",
-                        plan.Press.Select(x => "夹具 " + x.Clamp)) +
-                     "；释放：" + string.Join(" → ",
-                        plan.Release.Select(x => "夹具 " + x.Clamp)) + "。"
+                0 => "未启用：检测不会自动压紧或释放。",
+                1 => "检测前压紧，正常完成并保存结果后释放。" +
+                     "通道和电平已保存在硬件设置中。",
+                _ => "这套夹具使用两路输出，按硬件设置中的顺序压紧、逆序释放。"
             };
         }
         catch (Exception)
         {
-            _guidedFixturePlan.Text = "双路夹具需要选择先压紧哪一路；" +
-                "未选定前不能发布执行。";
+            _guidedFixturePlan.Text = "夹具硬件设置未完成：请在硬件设置中确认两路顺序、" +
+                "输出极性及稳定时间，完成前禁止启动。";
         }
     }
 
