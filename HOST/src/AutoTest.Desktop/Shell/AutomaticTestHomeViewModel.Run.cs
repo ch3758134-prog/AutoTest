@@ -400,7 +400,8 @@ public sealed partial class AutomaticTestHomeViewModel
             return;
         }
         var fixtureDescription = fixturePlan.Press.Count == 0
-            ? "未选择任何夹具输出：本次不会自动装夹。"
+            ? "自动夹具未启用：本次不会自动压紧或释放。" +
+              "如工位需要装夹，请先在生产准备中启用并重新发布工位配置。"
             : "本次将自动压紧：" + string.Join(" → ", fixturePlan.Press
                 .Select(x => "夹具" + x.Clamp)) +
               "；工程测试完成、真实记录写入后按反序释放。" +
