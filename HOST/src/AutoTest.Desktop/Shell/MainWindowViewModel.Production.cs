@@ -123,11 +123,6 @@ public sealed partial class MainWindowViewModel
             _scannerWorkbench,
             () => _automaticTestHome.OnPublishedConfigurationChanged(),
             async () => await ConfirmProductionConfigurationAsync(singleApply: true),
-            () => OpenFirstAssetAsync(ProjectWorkspaceService.TestProjectKind,
-                CreateTestProjectAsync),
-            OpenNativeFlashProfile,
-            () => ShowAutomaticTestAsync(),
-            () => EnterEngineeringVerificationAsync(),
             OpenSerialScannerWindow,
             () => !_hardware.IsConnected ? "主控未连接" :
                 _hardware.IsEcuCanBitrateApplied
