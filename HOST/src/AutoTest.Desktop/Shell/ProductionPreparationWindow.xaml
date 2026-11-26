@@ -39,6 +39,9 @@
    CornerRadius="7" Padding="15,12" Margin="0,0,0,10">
    <DockPanel LastChildFill="False">
      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+      <Button Content="进入生产检测" Click="EnterProduction_Click"
+        Padding="15,9" Margin="0,0,10,0" MinHeight="37"
+        ToolTip="返回正式生产监视页面；实体 START 与 Inspection 未接通时会明确显示阻断，不能自动开始"/>
       <Button Content="应用到工位" Click="ApplyStation_Click"
         Padding="18,9" Margin="0,0,10,0" Background="#266BB4"
         Foreground="White" BorderBrush="#266BB4" MinHeight="37"/>

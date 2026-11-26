@@ -131,7 +131,9 @@ public sealed partial class MainWindowViewModel
                       : "码率尚未在本次 USB 会话中确认"),
             () => OpenFirstAssetAsync(ProjectWorkspaceService.TestProjectKind,
                 CreateTestProjectAsync),
-            OpenNativeFlashProfile)
+            OpenNativeFlashProfile,
+            () => ShowAutomaticTestAsync(),
+            () => EnterEngineeringVerificationAsync())
         { Owner = global::System.Windows.Application.Current?.MainWindow };
         _productionPreparationWindow = window;
         window.Closed += (_, _) =>

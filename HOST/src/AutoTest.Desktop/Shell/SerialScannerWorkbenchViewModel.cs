@@ -651,6 +651,21 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
         }
     }
 
+    /// <summary>Retry discovery without requesting a COM number.
+    /// When USB identity is ambiguous, the existing device setup remains
+    /// the only manual disambiguation route. No production identity is granted.</summary>
+    public async Task RetryAutoConnectAsync()
+    {
+        if (_disposed) return;
+        if (IsConnected)
+        {
+            DeviceStatus = "扫码枪已连接：" + ConnectedPort;
+            return;
+        }
+        RefreshPorts();
+        await TryAutoConnectAsync();
+    }
+
     private async Task TryAutoConnectAsync()
     {
         if (System.Threading.Interlocked.Exchange(ref _autoConnecting, 1) != 0) return;

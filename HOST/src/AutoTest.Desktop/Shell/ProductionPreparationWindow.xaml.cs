@@ -185,6 +185,8 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
     private readonly Action? _openSpecialProcedure;
     private readonly Func<Task>? _openTestEditor;
     private readonly Action? _openFlashEditor;
+    private readonly Func<Task>? _openProductionMonitor;
+    private readonly Func<Task>? _openEngineeringVerification;
     private long _editGeneration;
     private readonly Func<bool> _mayEdit;
     private readonly Func<string>? _stationDeviceStatus;
@@ -266,7 +268,9 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
         Func<Task<bool>>? publishProject = null,
         Action? openSpecialProcedure = null,
         Func<string>? stationDeviceStatus = null,
-        Func<Task>? openTestEditor = null, Action? openFlashEditor = null)
+        Func<Task>? openTestEditor = null, Action? openFlashEditor = null,
+        Func<Task>? openProductionMonitor = null,
+        Func<Task>? openEngineeringVerification = null)
     {
         _workspace = workspace;
         _mayEdit = mayEdit;
@@ -278,6 +282,8 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
         _stationDeviceStatus = stationDeviceStatus;
         _openTestEditor = openTestEditor;
         _openFlashEditor = openFlashEditor;
+        _openProductionMonitor = openProductionMonitor;
+        _openEngineeringVerification = openEngineeringVerification;
         InitializeComponent();
         ConfigureProductPreparationWorkspace();
         DataContext = this;
@@ -463,6 +469,48 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
     private async void Save_Click(object sender, RoutedEventArgs e) => await SaveAsync();
     private async void ApplyStation_Click(object sender, RoutedEventArgs e) =>
         await GuidedPublishAsync();
+
+    // Leaving configuration opens an EXISTING, authoritative workspace.
+    // No physical START, clamp, CAN or FLASH command is issued by navigation.
+    private async Task LeaveStationSettingsAsync(Func<Task>? navigate)
+    {
+        if (navigate is null)
+        {
+            Status = "检测入口尚未接入主窗口。";
+            return;
+        }
+        if (_busy)
+        {
+            Status = "配置正在保存或应用，请先完成当前操作。";
+            return;
+        }
+        if (_dirty && !await SaveAsync()) return;
+        _closingAfterSave = true;
+        Close();
+        try { await navigate(); }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            MessageBox.Show("无法打开检测工作区：" + error.Message,
+                "AutoTest", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private async void EnterProduction_Click(object sender, RoutedEventArgs e) =>
+        await LeaveStationSettingsAsync(_openProductionMonitor);
+
+    private async void StartEngineering_Click(object sender, RoutedEventArgs e) =>
+        await LeaveStationSettingsAsync(_openEngineeringVerification);
+
+    private async void RetryScanner_Click(object sender, RoutedEventArgs e)
+    {
+        if (_scanner is null)
+        {
+            Status = "未初始化扫码设备服务。";
+            return;
+        }
+        await _scanner.RetryAutoConnectAsync();
+        await RefreshGuidedOverviewAsync();
+    }
 
     // Legacy controls are not a second release path. Every entry performs
     // the same complete project + station verification and publication.

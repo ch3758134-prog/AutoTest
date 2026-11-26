@@ -154,7 +154,10 @@ public partial class ProductionPreparationWindow
             ? "等待扫码原文…" : "扫码原文：" + _scanner.LastRaw, prominent: true);
         scannerBody.Children.Add(_guidedScan);
         var scanActions = new WrapPanel();
-        var device = GuidedButton("扫码设备");
+        var retry = GuidedButton("重新检测扫码枪");
+        retry.Click += RetryScanner_Click;
+        scanActions.Children.Add(retry);
+        var device = GuidedButton("设备设置");
         device.Click += (_, _) => OpenStationSection(3);
         scanActions.Children.Add(device);
         var codes = GuidedButton("编号规则");
@@ -206,9 +209,17 @@ public partial class ProductionPreparationWindow
         publishedBody.Children.Add(_guidedPublication);
         _guidedBlocker = GuidedText("检查运行条件中…");
         publishedBody.Children.Add(_guidedBlocker);
+        var blocked = GuidedText(
+            "正式生产启动功能未接通时，仍可使用真实工程整组实测；结果不计入生产合格品。");
+        publishedBody.Children.Add(blocked);
+        var actions = new WrapPanel();
+        var engineering = GuidedButton("进入真实整组实测");
+        engineering.Click += StartEngineering_Click;
+        actions.Children.Add(engineering);
         var details = GuidedButton("查看待处理问题");
         details.Click += (_, _) => OpenStationSection(4);
-        publishedBody.Children.Add(details);
+        actions.Children.Add(details);
+        publishedBody.Children.Add(actions);
 
         return new ScrollViewer
         {
