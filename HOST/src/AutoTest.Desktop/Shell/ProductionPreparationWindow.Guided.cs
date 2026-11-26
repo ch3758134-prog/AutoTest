@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using AutoTest.Desktop.Projects;
+using AutoTest.FlashLab.Programming;
 
 namespace AutoTest.Desktop.Shell;
 
@@ -488,6 +489,7 @@ public partial class ProductionPreparationWindow
         if (current is null)
             _guidedProject.Text = "没有打开工程。请先进入“开发与调试”创建并保存完整 ECU 工程。";
         else
+        {
             _guidedProject.Text = "当前：" + current.Definition.Name +
                 " · ECU 型号 " + current.Definition.EcuModelCode +
                 "\n" + Path.GetFileName(current.ManifestPath) +
@@ -495,6 +497,24 @@ public partial class ProductionPreparationWindow
                     string.Equals(x.ManifestPath, current.ManifestPath,
                         StringComparison.OrdinalIgnoreCase))
                     ? " · 已列入工位绑定草稿" : " · 尚未绑定到当前工位");
+            try
+            {
+                var snapshot = await AutomaticTestResourceContract.ResolveAsync(current);
+                var flash = await NativeFlashProfileStore.LoadAsync(current.RootDirectory);
+                if (_workspace.Current?.ManifestSha256 != current.ManifestSha256) return;
+                _guidedProject.Text += "\n正式 TEST：" + snapshot.Cases.Count +
+                    " 个用例" + (snapshot.ProjectSetup is null ? "" : " · 有项目准备") +
+                    (snapshot.ProjectTeardown is null ? "" : " · 有项目收尾") +
+                    (snapshot.CanExecute ? " · 资源闭包静态检查通过"
+                        : " · 未就绪：" + string.Join("；", snapshot.Issues.Take(3))) +
+                    "\n原生 FLASH：" + (flash is null ? "尚未保存原生烧录工艺"
+                        : "已保存工艺草稿，发布时须再次核对固件、安全算法和资源 SHA");
+            }
+            catch (Exception error) when (error is not OutOfMemoryException)
+            {
+                _guidedProject.Text += "\n工程 TEST/FLASH 预检尚未通过：" + error.Message;
+            }
+        }
 
         if (_guidedDevice is not null)
             _guidedDevice.Text = _scanner?.IsConnected == true
