@@ -26,8 +26,8 @@ public sealed class StationFixtureExecutionPlanTests
         };
         var plan = StationFixtureExecutionPlan.From(station);
         Assert.Equal(mask, plan.AllowedOutputMask);
-        Assert.Equal([new StationClampAction(expected, true)], plan.Press);
-        Assert.Equal([new StationClampAction(expected, false)], plan.Release);
+        Assert.Equal(new[] { new StationClampAction(expected, true) }, plan.Press);
+        Assert.Equal(new[] { new StationClampAction(expected, false) }, plan.Release);
     }
 
     [Theory]
@@ -43,10 +43,14 @@ public sealed class StationFixtureExecutionPlanTests
         };
         var plan = StationFixtureExecutionPlan.From(station);
         Assert.Equal((byte)3, plan.AllowedOutputMask);
-        Assert.Equal([new StationClampAction(first, true),
-            new StationClampAction(second, true)], plan.Press);
-        Assert.Equal([new StationClampAction(second, false),
-            new StationClampAction(first, false)], plan.Release);
+        Assert.Equal(new[]
+        {
+            new StationClampAction(first, true), new StationClampAction(second, true)
+        }, plan.Press);
+        Assert.Equal(new[]
+        {
+            new StationClampAction(second, false), new StationClampAction(first, false)
+        }, plan.Release);
         Assert.Equal(6500, plan.MovementTimeoutMs);
     }
 
