@@ -133,6 +133,10 @@
          <TextBox x:Name="ProductIndexInput" Width="55" Text="1" TextChanged="ConfigChanged"/>
          <TextBlock Text="序列号字段序号" VerticalAlignment="Center" Margin="0,0,5,0"/>
          <TextBox x:Name="SerialIndexInput" Width="55" Text="2" TextChanged="ConfigChanged"/>
+          <TextBlock Text="硬件版本字段（可选）" VerticalAlignment="Center" Margin="8,0,5,0"/>
+          <TextBox x:Name="HardwareIndexInput" Width="55" Text="0"
+            ToolTip="0 表示条码没有硬件版本字段；区分同产品不同版本时填实际字段序号"
+            TextChanged="ConfigChanged"/>
         </WrapPanel>
         <TextBlock Text="验证样例（混线规则需要一个正确样例和一个应拒绝样例）"
          Style="{StaticResource SmallHint}"/>

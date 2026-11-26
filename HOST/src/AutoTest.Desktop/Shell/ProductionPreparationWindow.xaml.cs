@@ -177,6 +177,7 @@ public partial class ProductionPreparationWindow : Window
         SeparatorInput.Text = rule.Separator;
         SerialIndexInput.Text = rule.SerialField.ToString(CultureInfo.InvariantCulture);
         ProductIndexInput.Text = rule.ModelField.ToString(CultureInfo.InvariantCulture);
+        HardwareIndexInput.Text = rule.HardwareField.ToString(CultureInfo.InvariantCulture);
         PositiveSample.Text = rule.Samples.FirstOrDefault(x => x.ShouldAccept)?.Raw ?? "";
         NegativeSample.Text = rule.Samples.FirstOrDefault(x => !x.ShouldAccept)?.Raw ?? "";
         var fixture = config.Fixture;
@@ -214,6 +215,8 @@ public partial class ProductionPreparationWindow : Window
             };
         if (!int.TryParse(SerialIndexInput.Text, out var serialIndex) ||
             !int.TryParse(ProductIndexInput.Text, out var productIndex) ||
+            !int.TryParse(HardwareIndexInput.Text, out var hardwareIndex) ||
+            hardwareIndex is < 0 or > 32 ||
             SeparatorInput.Text.Length != 1)
             throw new FormatException("请指定单字符分隔符、产品字段和 ECU 编号字段序号。");
         return rule with
@@ -222,11 +225,12 @@ public partial class ProductionPreparationWindow : Window
             Format = ProductionBarcodeRule.Delimited,
             Name = "产品字段与 ECU 唯一编号",
             Prefix = "", ExactLength = 0,
-            AllowedCharacters = @"[A-Za-z0-9_.|-]+",
+            AllowedCharacters = @"[A-Za-z0-9_.\-" +
+                System.Text.RegularExpressions.Regex.Escape(SeparatorInput.Text) + @"]+",
             Separator = SeparatorInput.Text,
             SerialField = serialIndex,
             ModelField = productIndex,
-            HardwareField = 0, BatchField = 0,
+            HardwareField = hardwareIndex, BatchField = 0,
             Samples = Samples()
         };
     }
@@ -415,24 +419,75 @@ public partial class ProductionPreparationWindow : Window
 
     private void Preview_Click(object sender, RoutedEventArgs e)
     {
-        var raw = ScanTrial.Text.Trim();
-        if (string.IsNullOrEmpty(raw)) raw = _scanner.LastRaw;
-        ScanRaw.Text = raw;
+        var manual = !string.IsNullOrWhiteSpace(ScanTrial.Text);
+        var raw = manual ? ScanTrial.Text.Trim() : _scanner.LastRaw;
+        // Input samples are NOT real scanner observations.
         if (string.IsNullOrWhiteSpace(raw))
-        { PreviewStatus.Text = "请扫码或输入一条编号。"; return; }
+        {
+            PreviewStatus.Text = "请扫码，或输入一个编号试算。";
+            return;
+        }
         try
         {
-            var rule = BuildRule(MatchMode.SelectedIndex != 0,
-                MatchMode.SelectedIndex == 2);
+            var mode = MatchMode.SelectedIndex;
+            var rule = BuildRule(mode != 0, mode == 2);
             var parsed = rule.Parse(raw);
-            PreviewStatus.Text = parsed.Accepted
-                ? "解析到 ECU 编号：" + parsed.Serial +
-                  (MatchMode.SelectedIndex == 1 ? " · 产品识别码：" + parsed.Model : "") +
-                  "（仅试算，未授权正式生产）"
-                : "未匹配：" + parsed.Explanation;
+            if (!parsed.Accepted)
+            {
+                PreviewStatus.Text = (manual ? "手工试算：" : "真实扫码：") +
+                    raw + "\n未匹配：" + parsed.Explanation;
+                return;
+            }
+            ProductionProductBinding[] matches;
+            if (mode == 0)
+            {
+                matches = _products.ToArray();
+                if (matches.Length == 0 && _workspace.Current is { } current)
+                    matches = [new("", "", current.ManifestPath,
+                        current.Definition.Id.Value)];
+            }
+            else
+            {
+                var key = parsed.Model;
+                var hardware = parsed.Hardware;
+                if (mode == 2)
+                {
+                    var rows = _registry.Where(x =>
+                        string.Equals(x.Serial, parsed.Serial, StringComparison.Ordinal) &&
+                        (x.ExpiresUtc is null || x.ExpiresUtc > DateTimeOffset.UtcNow))
+                        .ToArray();
+                    if (rows.Length != 1)
+                    {
+                        PreviewStatus.Text = "原文：" + raw +
+                            "\n该编号没有唯一且有效的工程归属登记。";
+                        return;
+                    }
+                    key = rows[0].ProductKey;
+                    hardware = rows[0].HardwareCode;
+                }
+                matches = _products.Where(x =>
+                    string.Equals(x.ProductKey, key, StringComparison.Ordinal) &&
+                    string.Equals(x.HardwareCode, hardware, StringComparison.Ordinal))
+                    .ToArray();
+            }
+            if (matches.Length != 1)
+            {
+                PreviewStatus.Text = "原文：" + raw + "\nECU 编号：" +
+                    parsed.Serial + "\n无法唯一确定工程；不会猜选。";
+                return;
+            }
+            var selected = matches[0];
+            PreviewStatus.Text = (manual ? "手工试算：" : "真实扫码：") +
+                raw + "\nECU 编号：" + parsed.Serial +
+                "\n将匹配工程：" +
+                Path.GetFileName(Path.GetDirectoryName(selected.ManifestPath)) +
+                "（" + selected.ProjectId.ToString("N")[..8] + "）" +
+                "\n仅验证编号和工程绑定，不代表正式生产准入。";
         }
         catch (Exception error) when (error is not OutOfMemoryException)
-        { PreviewStatus.Text = "解析失败：" + error.Message; }
+        {
+            PreviewStatus.Text = "匹配试算失败：" + error.Message;
+        }
     }
 
     private void ImportRegistry_Click(object sender, RoutedEventArgs e)
