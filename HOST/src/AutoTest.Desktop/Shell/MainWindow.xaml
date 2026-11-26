@@ -140,9 +140,9 @@
      <Button Content="工程开发" Command="{Binding ShowEngineerWorkspaceCommand}"
       Style="{StaticResource AtQuietButton}" FontSize="13" Margin="0,0,2,0"
       Padding="9,5" ToolTip="ECU 工程、唯一 TEST、公共流程、DBC/波形、原生烧录与独立调试工具"/>
-     <Button Content="生产准备" Command="{Binding NavigateProductionPreparationCommand}"
+     <Button Content="工位设置" Command="{Binding NavigateProductionPreparationCommand}"
       Style="{StaticResource AtQuietButton}" FontSize="13" Margin="0,0,2,0"
-      Padding="9,5" ToolTip="工位产品识别、型号工程绑定、真实设备与工装、发布和试扫"/>
+      Padding="9,5" ToolTip="首次装机或切换型号时设置一次：当前工程、扫码枪、自动夹具及正式生产版本；日常检测无需进入"/>
      <Button Content="记录与报告" Command="{Binding OpenRecordHistoryCommand}"
       Style="{StaticResource AtQuietButton}" FontSize="13"
       Padding="9,5" ToolTip="真实 SQLite RECORD：按同一 ECU 编号查看检测与复检的完整证据"/>
