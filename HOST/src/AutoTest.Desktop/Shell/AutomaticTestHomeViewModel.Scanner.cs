@@ -107,6 +107,16 @@ public sealed partial class AutomaticTestHomeViewModel
             Notify();
             return;
         }
+        if (_isProductionWorkspace())
+        {
+            // Production resolves the ECU to a verified installed package.
+            // It must not depend on an engineer having opened that project.
+            _scanAlertRequired = false;
+            _scanStatus = "正在根据扫码内容查找检测工程。";
+            Notify();
+            _ = InspectCatalogBarcodeAsync(raw);
+            return;
+        }
         if (_plans.Current is null)
         {
             _scanAlertRequired = true;
