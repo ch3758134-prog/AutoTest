@@ -241,6 +241,24 @@ public sealed partial class RealTestWorkbenchService
                         _project, map, ct).ConfigureAwait(false);
             }
             await Actions.CheckHealthAsync(ct);
+            // A persistent sender that was active when the previous case
+            // finished must still exist when the next case begins. Otherwise
+            // do not attribute a missing environment CAN to an ECU assertion.
+            if (_periodicCaseBoundaries.Count > 0)
+            {
+                var expected = _periodicCaseBoundaries[^1].ActiveAfter
+                    .Where(x => x.DurationMs == 0).ToArray();
+                var current = Actions.PeriodicEvidenceSnapshot();
+                foreach (var pinned in expected)
+                {
+                    var now = current.FirstOrDefault(x => x.TaskId == pinned.TaskId);
+                    if (now is null || now.StoppedUtc is not null)
+                        throw new IOException("跨用例 CAN 环境已中断：0x" +
+                            pinned.CanId.ToString("X") + " / " + pinned.PeriodMs +
+                            "ms；停止原因 " + (now?.StopReason ?? "任务丢失") +
+                            "。禁止继续 ECU 功能判定，请检查项目周期 CAN 记录。");
+                }
+            }
             // Record the physical CAN sender transition at the actual case
             // boundary, not merely as a single end-of-project snapshot.
             var caseBoundaryStartedUtc = DateTimeOffset.UtcNow;
