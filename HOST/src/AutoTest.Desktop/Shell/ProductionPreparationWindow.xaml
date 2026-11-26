@@ -1,7 +1,7 @@
 <Window x:Class="AutoTest.Desktop.Shell.ProductionPreparationWindow"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- Title="生产准备 · 当前工程、真实扫码、受控发布" Width="1120" Height="800"
+ Title="生产准备 · ECU 工程发布与工位设备" Width="1120" Height="800"
  MinWidth="870" MinHeight="560" WindowStartupLocation="CenterOwner"
  Background="#F6F8FB" Foreground="#293E52" FontSize="13"
  UseLayoutRounding="True">
@@ -44,7 +44,7 @@
     </StackPanel>
     <StackPanel>
      <TextBlock Text="生产准备" FontSize="21" FontWeight="SemiBold"/>
-     <TextBlock Text="当前工程 → 真实扫码 → 核验发布（生产执行仍由可信硬件与正式记录控制）"
+     <TextBlock Text="核对当前 ECU 工程、配置工位设备并发布；扫码枪可在生产运行前连接"
       Foreground="#62788D" FontSize="12" Margin="0,4,0,0"/>
     </StackPanel>
    </DockPanel>
@@ -319,7 +319,7 @@
      <StackPanel>
       <TextBlock Text="条码 → 身份 → 唯一已发布工程 → 完整生产任务" Style="{StaticResource Section}"/>
       <TextBlock Style="{StaticResource Help}"
-       Text="输入单条或多条样例，每行一条；或使用已连接的真实 COM 扫码枪。此处只能离线解析和核对工程文件，绝不会启动夹具、FLASH 或 TEST。"/>
+       Text="高级诊断：可批量试算编码并核对资源，不会启动夹具、FLASH 或 TEST。固定型号工位的工程发布不以扫码枪在线为前提。"/>
       <TextBox x:Name="PreviewInput" TextWrapping="Wrap" AcceptsReturn="True"
        MinHeight="88" MaxHeight="135" VerticalScrollBarVisibility="Auto"/>
       <Border Background="#F3F7FB" CornerRadius="7" Padding="12"
