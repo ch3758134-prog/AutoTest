@@ -213,6 +213,17 @@ public partial class ProductionPreparationWindow
             PreparationTabs.SelectedIndex = 2;
             return;
         }
+        if (IdentityMode == StationProductionConfiguration.FixedStation &&
+            FixedModel == project.Definition.EcuModelCode &&
+            Products.Count == 1 &&
+            Products[0].ModelCode == project.Definition.EcuModelCode &&
+            Products[0].HardwareCode == FixedHardware &&
+            string.Equals(Products[0].ManifestPath, project.ManifestPath,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            Status = "当前 ECU 工程已绑定，无需重复保存或重新增加发布修订。";
+            return;
+        }
         if (IdentityMode != StationProductionConfiguration.FixedStation)
         {
             var consent = MessageBox.Show(this,
@@ -268,6 +279,11 @@ public partial class ProductionPreparationWindow
             Status = "请先连接已绑定的真实扫码枪并扫码。手工试算不能登记为现场正例。";
             return;
         }
+        if (string.IsNullOrWhiteSpace(_lastRealBarcodePnp))
+        {
+            Status = "扫码枪尚未按 USB 设备身份完成绑定。请先“记住当前扫码枪”并重新扫码。";
+            return;
+        }
         if (Rules.Count != 1 || !Rules[0].Enabled ||
             Rules[0].Format != ProductionBarcodeRule.Serial)
         {
@@ -319,6 +335,7 @@ public partial class ProductionPreparationWindow
         }
         _guidedScan.Text = (actualDevice ? "真实 COM 扫码" : "手动模拟输入") +
             "：" + raw + "；正在检查编号和已发布工程…";
+        string parsedSerial = "";
         try
         {
             var draft = BuildDraft();
@@ -333,6 +350,7 @@ public partial class ProductionPreparationWindow
                         .Select(x => x.Name + "：" + x.Parse(raw).Code));
                 return;
             }
+            parsedSerial = parsed[0].Parsed.Serial;
             var identityPreview = parsed.Select(x =>
                 x.Parsed.Serial + "/" + x.Parsed.Model + "/" +
                 x.Parsed.Hardware + "/" + x.Parsed.Batch)
@@ -360,6 +378,7 @@ public partial class ProductionPreparationWindow
             if (current == _guidedPreviewSequence)
                 _guidedScan.Text = (actualDevice ? "真实扫码已收到" :
                     "手动试算已收到") + "：" + raw +
+                    (parsedSerial.Length == 0 ? "" : "\n已解析唯一编号：" + parsedSerial) +
                     "\n尚未通过完整工程冻结检查：" + error.Message;
         }
     }
