@@ -116,7 +116,7 @@ public sealed partial class MainWindowViewModel
                 !_hardware.IsManualKeyActionApproved,
             _scannerWorkbench, () => _automaticTestHome.OnPublishedConfigurationChanged(),
             ActivatePublishedProjectAsync,
-            async () => await ConfirmProductionConfigurationAsync(),
+            async () => await ConfirmProductionConfigurationAsync(singleApply: true),
             () => OpenInspectionProcedureCommand.Execute(),
             () => !_hardware.IsConnected
                 ? "主控 USB：未连接（不影响工程发布）"
@@ -182,7 +182,7 @@ public sealed partial class MainWindowViewModel
     /// FLASH release. Not another test plan and never a physical START.
     /// Edits after confirmation invalidate the deployment automatically.
     /// </summary>
-    private async Task<bool> ConfirmProductionConfigurationAsync()
+    private async Task<bool> ConfirmProductionConfigurationAsync(bool singleApply = false)
     {
         if (!IsEngineerWorkspace || _realTest.IsRunning ||
             _automaticTestHome.IsOperatorRunning || _hardware.IsFlashSecuritySensitive ||
@@ -215,7 +215,10 @@ public sealed partial class MainWindowViewModel
             if (!string.Equals(draft.Profile.EcuModelCode,
                     project.Definition.EcuModelCode, StringComparison.Ordinal))
                 throw new InvalidDataException("原生烧录工艺与当前 ECU 工程型号不一致。");
-            var decision = MessageBox.Show(
+            // The unified Apply button is already an explicit release decision.
+            // Publishing changes files only; physical clamp/FLASH still requires
+            // a separate real START and safety interlocks.
+            var decision = singleApply ? MessageBoxResult.Yes : MessageBox.Show(
                 global::System.Windows.Application.Current?.MainWindow,
                 "即将核对并冻结当前 ECU 工程作为本工位正式生产配置。\n" +
                 "无需创建第二套测试方案，正式检测仍执行工程内全部有序 TEST。\n\n" +
