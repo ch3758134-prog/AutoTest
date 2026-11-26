@@ -266,6 +266,35 @@ public partial class ProductionPreparationWindow
 
         try
         {
+            // Early R1 created an identical fake two-row sample set on every
+            // new station. It is not real scanned evidence and must never be
+            // required for the deterministic entire-string parser.
+            if (Rules.Count == 1 &&
+                Rules[0].Enabled &&
+                Rules[0].Format == ProductionBarcodeRule.Serial &&
+                Rules[0].Prefix.Length == 0 &&
+                Rules[0].ExactLength == 0 &&
+                Rules[0].AllowedCharacters == @"[A-Za-z0-9_.-]+" &&
+                Rules[0].Samples.Count == 2 &&
+                Rules[0].Samples.Any(x => x.Raw == "SN001234" &&
+                    x.ShouldAccept && x.ExpectedSerial == "SN001234") &&
+                Rules[0].Samples.Any(x => x.Raw == "SN|BAD" && !x.ShouldAccept))
+            {
+                var clean = MessageBox.Show(this,
+                    "当前还保留旧版软件自动填入的两条演示编号，" +
+                    "它们不是现场扫码证据。\n\n是否清除这两条演示记录，" +
+                    "按“整串作为 ECU 唯一编号”的默认规则发布？" +
+                    "\n这不会修改已发布版本，也不会操作硬件。",
+                    "清理旧演示扫码配置", MessageBoxButton.YesNo,
+                    MessageBoxImage.Question, MessageBoxResult.No);
+                if (clean != MessageBoxResult.Yes)
+                {
+                    Status = "已保留旧演示配置；此次未发布。";
+                    return;
+                }
+                Rules[0].Samples.Clear();
+                MarkDirty();
+            }
             if (!await SaveAsync()) return;
             var config = await StationProductionConfigurationStore.LoadDraftAsync();
             var issues = StationProductionConfigurationStore.InspectRules(config);
