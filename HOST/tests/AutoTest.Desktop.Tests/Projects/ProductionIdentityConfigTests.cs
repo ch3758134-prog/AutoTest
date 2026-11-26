@@ -22,7 +22,7 @@ public sealed class ProductionIdentityConfigTests
         ProductionBarcodeRule.NewSerial() with { Name = name };
 
     [Fact]
-    public void NewStationRuleDoesNotPretendToHaveRealScannerSamples()
+    public void DefaultFixedStationCanPublishOfflineWithoutFakeScannerSamples()
     {
         var blank = ProductionBarcodeRule.NewSerial();
         Assert.Empty(blank.Samples);
@@ -32,7 +32,37 @@ public sealed class ProductionIdentityConfigTests
             FixedModel = pin.ModelCode,
             Products = [new(pin.ModelCode, "", pin.ManifestPath)]
         };
+        Assert.Empty(StationProductionConfigurationStore.InspectRules(config));
+        Assert.True(blank.Parse("EPB000124").Accepted);
+        Assert.False(blank.Parse("EPB000124|").Accepted);
+    }
+
+    [Fact]
+    public void AdvancedBarcodeRulesStillRequireExplicitPositiveAndNegativeSamples()
+    {
+        var pin = Pin("HYDEPB");
+        var advanced = ProductionBarcodeRule.NewSerial() with
+        {
+            Format = ProductionBarcodeRule.Fixed, SerialStart = 3, SerialLength = 6,
+            ExactLength = 8
+        };
+        var config = StationProductionConfiguration.New() with
+        {
+            FixedModel = pin.ModelCode,
+            Products = [new(pin.ModelCode, "", pin.ManifestPath)],
+            Rules = [advanced]
+        };
         Assert.Contains(StationProductionConfigurationStore.InspectRules(config),
+            issue => issue.Contains("正例和反例"));
+
+        var incomplete = config with
+        {
+            Rules = [ProductionBarcodeRule.NewSerial() with
+            {
+                Samples = [new ProductionBarcodeSample("EPB000124", true, "EPB000124")]
+            }]
+        };
+        Assert.Contains(StationProductionConfigurationStore.InspectRules(incomplete),
             issue => issue.Contains("正例和反例"));
     }
 
