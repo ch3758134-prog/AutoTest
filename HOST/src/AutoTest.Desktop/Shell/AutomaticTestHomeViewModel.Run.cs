@@ -296,17 +296,11 @@ public sealed partial class AutomaticTestHomeViewModel
             {
                 case "Wait": break;
                 case "Clamp1Press":
-                    await SetAndCheckClampRequestAsync(hardware, 1, true, ct);
-                    break;
                 case "Clamp1Release":
-                    await SetAndCheckClampRequestAsync(hardware, 1, false, ct);
-                    break;
                 case "Clamp2Press":
-                    await SetAndCheckClampRequestAsync(hardware, 2, true, ct);
-                    break;
                 case "Clamp2Release":
-                    await SetAndCheckClampRequestAsync(hardware, 2, false, ct);
-                    break;
+                    throw new InvalidDataException("旧工程夹具动作不能从工位 IGN/等待工艺执行；" +
+                        "只允许已发布工位夹具方案取得自动夹具授权。");
                 case "IgnOn":
                     if (stationFingerprint is not null)
                         await hardware.SendStationIgnAsync(true, stationFingerprint, ct);
@@ -327,24 +321,6 @@ public sealed partial class AutomaticTestHomeViewModel
                 : "工位动作 " + action.Kind + "：USB ACK 与主控 GPIO 回读一致。" +
                   "实际夹具到位或 IGN 负载电压仍未测量。");
         }
-    }
-
-    /// <summary>
-    /// USB ACK alone does not establish the MCU output request state. Require
-    /// a fresh GPIO readback after every configured fixture request. This is
-    /// still NOT mechanical clamp position feedback; production physical
-    /// fixture approval remains blocked without real sensor observations.
-    /// </summary>
-    private static async Task SetAndCheckClampRequestAsync(
-        HardwareConnectionService hardware, byte clamp, bool press,
-        CancellationToken ct)
-    {
-        await hardware.SendManualClampAsync(clamp, press,
-            "AUTHORIZE CLAMP " + clamp + (press ? " PRESS" : " RELEASE"), ct);
-        var bits = await hardware.ReadClampLevelsAsync(ct);
-        if (((bits >> (clamp - 1)) & 1) != (press ? 1 : 0))
-            throw new IOException("夹具" + clamp + " USB 写入已应答，但主控 GET_CLAMPS GPIO 回读" +
-                "与请求不一致；不能继续 FLASH/TEST。该回读仍不是机械到位证据。");
     }
 
     private static async Task SetAndCheckIgnRequestAsync(
