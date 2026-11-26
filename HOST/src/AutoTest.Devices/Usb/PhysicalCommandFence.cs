@@ -336,6 +336,7 @@ public sealed class PhysicalCommandFence
         {
             if (_runFingerprint is not null || _programming is not null ||
                 _didGrant is not null || _manualBatchCan is not null ||
+                _stationFixtureFingerprint is not null ||
                 (_manualCanRows.Count > 0 && _manualCanRowsGeneration != generation) ||
                 _manualCanRows.Count >= 32)
                 throw new InvalidOperationException("当前工位不能增加 CAN 发送任务。");
@@ -487,6 +488,7 @@ public sealed class PhysicalCommandFence
         lock (_sync)
         {
             if (_runFingerprint is not null || _programming is not null || _didGrant is not null ||
+                _stationFixtureFingerprint is not null ||
                 (_manualKeySteps is not null && exact15Bytes[0] == StationCanWiring.KeypadPort) ||
                 ((_manualBatchCan is not null || _manualCanRows.Count != 0) && !IsDocumentedKeySimFrame(exact15Bytes)))
                 throw new InvalidOperationException("ECU CAN 发送任务运行中，仅允许已授权的单次 KEY CAN 按键命令。");
@@ -541,6 +543,18 @@ public sealed class PhysicalCommandFence
             _stationFixtureExpiry = DateTimeOffset.UtcNow.AddMinutes(60);
             _stationFixtureExact = null;
             _stationFixtureIgnExact = null;
+            _singleCanPayload = null;
+            _authorizedConnection = 0;
+            _canExpiry = default;
+            _oneIgnState = null;
+            _ignGeneration = 0;
+            _ignExpiry = default;
+            _singleLedPayload = null;
+            _ledGeneration = 0;
+            _ledExpiry = default;
+            _baudPermit = null;
+            _baudPermitEpoch = 0;
+            _baudPermitExpires = default;
             _singleClampPayload = null;
             _clampGeneration = 0;
             _clampExpiry = default;
@@ -630,8 +644,9 @@ public sealed class PhysicalCommandFence
             throw new InvalidOperationException("Cannot authorize LED without live USB generation.");
         lock (_sync)
         {
-            if (_runFingerprint is not null || _programming is not null || _didGrant is not null)
-                throw new InvalidOperationException("Manual LED GPIO is blocked during automatic TEST.");
+            if (_runFingerprint is not null || _programming is not null ||
+                _didGrant is not null || _stationFixtureFingerprint is not null)
+                throw new InvalidOperationException("Manual LED GPIO is blocked during station execution.");
             _singleLedPayload = new byte[] { index, on ? (byte)1 : (byte)0 };
             _ledGeneration = connectionGeneration;
             _ledExpiry = DateTimeOffset.UtcNow.AddSeconds(15);
