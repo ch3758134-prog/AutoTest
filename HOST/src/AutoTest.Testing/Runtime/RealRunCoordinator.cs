@@ -730,10 +730,9 @@ public sealed class RealRunCoordinator
                         }
                         else
                         {
-                            analysis = await _waves.AnalyzeAsync(Property(node, "captureKey"),
-                                Property(node, "reference"),
-                                double.Parse(Property(node, "tolerance"), CultureInfo.InvariantCulture),
-                                double.Parse(Property(node, "coverage"), CultureInfo.InvariantCulture), ct);
+                            throw new InvalidDataException(
+                                "真实波形判定必须绑定经过工程师复核的 WAVE 配置资源。" +
+                                "旧式自由参考名与步骤临时容差不能执行，也不能生成有效判定。");
                         }
                         variables[Property(node, "variable")] = new TestDatum(analysis.Value,
                             analysis.Available ? TestSignalStatus.Valid :
