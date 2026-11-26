@@ -50,6 +50,10 @@ public sealed class StationFixtureExecutionPlan
                 fixture.MovementTimeoutMs, fixture.SettleDelayMs,
                 fixture.Clamp1PressHigh, fixture.Clamp2PressHigh);
         }
+        if (!fixture.UseClamp1 && !fixture.UseClamp2)
+            throw new InvalidDataException(
+                "自动夹具已启用，但工位没有绑定实际控制输出；" +
+                "禁止在没有装夹动作的情况下开始 FLASH/TEST。");
         if (fixture.UseClamp1 && fixture.UseClamp2)
         {
             // No silent default for two mechanical actuators: the order must
