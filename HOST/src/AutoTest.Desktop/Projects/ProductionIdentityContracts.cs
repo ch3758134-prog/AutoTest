@@ -29,7 +29,9 @@ public sealed record ProductionBarcodeRule(
         Guid.NewGuid().ToString("N"), "整串唯一编号", 1, true, Serial,
         "", 0, @"[A-Za-z0-9_.-]+", "|", 1, 0, 0, 0,
         1, 0, 0, 0, 0, 0, "",
-        [new("SN001234", true, "SN001234"), new("SN|BAD", false)]);
+        // No invented positive/negative sample may count as real station
+        // barcode validation. A fresh station must provide its own samples.
+        Array.Empty<ProductionBarcodeSample>());
 
     public void Validate()
     {
