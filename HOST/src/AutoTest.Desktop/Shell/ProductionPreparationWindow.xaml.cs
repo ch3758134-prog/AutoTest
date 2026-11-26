@@ -189,7 +189,15 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
     public string PublicationOverview
     {
         get => _publicationOverview;
-        private set { _publicationOverview = value; Changed(nameof(PublicationOverview)); }
+        private set
+        {
+            _publicationOverview = value;
+            // Presentation-only readouts: assigning text never writes into
+            // a read-only ViewModel property via a TwoWay binding.
+            PublishedProductSummary.Text = value;
+            PublishedVerificationSummary.Text = value;
+            Changed(nameof(PublicationOverview));
+        }
     }
     private string _issueSummary = "尚未运行发布检查。";
     public string IssueSummary

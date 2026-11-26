@@ -108,9 +108,16 @@
        </StackPanel>
       </Border>
       <TextBlock Text="本工位已发布产品与完整 TEST 顺序" Style="{StaticResource Section}"/>
-      <TextBox Text="{Binding PublicationOverview,Mode=OneWay}" IsReadOnly="True"
-       Focusable="False" Background="#F7F9FC" TextWrapping="Wrap"
-       VerticalScrollBarVisibility="Auto" MinHeight="100" MaxHeight="210"/>
+      <!-- A readonly publication summary is not an editor. Avoid TextBox's
+           default TwoWay Text binding and avoid any source binding entirely. -->
+      <Border Background="#F7F9FC" CornerRadius="5" BorderBrush="#DFE7EF"
+       BorderThickness="1" MinHeight="100">
+       <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="210">
+        <TextBlock x:Name="PublishedProductSummary"
+         Text="尚未发布生产工位配置。" TextWrapping="Wrap"
+         Foreground="#39566D" Padding="10"/>
+       </ScrollViewer>
+      </Border>
      </StackPanel>
     </ScrollViewer>
    </TabItem>
@@ -333,7 +340,8 @@
       <StackPanel>
        <TextBlock Text="发布前检查" FontWeight="SemiBold" Margin="0,0,0,6"/>
        <TextBlock Text="{Binding IssueSummary}" Foreground="#A15C21" TextWrapping="Wrap"/>
-       <TextBlock Text="{Binding PublicationOverview}" Margin="0,7,0,0"
+       <TextBlock x:Name="PublishedVerificationSummary"
+        Text="尚未发布生产工位配置。" Margin="0,7,0,0"
         Foreground="#42647F" TextWrapping="Wrap" MaxHeight="135"/>
       </StackPanel>
      </Border>

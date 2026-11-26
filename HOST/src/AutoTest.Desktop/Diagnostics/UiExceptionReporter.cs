@@ -20,6 +20,7 @@ public static class UiExceptionReporter
             var body = Environment.NewLine + "=== " +
                 DateTimeOffset.Now.ToString("O") + " | PID=" +
                 Environment.ProcessId + " | " + context + " ===" +
+                Environment.NewLine + RuntimeBuildIdentity.DiagnosticText +
                 Environment.NewLine + exception + Environment.NewLine;
             File.AppendAllText(file, body, new UTF8Encoding(false));
             Trace.TraceError(body);

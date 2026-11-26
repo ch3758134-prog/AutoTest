@@ -67,6 +67,10 @@ public sealed class EditorTabModel(string key, string title, UserControl view, F
 /// <summary>Only presentation state and UX commands. Project data remains in ProjectWorkspaceService.</summary>
 public sealed partial class MainWindowViewModel : BindableBase
 {
+    // Identifies the binary that is ACTUALLY loaded, not the latest GitHub
+    // branch. A stale EXE is visible even if local source was updated.
+    public string RuntimeBuildLabel => RuntimeBuildIdentity.ShortLabel;
+    public string RuntimeBuildDetails => RuntimeBuildIdentity.DiagnosticText;
     private readonly ProjectWorkspaceService _workspace;
     private readonly HardwareConnectionService _hardware;
     private readonly RealTestWorkbenchService _realTest;

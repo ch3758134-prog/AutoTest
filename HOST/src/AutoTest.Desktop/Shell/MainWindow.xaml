@@ -112,6 +112,9 @@
        VerticalAlignment="Center" HorizontalAlignment="Center"/>
      </Border>
      <TextBlock Text="AutoTest" Margin="7,0,0,0" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
+     <TextBlock Text="{Binding RuntimeBuildLabel}" Margin="8,0,0,0"
+      FontSize="10" Foreground="#768A9B" VerticalAlignment="Center"
+      ToolTip="{Binding RuntimeBuildDetails}" />
      <Border Margin="6,0,0,0" Background="#EAF4F0" BorderBrush="#E7EFFB"
       BorderThickness="1" CornerRadius="3" Padding="4,1" VerticalAlignment="Center"
       Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}">
