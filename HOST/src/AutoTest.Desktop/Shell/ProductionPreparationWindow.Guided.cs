@@ -315,6 +315,59 @@ public partial class ProductionPreparationWindow
         return Task.CompletedTask;
     }
 
+    // The current R1 uses three legacy publication pointers (FLASH, project,
+    // station). Snapshot them before applying from this single user action.
+    // If a later stage fails, restore the former committed version rather
+    // than leaving a partially applied workcell. No physical USB operations.
+    private sealed record StationPointerSnapshot(string Path, byte[]? Bytes);
+
+    private static async Task<StationPointerSnapshot[]> CaptureStationPointersAsync(
+        string projectRoot)
+    {
+        var paths = new[]
+        {
+            NativeFlashProfileStore.InsideRoot(projectRoot,
+                NativeFlashPublicationStore.CurrentRelativePath),
+            StationDeploymentStore.PathName,
+            StationProductionConfigurationStore.PublishedPath
+        };
+        var snapshots = new List<StationPointerSnapshot>();
+        foreach (var path in paths)
+            snapshots.Add(new(path, File.Exists(path)
+                ? await File.ReadAllBytesAsync(path) : null));
+        return snapshots.ToArray();
+    }
+
+    private static async Task RestoreStationPointersAsync(
+        IReadOnlyList<StationPointerSnapshot> snapshots)
+    {
+        // The last publication is restored first. A reader seeing a
+        // mismatched release during this operation fails closed.
+        foreach (var snapshot in snapshots.Reverse())
+        {
+            var current = File.Exists(snapshot.Path)
+                ? await File.ReadAllBytesAsync(snapshot.Path) : null;
+            if (snapshot.Bytes is null && current is null ||
+                snapshot.Bytes is not null && current is not null &&
+                snapshot.Bytes.AsSpan().SequenceEqual(current))
+                continue;
+            if (snapshot.Bytes is null)
+            {
+                File.Delete(snapshot.Path);
+                continue;
+            }
+            var temporary = snapshot.Path + ".rollback-" +
+                Guid.NewGuid().ToString("N") + ".tmp";
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(snapshot.Path)!);
+                await File.WriteAllBytesAsync(temporary, snapshot.Bytes);
+                File.Move(temporary, snapshot.Path, overwrite: true);
+            }
+            finally { if (File.Exists(temporary)) File.Delete(temporary); }
+        }
+    }
+
     private async Task GuidedPublishAsync()
     {
         if (!_ready || !_mayEdit() || _busy)
@@ -328,38 +381,43 @@ public partial class ProductionPreparationWindow
             Status = "请先在开发与调试打开并保存具有正式型号的 ECU 工程。";
             return;
         }
-        // The ordinary path publishes the selected engineering project.
-        // No user-maintained duplicate model/manifest binding is required.
-        // Existing advanced multi-model relations are never erased silently.
-        if (IdentityMode != StationProductionConfiguration.FixedStation ||
-            Products.Count > 1)
-        {
-            Status = "当前使用多型号或高级身份配置；请在高级配置核对型号映射，" +
-                "然后通过发布详情的受控流程处理。不会自动覆盖现有型号关系。";
-            return;
-        }
+        // Fixed-station commissioning can infer its single product from the
+        // opened engineering project. Multi-model setups retain the complete
+        // user-edited mapping; they use this SAME apply action and do not
+        // require a separate hidden publishing workflow.
         var model = project.Definition.EcuModelCode;
+        if (IdentityMode == StationProductionConfiguration.FixedStation)
+        {
+            if (Products.Count == 0)
+            {
+                FixedModel = model;
+                Products.Add(new ProductRow
+                {
+                    ModelCode = model, HardwareCode = FixedHardware,
+                    ManifestPath = project.ManifestPath
+                });
+                MarkDirty();
+            }
+            else if (Products.Count == 1 &&
+                (FixedModel != model ||
+                 Products[0].ModelCode != model ||
+                 Products[0].HardwareCode != FixedHardware ||
+                 !string.Equals(Products[0].ManifestPath,
+                     project.ManifestPath, StringComparison.OrdinalIgnoreCase)))
+            {
+                Status = "本工位已配置另一型号工程。请在本页“产品与 ECU 工程”核对后应用；" +
+                    "不会自动覆盖原型号和已发布版本。";
+                OpenStationDetail(2);
+                return;
+            }
+        }
         if (Products.Count == 0)
         {
-            FixedModel = model;
-            Products.Add(new ProductRow
-            {
-                ModelCode = model, HardwareCode = FixedHardware,
-                ManifestPath = project.ManifestPath
-            });
-            MarkDirty();
-        }
-        else if (FixedModel != model ||
-            Products[0].ModelCode != model ||
-            Products[0].HardwareCode != FixedHardware ||
-            !string.Equals(Products[0].ManifestPath, project.ManifestPath,
-                StringComparison.OrdinalIgnoreCase))
-        {
-            Status = "已保存的工位工程绑定与当前 ECU 工程不一致。为防错型号，" +
-                "不会静默替换；请进入高级配置核对并明确调整。";
+            Status = "尚未配置型号到工程的关系，请先在本页“产品与 ECU 工程”添加绑定。";
             return;
         }
 
+        StationPointerSnapshot[]? snapshots = null;
         try
         {
             // Early R1 created an identical fake two-row sample set on every
@@ -401,15 +459,52 @@ public partial class ProductionPreparationWindow
             if (_publishProject is null)
                 throw new InvalidOperationException("原生 ECU 工程发布入口未连接。");
 
-            // Saving and publishing are different actions. A real scanner is
-            // deliberately NOT required to publish this offline project.
-            // Runtime still enforces the exact bound COM/PnP observation.
+            // An unchanged, still-valid complete station release is already
+            // applied. Clicking again must not create new publication IDs or
+            // invalidate the scanner's accepted identity.
+            var oldPublication = await StationProductionConfigurationStore.LoadPublishedAsync();
+            if (oldPublication is not null &&
+                string.Equals(oldPublication.ConfigurationSha256,
+                    StationProductionConfigurationStore.ConfigurationSha(config),
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    var station = await StationDeploymentStore.RestoreAsync();
+                    var matching = oldPublication.Projects.SingleOrDefault(x =>
+                        string.Equals(x.ManifestPath, project.ManifestPath,
+                            StringComparison.OrdinalIgnoreCase));
+                    if (matching is not null && station is not null &&
+                        station.Project.Definition.Id == project.Definition.Id &&
+                        station.Project.ManifestSha256 == project.ManifestSha256)
+                    {
+                        await StationProductionConfigurationStore.VerifyProductAsync(matching);
+                        Status = "本套生产配置已经应用到工位，工程、固件和 TEST 均未变化；无需重复发布。";
+                        await RefreshOverviewAsync();
+                        return;
+                    }
+                }
+                catch (Exception error) when (error is IOException or
+                    InvalidDataException or UnauthorizedAccessException or
+                    FileNotFoundException or ArgumentException)
+                {
+                    // The prior release no longer verifies. A fresh complete
+                    // preflight follows; never claim that stale assets pass.
+                    Status = "已有发布版本已失效，重新核对当前完整配置：" + error.Message;
+                }
+            }
+
+            // Config is immutable during the single apply operation.
+            // Scanner discovery does not gate offline release.
             var generation = _editGeneration;
             _busy = true;
+            snapshots = await CaptureStationPointersAsync(project.RootDirectory);
             var projectAccepted = await _publishProject();
             if (!projectAccepted)
             {
-                Status = "已取消 ECU 工程发布；工位识别配置未发布。";
+                await RestoreStationPointersAsync(snapshots);
+                snapshots = null;
+                Status = "已取消应用；旧版工位配置保持不变。";
                 return;
             }
             var deployed = await StationDeploymentStore.RestoreAsync()
@@ -417,24 +512,39 @@ public partial class ProductionPreparationWindow
             if (deployed.Project.Definition.Id != project.Definition.Id ||
                 !string.Equals(deployed.Project.ManifestSha256, project.ManifestSha256,
                     StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException("工程版本在发布过程中发生变化。请重新打开工程核对。");
+                throw new InvalidDataException("工程版本在应用过程中发生变化。请重新打开工程核对。");
             if (_editGeneration != generation ||
                 _workspace.Current?.ManifestSha256 != project.ManifestSha256)
-                throw new IOException("发布过程中工程或工位配置被修改，已阻止发布工位映射。");
-            // The station publication still re-verifies every TEST/DBC/WAVE
-            // and immutable FLASH SHA. Offline publication != physical scan.
+                throw new IOException("应用过程中工程或工位配置被修改，已阻止应用。");
+            // Last pointer commits the station identity, full TEST and FLASH
+            // snapshot; no partial change is represented as successful.
             var release = await StationProductionConfigurationStore.PublishAsync(config);
+            snapshots = null; // Successfully applied; do not undo on a UI refresh error.
             _onPublished?.Invoke();
-            Status = "生产配置发布成功 · " +
+            Status = "已一次性应用整套生产配置 · " +
                 release.PublicationId.ToString("N")[..10] +
-                "；工程、原生 FLASH、TEST 与型号绑定已冻结。" +
-                "扫码枪及实体 START/夹具/Inspection 仍须在运行前验收。";
+                "；FLASH、完整 TEST、扫码型号和工位规则已核对。" +
+                " 实体 START、夹具安全条件及正式 Inspection 仍需实机验收。";
             await RefreshOverviewAsync();
         }
         catch (Exception error) when (error is not OutOfMemoryException)
         {
-            Status = "生产配置没有完整发布：" + error.Message +
-                "；如果工程快照已单独更新，也不代表工位正式准入成功。";
+            if (snapshots is not null)
+            {
+                try
+                {
+                    await RestoreStationPointersAsync(snapshots);
+                    Status = "生产配置应用未完成，已恢复之前的工位发布版本：" + error.Message;
+                }
+                catch (Exception rollback) when (rollback is not OutOfMemoryException)
+                {
+                    Status = "生产配置应用失败且恢复旧版本未完成。必须停止正式生产，" +
+                        "检查工位发布文件后才能继续：" + error.Message +
+                        "；恢复失败：" + rollback.Message;
+                }
+            }
+            else
+                Status = "生产配置检查或界面更新失败：" + error.Message;
         }
         finally { _busy = false; }
     }
