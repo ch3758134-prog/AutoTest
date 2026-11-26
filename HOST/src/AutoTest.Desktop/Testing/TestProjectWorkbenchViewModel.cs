@@ -728,6 +728,51 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
                 allowRealOperations: true);
             var steps = TestRunStepScope.EnabledSteps(latest.Document).ToArray();
             var mappings = TestRunStepScope.RequiredMappings(latest.Document).ToArray();
+            // Earlier asset bytes are available only for edits recorded after
+            // the immutable authoring history was introduced. This comparison
+            // never falls back to the mutable current file for the old revision.
+            var oldBytes = await ProjectResourceRevisionArchive.TryReadAsync(
+                _workspace.Current!.RootDirectory, AssetId.Create(row.AssetId),
+                row.Revision, row.Sha256);
+            string diffSummary;
+            if (oldBytes is null)
+            {
+                diffSummary = "旧版内容尚未归档，无法作逐步差异比较；只可预检新定义。";
+            }
+            else
+            {
+                var oldDocument = TestDocumentCodec.Deserialize(
+                    System.Text.Encoding.UTF8.GetString(oldBytes));
+                static IEnumerable<StepNode> Walk(StepNode n)
+                {
+                    yield return n;
+                    foreach (var slot in n.Slots.Values)
+                        foreach (var child in slot)
+                            foreach (var deep in Walk(child)) yield return deep;
+                }
+                static string StepSignature(StepNode n) =>
+                    n.Type + "|" + n.Name + "|" +
+                    string.Join(";", n.Properties.OrderBy(x => x.Key)
+                        .Select(x => x.Key + "=" + x.Value)) + "|" +
+                    string.Join(";", n.Slots.OrderBy(x => x.Key)
+                        .Select(x => x.Key + "=" +
+                            string.Join(",", x.Value.Select(step => step.Id.ToString()))));
+                static Dictionary<string, string> Index(TestDocument doc) =>
+                    Enum.GetValues<TestPhase>()
+                        .SelectMany(phase => doc.Get(phase).SelectMany(Walk))
+                        .ToDictionary(node => node.Id.ToString(), StepSignature);
+                var before = Index(oldDocument);
+                var after = Index(latest.Document);
+                var added = after.Keys.Count(id => !before.ContainsKey(id));
+                var removed = before.Keys.Count(id => !after.ContainsKey(id));
+                var edited = after.Count(item => before.TryGetValue(item.Key,
+                    out var oldValue) && oldValue != item.Value);
+                var mappingChanged = !oldDocument.Mappings.SequenceEqual(latest.Document.Mappings);
+                diffSummary = "已验证旧版历史资产。步骤新增 " + added +
+                    "、移除 " + removed + "、本体或分支编辑 " + edited +
+                    "；映射内容变化：" + (mappingChanged ? "是" : "否") +
+                    "。此摘要不代替信号物理语义的工程师确认。";
+            }
             var signature = string.Join("、", mappings.Take(7)
                 .Select(x => x.Name + " (" + x.Kind + ")"));
             var preview = "用例：" + row.Name +
@@ -736,7 +781,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
                 "\n当前真实步骤：" + steps.Length + " 个，资源映射：" +
                 mappings.Length + " 项" +
                 (signature.Length == 0 ? "" : "\n映射摘要：" + signature) +
-                "\n\n旧版完整文件并未由本审查证明仍被保留，因此无法自动输出旧/新逐步差异。" +
+                "\n\n" + diffSummary +
                 "\n采用新版只修改当前调用实例的修订指针，不修复信号语义、其它用例或生产发布。" +
                 "\n采用后需要重新完成工程资源检查。";
             if (!plan.Diagnostics.IsEmpty)
