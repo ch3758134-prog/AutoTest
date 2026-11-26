@@ -47,6 +47,9 @@ public sealed class ConfiguredWavePort : ITestWavePort
             if (!asset.VerifyHash(bytes))
                 throw new InvalidDataException("波形配置文件与保存的指纹不一致：" + mapping.Name);
             var cfg = (WaveSettingsDocument)ProjectConfigurationCodec.Decode(asset.Kind, bytes);
+            if (!cfg.IsComparisonReviewCurrent)
+                throw new InvalidDataException("波形判据尚未批准新版比较算法，或已改变 DBC、参考、阈值：" +
+                    mapping.Name + "。请在 WAVE 配置中复核后保存新修订，再更新 TEST 资源引用。");
             if (string.IsNullOrWhiteSpace(cfg.ReferenceName) || !cfg.DbcAssetId.HasValue)
                 throw new InvalidDataException("波形判定缺少已确认的参考波形或 DBC：" + mapping.Name);
             var matches = _catalog.List().Where(x =>
@@ -110,7 +113,21 @@ public sealed class ConfiguredWavePort : ITestWavePort
         }
     }
 
-    public async Task<TestWaveResult> AnalyzeAsync(string captureKey, string referenceKey,
+    public Task<TestWaveResult> AnalyzeAsync(string captureKey, string referenceKey,
+        double tolerance, double minimumCoverage, CancellationToken ct)
+    {
+        // Legacy ad-hoc TEST WaveCompare parameters cannot establish approval
+        // of an immutable algorithm/reference/threshold contract. The WAVE
+        // workbench still offers independent manual comparisons; an actual
+        // automatic TEST must select a reviewed WaveProfile mapping.
+        return Task.FromResult(new TestWaveResult(false, "WAVE_PROFILE_REQUIRED",
+            null, null,
+            "正式 TEST 的波形判定必须指定已保存并复核的 WAVE 配置资源；" +
+            "不能再用步骤临时容差与自由参考名绕过算法审查。"));
+    }
+
+    private async Task<TestWaveResult> LegacyAdHocCompareNotForExecutionAsync(
+        string captureKey, string referenceKey,
         double tolerance, double minimumCoverage, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
@@ -161,6 +178,11 @@ public sealed class ConfiguredWavePort : ITestWavePort
         if (!asset.VerifyHash(bytes))
             throw new InvalidDataException("Wave analysis configuration content differs from project revision.");
         var settings = (WaveSettingsDocument)ProjectConfigurationCodec.Decode(asset.Kind, bytes);
+        if (!settings.IsComparisonReviewCurrent)
+            return new(false, "WAVE_ALGORITHM_REVIEW_REQUIRED",
+                null, evidence.Evidence.ToString(),
+                "波形判据的算法、DBC、参考或容差已发生变化，须重新审核保存配置，" +
+                "然后更新用例资源修订才允许真实自动判定。");
         var actual = _capture.ReadEvidence(evidence.Evidence).Actual;
         var signal = actual.Signal;
         if (!settings.DbcAssetId.HasValue ||
