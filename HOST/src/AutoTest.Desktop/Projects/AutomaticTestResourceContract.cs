@@ -81,7 +81,7 @@ public static class AutomaticTestResourceContract
         }
         var cases = new List<AutomaticTestCaseBinding>();
         if (tree.Packages.Count == 0)
-            Flag("自动测试项目尚未添加测试用例.", "PROJECT:EMPTY",
+            Flag("自动测试项目尚未添加测试用例。", "PROJECT:EMPTY",
                 "项目结构", "缺少有序测试用例", tree.Name,
                 "在 TEST 项目中添加正式用例实例。", projectAsset.Id.Value);
         else if (tree.Packages.Any(entry => !entry.Enabled))
@@ -155,10 +155,10 @@ public static class AutomaticTestResourceContract
         }
         var projectSetup = tree.ProjectSetup is null ? null :
             await ResolveProjectStageAsync(project, tree.ProjectSetup,
-                "项目准备", issues, ct).ConfigureAwait(false);
+                "项目准备", issues, details, ct).ConfigureAwait(false);
         var projectTeardown = tree.ProjectTeardown is null ? null :
             await ResolveProjectStageAsync(project, tree.ProjectTeardown,
-                "项目收尾", issues, ct).ConfigureAwait(false);
+                "项目收尾", issues, details, ct).ConfigureAwait(false);
         return new(projectAsset, cases.AsReadOnly(), issues.AsReadOnly())
         {
             ProjectSetup = projectSetup, ProjectTeardown = projectTeardown,
@@ -168,8 +168,17 @@ public static class AutomaticTestResourceContract
 
     private static async Task<AutomaticTestCaseBinding?> ResolveProjectStageAsync(
         OpenProjectContext project, TestProjectEntry entry, string phaseName,
-        List<string> issues, CancellationToken ct)
+        List<string> issues, List<ResourceDependencyIssue> details,
+        CancellationToken ct)
     {
+        void StageProblem(string reason, string key, string category,
+            string title, Guid? resource = null)
+        {
+            issues.Add(phaseName + "：" + reason);
+            details.Add(new ResourceDependencyIssue(key, category, title,
+                phaseName + " · " + entry.DisplayName, reason,
+                resource ?? entry.PackageAssetId, entry.ItemId));
+        }
         try
         {
             if (!entry.Enabled)
@@ -184,9 +193,12 @@ public static class AutomaticTestResourceContract
                 new UTF8Encoding(false, true).GetString(bytes));
             var prepared = new PlanCompiler().Prepare(program, allowRealOperations: true);
             foreach (var diag in prepared.Diagnostics)
-                issues.Add(phaseName + "：" + diag);
+                StageProblem(diag, "PLAN:" + entry.PackageAssetId.ToString("N"),
+                    "TEST 步骤", "项目阶段步骤预检失败");
             if (TestRunStepScope.EnabledSteps(program).Any(s => s.Type == "Flash"))
-                issues.Add(phaseName + "：不可内嵌 FLASH；每台 ECU 前置烧录由工位工艺负责。");
+                StageProblem("不可内嵌 FLASH；每台 ECU 前置烧录由工位工艺负责。",
+                    "FLASH:" + entry.PackageAssetId.ToString("N"),
+                    "执行冲突", "项目阶段包含重复 FLASH");
             foreach (var mapping in TestRunStepScope.RequiredMappings(program))
             {
                 try { await ValidateMappingAsync(project, mapping, ct).ConfigureAwait(false); }
@@ -195,6 +207,12 @@ public static class AutomaticTestResourceContract
                     FormatException or NotSupportedException)
                 {
                     issues.Add(phaseName + " 资源「" + mapping.Name + "」：" + error.Message);
+                    details.Add(new ResourceDependencyIssue(
+                        "RESOURCE:" + mapping.Asset.Value.ToString("N") + ":" + mapping.Kind,
+                        "工程资源", "资源修订/映射需要复核",
+                        phaseName + " · " + mapping.Name, error.Message,
+                        mapping.Asset.Value == Guid.Empty ? null : mapping.Asset.Value,
+                        entry.ItemId));
                 }
             }
             return new(entry, asset, program, asset.Sha256);
@@ -203,7 +221,9 @@ public static class AutomaticTestResourceContract
             UnauthorizedAccessException or ArgumentException or ProjectDataException or
             FormatException or NotSupportedException)
         {
-            issues.Add(phaseName + "：" + error.Message);
+            StageProblem(error.Message,
+                "CASE:" + entry.PackageAssetId.ToString("N"),
+                "TEST 引用", "项目阶段引用未通过检查");
             return null;
         }
     }
