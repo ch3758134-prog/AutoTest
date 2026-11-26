@@ -130,23 +130,22 @@
          services, never a second test executor. -->
     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="9,0,8,0"
      VerticalAlignment="Center" chrome:WindowChrome.IsHitTestVisibleInChrome="True">
-     <Button Content="工程测试" Command="{Binding EnterEngineeringVerificationCommand}"
-      Style="{StaticResource AtQuietButton}" FontSize="13" FontWeight="SemiBold"
-      Foreground="#1769A8" Margin="0,0,5,0" Padding="12,5"
-      ToolTip="打开当前工程的完整测试运行窗口"/>
      <Button Content="生产检测" Command="{Binding ShowProductionWorkspaceCommand}"
-      Style="{StaticResource AtQuietButton}" FontSize="13" Margin="0,0,2,0"
-      Padding="9,5" ToolTip="查看正式检测状态；设备或启动条件未就绪时不能检测"/>
-     <Button Content="工程开发" Command="{Binding ShowEngineerWorkspaceCommand}"
-      Style="{StaticResource AtQuietButton}" FontSize="13" Margin="0,0,2,0"
-      Padding="9,5" ToolTip="编辑测试用例与工程资源，使用专业工具"/>
-     <Button Content="工位设置" Command="{Binding NavigateProductionPreparationCommand}"
-      Style="{StaticResource AtQuietButton}" FontSize="13" Margin="0,0,2,0"
-      Padding="9,5" ToolTip="选择检测工程、连接扫码枪并设置夹具"/>
-     <Button Content="记录与报告" Command="{Binding OpenRecordHistoryCommand}"
-      Style="{StaticResource AtQuietButton}" FontSize="13"
-      Padding="9,5" ToolTip="按 ECU 编号查询多次检测及其报告"/>
+      Style="{StaticResource AtQuietButton}" FontSize="13" FontWeight="SemiBold"
+      Padding="13,5" Margin="0,0,4,0"
+      ToolTip="扫码自动匹配检测工程并查看检测状态"/>
+     <Button Content="工程" Command="{Binding ShowEngineerWorkspaceCommand}"
+      Style="{StaticResource AtQuietButton}" FontSize="13" FontWeight="SemiBold"
+      Padding="13,5" ToolTip="编辑测试用例并进行工程调试"/>
     </StackPanel>
+    <Menu Background="Transparent" VerticalAlignment="Center" FontSize="13"
+     chrome:WindowChrome.IsHitTestVisibleInChrome="True">
+     <MenuItem Header="管理">
+      <MenuItem Header="生产工程库…" Command="{Binding OpenProductionProjectLibraryCommand}"/>
+      <MenuItem Header="工位设备设置…" Command="{Binding NavigateProductionPreparationCommand}"/>
+      <MenuItem Header="记录与报告" Command="{Binding OpenRecordHistoryCommand}"/>
+     </MenuItem>
+    </Menu>
     <Menu Background="Transparent" VerticalAlignment="Center" FontSize="13"
      Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}"
      chrome:WindowChrome.IsHitTestVisibleInChrome="True">
