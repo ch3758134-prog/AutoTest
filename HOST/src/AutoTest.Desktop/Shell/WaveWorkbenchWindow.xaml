@@ -322,6 +322,14 @@
         <Button Content="将当前记录存为参考" Command="{Binding SaveReferenceCommand}"
          Style="{StaticResource WaveButton}" ToolTip="只有原始真实采集证据能建立参考；并不会自动修改测试标准"/>
        </WrapPanel>
+       <WrapPanel VerticalAlignment="Center" Margin="0,0,0,8">
+        <TextBlock Text="比较类型" Style="{StaticResource WaveLabel}" Margin="0,0,6,0"/>
+        <ComboBox Width="204" Height="31" ItemsSource="{Binding CompareModes}"
+         SelectedItem="{Binding SelectedCompareMode,Mode=TwoWay}"
+         DisplayMemberPath="Label" Margin="0,0,10,0"/>
+        <TextBlock Text="离散状态按实测跳变区间判定，不作中间值插值"
+         FontSize="11" Foreground="#61758A" VerticalAlignment="Center"/>
+       </WrapPanel>
        <WrapPanel VerticalAlignment="Center">
         <TextBlock Text="绝对容差" Style="{StaticResource WaveLabel}" Margin="0,0,6,0"/>
         <TextBox Width="77" Style="{StaticResource WaveInput}" Margin="0,0,13,0"
