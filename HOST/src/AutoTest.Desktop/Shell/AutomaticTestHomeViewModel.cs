@@ -24,6 +24,8 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     private readonly Action _openEngineer;
     private readonly Action _openScannerSettings;
     private readonly Func<bool> _isProductionWorkspace;
+    private readonly ProductionProjectCatalog _productionCatalog;
+    private readonly Func<InstalledProductionPackage, Task<bool>> _activateCatalogPackage;
     private bool _busy;
     private string _status = "正在读取检测工程";
     private string _usbAutoStatus = "启动后自动连接主控 USB";
@@ -70,7 +72,9 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         SerialScannerWorkbenchViewModel scanner,
         ProjectWorkspaceService engineering, RealTestWorkbenchService realTest,
         Action openEngineer,
-        Action openScannerSettings, Func<bool>? isProductionWorkspace = null)
+        Action openScannerSettings, Func<bool>? isProductionWorkspace = null,
+        ProductionProjectCatalog? productionCatalog = null,
+        Func<InstalledProductionPackage, Task<bool>>? activateCatalogPackage = null)
     {
         _plans = plans;
         _hardware = hardware;
@@ -79,6 +83,9 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         _openEngineer = openEngineer;
         _openScannerSettings = openScannerSettings;
         _isProductionWorkspace = isProductionWorkspace ?? (() => true);
+        _productionCatalog = productionCatalog ?? new ProductionProjectCatalog();
+        _activateCatalogPackage = activateCatalogPackage ??
+            (_ => Task.FromResult(false));
         ChoosePlanCommand = new DelegateCommand(() => _openEngineer());
         OpenScannerSettingsCommand = new DelegateCommand(() => _openScannerSettings());
         RefreshStationCommand = new DelegateCommand(() => UpdateConnection());
