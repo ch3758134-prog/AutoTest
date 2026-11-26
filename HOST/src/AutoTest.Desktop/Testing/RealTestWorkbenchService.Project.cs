@@ -13,6 +13,42 @@ namespace AutoTest.Desktop.Testing;
 public sealed partial class RealTestWorkbenchService
 {
     /// <summary>
+    /// READ-ONLY preflight for all WAVE profile references, mandatory before
+    /// the irreversible engineering FLASH and before the pneumatic outputs.
+    /// A valid TEST step + file SHA is not sufficient if its reviewed waveform
+    /// algorithm or named reference is missing/stale.
+    /// </summary>
+    public async Task VerifyProjectWaveProfilesBeforeHardwareAsync(
+        IReadOnlyList<TestDocument> orderedCases, CancellationToken ct)
+    {
+        var project = _projects.Current ??
+            throw new InvalidOperationException("未打开完整 ECU 工程。");
+        var waveMappings = new HashSet<TestTargetMapping>();
+        foreach (var source in orderedCases)
+        {
+            ct.ThrowIfCancellationRequested();
+            var plan = Prepare(source);
+            if (!plan.Diagnostics.IsEmpty)
+                throw new InvalidDataException("真实 TEST 执行前检查失败：" +
+                    source.Name + " · " + string.Join("；", plan.Diagnostics));
+            foreach (var mapping in TestRunStepScope.RequiredMappings(
+                         plan.RestoreDocument()).Where(x =>
+                         x.Kind == TestTargetKind.WaveProfile))
+            {
+                await AutomaticTestResourceContract.ValidateMappingAsync(
+                    project, mapping, ct).ConfigureAwait(false);
+                waveMappings.Add(mapping);
+            }
+        }
+        if (waveMappings.Count != 0)
+        {
+            var source = new ConfiguredWavePort(_projects, _signals);
+            await source.FreezeProfileReferencesAsync(waveMappings.ToArray(), ct)
+                .ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
     /// Acquires ONE physical grant for the complete ordered project. The existing
     /// RealRunCoordinator and RealTestRecordSession execute each case independently.
     /// FLASH must already be completed by the caller under its separate grant.
