@@ -88,7 +88,7 @@
      <Button Content="停止观察" Command="{Binding StopObserveCommand}"
       Style="{StaticResource WaveButton}"/>
      <Button Content="开始记录" Command="{Binding StartCaptureCommand}"
-      Style="{StaticResource WaveButton}" ToolTip="采集真实时间序列并生成证据"/>
+      Style="{StaticResource WaveButton}" ToolTip="保存当前信号的时间序列"/>
      <Button Content="停止记录" Command="{Binding StopCaptureCommand}"
       Style="{StaticResource WaveButton}"/>
      <Button Content="{Binding PauseLabel}" Command="{Binding PausePreviewCommand}"
@@ -320,7 +320,7 @@
         <TextBox Text="{Binding ReferenceName,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
          Style="{StaticResource WaveInput}" Width="194" Margin="0,0,8,0"/>
         <Button Content="将当前记录存为参考" Command="{Binding SaveReferenceCommand}"
-         Style="{StaticResource WaveButton}" ToolTip="只有原始真实采集证据能建立参考；并不会自动修改测试标准"/>
+         Style="{StaticResource WaveButton}" ToolTip="将有效采样保存为参考；测试判定条件仍需单独设置"/>
        </WrapPanel>
        <WrapPanel VerticalAlignment="Center" Margin="0,0,0,8">
         <TextBlock Text="比较类型" Style="{StaticResource WaveLabel}" Margin="0,0,6,0"/>
@@ -361,7 +361,7 @@
          </Style.Triggers>
         </Style></TextBlock.Style>
        </TextBlock>
-       <TextBlock Text="比较只供独立分析；正式 PASS/FAIL 由 TEST 使用已保存的判定条件执行。"
+       <TextBlock Text="此处为分析结果；正式检测使用工程内的判定条件。"
         Foreground="#61758A" FontSize="12" Margin="0,5,0,0"/>
       </StackPanel>
      </Border>

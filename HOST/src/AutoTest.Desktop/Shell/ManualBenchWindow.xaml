@@ -91,7 +91,7 @@
       ItemsSource="{Binding EcuCanRateChoices}" DisplayMemberPath="Label"
       SelectedValuePath="Kbps"
       SelectedValue="{Binding RequestedEcuCanBitrateKbps,Mode=TwoWay}"
-      ToolTip="主控 USB 0x42 设置 ECU CAN，0x43 读回；KEY CAN 保持 500k。请选择后点击应用。"/>
+      ToolTip="应用并回读 ECU CAN 波特率；按键 CAN 保持 500 kbit/s"/>
      <Button Content="应用" Command="{Binding ApplyEcuCanBitrateCommand}"
       Margin="7,0,0,0" Padding="8,5"
       ToolTip="空闲工位设置 ECU CAN 波特率并向主控读回确认"/>
@@ -180,7 +180,7 @@
         Style="{StaticResource AtPrimaryButton}" Padding="10,6" Margin="0,0,6,5"
         ToolTip="依次启动尚未运行的勾选报文；行内可单独启停和单发。"/>
        <Button Content="停止全部发送" Command="{Binding StopCanRowsCommand}" Padding="9,6" Margin="0,0,5,5"
-        ToolTip="停止本手动台架中正在发送的全部周期 CAN 报文，不触发 KEY 释放"/>
+        ToolTip="停止周期 CAN 发送，不改变当前按键状态"/>
       </WrapPanel>
      </StackPanel>
      <DataGrid x:Name="CanSendGrid" Grid.Row="1"
@@ -330,8 +330,8 @@
       <DockPanel Margin="0,0,0,8">
        <Button DockPanel.Dock="Right" Content="实际全部断开 KEY"
         Command="{Binding ReleaseAllKeysCommand}" Margin="8,0,0,0"
-        Padding="9,5" ToolTip="向真实 KEY CAN 发送 0x730 全断开指令，不等同于仅清空勾选"/>
-       <TextBlock DockPanel.Dock="Left" Text="KEY CAN · 按键动作"
+        Padding="9,5" ToolTip="向按键板发送全部断开指令，不只是清空界面选择"/>
+       <TextBlock DockPanel.Dock="Left" Text="按键动作"
         Style="{StaticResource BenchHeader}" FontSize="14" VerticalAlignment="Center"/>
       </DockPanel>
       <TextBlock Text="{Binding KeyRequestStatus}" FontSize="12" Foreground="#995400"
@@ -498,12 +498,12 @@
        <DataGridTextColumn Header="次数" Binding="{Binding Count}" Width="64"/>
       </DataGrid.Columns>
      </DataGrid>
-     <Expander Grid.Row="2" Header="USB / 操作 / 错误日志（按需展开）"
+     <Expander Grid.Row="2" Header="设备通信与操作日志"
       IsExpanded="False" BorderBrush="#E3EAE5" BorderThickness="0,1,0,0"
       Padding="3,8">
       <DockPanel Height="250" Margin="3,8,3,2">
        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,7">
-        <Button DockPanel.Dock="Right" Content="导出真实记录" Click="ExportLog_Click"
+        <Button DockPanel.Dock="Right" Content="导出日志" Click="ExportLog_Click"
          Padding="8,5" Margin="5,0,0,0"/>
         <Button DockPanel.Dock="Right" Content="清空日志" Command="{Binding ClearLogsCommand}"
          Padding="8,5" Margin="5,0,0,0"/>

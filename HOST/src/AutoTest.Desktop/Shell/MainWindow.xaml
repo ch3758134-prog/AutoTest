@@ -118,7 +118,7 @@
      <Border Margin="6,0,0,0" Background="#EAF4F0" BorderBrush="#E7EFFB"
       BorderThickness="1" CornerRadius="3" Padding="4,1" VerticalAlignment="Center"
       Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}">
-      <TextBlock Text="IDE" Foreground="#3478D6" FontSize="10"/>
+      <TextBlock Text="开发" Foreground="#3478D6" FontSize="10"/>
      </Border>
      <TextBlock Text="· 自动测试" Margin="8,0,0,0" Foreground="#51667A"
       FontSize="12" VerticalAlignment="Center"
@@ -130,22 +130,22 @@
          services, never a second test executor. -->
     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="9,0,8,0"
      VerticalAlignment="Center" chrome:WindowChrome.IsHitTestVisibleInChrome="True">
-     <Button Content="工程实测" Command="{Binding EnterEngineeringVerificationCommand}"
+     <Button Content="工程测试" Command="{Binding EnterEngineeringVerificationCommand}"
       Style="{StaticResource AtQuietButton}" FontSize="13" FontWeight="SemiBold"
       Foreground="#1769A8" Margin="0,0,5,0" Padding="12,5"
-      ToolTip="一次进入真实台架整组验证并准备扫码；扫码核对后单击开始，真实夹具/FLASH 前仍需确认（非正式生产放行）"/>
+      ToolTip="打开当前工程的完整测试运行窗口"/>
      <Button Content="生产检测" Command="{Binding ShowProductionWorkspaceCommand}"
       Style="{StaticResource AtQuietButton}" FontSize="13" Margin="0,0,2,0"
-      Padding="9,5" ToolTip="正式生产模式：需实体 START、互锁、到位反馈和 Inspection，未接线不能放行"/>
+      Padding="9,5" ToolTip="查看正式检测状态；设备或启动条件未就绪时不能检测"/>
      <Button Content="工程开发" Command="{Binding ShowEngineerWorkspaceCommand}"
       Style="{StaticResource AtQuietButton}" FontSize="13" Margin="0,0,2,0"
-      Padding="9,5" ToolTip="ECU 工程、唯一 TEST、公共流程、DBC/波形、原生烧录与独立调试工具"/>
+      Padding="9,5" ToolTip="编辑测试用例与工程资源，使用专业工具"/>
      <Button Content="工位设置" Command="{Binding NavigateProductionPreparationCommand}"
       Style="{StaticResource AtQuietButton}" FontSize="13" Margin="0,0,2,0"
-      Padding="9,5" ToolTip="首次装机或切换型号时设置一次：当前工程、扫码枪、自动夹具及正式生产版本；日常检测无需进入"/>
+      Padding="9,5" ToolTip="选择检测工程、连接扫码枪并设置夹具"/>
      <Button Content="记录与报告" Command="{Binding OpenRecordHistoryCommand}"
       Style="{StaticResource AtQuietButton}" FontSize="13"
-      Padding="9,5" ToolTip="真实 SQLite RECORD：按同一 ECU 编号查看检测与复检的完整证据"/>
+      Padding="9,5" ToolTip="按 ECU 编号查询多次检测及其报告"/>
     </StackPanel>
     <Menu Background="Transparent" VerticalAlignment="Center" FontSize="13"
      Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}"
@@ -169,33 +169,33 @@
       <MenuItem Header="从工程移除选中资源（保留源文件）" Command="{Binding RemoveReferenceCommand}"/>
      </MenuItem>
      <MenuItem Header="视图">
-      <MenuItem Header="工程与调试" Command="{Binding ShowEngineerWorkspaceCommand}"/>
-      <MenuItem Header="自动测试首页" Command="{Binding ShowProductionWorkspaceCommand}"/>
+      <MenuItem Header="工程开发" Command="{Binding ShowEngineerWorkspaceCommand}"/>
+      <MenuItem Header="生产检测" Command="{Binding ShowProductionWorkspaceCommand}"/>
       <Separator/>
       <MenuItem Header="显示／隐藏观察区" Click="ToggleBottom_Click"/>
       <MenuItem Header="显示／隐藏属性区" Click="ToggleInspector_Click"/>
       <Separator/>
-      <MenuItem Header="工程依赖与版本审查" Command="{Binding OpenProjectConfigurationOverviewCommand}"/>
+      <MenuItem Header="检查工程资源" Command="{Binding OpenProjectConfigurationOverviewCommand}"/>
      </MenuItem>
      <MenuItem Header="运行">
-      <MenuItem Header="检查当前开发调试范围" Command="{Binding CheckActiveCommand}"/>
+      <MenuItem Header="检查运行条件" Command="{Binding CheckActiveCommand}"/>
       <Separator/>
-      <MenuItem Header="工程整组实测（非生产）" Command="{Binding EnterEngineeringVerificationCommand}"
-       ToolTip="一次进入扫码与真实台架整组执行窗口；实际 FLASH 前仍须确认"/>
+      <MenuItem Header="工程测试" Command="{Binding EnterEngineeringVerificationCommand}"
+       ToolTip="打开当前工程的测试运行窗口"/>
      </MenuItem>
      <MenuItem Header="工具">
       <MenuItem Header="手动台架" Command="{Binding OpenManualBenchCommand}"/>
-      <MenuItem Header="扫码枪独立诊断" Command="{Binding OpenSerialScannerCommand}"/>
-      <MenuItem Header="DBC 工作台（当前工程）" Command="{Binding OpenDbcToolCommand}"/>
+      <MenuItem Header="扫码枪" Command="{Binding OpenSerialScannerCommand}"/>
+      <MenuItem Header="DBC 编辑器" Command="{Binding OpenDbcToolCommand}"/>
       <MenuItem Header="打开独立 DBC 文件…" Command="{Binding OpenIndependentDbcCommand}"/>
-      <MenuItem Header="UDS 诊断序列与记录回放" Command="{Binding OpenUdsWorkbenchCommand}"
-       ToolTip="独立编辑并保存诊断服务序列、核对导入的回放记录；尚不具备物理 ECU 诊断发送"/>
+      <MenuItem Header="UDS 诊断" Command="{Binding OpenUdsWorkbenchCommand}"
+       ToolTip="编辑诊断序列、查看回放；实际可执行服务以工具状态为准"/>
 
       <MenuItem Header="波形分析" Command="{Binding OpenWaveWorkbenchCommand}"/>
       <Separator/>
 
 
-      <MenuItem Header="ECU 烧录工具" Command="{Binding OpenFlashWorkbenchCommand}" ToolTip="实测过的 CanTool 流程，独立专业窗口；切换 USB 所有权前先断开主工位连接"/>
+      <MenuItem Header="ECU 烧录工具" Command="{Binding OpenFlashWorkbenchCommand}" ToolTip="独立烧录工具；使用前应释放其他窗口的主控连接"/>
      </MenuItem>
      <MenuItem Header="帮助" Command="{Binding HelpCommand}"/>
     </Menu>
@@ -457,12 +457,12 @@
    <DockPanel Margin="11,0">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
       <Button Content="扫码枪" Command="{Binding OpenSerialScannerCommand}"
-      ToolTip="连接 USB 虚拟串口扫描枪，识别型号及唯一编号"
+      ToolTip="连接扫码枪并查看收到的 ECU 编号"
       MinHeight="26" Height="26" Padding="8,0" Margin="0,0,6,0"/>
      <TextBlock Text="{Binding ScanStatus}" Width="175" FontSize="13"
       TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
       Foreground="#64758C" Margin="0,0,8,0"/>
-     <Button Content="观察" Click="ToggleBottom_Click"
+     <Button Content="日志" Click="ToggleBottom_Click"
       Foreground="{StaticResource Ink}" Background="Transparent" BorderThickness="0"
       MinWidth="44" MinHeight="26" Height="26" Padding="2,0" FontSize="12" Margin="0,0,3,0"/>
      <Button Content="属性" Click="ToggleInspector_Click"

@@ -118,7 +118,7 @@
      <TextBlock Text="  ·  主控 USB → ECU CAN (A1/A12)" FontSize="12"
        Foreground="#627C9D" VerticalAlignment="Bottom" Margin="10,0,0,2"/>
     </StackPanel>
-    <TextBlock Text="受控烧录 · 阶段与 CAN 证据"
+    <TextBlock Text="烧录进度与通信记录"
       HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="12" Foreground="#6D7A76"/>
    </DockPanel>
   </Border>
@@ -171,7 +171,7 @@
         ToolTip="手动编辑、自动保存到工程固定位置；独立工具可使用本地专属原生配置"
         HorizontalAlignment="Stretch"/>
       <TextBlock x:Name="NativeProfileLabel" Margin="7,0,7,5" Foreground="#375B73"
-        TextWrapping="Wrap" FontSize="11" Text="原生配置尚未载入"/>
+        TextWrapping="Wrap" FontSize="11" Text="未加载烧录配置"/>
       <Expander Header="兼容历史 CanTool XML / JSON 导入" IsExpanded="False"
         Margin="3,0,3,6">
        <StackPanel>
@@ -268,7 +268,7 @@
      </Grid.RowDefinitions>
      <StackPanel Grid.Row="0">
       <TextBlock x:Name="WorkflowStatusLabel"
-        Text="连接 USB、导入文件后直接开始烧录" TextWrapping="Wrap"
+        Text="选择烧录配置并连接设备后开始" TextWrapping="Wrap"
         Margin="5,3,5,6" FontWeight="SemiBold" Foreground="#3478D6"/>
       <TextBlock x:Name="FlashPlanSummary" Text="开始时自动检查 CAN 地址、固件、算法和 Flash 范围"
         TextWrapping="Wrap" FontSize="11" Margin="7,2,7,6"
@@ -299,7 +299,7 @@
        <DataGridTextColumn Header="结果" Binding="{Binding State,Mode=OneWay}" Width="96"/>
       </DataGrid.Columns>
      </DataGrid>
-     <TextBlock Grid.Row="3" Text="UDS 请求 / 响应 / NRC 与失败原因"
+     <TextBlock Grid.Row="3" Text="诊断通信与失败原因"
        FontWeight="SemiBold" Margin="7,5,2,4" Foreground="#475668"/>
      <ListBox Grid.Row="4" x:Name="LogList" ItemsSource="{Binding Logs}"
        FontFamily="Consolas" FontSize="11" Margin="4,0,4,3"
@@ -324,7 +324,7 @@
        <Button Content="导出日志" Click="Export_Click" Padding="10,5"/>
        <Button Content="清空显示" Click="ClearCan_Click" Padding="10,5"/>
       </StackPanel>
-      <TextBlock Text="实时 TX / RX · USB ACK 区别于 ECU 响应"
+      <TextBlock Text="CAN 报文发送与接收"
         VerticalAlignment="Center" Margin="5,0,3,0"
         Foreground="#617B96" FontSize="11" TextTrimming="CharacterEllipsis"/>
      </DockPanel>

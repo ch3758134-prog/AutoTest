@@ -54,7 +54,7 @@
    </StackPanel>
    <StackPanel VerticalAlignment="Center">
     <TextBlock Text="工位配置" FontSize="21" FontWeight="SemiBold" Foreground="#243B51"/>
-    <TextBlock Text="设置一次，日常检测直接扫码" Style="{StaticResource SmallHint}" Margin="0,3,0,0"/>
+    <TextBlock Text="选择工程、扫码枪和夹具" Style="{StaticResource SmallHint}" Margin="0,3,0,0"/>
    </StackPanel>
   </DockPanel>
   <ScrollViewer x:Name="SettingsBody" Grid.Row="1" VerticalScrollBarVisibility="Auto"
@@ -67,7 +67,7 @@
         FontSize="16" FontWeight="SemiBold" Foreground="#284B68"
         TextWrapping="Wrap" Margin="0,0,0,5"/>
       <TextBlock x:Name="BoundProjectSummary" Style="{StaticResource SmallHint}"
-        Text="工程中的 TEST、FLASH、DBC 和波形将用于检测" Margin="0,0,0,11"/>
+        Text="测试程序、烧录配置和信号资源由当前工程提供" Margin="0,0,0,11"/>
       <WrapPanel>
        <Button x:Name="BindCurrentButton" Content="使用当前工程"
         Click="BindCurrent_Click" Visibility="Collapsed"/>
@@ -99,7 +99,7 @@
       <TextBlock x:Name="PreviewStatus" Style="{StaticResource SmallHint}"
        Text="连接扫码枪后，原始内容将直接显示在这里。"
        Margin="0,0,0,4"/>
-      <Expander Header="测试编号识别（可手动输入，仅预览）"
+      <Expander Header="测试编号识别"
        Margin="0,8,0,0">
        <StackPanel Margin="0,11,0,0">
         <WrapPanel>
@@ -230,7 +230,7 @@
     </Border>
     <Border Style="{StaticResource Card}">
      <StackPanel>
-      <TextBlock Text="当前工位状态" Style="{StaticResource SectionTitle}"/>
+      <TextBlock Text="配置状态" Style="{StaticResource SectionTitle}"/>
       <TextBlock x:Name="PublicationState" Text="尚未启用工位配置"
        Foreground="#355770" TextWrapping="Wrap" Margin="0,0,0,6"/>
       <TextBlock x:Name="BlockerState" Style="{StaticResource SmallHint}"

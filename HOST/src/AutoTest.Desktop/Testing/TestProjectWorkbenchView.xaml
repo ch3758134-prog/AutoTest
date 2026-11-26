@@ -19,7 +19,7 @@
    <DockPanel Margin="14,0">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
      VerticalAlignment="Center">
-     <Button Content="依赖与版本" Click="OpenDependencyReview_Click"
+     <Button Content="检查关联资源" Click="OpenDependencyReview_Click"
       Margin="0,0,8,0" Padding="10,7" ToolTip="按真实资源根因查看失效引用，不会自动采用新版"/>
      <Button Content="检查所选" Command="{Binding PreflightSelectedCommand}"
       Margin="0,0,8,0" Padding="11,7"/>
@@ -31,7 +31,7 @@
      <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold"
       Foreground="#2B455D" MaxWidth="280" TextTrimming="CharacterEllipsis"
       VerticalAlignment="Center"/>
-     <TextBlock Text="{Binding TotalCount,StringFormat=' · {0} 条正式调用'}"
+     <TextBlock Text="{Binding TotalCount,StringFormat=' · {0} 个用例'}"
       Foreground="#71869A" VerticalAlignment="Center" Margin="9,0,0,0"/>
      <Button Content="＋ 新建用例" Command="{Binding CreateNewPackageCommand}"
       Margin="13,0,0,0" Padding="11,7"
@@ -133,7 +133,7 @@
               </Style>
              </Button.Style>
             </Button>
-            <Button Content="修复旧项目用例" Tag="{Binding}" Click="RestoreLegacyInclusion_Click"
+            <Button Content="恢复未加入的用例" Tag="{Binding}" Click="RestoreLegacyInclusion_Click"
              FontSize="10" Margin="6,0,0,0" Padding="4,0" Height="17"
              MinHeight="0" Foreground="#94651F"
              ToolTip="旧工程存在被排除的实例；恢复并保存后才可以进行完整正式检测">
@@ -186,7 +186,7 @@
     <Border Background="#F7FAFD" BorderBrush="#DDE8F3" BorderThickness="1"
      CornerRadius="7" Padding="12" Margin="0,0,0,13">
      <StackPanel>
-      <TextBlock Text="项目准备 / 项目收尾" FontSize="14" FontWeight="SemiBold"
+      <TextBlock Text="测试前准备 / 测试后收尾" FontSize="14" FontWeight="SemiBold"
        Foreground="#294A70" Margin="0,0,0,6"/>
       <TextBlock Text="可选整车测试环境：项目准备 → 有序用例 → 项目收尾。周期 CAN 跨用例保持；扫码、机械工装、前置 FLASH 不放在这里。"
        TextWrapping="Wrap" Foreground="#60768A" Margin="0,0,0,9"/>

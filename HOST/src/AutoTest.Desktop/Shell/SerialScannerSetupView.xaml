@@ -9,8 +9,8 @@
    <RowDefinition Height="Auto"/>
   </Grid.RowDefinitions>
   <StackPanel>
-   <TextBlock Text="真实扫码枪" FontSize="20" FontWeight="SemiBold" Foreground="#263D50"/>
-   <TextBlock Text="设备自动查找，原始数据不依赖工程或编号匹配规则。"
+   <TextBlock Text="扫码枪连接" FontSize="20" FontWeight="SemiBold" Foreground="#263D50"/>
+   <TextBlock Text="连接设备后，扫码内容会立即显示在下方。"
      Foreground="#657B8D" Margin="0,5,0,12"/>
   </StackPanel>
   <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
@@ -21,7 +21,7 @@
       <TextBlock Text="{Binding DeviceStatus}" TextWrapping="Wrap"
         Foreground="#425E76" Margin="0,0,0,12"/>
       <WrapPanel>
-       <Button Content="重新检测设备" Command="{Binding RefreshPortsCommand}"
+       <Button Content="刷新端口" Command="{Binding RefreshPortsCommand}"
          Padding="12,7" Margin="0,0,8,8"/>
        <ComboBox ItemsSource="{Binding AvailablePorts}"
          SelectedItem="{Binding SelectedPort,Mode=TwoWay}"
@@ -37,7 +37,7 @@
          IsEnabled="{Binding IsConnected}" Padding="12,7" Margin="0,0,8,8"/>
       </WrapPanel>
       <WrapPanel>
-       <Button Content="记住已试扫设备" Command="{Binding BindScannerDeviceCommand}"
+       <Button Content="设为本工位扫码枪" Command="{Binding BindScannerDeviceCommand}"
          Padding="12,7" Margin="0,0,8,8"/>
        <Button Content="更换扫码枪" Command="{Binding ReplaceScannerDeviceCommand}"
          Padding="12,7"/>
@@ -47,15 +47,15 @@
     <Border Background="White" Padding="15" BorderBrush="#DFE8EF"
      BorderThickness="1" CornerRadius="8">
      <StackPanel>
-      <TextBlock Text="最近收到的原始条码" Foreground="#657B8D"/>
+      <TextBlock Text="最近扫码内容" Foreground="#657B8D"/>
       <TextBox Text="{Binding LastRaw,Mode=OneWay}" IsReadOnly="True"
        FontSize="20" FontWeight="SemiBold" Foreground="#245B83"
        TextWrapping="Wrap" Padding="10" Margin="0,6,0,15"/>
-      <TextBlock Text="原始串口帧 HEX" Foreground="#657B8D"/>
+      <TextBlock Text="原始串口数据（HEX）" Foreground="#657B8D"/>
       <TextBox Text="{Binding LastHex,Mode=OneWay}" IsReadOnly="True"
        FontFamily="Consolas" FontSize="12" TextWrapping="Wrap"
        Padding="10" Margin="0,6,0,12"/>
-      <TextBlock Text="扫码枪只负责读取真实原文；工程匹配在工位设置统一配置。"
+      <TextBlock Text="检测工程的关联方式可在“工位设置”中修改。"
        Foreground="#657B8D" TextWrapping="Wrap"/>
      </StackPanel>
     </Border>

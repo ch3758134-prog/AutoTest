@@ -142,7 +142,7 @@
           Style="{StaticResource UdsAction}" IsEnabled="False" Margin="7,0,0,0"/>
         </StackPanel>
         <StackPanel>
-         <TextBlock Text="真实 ECU · 单次只读 DID" FontWeight="SemiBold" FontSize="13"/>
+         <TextBlock Text="读取 ECU 数据（只读）" FontWeight="SemiBold" FontSize="13"/>
          <TextBlock x:Name="DidHardwareStatus" Text="主控连接待确认"
           Foreground="#52677F" FontSize="11" Margin="0,2,0,2"/>
          <TextBlock x:Name="DidScopeText" Text="选择 22 HH LL 服务，并配置 ECU CAN 端点"
@@ -191,9 +191,9 @@
       <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/><RowDefinition Height="*"/>
      </Grid.RowDefinitions>
-     <TextBlock Text="真实诊断与离线回放" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,5"/>
+     <TextBlock Text="诊断与记录回放" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,5"/>
      <TextBlock Grid.Row="1" TextWrapping="Wrap" Foreground="#66788B" FontSize="12"
-      Text="单次 DID 显示主控真实接收；文件回放独立且不会发送 CAN"
+      Text="读取结果和文件回放分别显示；回放不会向 ECU 发送数据。"
       Margin="0,0,0,11"/>
      <WrapPanel Grid.Row="2" Margin="0,0,0,10">
       <Button Content="载入回放…" Click="LoadReplay_Click" Style="{StaticResource UdsAction}"/>
@@ -207,9 +207,9 @@
        <Border Background="#F4FAF6" BorderBrush="#D9E9DF"
         BorderThickness="1" CornerRadius="5" Padding="10" Margin="0,0,0,12">
         <StackPanel>
-         <TextBlock Text="实时 0x22 读取（非正式 TEST 判定）"
+         <TextBlock Text="读取数据标识符（0x22）"
           FontWeight="SemiBold" FontSize="13" Margin="0,0,0,6"/>
-         <TextBlock x:Name="DidOutcomeText" Text="尚未发起实体诊断"
+         <TextBlock x:Name="DidOutcomeText" Text="尚未读取 ECU"
           TextWrapping="Wrap" Foreground="#38614D" Margin="0,0,0,6"/>
          <TextBlock x:Name="DidResponseText" FontFamily="Consolas"
           TextWrapping="Wrap" Margin="0,0,0,6"/>

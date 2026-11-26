@@ -13,13 +13,13 @@
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
      <Button Content="重新核对" Command="{Binding RefreshEngineeringSetupCommand}"
       Padding="12,7" Margin="0,0,8,0"/>
-     <Button Content="返回 TEST 项目" Command="{Binding OpenFirstTestProjectCommand}"
+     <Button Content="返回测试项目" Command="{Binding OpenFirstTestProjectCommand}"
       Padding="13,7" Style="{StaticResource AtPrimaryButton}"/>
     </StackPanel>
     <StackPanel VerticalAlignment="Center">
-     <TextBlock Text="工程依赖与版本审查" FontSize="15" FontWeight="SemiBold"
+     <TextBlock Text="工程检查" FontSize="15" FontWeight="SemiBold"
       Foreground="#253C53"/>
-     <TextBlock Text="核对资源与调用，不修改生产发布" FontSize="11"
+     <TextBlock Text="检查测试用例和关联资源是否可用" FontSize="11"
       Foreground="#75889A"/>
     </StackPanel>
    </DockPanel>
@@ -27,7 +27,7 @@
   <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
    HorizontalScrollBarVisibility="Disabled">
    <StackPanel MaxWidth="1080" Margin="22,20,22,28">
-    <TextBlock Text="当前工程静态检查" FontWeight="SemiBold" FontSize="17"
+    <TextBlock Text="工程检查结果" FontWeight="SemiBold" FontSize="17"
      Foreground="#294B6B" Margin="0,0,0,8"/>
     <TextBlock Text="{Binding SetupTestStatus}" TextWrapping="Wrap"
      Foreground="#4C6880" Margin="0,0,0,11"/>
@@ -36,7 +36,7 @@
      <StackPanel>
       <DockPanel Margin="0,0,0,7">
        <TextBlock DockPanel.Dock="Right"
-        Text="{Binding SetupRootCauseCount,StringFormat='{}{0} 组根因'}"
+        Text="{Binding SetupRootCauseCount,StringFormat='{}{0} 项问题'}"
         FontWeight="SemiBold" Foreground="#2C6594"/>
        <TextBlock Text="资源变更影响" FontWeight="SemiBold" FontSize="14"
         Foreground="#294B68"/>
@@ -60,9 +60,9 @@
            <StackPanel Margin="6,9,0,8">
             <TextBlock Text="{Binding Explanation}" TextWrapping="Wrap"
              Foreground="#506C82" Margin="0,0,0,9"/>
-            <Button Content="定位到受影响用例 / 资源" HorizontalAlignment="Left"
+            <Button Content="查看相关用例或资源" HorizontalAlignment="Left"
              Tag="{Binding}" Click="LocateDependency_Click" Padding="12,7"
-             ToolTip="仅定位源资源和调用实例，不自动改写固定修订或 DBC 信号"/>
+             ToolTip="定位相关资源供检查，不会自动修改内容"/>
            </StackPanel>
           </Expander>
          </Border>
@@ -76,7 +76,7 @@
     <Border Background="White" BorderBrush="#DCE6EF" BorderThickness="1"
      CornerRadius="7" Padding="14" Margin="0,0,0,9">
      <DockPanel LastChildFill="True">
-      <Button Content="编辑原生 FLASH" Command="{Binding OpenNativeFlashProfileCommand}"
+      <Button Content="编辑烧录配置" Command="{Binding OpenNativeFlashProfileCommand}"
        DockPanel.Dock="Right" Padding="12,7" Margin="12,0,0,0"/>
       <StackPanel>
        <TextBlock Text="烧录配置与固件" FontWeight="SemiBold" Margin="0,0,0,5"/>
@@ -104,9 +104,9 @@
     <Border Background="#F7FAFD" BorderBrush="#DCE6EF" BorderThickness="1"
      CornerRadius="7" Padding="14">
      <DockPanel LastChildFill="True">
-      <Button Content="生产准备" Command="{Binding NavigateProductionPreparationCommand}"
+      <Button Content="工位设置" Command="{Binding NavigateProductionPreparationCommand}"
        DockPanel.Dock="Right" Padding="12,7" Margin="12,0,0,0"/>
-      <TextBlock Text="扫码、夹具、实体 START 与生产发布属于工位；手动 IO 调试请打开独立手动台架。"
+      <TextBlock Text="扫码枪和夹具在工位设置中管理；手动控制请使用台架工具。"
        Foreground="#57738B" TextWrapping="Wrap" VerticalAlignment="Center"/>
      </DockPanel>
     </Border>

@@ -48,7 +48,7 @@
        <MenuItem Header="期望判定" Command="{Binding QuickAddCommand}" CommandParameter="expect"/>
       </MenuItem>
      </Menu>
-     <Button Content="运行前检查" Command="{Binding PreflightCommand}" Margin="0,0,6,0"/>
+     <Button Content="检查用例" Command="{Binding PreflightCommand}" Margin="0,0,6,0"/>
      <Button x:Name="ToggleCanMonitorButton" Content="隐藏 CAN 监视" Click="ToggleCanMonitor_Click"
       Margin="0,0,6,0" Padding="8,5" ToolTip="右侧固定显示真实 CAN RX，拖动分隔线可调整宽度"/>
      <TextBlock Text="自动保存" Foreground="#627C70" FontSize="12" VerticalAlignment="Center" ToolTip="修改完成后自动保存，Ctrl+S 可手动保存"/>
@@ -86,14 +86,14 @@
     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
      <TextBlock Text="调试" FontWeight="SemiBold" Foreground="#42618B"
       VerticalAlignment="Center" Margin="0,0,9,0"/>
-     <Button Content="▶ 运行此用例" Command="{Binding RunCommand}"
+     <Button Content="运行用例" Command="{Binding RunCommand}"
       Style="{StaticResource AtPrimaryButton}" Foreground="White" MinHeight="34"
       Margin="0,0,6,0" Padding="11,5"
       ToolTip="检查本次运行所需配置并启动用例；开发调试无需扫码，若包含烧录步骤仍须单独授权"/>
-     <Button Content="▶ 运行此步骤" Command="{Binding RunSelectedStepCommand}"
+     <Button Content="运行步骤" Command="{Binding RunSelectedStepCommand}"
       Margin="0,0,6,0" Padding="10,5"
       ToolTip="选中某个步骤；确认后仅执行该步骤及其子步骤，保留实体安全清理与独立诊断记录"/>
-     <Button Content="■ 停止" Command="{Binding StopRunCommand}"
+     <Button Content="停止" Command="{Binding StopRunCommand}"
       Margin="0,0,10,0" Padding="8,5" Style="{StaticResource AtDangerButton}" MinHeight="34"/>
     </StackPanel>
     <TextBlock Text="{Binding RunSummary}" FontSize="14" Foreground="#687680"
@@ -119,7 +119,7 @@
       <Setter Property="Visibility" Value="Collapsed"/>
      </DataTrigger></Style.Triggers>
     </Style></StackPanel.Style>
-    <TextBlock Text="FLASH 实体授权：" FontWeight="SemiBold"
+    <TextBlock Text="烧录确认：" FontWeight="SemiBold"
      Margin="0,0,7,0" VerticalAlignment="Center"/>
     <TextBox Width="370" Height="28" VerticalContentAlignment="Center"
      Text="{Binding FlashApproval,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
@@ -142,9 +142,9 @@
      <ColumnDefinition Width="124"/><ColumnDefinition Width="106"/><ColumnDefinition Width="78"/></Grid.ColumnDefinitions>
     <TextBlock Grid.Column="0" Text="序号" FontSize="14" Foreground="#263D54" FontWeight="SemiBold"
      VerticalAlignment="Center" HorizontalAlignment="Center"/>
-    <TextBlock Grid.Column="1" Text="步骤 / 流程" FontSize="14" Foreground="#263D54" FontWeight="SemiBold"
+    <TextBlock Grid.Column="1" Text="测试步骤" FontSize="14" Foreground="#263D54" FontWeight="SemiBold"
      VerticalAlignment="Center" Margin="7,0"/>
-    <TextBlock Grid.Column="2" Text="主要参数 / 判据" FontSize="14" Foreground="#263D54" FontWeight="SemiBold"
+    <TextBlock Grid.Column="2" Text="参数与判定" FontSize="14" Foreground="#263D54" FontWeight="SemiBold"
      VerticalAlignment="Center" Margin="6,0"/>
     <TextBlock Grid.Column="3" Text="资源" FontSize="14" Foreground="#263D54" FontWeight="SemiBold"
      VerticalAlignment="Center" Margin="6,0"/>
@@ -558,7 +558,7 @@
     </DataGrid.Columns>
    </DataGrid>
    <TextBlock Grid.Row="3" Margin="11,8,11,10" FontSize="11" Foreground="#617589"
-    TextWrapping="Wrap" Text="RX 为真实 CAN 接收，TX-ACK 只代表主控接受发送，不证明 ECU 收到；丢帧会影响记录完整性。"/>
+    TextWrapping="Wrap" Text="RX：收到的 CAN 帧。发送确认不代表 ECU 收到，丢帧可能影响测试结论。"/>
   </Grid>
  </Border>
  </Grid>

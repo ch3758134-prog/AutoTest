@@ -71,7 +71,7 @@
       Foreground="#60738A" TextWrapping="Wrap" Margin="0,5,0,0"/>
     </StackPanel>
     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-     <TextBlock Text="最近扫码（原文）" Style="{StaticResource OperatorCaption}"/>
+     <TextBlock Text="最近扫码" Style="{StaticResource OperatorCaption}"/>
      <TextBlock Text="{Binding LastObservedBarcode}" FontSize="17" FontWeight="SemiBold"
       Foreground="#235B8B" TextTrimming="CharacterEllipsis"
       ToolTip="{Binding LastObservedBarcode}" Margin="0,3,0,3"/>
@@ -110,8 +110,8 @@
       <CheckBox x:Name="OperatorFollowExecution" DockPanel.Dock="Right"
        Content="跟随执行" IsChecked="True" VerticalAlignment="Center"
        Margin="0,0,15,0" FontSize="12"
-       ToolTip="默认自动定位真实执行的用例和步骤；取消后可自由查看历史行"/>
-      <TextBlock Text="检测用例与步骤" FontSize="16" FontWeight="SemiBold"
+       ToolTip="自动定位当前执行的测试步骤"/>
+      <TextBlock Text="测试用例与步骤" FontSize="16" FontWeight="SemiBold"
        VerticalAlignment="Center"/>
      </DockPanel>
      <Border Grid.Row="1" BorderBrush="#DFE6ED" BorderThickness="0,1,0,1"
@@ -126,7 +126,7 @@
         Style="{StaticResource OperatorCaption}"/>
        <TextBlock Grid.Column="1" Text="用例 / 步骤及关键参数"
         VerticalAlignment="Center" Style="{StaticResource OperatorCaption}"/>
-       <TextBlock Grid.Column="2" Text="实际执行状态" VerticalAlignment="Center"
+       <TextBlock Grid.Column="2" Text="状态" VerticalAlignment="Center"
         Style="{StaticResource OperatorCaption}"/>
       </Grid>
      </Border>
@@ -242,7 +242,7 @@
       <!-- Only a future real production StepOccurrence adapter may reveal
            current-step measurement details; engineering truth is isolated. -->
       <StackPanel Visibility="{Binding HasFormalExecutionFacts,Converter={StaticResource BoolToVisibility}}">
-      <TextBlock Text="正式 TEST 事实" FontSize="16" FontWeight="SemiBold"
+      <TextBlock Text="当前检测步骤" FontSize="16" FontWeight="SemiBold"
        Margin="0,0,0,9"/>
       <Border Background="#F4F7FA" Padding="10" CornerRadius="5"
        Margin="0,0,0,11">
@@ -263,12 +263,12 @@
         <ColumnDefinition Width="*"/>
        </Grid.ColumnDefinitions>
        <StackPanel Margin="0,0,8,0">
-        <TextBlock Text="实际测量" Style="{StaticResource OperatorCaption}"/>
+        <TextBlock Text="实际结果" Style="{StaticResource OperatorCaption}"/>
         <TextBlock Text="{Binding ProductionMeasuredValue}" FontSize="16"
          FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,4,0,0"/>
        </StackPanel>
        <StackPanel Grid.Column="1">
-        <TextBlock Text="期望 / 判据" Style="{StaticResource OperatorCaption}"/>
+        <TextBlock Text="期望结果" Style="{StaticResource OperatorCaption}"/>
         <TextBlock Text="{Binding ProductionExpectedValue}" FontSize="14"
          TextWrapping="Wrap" Margin="0,4,0,0"/>
        </StackPanel>
@@ -277,7 +277,7 @@
        TextWrapping="Wrap" FontSize="13" Margin="0,0,0,9"/>
       <Border Height="1" Background="#E5EBF1" Margin="0,4,0,11"/>
       </StackPanel>
-      <TextBlock Text="工位阶段" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,9"/>
+      <TextBlock Text="检测进度" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,9"/>
       <Grid>
        <Grid.ColumnDefinitions><ColumnDefinition Width="92"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
        <Grid.RowDefinitions>
@@ -291,13 +291,13 @@
        <TextBlock Grid.Row="1" Text="设备" Style="{StaticResource OperatorCaption}" Margin="0,0,0,7"/>
        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding StationReadiness}"
         Style="{StaticResource OperatorFact}" FontSize="12" Margin="0,0,0,7"/>
-       <TextBlock Grid.Row="2" Text="实体 START" Style="{StaticResource OperatorCaption}" Margin="0,0,0,7"/>
+       <TextBlock Grid.Row="2" Text="启动按钮" Style="{StaticResource OperatorCaption}" Margin="0,0,0,7"/>
        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding PhysicalStartStatus}"
         Foreground="#A3651D" TextWrapping="Wrap" Margin="0,0,0,7"/>
        <TextBlock Grid.Row="3" Text="烧录" Style="{StaticResource OperatorCaption}" Margin="0,0,0,7"/>
        <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding ProductionFlashState}"
         Foreground="#53687B" TextWrapping="Wrap" Margin="0,0,0,7"/>
-       <TextBlock Grid.Row="4" Text="TEST" Style="{StaticResource OperatorCaption}" Margin="0,0,0,7"/>
+       <TextBlock Grid.Row="4" Text="测试" Style="{StaticResource OperatorCaption}" Margin="0,0,0,7"/>
        <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding ProductionTestState}"
         Foreground="#53687B" TextWrapping="Wrap" Margin="0,0,0,7"/>
        <TextBlock Grid.Row="5" Text="记录" Style="{StaticResource OperatorCaption}"/>

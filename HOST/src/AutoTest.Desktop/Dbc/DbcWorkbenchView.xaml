@@ -38,7 +38,7 @@
      <TextBlock Text="{Binding AssetRevision,StringFormat='修订 {0}'}" Foreground="#526B84" Margin="0,0,12,0"/>
      <TextBlock Text="未保存" Foreground="#9B6423" Visibility="{Binding IsDirty,Converter={StaticResource BoolToVisibility}}"/>
     </StackPanel>
-    <StackPanel><TextBlock Text="DBC 编辑器" FontSize="19" FontWeight="SemiBold"/>
+    <StackPanel><TextBlock Text="DBC 信号编辑" FontSize="19" FontWeight="SemiBold"/>
      <TextBlock Text="{Binding AssetName}" Foreground="#62778D" TextTrimming="CharacterEllipsis" ToolTip="{Binding FilePath}" Margin="0,4,0,0"/>
      <TextBlock Text="{Binding SourceDescription}" Foreground="#62778D" FontSize="11" Margin="0,3,0,0"/>
     </StackPanel>

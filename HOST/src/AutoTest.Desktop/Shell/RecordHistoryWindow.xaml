@@ -11,9 +11,9 @@
   </Grid.RowDefinitions>
   <DockPanel Grid.Row="0" Margin="0,0,0,14">
    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-    <Button Content="清空来源" Click="ClearSources_Click" Padding="10,6" Margin="0,0,7,0"/>
-    <Button Content="添加记录库…" Click="ChooseDatabase_Click" Padding="12,6"
-     ToolTip="可一次选择多个 ECU 工程已有的 r1-records.sqlite，按 ECU 编号联合查询"/>
+    <Button Content="清空记录库列表" Click="ClearSources_Click" Padding="10,6" Margin="0,0,7,0"/>
+    <Button Content="打开记录库…" Click="ChooseDatabase_Click" Padding="12,6"
+     ToolTip="选择一个或多个工程记录库，统一查询历史"/>
    </StackPanel>
    <StackPanel>
     <TextBlock Text="检测记录与报告" FontSize="21" FontWeight="SemiBold"/>
@@ -31,7 +31,7 @@
      <TextBox x:Name="DutSearch" Width="230" MinHeight="30" VerticalContentAlignment="Center"
       KeyDown="DutSearch_KeyDown"
       ToolTip="输入完整 ECU 编号；留空查询最近检测"/>
-     <TextBlock Text="记录类别" VerticalAlignment="Center" Margin="18,0,7,0"/>
+     <TextBlock Text="记录类型" VerticalAlignment="Center" Margin="18,0,7,0"/>
      <ComboBox x:Name="ModeFilter" Width="132" Height="30" SelectedIndex="0">
       <ComboBoxItem Content="全部" Tag="All"/>
       <ComboBoxItem Content="正式检测" Tag="Production"/>
@@ -91,9 +91,9 @@
       <DataGridTextColumn Header="ECU 编号" Width="*" MinWidth="150" Binding="{Binding DutId}"/>
       <DataGridTextColumn Header="工程来源" Width="130" Binding="{Binding ProjectName}"/>
       <DataGridTextColumn Header="类别" Width="102" Binding="{Binding ModeLabel}"/>
-      <DataGridTextColumn Header="记录判定" Width="104" Binding="{Binding VerdictLabel}"/>
-      <DataGridTextColumn Header="归档状态" Width="105" Binding="{Binding PersistenceLabel}"/>
-      <DataGridTextColumn Header="步骤事实" Width="93" Binding="{Binding StepFactCount}"/>
+      <DataGridTextColumn Header="检测结果" Width="104" Binding="{Binding VerdictLabel}"/>
+      <DataGridTextColumn Header="保存状态" Width="105" Binding="{Binding PersistenceLabel}"/>
+      <DataGridTextColumn Header="步骤数" Width="93" Binding="{Binding StepFactCount}"/>
       <DataGridTextColumn Header="失败原因" Width="185" Binding="{Binding FailureReason}"/>
      </DataGrid.Columns>
     </DataGrid>
@@ -103,9 +103,9 @@
     <DockPanel Grid.Row="2" LastChildFill="True">
      <TextBlock x:Name="DetailsStatus" DockPanel.Dock="Top" FontSize="12"
       Foreground="#526B84" Background="#F7FAFD" Padding="10,6"
-      Text="选择一次真实记录后查看逐步骤数据、事件和证据状态"/>
+      Text="选择记录后查看步骤、测量与证据"/>
      <TabControl BorderThickness="0" Background="White" FontSize="13">
-      <TabItem Header="逐步骤事实">
+      <TabItem Header="测试步骤">
        <Grid>
         <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <DataGrid x:Name="StepFactsGrid" Grid.Row="0" AutoGenerateColumns="False"
@@ -129,10 +129,10 @@
         </DataGrid>
         <TextBlock x:Name="StepDetailText" Grid.Row="1" Margin="10,7"
          FontSize="12" TextWrapping="Wrap" Foreground="#485D73"
-         Text="选择一个步骤可查看 Occurrence、真实证据 ID 和说明"/>
+         Text="选择一个步骤查看相关记录和证据"/>
        </Grid>
       </TabItem>
-      <TabItem Header="原始事件">
+      <TabItem Header="事件日志">
        <DataGrid x:Name="EventFactsGrid" AutoGenerateColumns="False"
         IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False"
         RowHeight="33" ColumnHeaderHeight="34"
@@ -152,11 +152,11 @@
       <TabItem Header="证据完整性">
        <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="16">
-         <TextBlock Text="本次真实归档证据" FontWeight="SemiBold"
+         <TextBlock Text="本次检测证据" FontWeight="SemiBold"
           FontSize="15" Margin="0,0,0,8"/>
          <TextBlock x:Name="EvidenceIntegrity" FontSize="13"
           TextWrapping="Wrap" Foreground="#526B84"
-          Text="尚未选择记录。证据不足或未归档不能解释为测试通过。"/>
+          Text="请选择一条记录。证据不完整的检测不能标为通过。"/>
         </StackPanel>
        </ScrollViewer>
       </TabItem>
@@ -190,6 +190,6 @@
    </Grid>
   </Border>
   <TextBlock x:Name="StatusText" Grid.Row="3" Margin="2,10,0,0"
-   Foreground="#526477" TextWrapping="Wrap" Text="查询真实归档记录，不产生或修改 ECU 检测事实。"/>
+   Foreground="#526477" TextWrapping="Wrap" Text="按 ECU 编号查看多次检测、复检和调试记录。"/>
  </Grid>
 </Window>
