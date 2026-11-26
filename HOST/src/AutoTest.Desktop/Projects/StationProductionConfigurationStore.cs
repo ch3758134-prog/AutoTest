@@ -50,6 +50,56 @@ public static class StationProductionConfigurationStore
         finally { WriteGate.Release(); }
     }
 
+    /// <summary>
+    /// Recover an unreadable station draft without migrating or interpreting
+    /// older data. Preserve its exact bytes before replacing the draft.
+    /// The active production publication is intentionally untouched.
+    /// </summary>
+    public static async Task ResetUnreadableDraftAsync(CancellationToken ct = default)
+    {
+        await WriteGate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            if (File.Exists(DraftPath))
+            {
+                // Read again under the write gate. A valid draft may have been
+                // repaired by another operation since the window first opened.
+                try
+                {
+                    _ = await LoadDraftAsync(ct).ConfigureAwait(false);
+                    throw new InvalidOperationException(
+                        "工位设置已恢复，请重新打开窗口查看。");
+                }
+                catch (Exception error) when (error is InvalidDataException or
+                    JsonException or NotSupportedException)
+                {
+                    // The original is retained as an opaque file, not migrated.
+                }
+
+                var bytes = await File.ReadAllBytesAsync(DraftPath, ct)
+                    .ConfigureAwait(false);
+                var backup = Path.Combine(Root,
+                    "station-draft-backup-" +
+                    DateTimeOffset.UtcNow.ToString("yyyyMMddHHmmss") + "-" +
+                    Guid.NewGuid().ToString("N") + ".json");
+                await AtomicAsync(backup, bytes, ct).ConfigureAwait(false);
+                var backedUp = await File.ReadAllBytesAsync(backup, ct)
+                    .ConfigureAwait(false);
+                if (!SHA256.HashData(bytes).AsSpan().SequenceEqual(
+                        SHA256.HashData(backedUp)))
+                    throw new IOException("工位配置备份校验失败，原设置保持不变。");
+            }
+            // Atomic replacement only after a verified backup. Neither the
+            // published configuration nor the selected project is changed.
+            var fresh = StationProductionConfiguration.New();
+            fresh.ValidateDraft();
+            await AtomicAsync(DraftPath,
+                JsonSerializer.SerializeToUtf8Bytes(fresh, Json), ct)
+                .ConfigureAwait(false);
+        }
+        finally { WriteGate.Release(); }
+    }
+
     public static string ConfigurationSha(StationProductionConfiguration document) =>
         Convert.ToHexString(SHA256.HashData(
             JsonSerializer.SerializeToUtf8Bytes(document, Json)));
