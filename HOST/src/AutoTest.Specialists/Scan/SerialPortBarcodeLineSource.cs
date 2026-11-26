@@ -31,6 +31,10 @@ public sealed class SerialPortBarcodeLineSource : IVerifiedBarcodeLineSource, IA
     private readonly SerialBarcodeFrameDecoder _decoder = new();
     private bool _disposed;
     public string LastFrameHex { get; private set; } = "";
+    private string _lastIncompleteHex = "";
+    // Diagnostic only: a device may send bytes without the required CR/LF
+    // suffix. The caller may display these bytes but never accept a scan.
+    public event Action<string, string>? IncompleteFrameObserved;
 
     private SerialPortBarcodeLineSource(SerialPort port) => _port = port;
 
@@ -82,8 +86,19 @@ public sealed class SerialPortBarcodeLineSource : IVerifiedBarcodeLineSource, IA
                 // A CR-only scanner finishes its frame on idle. For CRLF,
                 // the LF arrives first and both delimiter bytes are retained.
                 frame = _decoder.FlushIdle();
+                if (frame is null)
+                {
+                    var pending = _decoder.PendingText;
+                    var pendingHex = _decoder.PendingRawHex;
+                    if (pending.Length > 0 && pendingHex != _lastIncompleteHex)
+                    {
+                        _lastIncompleteHex = pendingHex;
+                        IncompleteFrameObserved?.Invoke(pending, pendingHex);
+                    }
+                }
             }
             if (frame is null) continue;
+            _lastIncompleteHex = "";
             LastFrameHex = frame.RawHex;
             if (!frame.Accepted)
                 throw new InvalidDataException("扫码枪数据帧无效：" + frame.Code);
