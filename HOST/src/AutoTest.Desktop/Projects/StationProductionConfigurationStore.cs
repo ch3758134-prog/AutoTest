@@ -60,7 +60,11 @@ public static class StationProductionConfigurationStore
         await WriteGate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            if (File.Exists(DraftPath))
+            // If the file cannot even be located, do not risk treating an
+            // access problem as permission to replace unknown user data.
+            if (!File.Exists(DraftPath))
+                throw new IOException(
+                    "无法确认现有工位设置文件，已停止重建以保护原数据。");
             {
                 // Read again under the write gate. A valid draft may have been
                 // repaired by another operation since the window first opened.
@@ -152,7 +156,7 @@ public static class StationProductionConfigurationStore
                 rule.Samples.Any(x => x.Raw == "SN001234" && x.ShouldAccept &&
                     x.ExpectedSerial == "SN001234") &&
                 rule.Samples.Any(x => x.Raw == "SN|BAD" && !x.ShouldAccept))
-                issues.Add(rule.Name + "：仍使用旧版虚构的正反例；" +
+                issues.Add(rule.Name + "：验证样例仍是预置示例；" +
                     "请用本工位真实扫码替换，错误样例可明确使用人工构造的拒绝输入。");
             // Default single-model stations take the entire ASCII barcode as
             // the unique serial. This is a deterministic parser contract, not
@@ -252,9 +256,9 @@ public static class StationProductionConfigurationStore
                 .Select(x => x.Kind).Distinct().ToArray();
             if (conflicts.Length > 0)
                 throw new InvalidDataException(
-                    "旧工程工位动作包含重复夹具控制（" +
+                    "当前工程的工位动作包含重复夹具控制（" +
                     string.Join("、", conflicts) +
-                    "）；请在工程设置中移除旧夹紧/释放动作，改由生产准备标准夹具配置管理。");
+                    "）；请在工程设置中删除重复的夹具动作；标准压紧与释放在工位夹具中设置。");
         }
         return new ProductionPublishedProduct(binding.ProductKey, binding.HardwareCode,
             manifest, definition.Id.Value, opened.ManifestSha256,
@@ -458,7 +462,7 @@ public static class ProductionIdentityResolver
             .ConfigureAwait(false);
         if (published is null)
             return (null, new("STATION_PUBLICATION_MISSING",
-                "尚未发布生产准备配置；旧扫码配方不能替代。",
+                "工位配置尚未启用。请在工位配置中完成设置后启用。",
                 raw, "", 0, "", "", "", "", "", null));
         var selected = Resolve(published, raw);
         if (!selected.Accepted) return (published, selected);
