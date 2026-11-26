@@ -104,3 +104,37 @@
 这是基于用户明确“双 EXE 长期方向 + 当前单 EXE + 多工程扫码自动匹配”要求的**研究性方案**。工程包文件规范、产品别名的准确字段定义及路由 UI 细节仍需通过真实历史工程和扫码样例进一步验证；不得声称已实现、通过现场验收或架构设计已达到 9 分。
 
 仅按用户另行指令在 `R1` 施工；`Project_Management` 管理研究和门禁；不自行更改 main。
+
+## 十、2026-11-26 施工增量：R1 多工程生产系统已进入源码
+
+**重要取代关系：**本文件前文最初记录的是研究阶段，当轮用户随后批准直接重构，因此此处记载已实际施工的源码候选。源码已提交 ≠ Windows 构建成功 ≠ 实物验收。
+
+开发分支：R1。起点 256eb2374a32e781eeff7e76a5a93bc6ae4a983f；本轮追记 HEAD 6ed60f17d818ee7b96aa8ae7eda0abbc0b0b2f0e。正式管理分支 Project_Management；main 未动。
+
+### 已实施
+
+- ProductionProjectPackageService：新增 .atpkg 工程包，导出完整 TEST/DBC/WAVE 和原生 FLASH 固件/安全算法受控资源，逐项 SHA256 校验；校验路径穿越、文件数量/大小及哈希，解压到临时目录后完整审查、再原子安装。
+- ProductionProjectCatalog：SQLite 工程库管理多份工程和不可变版本，提供单工程明确选择、条码字段匹配、仅序号登记表匹配；严格要求唯一结果，陌生/歧义编号不能猜选。支持批量 CSV 归属表、冲突拒绝与关联移除。
+- ProductionProjectLibraryWindow：提供批量导入、工程导出、搜索、版本查看、关联、编号表导入和离线匹配预览。管理操作不发送主控命令。
+- AutomaticTestHomeViewModel.Catalog + Scanner：真实 COM 先显示扫码原文，然后路由到安装的工程包；删除旧的“必须等于工程编辑器当前打开工程”的生产匹配分支；对设备会话、端口和资源做再确认。
+- MainWindowViewModel.Production：复用已有 TEST 运行计划、FLASH 与硬件链，扫码选择后安全装载目标工程版本并应用/回读 CAN 速率。切换本身不触发夹具、实体 START、FLASH。
+- AutomaticTestPlanService / AutomaticTestHomeViewModel：正式生产页在进入时等待扫码，不能从工程编辑器的最近打开工程自动推断生产工程。
+- ProductionPreparationWindow：重写为主控/扫码枪/夹具设备设置，不再重复管理工程/条码关联；设备编辑自动保存后使原扫码身份失效。
+- MainWindow：顶层仅“生产检测”和“工程”；管理菜单下进入生产工程库、工位设备设置与报告。
+- 新增 ProductionCatalogContractTests / ProductionCatalogRoutingTests 纯数据规则测试；源代码存在但尚未在 Windows 运行。
+
+### 已知限制（不得夸大）
+
+- SOURCE_CANDIDATE：无 Windows Release build / 单测回执，WPF 实测也未完成；静态 XAML/事件检查不能代表编译或真机通过。
+- FIELD_NOT_VERIFIED：真实多工程扫码、固件烧录、工位实体 START、夹具机械反馈、完整 InspectionWriter 单台记录均尚无闭环验收；原正式生产物理门禁保持阻断。
+- 当前多工程库具备导入、单一活动版本索引与自动扫码路由，但 StationDeploymentStore 暂为当前工位一份运行快照的内部实现；运行级原子回退需 Windows 故障注入再验。
+- 当前同一工位使用单一扫码模式：单工程 / 分隔字段 / 归属登记；多种供应商格式并行和跨版本历史身份冲突审计尚需设计实现。
+- 当前原生 FLASH 实体方法仍以已验证 HydEPB 流程为安全准入，不意味着任意 ECU 导入后即可实体烧录。
+- 工位设备草稿持久化仍复用旧 StationProductionConfiguration JSON，UI 职责已经拆开，存储合同后续仍需迁移到纯设备设置。
+- 当前依然只有一个 Desktop EXE；未来需要把 ProductionCatalog/Package 服务抽离 Desktop 为可共享程序集，不能只复制 UI 实现所谓双 EXE。
+
+### Windows 验收清单
+
+构建 Release / 运行 xunit；用至少两个真实可执行工程导出包、删除原目录后再次安装加载；单工程和两产品条码跨项目扫码切换；CSV 冲突拒绝；版本修改/缺失 DLL/DBC/HEX 阻断；在周期 CAN/烧录占用时拒绝切换；设备断开时不得继承扫码；正式 START/RECORD 未接入前仍拒绝生产通过。
+
+本轮状态：设计方案已有源码实现，**不是成熟交付产品准出**。
