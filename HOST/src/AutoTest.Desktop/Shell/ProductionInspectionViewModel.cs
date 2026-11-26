@@ -260,7 +260,6 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
         if (!string.Equals(path, _lastProjectPath, StringComparison.OrdinalIgnoreCase))
         {
             _lastProjectPath = path;
-            Interlocked.Increment(ref _scanGeneration);
             DutSerial = "等待扫码";
             Phase = "等待扫码";
             ProductionReadiness = "尚未完成自动测试配置检查";
