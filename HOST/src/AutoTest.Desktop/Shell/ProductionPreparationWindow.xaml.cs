@@ -442,45 +442,13 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
 
     private async void Save_Click(object sender, RoutedEventArgs e) => await SaveAsync();
 
-    private async void PublishProject_Click(object sender, RoutedEventArgs e)
-    {
-        if (_publishProject is null) { Status = "工程发布入口尚未接入。"; return; }
-        if (!await SaveAsync()) return;
-        try
-        {
-            var success = await _publishProject();
-            Status = success ? "当前 ECU 工程已核对并冻结，未执行实体测试。" :
-                "工程发布已取消或校验未通过；未取得新生产发布资格。";
-            await RefreshOverviewAsync();
-        }
-        catch (Exception error) { Status = "工程发布未完成：" + error.Message; }
-    }
+    // Legacy controls are not a second release path. Every entry performs
+    // the same complete project + station verification and publication.
+    private async void PublishProject_Click(object sender, RoutedEventArgs e) =>
+        await GuidedPublishAsync();
 
-    private async void Publish_Click(object sender, RoutedEventArgs e)
-    {
-        if (!await SaveAsync()) return;
-        if (!_mayEdit()) { Status = "正在执行真实工位任务，禁止发布。"; return; }
-        _busy = true;
-        try
-        {
-            var config = BuildDraft();
-            // BuildDraft increments revision, so publication must use the
-            // EXACT bytes saved above, not a newly synthesised revision.
-            config = await StationProductionConfigurationStore.LoadDraftAsync();
-            var released = await StationProductionConfigurationStore.PublishAsync(config);
-            _onPublished?.Invoke();
-            Status = "已发布工位产品识别与工程关联 · " +
-                released.PublicationId.ToString("N")[..10] +
-                "。实体 START/机械反馈仍必须真实验收。";
-            await RefreshOverviewAsync();
-        }
-        catch (Exception error)
-        {
-            Status = "发布失败，原已发布版本保持不变：" + error.Message;
-            IssueSummary = Status;
-        }
-        finally { _busy = false; }
-    }
+    private async void Publish_Click(object sender, RoutedEventArgs e) =>
+        await GuidedPublishAsync();
 
     private async Task RefreshOverviewAsync()
     {

@@ -44,7 +44,7 @@
     </StackPanel>
     <StackPanel>
      <TextBlock Text="工位设置" FontSize="21" FontWeight="SemiBold"/>
-     <TextBlock Text="核对当前 ECU 工程、配置工位设备并发布；扫码枪可在生产运行前连接"
+     <TextBlock Text="当前工程、扫码与身份、真实工位、夹具和发布检查都在同一页；修改自动保存"
       Foreground="#62788D" FontSize="12" Margin="0,4,0,0"/>
     </StackPanel>
    </DockPanel>
@@ -344,11 +344,11 @@
        BorderBrush="#DFE8F1" BorderThickness="1" Margin="0,0,0,12">
        <StackPanel>
         <TextBlock Text="工程与工位发布" FontWeight="SemiBold" Margin="0,0,0,7"/>
-        <TextBlock Text="① 冻结当前 ECU 工程的 FLASH、完整 TEST 与资源。② 发布工位的编码规则及产品绑定。两步均不触发真实机械动作。"
+        <TextBlock Text="所有工程、FLASH、TEST 和工位配置由页面底部“保存并设为当前生产工程”一次检查并应用；这里仅供查看高级诊断。"
          TextWrapping="Wrap" Foreground="#536F87" Margin="0,0,0,10"/>
         <WrapPanel>
-         <Button Content="① 确认当前 ECU 工程" Click="PublishProject_Click" Padding="12,8" Margin="0,0,10,0"/>
-         <Button Content="② 校验并发布工位配置" Click="Publish_Click"
+         <Button Visibility="Collapsed" Content="① 确认当前 ECU 工程" Click="PublishProject_Click" Padding="12,8" Margin="0,0,10,0"/>
+         <Button Visibility="Collapsed" Content="② 校验并发布工位配置" Click="Publish_Click"
           Padding="12,8" Background="#2469B3" Foreground="White"/>
         </WrapPanel>
        </StackPanel>
