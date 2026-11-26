@@ -21,6 +21,7 @@ public partial class ProductionPreparationWindow
     private TextBox? _guidedManualInput;
     private string? _lastRealBarcode;
     private string _lastRealBarcodePort = "";
+    private string _lastRealBarcodePnp = "";
     private DateTimeOffset? _lastRealBarcodeUtc;
     private int _guidedPreviewSequence;
 
@@ -43,6 +44,7 @@ public partial class ProductionPreparationWindow
             {
                 _lastRealBarcode = null;
                 _lastRealBarcodePort = "";
+                _lastRealBarcodePnp = "";
                 _lastRealBarcodeUtc = null;
                 if (_guidedScan is not null)
                     _guidedScan.Text = "扫码设备已断开或串口会话发生变化，旧实扫凭证失效。";
@@ -400,6 +402,10 @@ public partial class ProductionPreparationWindow
                     StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("当前 COM 不是已绑定的实体扫码枪；" +
                     "请在扫码与工位设备中完成“记住当前扫码枪”。");
+            if (!string.Equals(_lastRealBarcodePnp, actual.PnpInstanceId,
+                StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("本次扫码发生于设备绑定之前，或扫码后实体设备身份已变化；" +
+                    "请使用已绑定扫码枪重新扫描 ECU 编号。");
             if (!await SaveAsync()) return;
             var config = await StationProductionConfigurationStore.LoadDraftAsync();
             var issues = StationProductionConfigurationStore.InspectRules(config);
@@ -411,6 +417,7 @@ public partial class ProductionPreparationWindow
             var frozenEditGeneration = _editGeneration;
             var frozenRealScan = _lastRealBarcode;
             var frozenPort = _lastRealBarcodePort;
+            var frozenPnp = _lastRealBarcodePnp;
             _busy = true;
             // UI's owner is responsible for saving floating editors, asking
             // the engineer to confirm, publishing FLASH and pinning TEST.
@@ -430,7 +437,8 @@ public partial class ProductionPreparationWindow
                 throw new InvalidDataException("工程发布后的版本/身份不等于准备时核对的 ECU 工程。");
             if (_editGeneration != frozenEditGeneration ||
                 _lastRealBarcode != frozenRealScan ||
-                _scanner?.IsConnected != true || _scanner.ConnectedPort != frozenPort)
+                _scanner?.IsConnected != true || _scanner.ConnectedPort != frozenPort ||
+                _lastRealBarcodePnp != frozenPnp)
                 throw new IOException("发布过程中工位配置或真实扫码来源发生变化，请重新核对后发布。");
             var testScan = await StationProductionConfigurationStore.PreviewDraftAsync(
                 config, frozenRealScan!);
