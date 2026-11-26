@@ -83,6 +83,7 @@
        </StackPanel>
       </Border>
       <Border Style="{StaticResource Panel}">
+       <StackPanel>
        <DockPanel Margin="0,0,0,9">
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
          <Button Content="绑定当前打开工程" Click="AddCurrentProject_Click"
@@ -106,6 +107,7 @@
        </DataGrid>
        <TextBlock Text="更改工程文件、TEST、DBC、波形、FLASH 后，必须重新发布；不会悄悄使用编辑草稿。"
         Foreground="#667F96" TextWrapping="Wrap" Margin="0,9,0,0"/>
+       </StackPanel>
       </Border>
       <TextBlock Text="本工位已发布产品与完整 TEST 顺序" Style="{StaticResource Section}"/>
       <TextBox Text="{Binding PublicationOverview}" IsReadOnly="True" TextWrapping="Wrap"
