@@ -553,18 +553,18 @@ public partial class FlashLabWindow : Window
                 NativeProjectRoot, NativeProjectModelCode);
             if (current is null)
             {
-                NativeProfileLabel.Text = "当前工程尚未保存原生烧录参数";
-                AddLog("当前工程没有原生烧录配置；请先在检测准备中编辑工程烧录。");
+                NativeProfileLabel.Text = "当前工程尚未配置烧录参数";
+                AddLog("当前工程缺少烧录配置，请先编辑并保存。");
                 return;
             }
             if (!string.IsNullOrWhiteSpace(NativeProjectModelCode) &&
                 !string.Equals(current.Profile.EcuModelCode, NativeProjectModelCode,
                     StringComparison.Ordinal))
                 throw new InvalidDataException(
-                    "当前工程型号与原生烧录配置不一致，不能自动载入。");
+                    "烧录配置与当前工程不匹配，请检查。");
             _nativeProfileRoot = NativeProjectRoot;
             _nativeProfileSha = current.ProfileSha256;
-            NativeProfileLabel.Text = "当前执行配置：工程原生 " +
+            NativeProfileLabel.Text = "当前烧录配置：工程 " +
                 current.Profile.EcuModelCode + " · 修订 " + current.Profile.Revision;
             _vm.Status = "已使用工程内 HEX、安全文件及烧录参数；仍需校验实际 Job 后方可授权。";
             InvalidateFlashPreview();
@@ -575,7 +575,7 @@ public partial class FlashLabWindow : Window
         {
             _nativeProfileRoot = null;
             _nativeProfileSha = null;
-            _vm.Status = "工程原生烧录配置需修复：" + error.Message;
+            _vm.Status = "工程烧录配置需要检查：" + error.Message;
             AddLog(_vm.Status);
         }
     }
@@ -595,7 +595,7 @@ public partial class FlashLabWindow : Window
             var current = await NativeFlashProfileStore.LoadAsync(root);
             if (current is null)
             {
-                _vm.Status = "尚未保存原生烧录配置，不会改变当前执行源。";
+                _vm.Status = "烧录配置尚未保存，当前设置保持不变。";
                 return;
             }
             if (!string.IsNullOrWhiteSpace(NativeProjectModelCode) &&
@@ -649,7 +649,7 @@ public partial class FlashLabWindow : Window
             $"任务 SHA={job.Fingerprint}";
         FlashStageLabel.Text = "已从原生配置冻结真实 CanTool Job；尚未发送 CAN。";
         WorkflowStatusLabel.Text = "请核对实际 ECU 供电、固件及擦除地址，再单独授权开始。";
-        _vm.Status = "原生配置验证通过；等待实体烧录操作员确认。";
+        _vm.Status = "烧录配置检查通过，可继续确认烧录。";
         return job;
     }
 
@@ -760,7 +760,7 @@ public partial class FlashLabWindow : Window
 
             _flashStop=new CancellationTokenSource();
             Busy(true);
-            FlashStageLabel.Text="真实烧录进行中；请保持稳定供电，不要拔线。";
+            FlashStageLabel.Text="烧录中，请保持供电稳定，不要断开连接。";
             // Physical frame gate still binds exactly to this frozen job SHA;
             // the operator no longer has to type a 64-byte fingerprint.
             physicalCallStarted=true;

@@ -1162,7 +1162,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         // Closing a document is intentional: do not immediately reopen the
         // same document or create an extra configuration window behind it.
         if (OpenEditors.Count == 0 && HasProject && IsEngineerWorkspace && !IsBusy)
-            StatusMessage = "文档已关闭。左侧工程树可单击打开 TEST 项目或资源。";
+            StatusMessage = "已关闭。单击左侧文件可重新打开。";
         return true;
     }
     private bool IsAlreadyOpen(string key)
@@ -1589,7 +1589,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         ResourceNodes.Add(new ResourceTreeNode(current.Definition.Name, "", current.ManifestPath,
             role: "Root"));
         ResourceNodes.Add(new ResourceTreeNode("测试项目与用例", "",
-            "唯一有序用例实例；临时勾选仅用于开发调试",
+            "工程中按顺序执行的测试用例",
             ProjectWorkspaceService.TestProjectKind, role: "Section"));
         var assets = current.Definition.Assets;
         var projects = assets.Where(x => x.Kind == ProjectWorkspaceService.TestProjectKind)
@@ -1611,7 +1611,7 @@ public sealed partial class MainWindowViewModel : BindableBase
             .OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase).ToArray();
         if (allCases.Length > 0 && projects.Length == 0)
         {
-            var unused = new ResourceTreeNode("未加入项目的用例", "", "独立 TEST 资产",
+            var unused = new ResourceTreeNode("未加入项目的用例", "", "尚未加入测试顺序的用例",
                 role: "Folder", count: allCases.Length.ToString());
             foreach (var entry in allCases)
                 unused.Children.Add(new ResourceTreeNode(entry.Name, "", entry.RelativePath,
@@ -1619,8 +1619,8 @@ public sealed partial class MainWindowViewModel : BindableBase
             ResourceNodes.Add(unused);
         }
         // Dependency review is secondary to the runnable project itself.
-        ResourceNodes.Add(new ResourceTreeNode("依赖与版本审查", "",
-            "核对 TEST、DBC、波形和烧录变更；不配置产线动作",
+        ResourceNodes.Add(new ResourceTreeNode("工程检查", "",
+            "检查测试用例、烧录、DBC 与波形资源",
             role: "Setup"));
         // A public flow is a reusable step resource, never a production test case.
         ResourceNodes.Add(new ResourceTreeNode("公共流程", "", "同一工程可复用的连续步骤",
@@ -1674,7 +1674,7 @@ public sealed partial class MainWindowViewModel : BindableBase
     }
 
     private static ResourceTreeNode ToAssetNode(AssetEntry entry) => new(
-        entry.Name, "", "正式工程资源 · " + entry.RelativePath + " · Revision " + entry.Revision,
+        entry.Name, "", "工程文件：" + entry.RelativePath,
         entry.Kind, entry, role: "Asset");
 
     private async Task OpenNewProjectAsync()
@@ -1737,7 +1737,7 @@ public sealed partial class MainWindowViewModel : BindableBase
             projectEditor.AddNewFormalPackage(caseAsset);
             if (!await projectEditor.SaveForCloseAsync())
             {
-                StatusMessage = "TEST 资产已创建，但项目关联尚未保存；请先解决项目错误后再打开。";
+                StatusMessage = "测试用例已创建，但尚未加入测试项目，请先检查项目设置。";
                 return;
             }
             var opened = await _workspace.OpenTestEditorAsync(caseAsset.Id);
@@ -1835,7 +1835,7 @@ public sealed partial class MainWindowViewModel : BindableBase
             ActivateEditor("test|" + caseAsset.Id, new TestEditorView(editor, this),
                 "测试用例 · " + caseAsset.Name, editor.ConfirmClose);
             SelectAsset(caseAsset.Id);
-            StatusMessage = "已建立唯一测试项目和第一条正式用例引用，可直接编辑真实测试步骤。";
+            StatusMessage = "测试项目已创建，已添加第一条用例，可以开始编辑步骤。";
         });
     }
 
@@ -2251,7 +2251,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         if (_realTest.IsRunning || _hardware.IsTestRunApproved ||
             _hardware.IsManualCanBatchApproved || _hardware.IsManualKeyActionApproved)
         {
-            StatusMessage = "真实测试、手动 CAN 或 KEY 正在占用工位，不能更改工程资源。请先停止实体操作。";
+            StatusMessage = "当前有测试或设备操作正在进行，请停止操作后再修改工程资源。";
             return;
         }
         var editorsUsingAsset = OpenEditors.Where(tab =>

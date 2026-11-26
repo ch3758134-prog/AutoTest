@@ -976,7 +976,7 @@ public sealed class TestEditorViewModel : BindableBase
                     " 项问题；首项：" + plan.Diagnostics[0];
                 return;
             }
-            StatusMessage = "运行前检查通过；可以直接运行当前用例，系统会先保存有效修改并冻结运行版本。";
+            StatusMessage = "检查通过，可以运行当前用例。";
         }
         catch (Exception error)
         {
@@ -1020,7 +1020,7 @@ public sealed class TestEditorViewModel : BindableBase
             var plan = _realTest.Prepare(runDocument);
             if (!plan.Diagnostics.IsEmpty)
             {
-                StatusMessage = "无法准备真实运行：" + plan.Diagnostics[0];
+                StatusMessage = "运行准备失败：" + plan.Diagnostics[0];
                 return;
             }
             ExpectedFlashApproval = _realTest.ExpectedFlashApproval(runDocument);
@@ -1045,7 +1045,7 @@ public sealed class TestEditorViewModel : BindableBase
         }
         catch (Exception error) when (IsEditorError(error))
         {
-            StatusMessage = "准备真实运行失败：" + error.Message;
+            StatusMessage = "无法开始运行：" + error.Message;
         }
     }
 
@@ -1185,7 +1185,7 @@ public sealed class TestEditorViewModel : BindableBase
         RefreshRows(); // Remove previous-run statuses before starting real execution.
         RunSummary = singleStep
             ? "正在执行选中步骤（独立诊断）…"
-            : "正在执行真实测试用例…";
+            : "正在执行测试用例…";
         StopRunCommand.RaiseCanExecuteChanged();
         void OnPhysicalStep(RealStepFact fact)
         {
@@ -1197,7 +1197,7 @@ public sealed class TestEditorViewModel : BindableBase
                 RunFactRows.Add(new OperatorStepRunRow(
                     OperatorStepType(fact.Type), OperatorExecutionStatus(fact),
                     fact.Actual, OperatorExecutionDetail(fact.Detail)));
-                RunSummary = "真实运行中 · 已归档 " + RunFacts.Count + " 条步骤记录";
+                RunSummary = "运行中 · 已保存 " + RunFacts.Count + " 条步骤记录";
                 RefreshRows();
             }
             if (dispatcher.CheckAccess()) ShowStep();
@@ -1238,12 +1238,12 @@ public sealed class TestEditorViewModel : BindableBase
         }
         catch (OperationCanceledException)
         {
-            RunSummary = "操作员已请求停止：真实执行已取消，设备安全清理另行执行。";
+            RunSummary = "已停止测试；请核对设备是否完成收尾。";
             StatusMessage = RunSummary;
         }
         catch (Exception e)
         {
-            RunSummary = "真实测试未完成：" + e.Message;
+            RunSummary = "测试未完成：" + e.Message;
             StatusMessage = RunSummary;
             // Keep real-run failures in the visible status/result area, not a modal
             // dialog that blocks the operator from examining the test evidence.
@@ -1288,7 +1288,7 @@ public sealed class TestEditorViewModel : BindableBase
         {
             RunFacts.Clear();
             RunFactRows.Clear();
-            RunSummary = "测试程序已更改；此前执行事实不再对应当前编辑版本。";
+            RunSummary = "测试步骤已更新，上次运行结果不适用于当前版本。";
         }
         // StepEditTransaction replaces immutable nodes; the UI keeps a stable
         // StepId/Phase/Slot selection while refreshing only its projections.

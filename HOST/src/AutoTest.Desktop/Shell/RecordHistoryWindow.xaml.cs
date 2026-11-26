@@ -156,13 +156,13 @@ public partial class RecordHistoryWindow : Window
             version.CommandText = "PRAGMA user_version;";
             var currentVersion = Convert.ToInt32(version.ExecuteScalar());
             if (currentVersion != RecordDatabase.CurrentSchemaVersion)
-                throw new InvalidDataException("所选 SQLite 文件不是支持的 AutoTest RECORD 版本。");
+                throw new InvalidDataException("无法识别此记录库格式。");
             using var tables = connection.CreateCommand();
             tables.CommandText = @"SELECT COUNT(*) FROM sqlite_master
                 WHERE type='table' AND name IN
                 ('run_headers','run_facts','run_step_facts','artifact_links');";
             if (Convert.ToInt32(tables.ExecuteScalar()) != 4)
-                throw new InvalidDataException("所选文件缺少正式 RECORD 归档表。");
+                throw new InvalidDataException("记录库缺少必要的数据表。");
         }
         var directory = Path.GetDirectoryName(absolute)!;
         var database = new RecordDatabase(absolute);
@@ -171,7 +171,7 @@ public partial class RecordHistoryWindow : Window
             new ProductionStatistics(database),
             new RunReportExporter(database,
                 new ArtifactRepository(Path.Combine(directory, "artifacts")))));
-        SourceLabel.Text = "已选择 " + _sources.Count + " 个真实工程记录库";
+        SourceLabel.Text = "已选择 " + _sources.Count + " 个工程记录库";
         HistoryGrid.ItemsSource = null;
         ClearSelectedFacts();
         SelectionSummary.Text = "选择一条记录查看详情";
@@ -198,7 +198,7 @@ public partial class RecordHistoryWindow : Window
         SelectionSummary.Text = "选择一条记录查看详情";
         FailureDetail.Text = "";
         ViewReport.IsEnabled = ExportReport.IsEnabled = false;
-        StatusText.Text = "已清空查询来源；原始 SQLite 文件及记录均未修改。";
+        StatusText.Text = "已清空记录库列表，原有记录未删除。";
     }
 
     private async void DutSearch_KeyDown(object sender, KeyEventArgs e)
@@ -241,7 +241,7 @@ public partial class RecordHistoryWindow : Window
         _busy = true;
         try
         {
-            StatusText.Text = "正在读取真实检测记录…";
+            StatusText.Text = "正在查询检测记录…";
             var mode = (ModeFilter.SelectedItem as ComboBoxItem)?.Tag as string ?? "All";
             var rows = new List<RecordHistoryDisplayRow>();
             var failed = new List<string>();
@@ -290,7 +290,7 @@ public partial class RecordHistoryWindow : Window
                                        InvalidOperationException or Microsoft.Data.Sqlite.SqliteException or
                                        System.Text.Json.JsonException)
         {
-            StatusText.Text = "查询失败，未修改原始记录：" + error.Message;
+            StatusText.Text = "查询失败：" + error.Message;
             HistoryGrid.ItemsSource = null;
             ClearSelectedFacts();
             ViewReport.IsEnabled = false;
@@ -315,9 +315,9 @@ public partial class RecordHistoryWindow : Window
         _detailCancellation = null;
         StepFactsGrid.ItemsSource = null;
         EventFactsGrid.ItemsSource = null;
-        DetailsStatus.Text = "选择一次运行，查看真实步骤、测量、事件和证据";
+        DetailsStatus.Text = "选择一条记录查看步骤、测量与证据";
         StepDetailText.Text = "选择一个步骤可查看 Occurrence、证据 ID 和失败说明";
-        EvidenceIntegrity.Text = "尚未选择记录；不能从空白或未结案记录推断测试通过。";
+        EvidenceIntegrity.Text = "请选择一条记录；记录不完整时不能判断为通过。";
     }
 
     private static string JsonField(JsonElement row, string key)
@@ -581,7 +581,7 @@ public partial class RecordHistoryWindow : Window
         });
         try
         {
-            StatusText.Text = "正在批量读取真实 RECORD 并创建归档包…";
+            StatusText.Text = "正在整理选中的检测报告…";
             await Task.Run(async () =>
             {
                 await using var stream = new FileStream(temporary, FileMode.CreateNew,
@@ -655,7 +655,7 @@ public partial class RecordHistoryWindow : Window
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
         {
-            StatusText.Text = "批量打包已取消；没有发布不完整报告。";
+            StatusText.Text = "已取消导出，没有生成报告包。";
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or
             InvalidDataException or InvalidOperationException or ArgumentException or
@@ -702,7 +702,7 @@ public partial class RecordHistoryWindow : Window
             var path = Path.Combine(folder, row.RunId + ".html");
             await File.WriteAllTextAsync(path, html);
             Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
-            StatusText.Text = "已在默认浏览器打开所选检测报告；报告以真实归档事实生成。";
+            StatusText.Text = "已打开所选检测报告。";
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or
                                        InvalidDataException or ArgumentException or

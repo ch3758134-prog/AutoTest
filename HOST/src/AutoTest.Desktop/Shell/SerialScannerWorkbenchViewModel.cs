@@ -190,7 +190,7 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
             }
             else DeviceStatus = ports.Length == 0
                 ? "没有可用串口，请检查扫码枪或驱动。"
-                : "尚未绑定设备；首次接收真实完整扫码后将记住实体。";
+                : "尚未选择本工位扫码枪；连接并扫码后可保存设备。";
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException
             or InvalidOperationException or System.ComponentModel.Win32Exception
@@ -315,7 +315,7 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
             }
             catch (Exception error) when (error is IOException or UnauthorizedAccessException)
             { Say("扫码已连接；保存端口偏好失败：" + error.Message); }
-            Say("已连接 " + settings.PortName + "，等待真实条码。");
+            Say("已连接 " + settings.PortName + "，等待扫码。");
         }
         catch (Exception error) when (error is ArgumentException or IOException or
             InvalidOperationException or UnauthorizedAccessException or
@@ -395,7 +395,7 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
                     LastHex = hex;
                     if (_boundDevice is null && !_disposed)
                         BindDevice();
-                    Status = "真实扫码已接收：" + complete;
+                    Status = "已收到扫码：" + complete;
                     // Only the station's authoritative interpreter may decide
                     // which frozen ProjectId the operator is permitted to use.
                     try { CompleteBarcodeReceived?.Invoke(complete); } catch { }
