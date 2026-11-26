@@ -62,7 +62,10 @@ public sealed class WaveAnalysisConfigTests
             CanId = 0x123,
             SignalName = "MotorCurrent",
             Unit = "A",
-            ReferenceName = "Approved-Reference"
+            ReferenceName = "Approved-Reference",
+            ApprovedReferenceAssetId = Guid.NewGuid(),
+            ApprovedReferenceAssetRevision = 1,
+            ApprovedReferenceAssetSha256 = new string('c', 64)
         };
         Assert.False(draft.IsComparisonReviewCurrent);
         var approved = draft.ApproveCurrentComparison();
@@ -85,6 +88,18 @@ public sealed class WaveAnalysisConfigTests
         Assert.False((reopened with
         {
             DbcAssetFingerprint = new string('b', 64)
+        }).IsComparisonReviewCurrent);
+        Assert.False((reopened with
+        {
+            ApprovedReferenceAssetSha256 = new string('d', 64)
+        }).IsComparisonReviewCurrent);
+        Assert.False((reopened with
+        {
+            ApprovedReferenceAssetId = Guid.NewGuid()
+        }).IsComparisonReviewCurrent);
+        Assert.False((reopened with
+        {
+            ApprovedReferenceAssetRevision = 2
         }).IsComparisonReviewCurrent);
         Assert.False((reopened with
         {
