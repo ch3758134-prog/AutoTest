@@ -165,7 +165,7 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
 
     private static void OnUi(Action action)
     {
-        var dispatcher = Application.Current?.Dispatcher;
+        var dispatcher = global::System.Windows.Application.Current?.Dispatcher;
         if (dispatcher is null || dispatcher.CheckAccess()) action();
         else dispatcher.BeginInvoke(action);
     }
