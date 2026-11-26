@@ -245,6 +245,109 @@ public sealed class ProductionProjectCatalog
         finally { _writeGate.Release(); }
     }
 
+    /// <summary>
+    /// Transactional offline registry import for serial-only labels. A
+    /// duplicate number with conflicting ownership rejects the whole file.
+    /// UTF-8 CSV: Serial,ProductKey,Hardware (the third column is optional).
+    /// No imported row can silently replace an existing product identity.
+    /// </summary>
+    public async Task<int> ImportRegistryCsvAsync(
+        string csvPath, CancellationToken ct = default)
+    {
+        var info = new FileInfo(csvPath);
+        if (!info.Exists || info.Length is <= 0 or > 16L * 1024 * 1024)
+            throw new InvalidDataException("编号表文件不存在或超过 16 MB。");
+        var rows = new List<(string Serial, string Product, string Hardware)>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        using (var input = new StreamReader(csvPath,
+            new System.Text.UTF8Encoding(false, true),
+            detectEncodingFromByteOrderMarks: true))
+        {
+            var lineNumber = 0;
+            string? line;
+            while ((line = await input.ReadLineAsync(ct)) is not null)
+            {
+                lineNumber++;
+                if (lineNumber > 200001)
+                    throw new InvalidDataException("编号表超过 20 万行。");
+                if (string.IsNullOrWhiteSpace(line)) continue;
+                var cells = line.Split(',');
+                if (cells.Length is < 2 or > 3)
+                    throw new InvalidDataException("编号表第 " + lineNumber +
+                        " 行应包含编号、产品识别码和可选的硬件版本。");
+                if (lineNumber == 1 && cells[0].Trim() is
+                    "Serial" or "serial" or "唯一编号" or "ECU编号")
+                    continue;
+                var serial = cells[0].Trim();
+                try { ValidateSerial(serial); }
+                catch (InvalidDataException error)
+                { throw new InvalidDataException("第 " + lineNumber + " 行：" + error.Message); }
+                var product = NormalizeProduct(cells[1]);
+                var hw = NormalizeHardware(cells.Length == 3 ? cells[2] : "");
+                if (!seen.Add(serial))
+                    throw new InvalidDataException("编号表出现重复编号：" + serial);
+                rows.Add((serial, product, hw));
+            }
+        }
+        if (rows.Count == 0)
+            throw new InvalidDataException("编号表没有有效的归属记录。");
+        await _writeGate.WaitAsync(ct);
+        try
+        {
+            await using var db = await ConnectAsync(ct);
+            await using var transaction = await db.BeginTransactionAsync(ct);
+            using var cmd = db.CreateCommand();
+            cmd.Transaction = (SqliteTransaction)transaction;
+            cmd.CommandText = """
+                INSERT INTO serial_registry(serial,product_key,hardware)
+                VALUES ($serial,$product,$hardware)
+                ON CONFLICT(serial) DO NOTHING
+                """;
+            var sn = cmd.Parameters.Add("$serial", SqliteType.Text);
+            var pk = cmd.Parameters.Add("$product", SqliteType.Text);
+            var hw = cmd.Parameters.Add("$hardware", SqliteType.Text);
+            using var existing = db.CreateCommand();
+            existing.Transaction = (SqliteTransaction)transaction;
+            existing.CommandText =
+                "SELECT product_key,hardware FROM serial_registry WHERE serial=$serial";
+            var existingSerial = existing.Parameters.Add("$serial", SqliteType.Text);
+            foreach (var row in rows)
+            {
+                ct.ThrowIfCancellationRequested();
+                sn.Value = row.Serial;
+                pk.Value = row.Product;
+                hw.Value = row.Hardware;
+                if (await cmd.ExecuteNonQueryAsync(ct) != 0) continue;
+                existingSerial.Value = row.Serial;
+                await using var reader = await existing.ExecuteReaderAsync(ct);
+                if (!await reader.ReadAsync(ct) ||
+                    reader.GetString(0) != row.Product ||
+                    reader.GetString(1) != row.Hardware)
+                    throw new InvalidDataException(
+                        "编号 " + row.Serial + " 已归属其他产品，导入已取消。");
+            }
+            await transaction.CommitAsync(ct);
+            return rows.Count;
+        }
+        finally { _writeGate.Release(); }
+    }
+
+    public async Task RemoveBindingAsync(string productKey, string hardware,
+        CancellationToken ct = default)
+    {
+        await _writeGate.WaitAsync(ct);
+        try
+        {
+            await using var db = await ConnectAsync(ct);
+            using var cmd = db.CreateCommand();
+            cmd.CommandText = "DELETE FROM routes WHERE product_key=$product AND hardware=$hardware";
+            cmd.Parameters.AddWithValue("$product", NormalizeProduct(productKey));
+            cmd.Parameters.AddWithValue("$hardware", NormalizeHardware(hardware));
+            await cmd.ExecuteNonQueryAsync(ct);
+        }
+        finally { _writeGate.Release(); }
+    }
+
     public async Task<ProductionCatalogRoute> ResolveAsync(
         string raw, CancellationToken ct = default)
     {
