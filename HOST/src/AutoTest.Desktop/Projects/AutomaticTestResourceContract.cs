@@ -133,7 +133,7 @@ public static class AutomaticTestResourceContract
                     {
                         Flag("用例「" + entry.DisplayName + "」资源「" +
                             mapping.Name + "」：" + error.Message,
-                            MappingCauseKey(mapping), "工程资源", "资源修订/映射需要复核",
+                            MappingCauseKey(mapping), "工程资源", MappingRootTitle(project, mapping),
                             entry.DisplayName + " · " + mapping.Name,
                             error.Message, mapping.Asset.Value == Guid.Empty ? null :
                             mapping.Asset.Value, entry.ItemId);
@@ -208,7 +208,7 @@ public static class AutomaticTestResourceContract
                     issues.Add(phaseName + " 资源「" + mapping.Name + "」：" + error.Message);
                     details.Add(new ResourceDependencyIssue(
                         MappingCauseKey(mapping),
-                        "工程资源", "资源修订/映射需要复核",
+                        "工程资源", MappingRootTitle(project, mapping),
                         phaseName + " · " + mapping.Name, error.Message,
                         mapping.Asset.Value == Guid.Empty ? null : mapping.Asset.Value,
                         entry.ItemId));
@@ -255,6 +255,16 @@ public static class AutomaticTestResourceContract
         if (!asset.VerifyHash(content))
             throw new InvalidDataException("资源文件内容与工程索引 SHA256 不一致：" + asset.Name);
         return content;
+    }
+
+    private static string MappingRootTitle(OpenProjectContext project,
+        TestTargetMapping mapping)
+    {
+        var asset = project.Definition.Assets.FirstOrDefault(x =>
+            x.Id == mapping.Asset);
+        if (asset is null)
+            return mapping.Kind + " · " + mapping.Name + "（资源已丢失）";
+        return asset.Kind + " · " + asset.Name + "（映射需核对）";
     }
 
     private static string MappingCauseKey(TestTargetMapping mapping) =>
