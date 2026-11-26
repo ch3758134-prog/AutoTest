@@ -301,6 +301,9 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
     /// previous scan. Observers must not control the scanner's USB lifecycle.
     /// </summary>
     public event Action<string>? CompleteBarcodeReceived;
+    // Diagnostic preview of real bytes with no CR/LF terminator.
+    // It is NOT a valid scan and cannot authorize identity or a test.
+    public event Action<string>? IncompleteBarcodeObserved;
 
     public ObservableCollection<string> AvailablePorts { get; } = new();
     public IReadOnlyList<int> SupportedBaudRates { get; } =
@@ -685,6 +688,7 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
             var settings = new SerialScannerPortSettings(SelectedPort, BaudRate);
             settings.Validate();
             _source = SerialPortBarcodeLineSource.Open(settings);
+            _source.IncompleteFrameObserved += OnIncompleteFrameObserved;
             if (!await _capture.OpenAsync(_source, settings.PortName,
                     CancellationToken.None))
                 throw new IOException("未确认串口设备身份。");
@@ -713,6 +717,16 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
         }
         finally { _portGate.Release(); }
     }
+
+    private void OnIncompleteFrameObserved(string preview, string hex) => OnUi(() =>
+    {
+        if (!IsConnected) return;
+        LastRaw = preview;
+        LastHex = hex;
+        Status = "COM 已收到数据，但没有回车 CR 或换行 LF 结束符；" +
+                 "已显示原文预览，不能将残缺帧作为 ECU 编号。";
+        IncompleteBarcodeObserved?.Invoke(preview);
+    });
 
     private async Task ReadLoopAsync(CancellationToken ct)
     {
@@ -921,7 +935,11 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
                 SetStatus("串口读取停止超时，设备需要人工检查。");
             }
         }
-        if (_source is not null) await _source.DisposeAsync();
+        if (_source is not null)
+        {
+            _source.IncompleteFrameObserved -= OnIncompleteFrameObserved;
+            await _source.DisposeAsync();
+        }
         _source = null;
         _readStop?.Dispose();
         _readStop = null;
