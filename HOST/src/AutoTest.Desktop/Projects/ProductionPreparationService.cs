@@ -35,6 +35,9 @@ public sealed record FrozenScanIdentity(
     public string ModelDecisionBasis { get; init; } = "";
     public string StationSlotId { get; init; } = "";
     public string ScannerPnpInstanceId { get; init; } = "";
+    // Non-production engineering scan pins only the actual station fixture
+    // setup. It never claims a published barcode rule or production release.
+    public string EngineeringFixtureSha256 { get; init; } = "";
 }
 
 public sealed record FrozenProductionPreparation(
