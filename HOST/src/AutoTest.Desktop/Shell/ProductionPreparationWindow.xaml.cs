@@ -563,17 +563,19 @@ public partial class ProductionPreparationWindow : Window
             }
             if (matches.Length != 1)
             {
-                PreviewStatus.Text = "原文：" + raw + "\nECU 编号：" +
-                    parsed.Serial + "\n无法唯一确定工程；不会猜选。";
+                PreviewStatus.Text = "编号识别未完成：" + parsed.Serial +
+                    "；无法唯一关联检测工程。";
                 return;
             }
             var selected = matches[0];
-            PreviewStatus.Text = (manual ? "手动测试：" : "真实扫码：") +
-                raw + "\nECU 编号：" + parsed.Serial +
-                "\n将匹配工程：" +
-                Path.GetFileName(Path.GetDirectoryName(selected.ManifestPath)) +
-                "（" + selected.ProjectId.ToString("N")[..8] + "）" +
-                "\n仅验证编号和工程绑定，不代表正式生产准入。";
+            var opened = _workspace.Current;
+            var projectName = opened is not null &&
+                              opened.Definition.Id.Value == selected.ProjectId
+                ? opened.Definition.Name
+                : Path.GetFileName(Path.GetDirectoryName(selected.ManifestPath));
+            PreviewStatus.Text = (manual ? "测试识别：" : "已识别：") +
+                parsed.Serial + "  ·  工程：" + projectName +
+                "\n尚未启动检测；正式执行仍需检查工位配置及真实硬件。";
         }
         catch (Exception error) when (error is not OutOfMemoryException)
         {
@@ -665,6 +667,9 @@ public partial class ProductionPreparationWindow : Window
         if (project is null)
         { Say("请先打开准备投入工位的 ECU 工程。"); return; }
         PointerSnapshot[]? previous = null;
+        _busy = true;
+        ApplyButton.IsEnabled = false;
+        SettingsBody.IsEnabled = false;
         try
         {
             if (!await SaveAsync()) return;
@@ -735,8 +740,6 @@ public partial class ProductionPreparationWindow : Window
             foreach (var binding in candidate.Products.Where(x =>
                 x.ProjectId != project.Definition.Id.Value))
                 await StationProductionConfigurationStore.InspectProjectAsync(binding);
-            _busy = true;
-            ApplyButton.IsEnabled = false;
             previous = await CapturePointersAsync(project.RootDirectory);
             if (!await _publishProject())
             {
@@ -779,6 +782,7 @@ public partial class ProductionPreparationWindow : Window
         {
             _busy = false;
             ApplyButton.IsEnabled = true;
+            SettingsBody.IsEnabled = true;
         }
     }
 
@@ -852,12 +856,23 @@ public partial class ProductionPreparationWindow : Window
 
     private async void Close_Click(object sender, RoutedEventArgs e)
     {
+        if (_busy)
+        {
+            Say("正在启用工位配置，请先完成当前操作。");
+            return;
+        }
         if (_dirty && !await SaveAsync()) return;
         _allowClose = true;
         Close();
     }
     private async void OnClosing(object? sender, CancelEventArgs e)
     {
+        if (_busy)
+        {
+            e.Cancel = true;
+            Say("正在启用工位配置，请先完成当前操作。");
+            return;
+        }
         if (_allowClose || !_dirty) return;
         e.Cancel = true;
         if (await SaveAsync())
