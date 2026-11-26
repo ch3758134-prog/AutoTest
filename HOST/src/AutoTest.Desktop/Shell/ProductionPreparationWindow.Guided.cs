@@ -129,7 +129,14 @@ public partial class ProductionPreparationWindow
         {
             if (_openFlashEditor is null)
                 Status = "当前应用没有接入原生 FLASH 编辑入口。";
-            else _openFlashEditor();
+            else
+            {
+                // The canonical FLASH editor is owned by the main shell.
+                // Minimize this non-modal setup window so the actual editor
+                // can receive focus instead of being covered by its owner.
+                WindowState = WindowState.Minimized;
+                _openFlashEditor();
+            }
         };
         projectActions.Children.Add(openFlash);
         var openTest = GuidedButton("编辑完整 TEST");
@@ -140,7 +147,11 @@ public partial class ProductionPreparationWindow
                 Status = "当前应用没有接入完整 TEST 编辑入口。";
                 return;
             }
-            try { await _openTestEditor(); }
+            try
+            {
+                WindowState = WindowState.Minimized;
+                await _openTestEditor();
+            }
             catch (Exception error) when (error is not OutOfMemoryException)
             { Status = "打开 TEST 项目失败：" + error.Message; }
         };

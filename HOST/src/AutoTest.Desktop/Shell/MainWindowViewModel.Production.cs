@@ -107,7 +107,12 @@ public sealed partial class MainWindowViewModel
         if (!IsEngineerWorkspace || _realTest.IsRunning ||
             _automaticTestHome.IsOperatorRunning) return;
         if (_productionPreparationWindow is { IsVisible: true } current)
-        { current.Activate(); return; }
+        {
+            if (current.WindowState == System.Windows.WindowState.Minimized)
+                current.WindowState = System.Windows.WindowState.Normal;
+            current.Activate();
+            return;
+        }
         var window = new ProductionPreparationWindow(_workspace,
             () => IsEngineerWorkspace && !_realTest.IsRunning &&
                 !_automaticTestHome.IsOperatorRunning &&
