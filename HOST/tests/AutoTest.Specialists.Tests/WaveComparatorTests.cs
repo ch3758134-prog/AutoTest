@@ -315,6 +315,20 @@ public sealed class WaveComparatorTests
         Assert.True(result.OutsideToleranceSeconds > 0);
     }
 
+    [Theory]
+    [InlineData(double.NaN, "INVALID_GAP_FACTOR")]
+    [InlineData(double.PositiveInfinity, "INVALID_GAP_FACTOR")]
+    [InlineData(double.NegativeInfinity, "INVALID_GAP_FACTOR")]
+    [InlineData(1000, "INVALID_GAP_FACTOR")]
+    public void NonFiniteOrUnboundedGapToleranceCannotBypassMissingSamples(
+        double factor, string expectedCode)
+    {
+        var threshold = Strict with { MaximumGapFactor = factor };
+        var result = WaveComparator.Compare(Series(), Series(), threshold);
+        Assert.Equal(Verdict.Error, result.Verdict);
+        Assert.Equal(expectedCode, result.Code);
+    }
+
     [Fact]
     public void InvalidComparisonThresholdsCannotPass()
     {
