@@ -17,6 +17,7 @@ public partial class ProductionPreparationWindow : Window
     private readonly Func<bool> _mayEdit;
     private readonly Action _openScannerSettings;
     private readonly Func<string> _hardwareStatus;
+    private readonly Action _configurationChanged;
     private readonly DispatcherTimer _autosave;
     private StationProductionConfiguration _draft = StationProductionConfiguration.New();
     private bool _ready;
@@ -27,12 +28,14 @@ public partial class ProductionPreparationWindow : Window
 
     public ProductionPreparationWindow(
         SerialScannerWorkbenchViewModel scanner, Func<bool> mayEdit,
-        Action openScannerSettings, Func<string> hardwareStatus)
+        Action openScannerSettings, Func<string> hardwareStatus,
+        Action configurationChanged)
     {
         _scanner = scanner;
         _mayEdit = mayEdit;
         _openScannerSettings = openScannerSettings;
         _hardwareStatus = hardwareStatus;
+        _configurationChanged = configurationChanged;
         InitializeComponent();
         _autosave = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(550) };
         _autosave.Tick += async (_, _) =>
@@ -185,6 +188,7 @@ public partial class ProductionPreparationWindow : Window
         {
             await StationProductionConfigurationStore.SaveDraftAsync(next);
             _draft = next;
+            _configurationChanged();
             _dirty = generation != _editGeneration;
             if (_dirty)
             {
