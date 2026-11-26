@@ -445,12 +445,11 @@ public partial class ProductionPreparationWindow
                 "。正式生产仍需实体 START、夹具真实反馈与 Inspection 接线验收。";
             await RefreshOverviewAsync();
         }
-        catch (Exception error) when (error is IOException or InvalidDataException or
-            ArgumentException or InvalidOperationException or FormatException or
-            System.Text.Json.JsonException or UnauthorizedAccessException or
-            NotSupportedException or AutoTest.Projects.Project.ProjectDataException)
+        catch (Exception error) when (error is not OutOfMemoryException)
         {
-            Status = "工位整体发布未完成（旧发布配置不会被伪造为成功）：" + error.Message;
+            // A hardware/registry/COM exception must never escape an async
+            // WPF Click event or be reinterpreted as a successful publication.
+            Status = "工位整体发布未完成（不代表已获生产资格）：" + error.Message;
         }
         finally { _busy = false; }
     }
