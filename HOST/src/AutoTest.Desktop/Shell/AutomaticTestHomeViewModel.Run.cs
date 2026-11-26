@@ -597,6 +597,11 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
         var fixtureScopeGranted = false;
         var fixtureActuationAttempted = false;
         var fixturePressComplete = false;
+        // Execution facts are independent of localized display messages.
+        // These flags preserve the existing release and cancellation gates.
+        var completedNormally = false;
+        var periodicSessionClosed = false;
+        var operatorCancelled = false;
         var outcome = "未完成";
         string? failure = null;
         _operatorRunId = Guid.NewGuid();
@@ -991,20 +996,24 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
             }
             projectScope.MarkCompleted();
             } // One project-level disposal stops senders/revokes the fence.
-            OperatorPeriodicStatus = "整组结束：周期 CAN 发送已停止，物理授权已撤销";
+            completedNormally = true;
+            periodicSessionClosed = true;
+            OperatorPeriodicStatus = "测试已结束，周期 CAN 发送已停止";
             outcome = anyFunctionalFail
                 ? "工程整组完成 · 存在功能 FAIL（不构成生产放行）"
                 : "工程整组真实实测完成（不构成生产放行）";
-            OperatorRunState = outcome;
+            OperatorRunState = anyFunctionalFail
+                ? "测试完成 · 部分用例失败" : "测试完成";
             AddOperatorEvent(outcome);
         }
         catch (OperationCanceledException)
         {
+            operatorCancelled = true;
             if (flashState.StartsWith("烧录已启动", StringComparison.Ordinal))
                 OperatorFlashState = "烧录中断，ECU 状态待现场核查";
             outcome = "操作员停止；实体状态待核查";
-            failure = "真实执行已取消；如曾进入烧录，须重新核实 ECU 状态。";
-            OperatorRunState = outcome;
+            failure = "测试已取消；如曾进入烧录，须重新核实 ECU 状态。";
+            OperatorRunState = "已停止，设备状态待核查";
             AddOperatorEvent(failure);
         }
         catch (Exception error)
@@ -1013,13 +1022,12 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
                 OperatorFlashState = "烧录未验证完成，ECU 状态未知";
             outcome = "真实执行中断";
             failure = error.Message;
-            OperatorRunState = outcome;
+            OperatorRunState = "测试中断";
             AddOperatorEvent("执行失败 · " + error.Message);
         }
         finally
         {
-            if (stationOperationsMayHaveStarted &&
-                !OperatorPeriodicStatus.StartsWith("整组结束", StringComparison.Ordinal))
+            if (stationOperationsMayHaveStarted && !periodicSessionClosed)
                 OperatorPeriodicStatus = "运行已中断 · 周期 CAN 及物理授权交由项目清理（详情见证据）";
             try
             {
@@ -1033,8 +1041,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
                         fixtureScopeGranted ? frozen.PreparationFingerprint : null);
                     AddOperatorEvent("工程配置的 IGN / 等待收尾已执行；现场状态仍需确认");
                     if (fixtureScopeGranted && fixturePressComplete &&
-                        outcome.StartsWith("工程整组", StringComparison.Ordinal) &&
-                        failure is null && !_hardware.IsTestRunApproved &&
+                        completedNormally && failure is null && !_hardware.IsTestRunApproved &&
                         _hardware.IsConnected &&
                         _hardware.CurrentStationEpoch == sessionEpoch)
                     {
@@ -1061,7 +1068,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
                             if (fixturePlan.SettleDelayMs > 0)
                                 await Task.Delay(fixturePlan.SettleDelayMs); // GPIO timeout does not bound pneumatic settling
                         }
-                        OperatorRunState = outcome + " · 夹具释放请求完成";
+                        OperatorRunState += " · 已请求释放夹具";
                     }
                     else if (fixtureActuationAttempted)
                         AddOperatorEvent("本次装夹/FLASH/TEST/记录未满足自动释放条件，" +
@@ -1099,7 +1106,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
             }
             if (activeCaseIndex >= 0 && activeCaseIndex < Cases.Count &&
                 Cases[activeCaseIndex].State == "执行中")
-                ChangeCaseState(activeCaseIndex, outcome == "操作员停止；实体状态待核查"
+                ChangeCaseState(activeCaseIndex, operatorCancelled
                     ? "已停止" : "执行异常");
             var jsonSaved = false;
             try
@@ -1139,7 +1146,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
             _operatorActiveStepId = null;
             IsOperatorRunning = false;
             RefreshOperatorCommands();
-            StartRequestStatus = OperatorRunState + "；正式生产放行仍需实体 START 与生产 RECORD 集成。";
+            StartRequestStatus = OperatorRunState;
         }
     }
 
