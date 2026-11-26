@@ -2,6 +2,7 @@ using System.IO;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Data.Sqlite;
+using AutoTest.Projects.Project;
 
 namespace AutoTest.Desktop.Projects;
 
@@ -347,7 +348,14 @@ public sealed class ProductionProjectCatalog
     {
         // Data in the index is not executable authority. Reload and compare
         // the version files immediately before adopting a new production scope.
-        var dir = Path.GetDirectoryName(selection.ManifestPath)!;
+        var dir = Path.GetFullPath(Path.GetDirectoryName(selection.ManifestPath)!);
+        ProjectPathPolicy.ValidateInsideRoot(PackagesRoot, dir);
+        if (!string.Equals(Path.GetFileName(Path.GetDirectoryName(dir)),
+                selection.ProjectId.ToString("N"), StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(Path.GetFileName(selection.ManifestPath),
+                ProductionProjectPackageService.ProjectManifestName,
+                StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("工程库安装目录与身份不匹配。");
         var metadataPath = Path.Combine(dir, ProductionProjectPackageService.MetadataEntry);
         var bytes = await File.ReadAllBytesAsync(metadataPath, ct);
         var header = JsonSerializer.Deserialize<ProductionPackageManifest>(bytes, _json)
