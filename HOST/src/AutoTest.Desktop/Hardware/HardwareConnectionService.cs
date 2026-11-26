@@ -836,6 +836,82 @@ public sealed partial class HardwareConnectionService : IAsyncDisposable
         finally { _lifecycle.Release(); }
     }
 
+    /// <summary>
+    /// Arm the exact fixture channels for ONE explicitly approved engineering
+    /// station run. This is not manual-bench consent, and is not a TEST/FLASH
+    /// grant. It may only be used between the dedicated physical stages.
+    /// </summary>
+    public async Task AuthorizeStationFixtureRunAsync(string runFingerprint,
+        byte allowedOutputMask, CancellationToken ct = default)
+    {
+        await _lifecycle.WaitAsync(ct);
+        try
+        {
+            RequireV02GpioContract();
+            if (_testRunApproved || _manualCanBatchApproved || _manualKeyActionApproved ||
+                _usb?.State != UsbSessionState.Connected || _link is null)
+                throw new InvalidOperationException(
+                    "夹具运行作用域需要空闲、已验证固件协议的真实主控会话。");
+            _link.AuthorizeStationFixtureScope(runFingerprint,
+                "AUTHORIZE STATION FIXTURE " + runFingerprint, allowedOutputMask);
+            Record("已授权本次工位装夹：" + runFingerprint +
+                " · 输出掩码 0x" + allowedOutputMask.ToString("X2") +
+                " · 有效期受限；正式机械到位未获确认。");
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    public async Task RevokeStationFixtureRunAsync(string runFingerprint)
+    {
+        await _lifecycle.WaitAsync();
+        try
+        {
+            _link?.RevokeStationFixtureScope(runFingerprint);
+            Record("本次工位夹具输出授权已撤销；" +
+                "不代表气缸已释放或机械位置安全。");
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    /// <summary>
+    /// Send one station-owned 0x18 command and require fresh 0x19 GPIO
+    /// readback. A GPIO echo is never a pneumatic/mechanical position sensor.
+    /// A failed ACK/readback is UNKNOWN; do NOT retry actuation automatically.
+    /// </summary>
+    public async Task<byte> SendStationFixtureAsync(
+        byte clamp, bool press, string runFingerprint,
+        CancellationToken ct = default)
+    {
+        if (clamp is not (1 or 2)) throw new ArgumentOutOfRangeException(nameof(clamp));
+        await _lifecycle.WaitAsync(ct);
+        try
+        {
+            RequireV02GpioContract();
+            if (_testRunApproved || _usb?.State != UsbSessionState.Connected ||
+                _link is null || IsFlashSecuritySensitive)
+                throw new InvalidOperationException(
+                    "当前 FLASH/TEST 或主控连接状态不允许发送夹具动作。");
+            _link.AuthorizeStationFixtureChange(runFingerprint, clamp, press);
+            Record("工位夹具" + clamp + " 请求" + (press ? "压紧" : "释放") +
+                " · 来源：本次冻结工程工位执行 · 非手动授权");
+            await _usb.RequestAsync(MainControllerCodec.SetClamp,
+                new byte[] { clamp, press ? (byte)1 : (byte)0 },
+                TimeSpan.FromSeconds(3), ct);
+            var answer = await _usb.RequestAsync(MainControllerCodec.GetClamps,
+                ReadOnlyMemory<byte>.Empty, TimeSpan.FromSeconds(3), ct);
+            if (answer.Payload.Length != 1 || (answer.Payload[0] & 0xFC) != 0)
+                throw new InvalidDataException("夹具 GPIO 回读帧不合法，实体状态 UNKNOWN。");
+            var levels = answer.Payload[0];
+            if (((levels >> (clamp - 1)) & 1) != (press ? 1 : 0))
+                throw new IOException("夹具" + clamp + " MCU GPIO 回读与请求不一致，" +
+                    "停止后续 FLASH/TEST，不能判定实际机械到位。");
+            Record("工位夹具" + clamp + " USB ACK / MCU GPIO 回读一致 0x" +
+                levels.ToString("X2") + "；实际气缸/阀位仍未测量。");
+            return levels;
+        }
+        finally { _lifecycle.Release(); }
+    }
+
     /// <summary>One explicit manual IGN request. Transport consumes the exact
     /// confirmation before the USB write; ACK is not proof of ECU electrical state.</summary>
     public async Task SendManualIgnAsync(bool on, string exactConfirmation,
