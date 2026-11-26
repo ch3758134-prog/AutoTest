@@ -441,6 +441,8 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
     }
 
     private async void Save_Click(object sender, RoutedEventArgs e) => await SaveAsync();
+    private async void ApplyStation_Click(object sender, RoutedEventArgs e) =>
+        await GuidedPublishAsync();
 
     // Legacy controls are not a second release path. Every entry performs
     // the same complete project + station verification and publication.

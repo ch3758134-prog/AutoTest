@@ -39,8 +39,9 @@ public sealed class SerialBarcodeCapture
         if (_source is null) return ScanIngressResult.Reject("SERIAL_NOT_VERIFIED");
         var line = await _source.ReadLineAsync(ct).ConfigureAwait(false);
         if (line is null) return ScanIngressResult.Reject("SERIAL_END_OF_INPUT");
-        LastObservedRaw = line.TrimEnd('\r', '\n');
-        var scan = new RawScan(LastObservedRaw, "serial",
+        var raw = line.TrimEnd('\r', '\n');
+        LastObservedRaw = raw;
+        var scan = new RawScan(raw, "serial",
             TimePoint.FromHostArrival(_clock.GetUtcNow(), Stopwatch.GetTimestamp()), true);
         return _router.PublishRaw(scan, ScannerCaptureMode.VerifiedSerial);
     }

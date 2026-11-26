@@ -456,7 +456,8 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
             if (string.IsNullOrWhiteSpace(decision)) return;
             var serial = _scanner.LastSerial;
             var model = _scanner.LastModel;
-            if (decision != "SCAN_MODEL_MATCHED" || string.IsNullOrWhiteSpace(serial))
+            if (decision is not ("PRODUCTION_IDENTITY_RESOLVED" or "SCAN_MODEL_MATCHED") ||
+                string.IsNullOrWhiteSpace(serial))
             {
                 // Rejected input does not replace the previously displayed DUT/result.
                 AddLog("扫码", "输入未接受：" + decision, model + " · " + serial);

@@ -39,7 +39,9 @@
    CornerRadius="7" Padding="15,12" Margin="0,0,0,10">
    <DockPanel>
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-      <Button Content="保存草稿" Click="Save_Click" Padding="13,8" Margin="0,0,9,0"/>
+      <Button Content="保存并应用到工位" Click="ApplyStation_Click"
+        Padding="18,9" Margin="0,0,10,0" Background="#266BB4"
+        Foreground="White" BorderBrush="#266BB4" MinHeight="37"/>
       <Button Content="关闭" Click="Close_Click" Padding="13,8"/>
     </StackPanel>
     <StackPanel>

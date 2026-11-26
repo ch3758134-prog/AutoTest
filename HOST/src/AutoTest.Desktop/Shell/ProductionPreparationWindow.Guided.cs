@@ -176,10 +176,9 @@ public partial class ProductionPreparationWindow
         _guidedBlocker = GuidedText("正式生产准入还需要实体 START、夹具反馈和 Inspection 记录闭环。");
         releaseBody.Children.Add(_guidedBlocker);
         var publishActions = new WrapPanel();
-        var publish = GuidedButton("保存并设为当前生产工程", primary: true);
-        publish.Click += async (_, _) => await GuidedPublishAsync();
-        publishActions.Children.Add(publish);
-        var advanced = GuidedButton("高级型号/编号规则");
+        // The one station-apply action remains visible in the window header
+        // while the engineer edits any inline section; no second release button.
+        var advanced = GuidedButton("编码规则与型号映射");
         advanced.Click += (_, _) => OpenStationDetail(1);
         publishActions.Children.Add(advanced);
         var details = GuidedButton("核验详情");

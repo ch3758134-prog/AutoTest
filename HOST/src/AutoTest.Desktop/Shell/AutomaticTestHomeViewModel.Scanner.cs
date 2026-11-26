@@ -71,10 +71,16 @@ public sealed partial class AutomaticTestHomeViewModel
 
     private void OnRawBarcodeObserved(string raw) => OnUi(() =>
     {
+        // A different physical label was scanned. Even if the station is
+        // currently unable to admit its identity, the previous DUT must not
+        // remain startable after a possible ECU replacement.
+        var previous = _prepared?.AcceptedScannerObservation?.RawBarcode;
+        if (!IsOperatorRunning && previous is not null &&
+            !string.Equals(previous, raw, StringComparison.Ordinal))
+            InvalidateScan("收到新的扫码原文，旧 DUT 身份已失效；" +
+                "新编号尚未通过工程和工位预检。");
         _lastObservedBarcode = raw;
         _lastObservedAt = DateTimeOffset.Now.ToString("HH:mm:ss");
-        // A rejected scan is still visible, but never changes the accepted
-        // identity, resource pin, or production RunId.
         Notify();
     });
 
