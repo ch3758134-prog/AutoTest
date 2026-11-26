@@ -847,7 +847,9 @@ public sealed partial class HardwareConnectionService : IAsyncDisposable
         await _lifecycle.WaitAsync(ct);
         try
         {
-            RequireV02GpioContract();
+            // The 0x18/0x19 clamp protocol is version-gated. An IGN-only
+            // engineering station uses the older independent 0x12/0x13 path.
+            if (allowedOutputMask != 0) RequireV02GpioContract();
             if (_testRunApproved || _manualCanBatchApproved || _manualKeyActionApproved ||
                 _usb?.State != UsbSessionState.Connected || _link is null)
                 throw new InvalidOperationException(
