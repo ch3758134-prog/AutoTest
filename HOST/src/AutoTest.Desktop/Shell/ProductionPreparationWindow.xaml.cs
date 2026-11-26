@@ -306,6 +306,7 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
             if (_scanner is not null)
             {
                 _scanner.RawBarcodeObserved -= OnRealSample;
+                _scanner.IncompleteBarcodeObserved -= OnIncompleteSample;
                 _scanner.PropertyChanged -= OnGuidedScannerPropertyChanged;
             }
             _autosave.Stop();
@@ -313,12 +314,21 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
         if (_scanner is not null)
         {
             _scanner.RawBarcodeObserved += OnRealSample;
+            _scanner.IncompleteBarcodeObserved += OnIncompleteSample;
             _scanner.PropertyChanged += OnGuidedScannerPropertyChanged;
             ConnectionHint = _scanner.IsConnected
                 ? "真实扫码设备：" + _scanner.ConnectedPort + " · 仅离线试扫"
                 : "扫码枪未连接：仍可手动试扫；连接在独立扫码设备工具中完成";
         }
     }
+
+    private void OnIncompleteSample(string raw) =>
+        Dispatcher.BeginInvoke((Action)(() =>
+        {
+            if (IsLoaded && _guidedScan is not null)
+                _guidedScan.Text = "串口收到（未形成完整条码）：" + raw;
+            // A partial frame is diagnostic, never a valid DUT identity.
+        }));
 
     private void OnRealSample(string raw)
     {

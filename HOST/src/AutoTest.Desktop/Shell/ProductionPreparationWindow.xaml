@@ -55,7 +55,7 @@
     BorderThickness="0">
    <TabControl.Template>
     <ControlTemplate TargetType="{x:Type TabControl}">
-     <ContentPresenter ContentSource="SelectedContent"/>
+     <ContentPresenter x:Name="PART_SelectedContentHost" ContentSource="SelectedContent"/>
     </ControlTemplate>
    </TabControl.Template>
    <TabItem Header="1  产品与工程">
