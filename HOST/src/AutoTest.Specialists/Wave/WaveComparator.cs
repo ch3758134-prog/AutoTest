@@ -12,10 +12,13 @@ public sealed record WaveComparisonDetails(Verdict Verdict, string Code, string 
 public static class WaveComparator
 {
     private sealed record Evaluation(double Shift, int Compared, int Passed, double ErrorSquared,
-        double MaxError, double OutsideDuration, double CoveredDuration, double Coverage)
+        double MaxError, double OutsideDuration, double CoveredDuration, double Coverage,
+        double WeightedTime = 0, double WeightedPass = 0)
     {
-        public double Rmse => Compared == 0 ? double.PositiveInfinity : Math.Sqrt(ErrorSquared / Compared);
-        public double PassRatio => Compared == 0 ? 0 : Passed / (double)Compared;
+        public double Rmse => Compared == 0 ? double.PositiveInfinity :
+            Math.Sqrt(ErrorSquared / (WeightedTime > 0 ? WeightedTime : Compared));
+        public double PassRatio => Compared == 0 ? 0 :
+            WeightedTime > 0 ? WeightedPass / WeightedTime : Passed / (double)Compared;
     }
 
     public static WaveComparisonDetails Compare(WaveSeries actual, WaveSeries reference,
@@ -51,6 +54,12 @@ public static class WaveComparator
             return Reject(Verdict.Inconclusive, "MISSING_SAMPLES",
                 "A sampling interval exceeds the reference-based gap limit.");
 
+        if (config.InterpolationMode == WaveInterpolationMode.StepHold &&
+            (reference.Samples[^1].Sample.Value != reference.Samples[^2].Sample.Value ||
+             actual.Samples[^1].Sample.Value != actual.Samples[^2].Sample.Value))
+            return Reject(Verdict.Inconclusive, "UNCONFIRMED_TERMINAL_STATE",
+                "A final discrete state transition has no subsequent observation interval.");
+
         var referenceTime = RelativeSeconds(reference);
         var actualTime = RelativeSeconds(actual);
         var best = SelectAlignment(reference, referenceTime, actual, actualTime, config);
@@ -81,7 +90,9 @@ public static class WaveComparator
         var limit = config.MaximumShiftSeconds;
         void Consider(double shift)
         {
-            var candidate = Evaluate(reference, rt, actual, at, shift, config);
+            var candidate = config.InterpolationMode == WaveInterpolationMode.StepHold
+                ? EvaluateStepHold(reference, rt, actual, at, shift, config)
+                : Evaluate(reference, rt, actual, at, shift, config);
             if (candidate.Compared == 0 || candidate.Coverage + 1e-12 < config.MinimumCoverage ||
                 candidate.CoveredDuration + 1e-12 < config.MinimumCoveredDurationSeconds) return;
             var score = candidate.Rmse + (1 - candidate.Coverage) * Math.Max(config.AbsoluteTolerance, 0.001);
@@ -147,6 +158,68 @@ public static class WaveComparator
         }
         return new Evaluation(shift, count, passed, squared, max, outside, coveredDuration,
             count / (double)rt.Length);
+    }
+
+    /// <summary>
+    /// Piecewise-constant state comparison over the union of REAL observed
+    /// transition timestamps. Looking at reference sample instants alone
+    /// can miss short DUT state glitches between those instants.
+    /// </summary>
+    private static Evaluation EvaluateStepHold(WaveSeries reference, double[] rt,
+        WaveSeries actual, double[] at, double shift, WaveComparisonConfig config)
+    {
+        var begin = Math.Max(rt[0], at[0] - shift);
+        var end = Math.Min(rt[^1], at[^1] - shift);
+        var referenceDuration = rt[^1] - rt[0];
+        if (end - begin <= 1e-12 || referenceDuration <= 0)
+            return new Evaluation(shift, 0, 0, 0, 0, 0, 0, 0);
+
+        var boundaries = new List<double>(rt.Length + at.Length + 2) { begin, end };
+        boundaries.AddRange(rt.Where(t => t > begin && t < end));
+        boundaries.AddRange(at.Select(t => t - shift)
+            .Where(t => t > begin && t < end));
+        boundaries.Sort();
+        var count = 0;
+        var passed = 0;
+        var outside = 0.0;
+        var passingSeconds = 0.0;
+        var errorSeconds = 0.0;
+        var max = 0.0;
+        var duration = 0.0;
+        for (var index = 1; index < boundaries.Count; index++)
+        {
+            var from = boundaries[index - 1];
+            var to = boundaries[index];
+            var seconds = to - from;
+            if (seconds <= 1e-12) continue;
+            var midpoint = from + seconds / 2;
+            var referenceValue = HeldValue(rt, reference, midpoint);
+            var actualValue = HeldValue(at, actual, midpoint + shift);
+            var difference = Math.Abs(actualValue - referenceValue);
+            var tolerance = config.AbsoluteTolerance +
+                Math.Abs(referenceValue) * config.RelativeTolerance;
+            duration += seconds;
+            errorSeconds += difference * difference * seconds;
+            max = Math.Max(max, difference);
+            count++;
+            if (difference <= tolerance + 1e-12)
+            {
+                passed++;
+                passingSeconds += seconds;
+            }
+            else outside += seconds;
+        }
+        return new Evaluation(shift, count, passed, errorSeconds, max,
+            outside, duration, duration / referenceDuration,
+            duration, passingSeconds);
+    }
+
+    private static double HeldValue(double[] times, WaveSeries series, double at)
+    {
+        var index = Array.BinarySearch(times, at);
+        if (index < 0) index = ~index - 1;
+        index = Math.Clamp(index, 0, series.Samples.Length - 1);
+        return series.Samples[index].Sample.Value;
     }
 
     private static bool Interpolate(double[] times, WaveSeries data, double at, out double value)
