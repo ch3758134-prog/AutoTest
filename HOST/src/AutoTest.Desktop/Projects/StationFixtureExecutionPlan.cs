@@ -15,14 +15,27 @@ public sealed class StationFixtureExecutionPlan
     public IReadOnlyList<StationClampAction> Release { get; }
     public byte AllowedOutputMask { get; }
     public int MovementTimeoutMs { get; }
+    public int SettleDelayMs { get; }
+    private readonly bool _clamp1PressHigh, _clamp2PressHigh;
+
+    /// <summary>The requested USB GPIO level for a logical press/release action.
+    /// Does NOT prove any mechanical movement or physical position.</summary>
+    public bool OutputLevelHigh(StationClampAction action) =>
+        action.Press == (action.Clamp == 1 ? _clamp1PressHigh :
+            action.Clamp == 2 ? _clamp2PressHigh :
+            throw new ArgumentOutOfRangeException(nameof(action)));
 
     private StationFixtureExecutionPlan(
         IReadOnlyList<StationClampAction> press,
         IReadOnlyList<StationClampAction> release,
-        byte mask, int timeoutMs)
+        byte mask, int timeoutMs, int settleMs,
+        bool clamp1PressHigh, bool clamp2PressHigh)
     {
         Press = press; Release = release;
         AllowedOutputMask = mask; MovementTimeoutMs = timeoutMs;
+        SettleDelayMs = settleMs;
+        _clamp1PressHigh = clamp1PressHigh;
+        _clamp2PressHigh = clamp2PressHigh;
     }
 
     public static StationFixtureExecutionPlan From(ProductionFixtureConfiguration fixture)
@@ -47,6 +60,7 @@ public sealed class StationFixtureExecutionPlan
             order.Select(x => new StationClampAction(x, true)).ToArray(),
             order.AsEnumerable().Reverse()
                 .Select(x => new StationClampAction(x, false)).ToArray(),
-            mask, fixture.MovementTimeoutMs);
+            mask, fixture.MovementTimeoutMs, fixture.SettleDelayMs,
+            fixture.Clamp1PressHigh, fixture.Clamp2PressHigh);
     }
 }
