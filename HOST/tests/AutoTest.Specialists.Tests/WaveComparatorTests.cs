@@ -243,6 +243,36 @@ public sealed class WaveComparatorTests
     }
 
     [Fact]
+    public void IndependentlyValidHostAndReplayTimestampsMustNotBeCompared()
+    {
+        var reference = Series();
+        var host = reference with
+        {
+            Origin = reference.Origin with
+            {
+                Source = TimeSource.HostArrival,
+                Quality = TimeQuality.HostArrivalOnly
+            },
+            Samples = reference.Samples.Select(item => item with
+            {
+                Sample = item.Sample with
+                {
+                    Time = item.Sample.Time with
+                    {
+                        Source = TimeSource.HostArrival,
+                        Quality = TimeQuality.HostArrivalOnly
+                    }
+                }
+            }).ToImmutableArray()
+        };
+        Assert.True(WaveTimeQuality.Describe(host).CanJudge);
+        Assert.True(WaveTimeQuality.Describe(reference).CanJudge);
+        var result = WaveComparator.Compare(host, reference, Strict);
+        Assert.Equal(Verdict.Inconclusive, result.Verdict);
+        Assert.Equal("CLOCK_DOMAIN_MISMATCH", result.Code);
+    }
+
+    [Fact]
     public void UnknownClockFailsSafely()
     {
         var points = Series();
