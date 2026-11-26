@@ -202,6 +202,18 @@ public sealed partial class AutomaticTestHomeViewModel
                   "尚未确认夹具、START 或生产执行授权。";
             _status = "身份与工程资源已核对 · 工位执行待验";
             Notify();
+
+            // The operator explicitly chose the top-level engineering quick
+            // run BEFORE scanning. A verified COM scan may now open the SAME
+            // physical FLASH/fixture consent dialog that the Start button uses.
+            // The scan itself is never permission to write to hardware.
+            if (_quickEngineeringStartOnScan && _engineeringVerificationArmed &&
+                !_isProductionWorkspace() && CanStartOperatorVerification)
+            {
+                _quickEngineeringStartOnScan = false; // one-shot; no popup storm on repeat scans
+                StartRequestStatus = "已核对 ECU 编号与资源；等待工程师确认真实夹具与烧录操作。";
+                StartOperatorVerificationCommand.Execute();
+            }
         }
         catch (Exception error) when (error is IOException or InvalidDataException or
             UnauthorizedAccessException or ArgumentException or NotSupportedException or
