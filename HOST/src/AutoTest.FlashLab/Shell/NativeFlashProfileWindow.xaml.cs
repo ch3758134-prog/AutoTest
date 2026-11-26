@@ -20,7 +20,7 @@ namespace AutoTest.FlashLab.Shell;
 public partial class NativeFlashProfileWindow : Window
 {
     private readonly string _root;
-    private readonly string _expectedModel;
+    private const string VerifiedMethodTarget = "HYDEPB";
     private readonly DispatcherTimer _idleSave = new() { Interval = TimeSpan.FromSeconds(2) };
     private readonly SemaphoreSlim _saveGate = new(1, 1);
     private NativeFlashProfileStore.Snapshot? _saved;
@@ -45,14 +45,12 @@ public partial class NativeFlashProfileWindow : Window
         SecurityImportButton.IsEnabled = enabled;
     }
 
-    public NativeFlashProfileWindow(string projectRoot, string? modelCode)
+    public NativeFlashProfileWindow(string projectRoot)
     {
         _root = Path.GetFullPath(projectRoot);
-        _expectedModel = modelCode ?? "";
-        _draft = NativeFlashProfileDocument.CreateDraft(_expectedModel);
+        // Verified target is programming-method provenance, not barcode model.
+        _draft = NativeFlashProfileDocument.CreateHydEpbReferenceDraft();
         InitializeComponent();
-        MethodScopeNotice.Visibility = string.Equals(_expectedModel, "HYDEPB",
-            StringComparison.Ordinal) ? Visibility.Collapsed : Visibility.Visible;
         Loaded += (_, _) => FlashWindowSizing.Fit(this);
         Closing += OnClosing;
         Loaded += async (_, _) => await LoadAsync();
@@ -77,16 +75,13 @@ public partial class NativeFlashProfileWindow : Window
         SetFieldsEditable(false);
         try
         {
-            _saved = await NativeFlashProfileStore.EnsureHydEpbReferenceAsync(
-                _root, _expectedModel);
+            _saved = await NativeFlashProfileStore.LoadAsync(_root);
             if (_saved is not null)
                 _draft = _saved.Profile;
-            if (!string.IsNullOrWhiteSpace(_expectedModel) &&
-                !string.Equals(_draft.EcuModelCode, _expectedModel, StringComparison.Ordinal))
-                throw new InvalidDataException("原生烧录配置绑定型号与当前工程型号不同，不允许静默替换。");
-            ModelBox.Text = _draft.EcuModelCode;
-            MethodScopeNotice.Visibility = string.Equals(_draft.EcuModelCode, "HYDEPB",
-                StringComparison.Ordinal) ? Visibility.Collapsed : Visibility.Visible;
+            if (_draft.ProgrammingMethodId != NativeFlashProfileDocument.VerifiedMethod ||
+                _draft.EcuModelCode != VerifiedMethodTarget)
+                throw new InvalidDataException(
+                    "保存的 FLASH 工艺不属于已验证 HydEPB 方法。拒绝自动替换，需人工核对。");
             AppTxBox.Text = Format(_draft.AppRequestCanId);
             AppRxBox.Text = Format(_draft.AppResponseCanId);
             BootTxBox.Text = Format(_draft.BootRequestCanId);
@@ -141,7 +136,6 @@ public partial class NativeFlashProfileWindow : Window
             throw new FormatException("请选择有效 ECU CAN 波特率。");
         return _draft with
         {
-            EcuModelCode = ModelBox.Text.Trim(),
             AppRequestCanId = ParseHex(AppTxBox),
             AppResponseCanId = ParseHex(AppRxBox),
             BootRequestCanId = ParseHex(BootTxBox),
@@ -181,9 +175,9 @@ public partial class NativeFlashProfileWindow : Window
         {
             var next = ReadFields();
             next.ValidateDraft();
-            if (!string.IsNullOrWhiteSpace(_expectedModel) &&
-                !string.Equals(next.EcuModelCode, _expectedModel, StringComparison.Ordinal))
-                throw new InvalidDataException("烧录配置型号必须与当前工程正式 EcuModelCode 相同。");
+            if (next.EcuModelCode != VerifiedMethodTarget ||
+                next.ProgrammingMethodId != NativeFlashProfileDocument.VerifiedMethod)
+                throw new InvalidDataException("烧录方法目标已改变，禁止作为已验证实体 FLASH 保存。");
             if (_saved is not null &&
                 Equals(next with { Revision = _saved.Profile.Revision }, _saved.Profile))
             {

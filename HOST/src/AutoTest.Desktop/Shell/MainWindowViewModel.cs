@@ -499,7 +499,7 @@ public sealed partial class MainWindowViewModel : BindableBase
     {
         if (_workspace.Current is not { } project)
         {
-            MessageBox.Show("请先打开一个 ECU 工程，再配置该型号的烧录工艺。",
+            MessageBox.Show("请先打开 ECU 工程，再将经过确认的烧录工艺保存到工程。",
                 "原生烧录配置", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
@@ -514,8 +514,7 @@ public sealed partial class MainWindowViewModel : BindableBase
             existing.Activate();
             return;
         }
-        var window = new NativeFlashProfileWindow(project.RootDirectory,
-            project.Definition.EcuModelCode)
+        var window = new NativeFlashProfileWindow(project.RootDirectory)
         {
             Owner = global::System.Windows.Application.Current.MainWindow,
             WindowStartupLocation = WindowStartupLocation.CenterOwner
