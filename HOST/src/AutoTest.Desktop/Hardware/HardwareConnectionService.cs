@@ -842,7 +842,7 @@ public sealed partial class HardwareConnectionService : IAsyncDisposable
     /// grant. It may only be used between the dedicated physical stages.
     /// </summary>
     public async Task AuthorizeStationFixtureRunAsync(string runFingerprint,
-        byte allowedOutputMask, CancellationToken ct = default)
+        byte allowedOutputMask, bool allowIgn, CancellationToken ct = default)
     {
         await _lifecycle.WaitAsync(ct);
         try
@@ -853,7 +853,7 @@ public sealed partial class HardwareConnectionService : IAsyncDisposable
                 throw new InvalidOperationException(
                     "夹具运行作用域需要空闲、已验证固件协议的真实主控会话。");
             _link.AuthorizeStationFixtureScope(runFingerprint,
-                "AUTHORIZE STATION FIXTURE " + runFingerprint, allowedOutputMask);
+                "AUTHORIZE STATION FIXTURE " + runFingerprint, allowedOutputMask, allowIgn);
             Record("已授权本次工位装夹：" + runFingerprint +
                 " · 输出掩码 0x" + allowedOutputMask.ToString("X2") +
                 " · 有效期受限；正式机械到位未获确认。");
@@ -908,6 +908,34 @@ public sealed partial class HardwareConnectionService : IAsyncDisposable
             Record("工位夹具" + clamp + " USB ACK / MCU GPIO 回读一致 0x" +
                 levels.ToString("X2") + "；实际气缸/阀位仍未测量。");
             return levels;
+        }
+        finally { _lifecycle.Release(); }
+    }
+
+    /// <summary>Station-owned IGN write, allowed only between FLASH/TEST
+    /// scopes with a one-shot permission derived from the same frozen run.
+    /// GPIO readback is never proof of ECU IGN rail voltage.</summary>
+    public async Task<bool> SendStationIgnAsync(bool on, string runFingerprint,
+        CancellationToken ct = default)
+    {
+        await _lifecycle.WaitAsync(ct);
+        try
+        {
+            if (_testRunApproved || _usb?.State != UsbSessionState.Connected ||
+                _link is null || IsFlashSecuritySensitive)
+                throw new InvalidOperationException("当前 FLASH/TEST 或主控会话不允许工位 IGN 动作。");
+            _link.AuthorizeStationIgnChange(runFingerprint, on);
+            await _usb.RequestAsync(MainControllerCodec.SetIgn,
+                new byte[] { on ? (byte)1 : (byte)0 },
+                TimeSpan.FromSeconds(3), ct);
+            var reply = await _usb.RequestAsync(MainControllerCodec.GetIgn,
+                ReadOnlyMemory<byte>.Empty, TimeSpan.FromSeconds(3), ct);
+            if (reply.Payload.Length != 1 || reply.Payload[0] > 1 ||
+                (reply.Payload[0] == 1) != on)
+                throw new IOException("工位 IGN USB ACK / GPIO 回读不一致；实际电气状态 UNKNOWN。");
+            Record("工位 IGN " + (on ? "ON" : "OFF") +
+                " USB ACK / MCU GPIO 一致；ECU IGN 端子电压未测量。");
+            return reply.Payload[0] == 1;
         }
         finally { _lifecycle.Release(); }
     }
