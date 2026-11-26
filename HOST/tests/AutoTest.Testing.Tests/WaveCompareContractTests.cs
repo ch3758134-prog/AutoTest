@@ -1,66 +1,86 @@
 using System.Collections.Immutable;
+using AutoTest.Core;
 using AutoTest.Testing.Authoring;
 using AutoTest.Testing.Preparation;
 using Xunit;
 
 namespace AutoTest.Testing.Tests;
 
-/// <summary>Pure contract checks: no fake USB device, waveform or DUT result.</summary>
+/// <summary>Authoring contracts only, no simulated DUT or USB acceptance.</summary>
 public sealed class WaveCompareContractTests
 {
-    private static TestDocument Document(string tolerance, string coverage,
-        string reference = "ApprovedReference")
+    private static TestDocument Document(bool mapped, string profile = "ApprovedWave")
     {
-        var node = StepNode.Create("WaveCompare", "实际波形判定")
+        var node = StepNode.Create("WaveCompare", "真实波形判定")
             .WithProperty("captureKey", "capture1")
             .WithProperty("variable", "waveVerdict")
-            .WithProperty("tolerance", tolerance)
-            .WithProperty("coverage", coverage)
-            .WithProperty("profile", "")
-            .WithProperty("reference", reference);
-        var document = TestDocument.Create("WaveContract");
-        return document with
+            .WithProperty("profile", mapped ? profile : "")
+            .WithProperty("reference", "ApprovedReference");
+        var original = TestDocument.Create("WaveContract");
+        var result = original with
         {
-            Phases = document.Phases.SetItem(TestPhase.Test,
+            Phases = original.Phases.SetItem(TestPhase.Test,
                 ImmutableArray.Create(node))
         };
+        return mapped ? result with
+        {
+            Mappings = ImmutableArray.Create(new TestTargetMapping(
+                profile, TestTargetKind.WaveProfile, AssetId.New(),
+                1, new string('a', 64)))
+        } : result;
     }
 
     [Fact]
-    public void WaveCompare_WithReferenceAndValidCriteria_IsAuthorable()
+    public void ReviewedWaveProfile_IsRequiredForRealAutomaticTest()
     {
-        var errors = StepTreeValidator.ValidateTree(Document("0.05", "0.95"),
+        Assert.Empty(StepTreeValidator.ValidateTree(Document(true),
+            StepDescriptorCatalog.Builtins()));
+        var legacy = StepTreeValidator.ValidateTree(Document(false),
             StepDescriptorCatalog.Builtins());
-        Assert.Empty(errors);
+        Assert.Contains(legacy, error => error.Contains(
+            "requires an explicitly reviewed and mapped WAVE profile",
+            StringComparison.Ordinal));
     }
 
     [Fact]
-    public void WaveCompare_CompilesInTheRealExecutorOnly()
+    public void WaveCompare_CompilesInRealExecutorOnlyWithMappedProfile()
     {
-        var doc = Document("0.05", "0.95");
+        var doc = Document(true);
         Assert.Empty(new PlanCompiler().Prepare(doc, allowRealOperations: true).Diagnostics);
         Assert.Contains(new PlanCompiler().Prepare(doc).Diagnostics,
             error => error.Contains("not executable in V1", StringComparison.Ordinal));
     }
 
-    [Theory]
-    [InlineData("-1", "0.95", "waveform absolute tolerance")]
-    [InlineData("NaN", "0.95", "waveform absolute tolerance")]
-    [InlineData("0.05", "1.5", "waveform coverage")]
-    [InlineData("0.05", "-0.1", "waveform coverage")]
-    public void WaveCompare_RejectsUnsafeCriteria(
-        string tolerance, string coverage, string fragment)
+    [Fact]
+    public void WaveCompare_RejectsUnknownProfileWithoutSilentlyUsingReferenceName()
     {
-        var errors = StepTreeValidator.ValidateTree(Document(tolerance, coverage),
+        var doc = Document(false);
+        var step = doc.Phases[TestPhase.Test][0]
+            .WithProperty("profile", "NotMapped");
+        doc = doc with
+        {
+            Phases = doc.Phases.SetItem(TestPhase.Test,
+                ImmutableArray.Create(step))
+        };
+        var errors = StepTreeValidator.ValidateTree(doc,
             StepDescriptorCatalog.Builtins());
-        Assert.Contains(errors, error => error.Contains(fragment, StringComparison.Ordinal));
+        Assert.Contains(errors,
+            error => error.Contains("unmapped wave analysis profile", StringComparison.Ordinal));
     }
 
     [Fact]
-    public void WaveCompare_RequiresNamedOrMappedReference()
+    public void LegacyTolerancePropertiesCannotReplaceReviewedProfile()
     {
-        var errors = StepTreeValidator.ValidateTree(Document("0.05", "0.95", ""),
-            StepDescriptorCatalog.Builtins());
-        Assert.Contains(errors, error => error.Contains("named reference", StringComparison.Ordinal));
+        var doc = Document(false);
+        var node = doc.Phases[TestPhase.Test][0]
+            .WithProperty("tolerance", "0.05")
+            .WithProperty("coverage", "0.95");
+        doc = doc with
+        {
+            Phases = doc.Phases.SetItem(TestPhase.Test,
+                ImmutableArray.Create(node))
+        };
+        Assert.NotEmpty(StepTreeValidator.ValidateTree(doc,
+            StepDescriptorCatalog.Builtins()));
     }
 }
