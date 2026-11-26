@@ -1,4 +1,6 @@
 using System.IO;
+using System.Collections.ObjectModel;
+using AutoTest.Desktop.Testing;
 using AutoTest.Desktop.Projects;
 using AutoTest.FlashLab.Programming;
 using AutoTest.Projects.Project;
@@ -17,10 +19,48 @@ public sealed partial class MainWindowViewModel
     private string _setupModelStatus = "尚未检查";
     private string _setupTestStatus = "尚未检查";
     private string _setupTestIssueDetails = "请先打开 ECU 工程并进行资源预检。";
+    public ObservableCollection<ResourceDependencyGroup> SetupDependencyGroups { get; } = new();
+    public int SetupRootCauseCount => SetupDependencyGroups.Count;
+    public string SetupDependencySummary => SetupRootCauseCount == 0
+        ? "未发现当前正式 TEST 资源依赖阻断；这不代表真实 ECU 功能通过。"
+        : "按上游资源合并为 " + SetupRootCauseCount +
+          " 组问题。展开查看受影响用例，再进入原编辑器核对。";
     private string _setupScanStatus = "尚未检查";
     private string _setupFlashStatus = "尚未检查";
     private string _setupStationStatus = "尚未检查";
     private string _setupOverallStatus = "工程和工位尚未核对。";
+    public async Task OpenDependencyGroupAsync(ResourceDependencyGroup group)
+    {
+        if (_workspace.Current is null) return;
+        if (group.InvocationId is Guid invocation)
+        {
+            await OpenFirstAssetAsync(ProjectWorkspaceService.TestProjectKind,
+                CreateTestProjectAsync);
+            if (ActiveEditorTab?.Editor is TestProjectWorkbenchViewModel project &&
+                project.FocusInvocation(invocation))
+            {
+                StatusMessage = "已定位受影响的 TEST 调用实例。请检查对应定义、引用版本和步骤映射：" +
+                    group.Title;
+                return;
+            }
+        }
+        if (group.ResourceId is Guid resource)
+        {
+            var asset = _workspace.Current.Definition.Assets.FirstOrDefault(x =>
+                x.Id.Value == resource);
+            if (asset is not null && asset.Kind != ProjectWorkspaceService.TestProjectKind)
+            {
+                SelectAsset(asset.Id);
+                await OpenSelectedResourceAsync();
+                StatusMessage = "已定位原始资源；请核对资产内容及受影响调用后再明确采用修订。";
+                return;
+            }
+        }
+        await OpenFirstAssetAsync(ProjectWorkspaceService.TestProjectKind,
+            CreateTestProjectAsync);
+        StatusMessage = "已打开正式 TEST 项目；此问题需在工程中核对：" + group.Title;
+    }
+
     public DelegateCommand OpenInspectionProcedureCommand { get; private set; } = null!;
 
     private async Task OpenInspectionProcedureAsync()
@@ -208,6 +248,9 @@ public sealed partial class MainWindowViewModel
         {
             _setupTestIssueDetails = "请先打开 ECU 工程。";
             RaisePropertyChanged(nameof(SetupTestIssueDetails));
+            SetupDependencyGroups.Clear();
+            RaisePropertyChanged(nameof(SetupRootCauseCount));
+            RaisePropertyChanged(nameof(SetupDependencySummary));
             UpdateSetupStatuses("请先打开 ECU 工程", "未打开工程",
                 "等待工程", "等待工程", "待连接",
                 "工程开发先编辑 TEST、DBC 和原生 FLASH；产品身份和工位发布在生产准备。");
@@ -219,6 +262,8 @@ public sealed partial class MainWindowViewModel
             : "当前工程型号：" + project.Definition.EcuModelCode;
         var test = "正在核对 TEST 资源…";
         var testDetails = "正在解析 TEST 项目中的资源引用。";
+        IReadOnlyList<ResourceDependencyGroup> problemGroups =
+            Array.Empty<ResourceDependencyGroup>();
         var scan = "正在核对工位扫码设置…";
         var flash = "正在读取烧录配置…";
         var station = _hardware.IsConnected
@@ -233,6 +278,7 @@ public sealed partial class MainWindowViewModel
             try
             {
                 var snapshot = await AutomaticTestResourceContract.ResolveAsync(project);
+                problemGroups = snapshot.DependencyGroups;
                 testDetails = snapshot.Issues.Count == 0
                     ? "未发现当前 TEST 项目的静态资源阻断。仍需在真实 ECU 上验证功能与数据质量。"
                     : string.Join(Environment.NewLine,
@@ -332,6 +378,10 @@ public sealed partial class MainWindowViewModel
             {
                 _setupTestIssueDetails = testDetails;
                 RaisePropertyChanged(nameof(SetupTestIssueDetails));
+                SetupDependencyGroups.Clear();
+                foreach (var group in problemGroups) SetupDependencyGroups.Add(group);
+                RaisePropertyChanged(nameof(SetupRootCauseCount));
+                RaisePropertyChanged(nameof(SetupDependencySummary));
                 UpdateSetupStatuses(model, test, scan, flash, station,
                     productionPin);
             }
