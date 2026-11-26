@@ -186,7 +186,7 @@
      ToolTip="输入名称，仅高亮工程树匹配对象；清空后恢复，单击再打开编辑"/>
     <TextBlock Text="工程导航" FontSize="14" FontWeight="SemiBold"
      VerticalAlignment="Center" Margin="0,0,8,0"
-     ToolTip="检测准备、测试项目和测试用例均可单击进入编辑；F2 重命名资源"/>
+     ToolTip="工程首页、TEST 项目与用例均可单击打开；生产工位配置请用顶部“生产准备”"/>
    </DockPanel>
   </Border>
   <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
