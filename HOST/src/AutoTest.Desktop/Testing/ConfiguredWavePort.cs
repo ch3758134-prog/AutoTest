@@ -62,6 +62,13 @@ public sealed class ConfiguredWavePort : ITestWavePort
                 x.Signal.SignalName == cfg.SignalName && x.Signal.Unit == cfg.Unit).ToArray();
             if (matches.Length != 1)
                 throw new InvalidDataException("标准波形没有唯一有效的资源版本：" + mapping.Name);
+            var approved = matches[0].Reference.Asset;
+            if (approved.Id.Value != cfg.ApprovedReferenceAssetId ||
+                approved.Revision.Value != cfg.ApprovedReferenceAssetRevision ||
+                !string.Equals(approved.Fingerprint.Sha256, cfg.ApprovedReferenceAssetSha256,
+                    StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("WAVE 标准参考的资产 ID、修订或 SHA 已改变：" +
+                    mapping.Name + "。请重新人工确认并保存新的 WAVE 配置修订。");
             _ = _catalog.Load(matches[0].Reference);
             _frozenReferences.Add(mapping.Name, matches[0]);
         }
@@ -177,7 +184,11 @@ public sealed class ConfiguredWavePort : ITestWavePort
         if (!_frozenReferences.TryGetValue(profile.Name, out var pinned) ||
             pinned.Name != settings.ReferenceName ||
             (referenceKey.Length > 0 && referenceKey != pinned.Name) ||
-            pinned.Signal != signal)
+            pinned.Signal != signal ||
+            pinned.Reference.Asset.Id.Value != settings.ApprovedReferenceAssetId ||
+            pinned.Reference.Asset.Revision.Value != settings.ApprovedReferenceAssetRevision ||
+            !string.Equals(pinned.Reference.Asset.Fingerprint.Sha256,
+                settings.ApprovedReferenceAssetSha256, StringComparison.OrdinalIgnoreCase))
             return new(false, "REFERENCE_PIN_MISMATCH", null, evidence.Evidence.ToString(),
                 "运行中参考波形或信号与冻结的批准版本不一致。");
 
