@@ -41,11 +41,13 @@ public sealed record WaveComparisonConfig(
             return "INVALID_PASS_RATIO";
         if (!double.IsFinite(MaximumShiftSeconds) || MaximumShiftSeconds < 0 || MaximumShiftSeconds > 10)
             return "INVALID_SHIFT";
-        if (!double.IsFinite(MaximumGapFactor) || MaximumGapFactor < 1)
+        if (!double.IsFinite(MaximumGapFactor) || MaximumGapFactor < 1 || MaximumGapFactor > 100)
             return "INVALID_GAP_FACTOR";
-        if (!double.IsFinite(MaximumOutOfToleranceSeconds) || MaximumOutOfToleranceSeconds < 0)
+        if (!double.IsFinite(MaximumOutOfToleranceSeconds) ||
+            MaximumOutOfToleranceSeconds < 0 || MaximumOutOfToleranceSeconds > 3600)
             return "INVALID_OUTSIDE_DURATION";
-        if (!double.IsFinite(MinimumCoveredDurationSeconds) || MinimumCoveredDurationSeconds < 0)
+        if (!double.IsFinite(MinimumCoveredDurationSeconds) ||
+            MinimumCoveredDurationSeconds < 0 || MinimumCoveredDurationSeconds > 3600)
             return "INVALID_COVERED_DURATION";
         return null;
     }
