@@ -399,7 +399,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         if (setupNode is not null) SelectResource(setupNode);
         if (IsAlreadyOpen("config-overview")) return;
         var view = new ProjectConfigurationOverviewView(this, _workspace);
-        ActivateEditor("config-overview", view, "检测准备 · " + CurrentProjectName, view.ConfirmClose);
+        ActivateEditor("config-overview", view, "工程首页 · " + CurrentProjectName, view.ConfirmClose);
     }
 
     private bool _openingFlashLab;
@@ -608,7 +608,7 @@ public sealed partial class MainWindowViewModel : BindableBase
     {
         "none" => "新建工程",
         "project" when TestProgramCount > 0 => "打开独立用例",
-        "ready" => "检测准备",
+        "ready" => "工程首页",
         _ => "查看工程信息"
     };
     public bool ShowStartSecondary => StartMode is "none" or "ready" ||
@@ -1563,8 +1563,8 @@ public sealed partial class MainWindowViewModel : BindableBase
         // and a separate categorized asset section. Do not nest the latter under root.
         ResourceNodes.Add(new ResourceTreeNode(current.Definition.Name, "", current.ManifestPath,
             role: "Root"));
-        ResourceNodes.Add(new ResourceTreeNode("检测准备", "",
-            "配置 ECU 型号、扫码身份、原生烧录、夹具工艺与运行前检查",
+        ResourceNodes.Add(new ResourceTreeNode("工程首页", "",
+            "管理 TEST、FLASH、DBC、波形；工位身份与夹具配置另在生产准备",
             role: "Setup"));
         ResourceNodes.Add(new ResourceTreeNode("测试项目与用例", "",
             "唯一有序用例实例；临时勾选仅用于开发调试",

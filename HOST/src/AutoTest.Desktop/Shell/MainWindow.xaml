@@ -168,8 +168,7 @@
       <MenuItem Header="显示／隐藏观察区" Click="ToggleBottom_Click"/>
       <MenuItem Header="显示／隐藏属性区" Click="ToggleInspector_Click"/>
       <Separator/>
-      <MenuItem Header="生产准备" Command="{Binding OpenProductionPreparationCommand}"/>
-       <MenuItem Header="工程检测准备" Command="{Binding OpenProjectConfigurationOverviewCommand}"/>
+      <MenuItem Header="工程首页" Command="{Binding OpenProjectConfigurationOverviewCommand}"/>
      </MenuItem>
      <MenuItem Header="运行">
       <MenuItem Header="检查当前开发调试范围" Command="{Binding CheckActiveCommand}"/>
@@ -261,10 +260,8 @@
     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
      <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
       Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}">
-     <Button Content="生产准备" Command="{Binding OpenProductionPreparationCommand}"
-        Margin="0,0,5,0" ToolTip="产品与工程、编码形制、身份匹配、工位与夹具、发布验证"/>
-      <Button Content="工程设置" Command="{Binding OpenProjectConfigurationOverviewCommand}"
-       Margin="0,0,5,0" ToolTip="编辑扫码、前置烧录、夹具工艺、型号及运行前检查"/>
+     <Button Content="工程首页" Command="{Binding OpenProjectConfigurationOverviewCommand}"
+       Margin="0,0,5,0" ToolTip="TEST 项目、原生 FLASH、DBC 与波形"/>
       <Button Content="测试项目" Command="{Binding OpenFirstTestProjectCommand}"
        Margin="0,0,9,0" ToolTip="打开本 ECU 工程唯一的有序用例列表"/>
      <TextBlock Text="{Binding CurrentProjectName}" FontWeight="SemiBold"
