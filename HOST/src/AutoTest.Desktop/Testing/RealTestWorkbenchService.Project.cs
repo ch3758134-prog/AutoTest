@@ -243,14 +243,18 @@ public sealed partial class RealTestWorkbenchService
             await Actions.CheckHealthAsync(ct);
             // Record the physical CAN sender transition at the actual case
             // boundary, not merely as a single end-of-project snapshot.
+            var caseBoundaryStartedUtc = DateTimeOffset.UtcNow;
             var activeBefore = Actions.PeriodicEvidenceSnapshot()
                 .Where(x => x.StoppedUtc is null).ToArray();
             var result = await _owner.ExecuteAsync(doc, "", "", _dut, ct,
                 projectSession: this);
             var after = Actions.PeriodicEvidenceSnapshot();
             var activeAfter = after.Where(x => x.StoppedUtc is null).ToArray();
-            var stoppedDuring = after.Where(x => x.StoppedUtc is not null &&
-                activeBefore.Any(prior => prior.TaskId == x.TaskId)).ToArray();
+            // Include tasks started AND stopped inside this same case. Looking
+            // only at activeBefore would miss the most common unexpected
+            // duration expiry on a setup case.
+            var stoppedDuring = after.Where(x => x.StoppedUtc is { } stopped &&
+                stopped >= caseBoundaryStartedUtc).ToArray();
             _periodicCaseBoundaries.Add(new ProjectPeriodicCaseBoundary(
                 _next + 1, doc.Id.ToString(), DateTimeOffset.UtcNow,
                 activeBefore, activeAfter, stoppedDuring));
