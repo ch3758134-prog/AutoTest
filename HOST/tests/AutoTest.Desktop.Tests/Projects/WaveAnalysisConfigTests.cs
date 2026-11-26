@@ -51,6 +51,51 @@ public sealed class WaveAnalysisConfigTests
     }
 
     [Fact]
+    public void AlgorithmReviewIsExplicitPinnedAndInvalidatedByAnyCriteriaOrReferenceChange()
+    {
+        var draft = WaveSettingsDocument.Create("ReviewedCurrent") with
+        {
+            DbcAssetId = Guid.NewGuid(),
+            DbcAssetRevision = 1,
+            DbcAssetFingerprint = new string('a', 64),
+            Bus = BusRole.DutCan,
+            CanId = 0x123,
+            SignalName = "MotorCurrent",
+            Unit = "A",
+            ReferenceName = "Approved-Reference"
+        };
+        Assert.False(draft.IsComparisonReviewCurrent);
+        var approved = draft.ApproveCurrentComparison();
+        Assert.True(approved.IsComparisonReviewCurrent);
+        Assert.Equal(WaveSettingsDocument.CurrentComparisonAlgorithmRevision,
+            approved.ApprovedAlgorithmRevision);
+
+        var reopened = (WaveSettingsDocument)ProjectConfigurationCodec.Decode(
+            ProjectConfigurationCodec.WaveSettingsKind,
+            ProjectConfigurationCodec.Encode(ProjectConfigurationCodec.WaveSettingsKind, approved));
+        Assert.True(reopened.IsComparisonReviewCurrent);
+        Assert.False((reopened with
+        {
+            ReferenceName = "Different-Reference"
+        }).IsComparisonReviewCurrent);
+        Assert.False((reopened with
+        {
+            Comparison = reopened.Comparison with { AbsoluteTolerance = 0.7 }
+        }).IsComparisonReviewCurrent);
+        Assert.False((reopened with
+        {
+            DbcAssetFingerprint = new string('b', 64)
+        }).IsComparisonReviewCurrent);
+        Assert.False((reopened with
+        {
+            Comparison = reopened.Comparison with
+            {
+                InterpolationMode = WaveInterpolationMode.StepHold
+            }
+        }).IsComparisonReviewCurrent);
+    }
+
+    [Fact]
     public void NamedReference_RequiresConfiguredDbcSignal()
     {
         var draft = WaveSettingsDocument.Create("Invalid") with
