@@ -149,6 +149,7 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
     private readonly Action? _openSpecialProcedure;
     private long _editGeneration;
     private readonly Func<bool> _mayEdit;
+    private readonly Func<string>? _stationDeviceStatus;
     private readonly DispatcherTimer _autosave = new()
         { Interval = TimeSpan.FromMilliseconds(850) };
     private bool _ready, _busy, _dirty, _closingAfterSave;
@@ -225,7 +226,8 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
         SerialScannerWorkbenchViewModel? scanner = null, Action? onPublished = null,
         Func<ProductionPublishedProduct, Task<string>>? activateProject = null,
         Func<Task<bool>>? publishProject = null,
-        Action? openSpecialProcedure = null)
+        Action? openSpecialProcedure = null,
+        Func<string>? stationDeviceStatus = null)
     {
         _workspace = workspace;
         _mayEdit = mayEdit;
@@ -234,6 +236,7 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
         _activateProject = activateProject;
         _publishProject = publishProject;
         _openSpecialProcedure = openSpecialProcedure;
+        _stationDeviceStatus = stationDeviceStatus;
         InitializeComponent();
         ConfigureProductPreparationWorkspace();
         DataContext = this;
