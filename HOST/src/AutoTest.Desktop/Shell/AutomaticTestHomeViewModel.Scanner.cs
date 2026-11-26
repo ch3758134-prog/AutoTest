@@ -208,11 +208,29 @@ public sealed partial class AutomaticTestHomeViewModel
             // physical FLASH/fixture consent dialog that the Start button uses.
             // The scan itself is never permission to write to hardware.
             if (_quickEngineeringStartOnScan && _engineeringVerificationArmed &&
-                !_isProductionWorkspace() && CanStartOperatorVerification)
+                !_isProductionWorkspace())
             {
-                _quickEngineeringStartOnScan = false; // one-shot; no popup storm on repeat scans
-                StartRequestStatus = "已核对 ECU 编号与资源；等待工程师确认真实夹具与烧录操作。";
-                StartOperatorVerificationCommand.Execute();
+                if (CanStartOperatorVerification)
+                {
+                    _quickEngineeringStartOnScan = false; // one-shot; no popup storm on repeat scans
+                    StartRequestStatus = "已核对 ECU 编号与资源；等待工程师确认真实夹具与烧录操作。";
+                    StartOperatorVerificationCommand.Execute();
+                }
+                else
+                {
+                    // Tell the engineer the actionable blocker at the point of
+                    // scanning. Never pretend barcode identification means the
+                    // physical ECU bus is ready for a destructive FLASH.
+                    _scanStatus = !_hardware.IsConnected
+                        ? "编号已识别；请先连接主控 USB，再重新扫码。"
+                        : !_hardware.IsEcuCanBitrateApplied
+                            ? "编号已识别；请先确认并回读 ECU CAN 波特率，再重新扫码。"
+                            : !_plans.Current!.ResourceReady
+                                ? "编号已识别，但 TEST/FLASH 工程资源未通过核验，请检查工程。"
+                                : "编号已识别，但工位执行状态尚未就绪，请查看主控和工程状态。";
+                    StartRequestStatus = _scanStatus;
+                    Notify();
+                }
             }
         }
         catch (Exception error) when (error is IOException or InvalidDataException or
