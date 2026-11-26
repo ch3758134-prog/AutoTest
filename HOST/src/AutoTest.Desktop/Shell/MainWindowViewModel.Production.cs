@@ -51,9 +51,14 @@ public sealed partial class MainWindowViewModel
     /// then opens the single preparation workbench; it never creates a recipe.</summary>
     public DelegateCommand NavigateProductionPreparationCommand { get; private set; } = null!;
     private ProductionPreparationWindow? _productionPreparationWindow;
+    private ProductionProjectLibraryWindow? _productionLibraryWindow;
+    private readonly ProductionProjectCatalog _productionCatalog = new();
+    public DelegateCommand OpenProductionProjectLibraryCommand { get; private set; } = null!;
 
     private void InitializeProductionWorkspace()
     {
+        OpenProductionProjectLibraryCommand =
+            new DelegateCommand(OpenProductionProjectLibrary);
         OpenProductionPreparationCommand = new DelegateCommand(
             OpenProductionPreparationWindow, () => IsEngineerWorkspace &&
                 !_realTest.IsRunning &&
@@ -100,6 +105,36 @@ public sealed partial class MainWindowViewModel
             await ShowDeveloperAsync();
             if (IsEngineerWorkspace) OpenProductionPreparationWindow();
         });
+    }
+
+    private void OpenProductionProjectLibrary()
+    {
+        if (_productionLibraryWindow is { IsVisible: true } opened)
+        {
+            if (opened.WindowState == WindowState.Minimized)
+                opened.WindowState = WindowState.Normal;
+            opened.Activate();
+            return;
+        }
+        var window = new ProductionProjectLibraryWindow(
+            _productionCatalog, _workspace,
+            () => !_realTest.IsRunning &&
+                  !_automaticTestHome.IsOperatorRunning &&
+                  !_hardware.IsTestRunApproved &&
+                  !_hardware.IsFlashSecuritySensitive &&
+                  !_hardware.HasManualCanRowLeases &&
+                  !_hardware.IsManualCanBatchApproved &&
+                  !_hardware.IsManualKeyActionApproved,
+            () => _automaticTestHome.OnPublishedConfigurationChanged())
+        { Owner = global::System.Windows.Application.Current?.MainWindow };
+        _productionLibraryWindow = window;
+        window.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(_productionLibraryWindow, window))
+                _productionLibraryWindow = null;
+        };
+        window.Show();
+        window.Activate();
     }
 
     private void OpenProductionPreparationWindow()
