@@ -311,6 +311,9 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         get
         {
             if (IsOperatorRunning) return "测试进行中，可在下方查看当前步骤。";
+            if (!_engineeringVerificationArmed &&
+                !string.IsNullOrWhiteSpace(OperatorHtmlReportPath))
+                return "测试已结束，可查看本次报告；再次测试请重新扫码。";
             if (_plans.Current is null) return "请先打开检测工程。";
             if (!_plans.Current.ResourceReady)
                 return "检测工程需要检查，请修正测试用例或烧录资源。";

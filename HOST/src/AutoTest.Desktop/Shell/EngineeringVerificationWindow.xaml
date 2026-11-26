@@ -70,8 +70,9 @@
       Style="{StaticResource EngAction}" Margin="8,0,0,0"/>
      <StackPanel>
       <TextBlock Text="工程测试" FontWeight="SemiBold" FontSize="20"/>
-      <TextBlock Text="对当前工程的全部测试用例进行台架验证"
-       Style="{StaticResource EngCaption}" Margin="0,3,0,0"/>
+      <TextBlock Text="{Binding ProjectName}" FontSize="13"
+       Foreground="#536C82" TextTrimming="CharacterEllipsis"
+       Margin="0,3,0,0" ToolTip="{Binding ProjectName}"/>
      </StackPanel>
     </DockPanel>
     <WrapPanel Margin="0,12,0,0">
