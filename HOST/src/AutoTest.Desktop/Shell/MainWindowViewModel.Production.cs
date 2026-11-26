@@ -60,9 +60,9 @@ public sealed partial class MainWindowViewModel
         OpenProductionProjectLibraryCommand =
             new DelegateCommand(OpenProductionProjectLibrary);
         OpenProductionPreparationCommand = new DelegateCommand(
-            OpenProductionPreparationWindow, () => IsEngineerWorkspace &&
-                !_realTest.IsRunning &&
-                (_automaticTestHome is null || !_automaticTestHome.IsOperatorRunning));
+            OpenProductionPreparationWindow,
+            () => !_realTest.IsRunning &&
+                  (_automaticTestHome is null || !_automaticTestHome.IsOperatorRunning));
         _automaticTestPlans = new AutomaticTestPlanService();
         _automaticTestHome = new AutomaticTestHomeViewModel(_automaticTestPlans, _hardware,
             _scannerWorkbench, _workspace, _realTest,
@@ -94,18 +94,8 @@ public sealed partial class MainWindowViewModel
             async () => await ShowDeveloperAsync());
         ShowProductionWorkspaceCommand = new DelegateCommand(
             async () => await ShowAutomaticTestAsync());
-        NavigateProductionPreparationCommand = new DelegateCommand(async () =>
-        {
-            if (_realTest.IsRunning || _automaticTestHome.IsOperatorRunning ||
-                _hardware.IsTestRunApproved || _hardware.IsFlashSecuritySensitive ||
-                _hardware.HasManualCanRowLeases)
-            {
-                StatusMessage = "当前工位存在实际运行或设备资源占用；请先完成安全收尾再进入生产准备。";
-                return;
-            }
-            await ShowDeveloperAsync();
-            if (IsEngineerWorkspace) OpenProductionPreparationWindow();
-        });
+        NavigateProductionPreparationCommand = new DelegateCommand(
+            OpenProductionPreparationWindow);
     }
 
     private void OpenProductionProjectLibrary()
@@ -140,40 +130,44 @@ public sealed partial class MainWindowViewModel
 
     private void OpenProductionPreparationWindow()
     {
-        if (!IsEngineerWorkspace || _realTest.IsRunning ||
-            _automaticTestHome.IsOperatorRunning) return;
+        if (_realTest.IsRunning || _automaticTestHome.IsOperatorRunning ||
+            _hardware.IsTestRunApproved || _hardware.IsFlashSecuritySensitive ||
+            _hardware.HasManualCanRowLeases)
+        {
+            StatusMessage = "设备正在使用中，请完成当前测试后再修改工位设置。";
+            return;
+        }
         if (_productionPreparationWindow is { IsVisible: true } current)
         {
-            if (current.WindowState == System.Windows.WindowState.Minimized)
-                current.WindowState = System.Windows.WindowState.Normal;
+            if (current.WindowState == WindowState.Minimized)
+                current.WindowState = WindowState.Normal;
             current.Activate();
             return;
         }
         var window = new ProductionPreparationWindow(
-            _workspace,
-            () => IsEngineerWorkspace && !_realTest.IsRunning &&
-                !_automaticTestHome.IsOperatorRunning &&
-                !_hardware.IsFlashSecuritySensitive &&
-                !_hardware.IsManualCanBatchApproved &&
-                !_hardware.IsManualKeyActionApproved,
             _scannerWorkbench,
-            () => _automaticTestHome.OnPublishedConfigurationChanged(),
-            async () => await ConfirmProductionConfigurationAsync(singleApply: true),
+            () => !_realTest.IsRunning &&
+                  !_automaticTestHome.IsOperatorRunning &&
+                  !_hardware.IsTestRunApproved &&
+                  !_hardware.IsFlashSecuritySensitive &&
+                  !_hardware.HasManualCanRowLeases &&
+                  !_hardware.IsManualCanBatchApproved &&
+                  !_hardware.IsManualKeyActionApproved,
             OpenSerialScannerWindow,
             () => !_hardware.IsConnected ? "主控未连接" :
                 _hardware.IsEcuCanBitrateApplied
                     ? "主控已连接 · ECU CAN " +
                       _hardware.ConfirmedEcuCanBitrateKbps + " kbit/s"
-                    : "主控已连接 · ECU CAN 尚未回读确认")
+                    : "主控已连接 · CAN 波特率尚未确认")
         { Owner = global::System.Windows.Application.Current?.MainWindow };
         _productionPreparationWindow = window;
         window.Closed += (_, _) =>
         {
             if (ReferenceEquals(_productionPreparationWindow, window))
                 _productionPreparationWindow = null;
-            _ = RefreshEngineeringSetupAsync();
         };
-        window.Show(); window.Activate();
+        window.Show();
+        window.Activate();
     }
 
     /// <summary>
