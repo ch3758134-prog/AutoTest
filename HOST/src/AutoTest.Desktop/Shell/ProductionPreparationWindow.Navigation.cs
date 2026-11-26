@@ -14,16 +14,18 @@ public partial class ProductionPreparationWindow
 {
     private readonly Dictionary<int, Expander> _stationSections = new();
 
-    private void OpenStationDetail(int detailIndex)
-    {
-        var section = detailIndex switch
+    private void OpenStationDetail(int detailIndex) => OpenStationSection(
+        detailIndex switch
         {
             0 => 3, // Scanner hardware and fixture
             1 => 1, // Barcode formats
             2 => 4, // Validation / diagnostics
             _ => 0
-        };
-        if (!_stationSections.TryGetValue(section, out var target)) return;
+        });
+
+    private void OpenStationSection(int index)
+    {
+        if (!_stationSections.TryGetValue(index, out var target)) return;
         target.IsExpanded = true;
         Dispatcher.BeginInvoke(new Action(target.BringIntoView), DispatcherPriority.Loaded);
     }
@@ -57,7 +59,7 @@ public partial class ProductionPreparationWindow
         // The first two items are the old duplicate title and introduction.
         // The window has one title and one persistent save/status strip already.
         root.Children.Add(summary[2]); // Current ECU and full TEST/FLASH
-        root.Children.Add(Section(0, "产品与 ECU 工程", original[0], true));
+        root.Children.Add(Section(0, "产品与 ECU 工程", original[0], false));
 
         root.Children.Add(summary[3]); // Scanner observation / connection
         root.Children.Add(Section(1, "编号格式与识别规则", original[1], false));

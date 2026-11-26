@@ -183,6 +183,8 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
     private readonly Func<ProductionPublishedProduct, Task<string>>? _activateProject;
     private readonly Func<Task<bool>>? _publishProject;
     private readonly Action? _openSpecialProcedure;
+    private readonly Func<Task>? _openTestEditor;
+    private readonly Action? _openFlashEditor;
     private long _editGeneration;
     private readonly Func<bool> _mayEdit;
     private readonly Func<string>? _stationDeviceStatus;
@@ -263,7 +265,8 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
         Func<ProductionPublishedProduct, Task<string>>? activateProject = null,
         Func<Task<bool>>? publishProject = null,
         Action? openSpecialProcedure = null,
-        Func<string>? stationDeviceStatus = null)
+        Func<string>? stationDeviceStatus = null,
+        Func<Task>? openTestEditor = null, Action? openFlashEditor = null)
     {
         _workspace = workspace;
         _mayEdit = mayEdit;
@@ -273,6 +276,8 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
         _publishProject = publishProject;
         _openSpecialProcedure = openSpecialProcedure;
         _stationDeviceStatus = stationDeviceStatus;
+        _openTestEditor = openTestEditor;
+        _openFlashEditor = openFlashEditor;
         InitializeComponent();
         ConfigureProductPreparationWorkspace();
         DataContext = this;

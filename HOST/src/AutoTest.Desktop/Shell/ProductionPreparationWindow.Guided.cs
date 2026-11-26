@@ -121,6 +121,30 @@ public partial class ProductionPreparationWindow
         var projectIssues = GuidedButton("工程检查详情");
         projectIssues.Click += (_, _) => ShowGuidedProjectDiagnostics();
         projectActions.Children.Add(projectIssues);
+        var openProduct = GuidedButton("型号与工程绑定");
+        openProduct.Click += (_, _) => OpenStationSection(0);
+        projectActions.Children.Add(openProduct);
+        var openFlash = GuidedButton("编辑前置 FLASH");
+        openFlash.Click += (_, _) =>
+        {
+            if (_openFlashEditor is null)
+                Status = "当前应用没有接入原生 FLASH 编辑入口。";
+            else _openFlashEditor();
+        };
+        projectActions.Children.Add(openFlash);
+        var openTest = GuidedButton("编辑完整 TEST");
+        openTest.Click += async (_, _) =>
+        {
+            if (_openTestEditor is null)
+            {
+                Status = "当前应用没有接入完整 TEST 编辑入口。";
+                return;
+            }
+            try { await _openTestEditor(); }
+            catch (Exception error) when (error is not OutOfMemoryException)
+            { Status = "打开 TEST 项目失败：" + error.Message; }
+        };
+        projectActions.Children.Add(openTest);
         projectBody.Children.Add(projectActions);
 
         root.Children.Add(GuidedCard("扫码枪与设备", out var deviceBody));
@@ -448,6 +472,23 @@ public partial class ProductionPreparationWindow
                     "。复杂编码规则请在高级配置中核对。");
             if (_publishProject is null)
                 throw new InvalidOperationException("原生 ECU 工程发布入口未连接。");
+
+            // Read and validate the complete user-edited source BEFORE writing
+            // any FLASH/project/station publication pointer. This protects
+            // against a late failed TEST, missing firmware, or wrong ECU model.
+            var native = await NativeFlashProfileStore.LoadAsync(project.RootDirectory)
+                ?? throw new InvalidDataException(
+                    "当前工程尚未配置原生 FLASH。请在本页直接点击“编辑前置 FLASH”。");
+            if (!string.Equals(native.Profile.EcuModelCode,
+                    project.Definition.EcuModelCode, StringComparison.Ordinal))
+                throw new InvalidDataException("原生 FLASH 型号与当前 ECU 工程不一致。");
+            _ = NativeFlashJobBuilder.Freeze(native.Profile, project.RootDirectory);
+            var test = await AutomaticTestResourceContract.ResolveAsync(project);
+            test.RequireExecutable();
+            foreach (var binding in config.Products.Where(x =>
+                !string.Equals(x.ManifestPath, project.ManifestPath,
+                    StringComparison.OrdinalIgnoreCase)))
+                await StationProductionConfigurationStore.InspectProjectAsync(binding);
 
             // An unchanged, still-valid complete station release is already
             // applied. Clicking again must not create new publication IDs or
