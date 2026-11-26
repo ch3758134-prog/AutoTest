@@ -63,12 +63,39 @@ public sealed partial class MainWindowViewModel
 
     public DelegateCommand OpenInspectionProcedureCommand { get; private set; } = null!;
 
+    // Legacy ECU-specific station actions are an explicit, separate editor,
+    // not a hidden tab mixed with TEST dependencies or the manual IO bench.
+    private System.Windows.Window? _inspectionProcedureWindow;
+    private InspectionStationProcedureEditorViewModel? _inspectionProcedureEditor;
+    private bool _inspectionProcedureCloseApproved;
+
+    private async Task<bool> CloseInspectionProcedureForProjectChangeAsync()
+    {
+        if (_inspectionProcedureWindow is not { IsVisible: true } window)
+            return true;
+        if (_inspectionProcedureEditor is not { } editor ||
+            !await editor.SaveForCloseAsync())
+        {
+            StatusMessage = "特殊工位动作尚有未保存的草稿，不能关闭工位配置窗口。";
+            return false;
+        }
+        _inspectionProcedureCloseApproved = true;
+        window.Close();
+        return true;
+    }
+
     private async Task OpenInspectionProcedureAsync()
     {
-        var project = _workspace.Current;
-        if (project is null || _realTest.IsRunning || _hardwareBusy)
+        if (_inspectionProcedureWindow is { IsVisible: true } open)
         {
-            StatusMessage = "请先打开工程并停止正在执行的设备任务，再编辑工位动作。";
+            open.Activate();
+            return;
+        }
+        var project = _workspace.Current;
+        if (project is null || _realTest.IsRunning || _hardwareBusy ||
+            _automaticTestHome.IsOperatorRunning)
+        {
+            StatusMessage = "必须打开工程且工位空闲，才能审查工程特殊工位动作。";
             return;
         }
         try
@@ -77,22 +104,53 @@ public sealed partial class MainWindowViewModel
                 x.Kind == ProjectWorkspaceService.InspectionKind).ToArray();
             if (candidates.Length > 1)
                 throw new InvalidDataException(
-                    "同一工程存在多个工位过程配置，请先处理资源冲突，不能自动选择。");
+                    "同一工程存在多个特殊工位动作资源，请先处理冲突。");
             var asset = candidates.Length == 1 ? candidates[0]
                 : await _workspace.CreateConfigurationAsync(
                     ProjectWorkspaceService.InspectionKind, "当前检测工位动作");
             var session = await _workspace.OpenConfigurationAsync(asset.Id);
-            ShowProjectConfiguration();
-            var view = OpenEditors.FirstOrDefault(x => x.Key == "config-overview")?.View
-                as ProjectConfigurationOverviewView;
-            view?.ShowInspectionSession(session);
-            StatusMessage = "已打开工程内受控工位动作配置。实体操作另行使用真实工位按钮。";
+            var editor = new InspectionStationProcedureEditorViewModel(_workspace, session);
+            var window = new System.Windows.Window
+            {
+                Title = "工程特殊工位动作 · 明确审查（不替代生产安全工艺）",
+                Width = 1080, Height = 770, MinWidth = 760, MinHeight = 520,
+                WindowStartupLocation = System.Windows.WindowStartupLocation.CenterOwner,
+                Owner = System.Windows.Application.Current?.MainWindow,
+                Background = System.Windows.Media.Brushes.White,
+                Content = new InspectionStationProcedureEditorView(editor)
+            };
+            _inspectionProcedureWindow = window;
+            _inspectionProcedureEditor = editor;
+            _inspectionProcedureCloseApproved = false;
+            window.Closing += async (_, e) =>
+            {
+                if (_inspectionProcedureCloseApproved) return;
+                e.Cancel = true;
+                if (!await editor.SaveForCloseAsync())
+                {
+                    StatusMessage = "工位动作草稿尚未保存，请处理错误后再关闭窗口。";
+                    return;
+                }
+                _inspectionProcedureCloseApproved = true;
+                window.Close();
+            };
+            window.Closed += (_, _) =>
+            {
+                editor.Close();
+                if (ReferenceEquals(_inspectionProcedureWindow, window))
+                {
+                    _inspectionProcedureWindow = null;
+                    _inspectionProcedureEditor = null;
+                    _inspectionProcedureCloseApproved = false;
+                }
+            };
+            window.Show();
         }
         catch (Exception error) when (error is IOException or InvalidDataException or
             ArgumentException or InvalidOperationException or ProjectDataException or
             UnauthorizedAccessException or FormatException)
         {
-            StatusMessage = "工位动作配置无法打开：" + error.Message;
+            StatusMessage = "工程特殊工位动作无法打开：" + error.Message;
         }
     }
 

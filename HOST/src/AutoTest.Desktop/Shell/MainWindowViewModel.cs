@@ -960,6 +960,8 @@ public sealed partial class MainWindowViewModel : BindableBase
         if (_nativeFlashProfileWindow is { IsVisible: true } flashEditor &&
             !await flashEditor.PrepareForParentShutdownAsync())
             return false;
+        if (!await CloseInspectionProcedureForProjectChangeAsync())
+            return false;
         if (_manualBenchWindow is { IsVisible: true } bench &&
             !await bench.PrepareForParentShutdownAsync())
             return false;

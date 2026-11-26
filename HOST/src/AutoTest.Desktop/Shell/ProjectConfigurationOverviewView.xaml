@@ -3,318 +3,114 @@
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  FontFamily="{StaticResource UiFont}" FontSize="12" Background="White">
  <Grid>
-  <Grid.RowDefinitions><RowDefinition Height="46"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-  <Border Grid.Row="0" Background="White" BorderBrush="#DBE3ED" BorderThickness="0,0,0,1">
-   <DockPanel Margin="15,0">
-    <Button DockPanel.Dock="Right" Content="刷新工程资源"
-     Command="{Binding RefreshEngineeringSetupCommand}" Margin="0,0,0,0"
-     VerticalAlignment="Center"/>
-    <TextBlock Text="工程首页 · TEST 与专业资源" FontSize="14" FontWeight="SemiBold"
-     VerticalAlignment="Center"/>
+  <Grid.RowDefinitions>
+   <RowDefinition Height="54"/>
+   <RowDefinition Height="*"/>
+  </Grid.RowDefinitions>
+  <Border Grid.Row="0" Background="White" BorderBrush="#DCE5ED"
+   BorderThickness="0,0,0,1">
+   <DockPanel Margin="17,0">
+    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+     <Button Content="重新核对" Command="{Binding RefreshEngineeringSetupCommand}"
+      Padding="12,7" Margin="0,0,8,0"/>
+     <Button Content="返回 TEST 项目" Command="{Binding OpenFirstTestProjectCommand}"
+      Padding="13,7" Style="{StaticResource AtPrimaryButton}"/>
+    </StackPanel>
+    <StackPanel VerticalAlignment="Center">
+     <TextBlock Text="工程依赖与版本审查" FontSize="15" FontWeight="SemiBold"
+      Foreground="#253C53"/>
+     <TextBlock Text="核对资源与调用，不修改生产发布" FontSize="11"
+      Foreground="#75889A"/>
+    </StackPanel>
    </DockPanel>
   </Border>
-  <TabControl x:Name="ConfigTabs" Grid.Row="1" Background="White" BorderThickness="0" Padding="0">
-   <TabControl.Resources>
-    <Style TargetType="{x:Type TabItem}">
-     <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
-     <Setter Property="FontSize" Value="11"/>
-     <Setter Property="Foreground" Value="#64758C"/>
-     <Setter Property="Template">
-      <Setter.Value>
-       <ControlTemplate TargetType="{x:Type TabItem}">
-        <Border x:Name="TabLine" Height="35" Background="#FBFCFF"
-         BorderBrush="Transparent" BorderThickness="0,0,0,2" Padding="13,0">
-         <ContentPresenter ContentSource="Header" VerticalAlignment="Center"/>
-        </Border>
-        <ControlTemplate.Triggers>
-         <Trigger Property="IsSelected" Value="True">
-          <Setter TargetName="TabLine" Property="BorderBrush" Value="#2368BD"/>
-          <Setter TargetName="TabLine" Property="Background" Value="White"/>
-          <Setter Property="Foreground" Value="#1C5DA8"/>
-          <Setter Property="FontWeight" Value="SemiBold"/>
-         </Trigger>
-         <Trigger Property="IsMouseOver" Value="True">
-          <Setter TargetName="TabLine" Property="Background" Value="#F0F5FB"/>
-         </Trigger>
-        </ControlTemplate.Triggers>
-       </ControlTemplate>
-      </Setter.Value>
-     </Setter>
-    </Style>
-   </TabControl.Resources>
-   <TabControl.Template>
-    <ControlTemplate TargetType="{x:Type TabControl}">
-     <Grid>
-      <Grid.RowDefinitions><RowDefinition Height="35"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-      <Border Grid.Row="0" Background="#FBFCFF" BorderBrush="#DBE3ED"
-       BorderThickness="0,0,0,1">
-       <TabPanel IsItemsHost="True" HorizontalAlignment="Left"/>
-      </Border>
-      <ContentPresenter Grid.Row="1" x:Name="PART_SelectedContentHost"
-       ContentSource="SelectedContent"/>
-     </Grid>
-    </ControlTemplate>
-   </TabControl.Template>
-
-   <TabItem Header="工程概览">
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-     <StackPanel MaxWidth="1090" Margin="22,20,22,24">
-      <DockPanel Margin="0,0,0,10">
-       <Button DockPanel.Dock="Right" Content="打开 TEST 项目"
-        Command="{Binding OpenFirstTestProjectCommand}" Padding="16,9"
-        Style="{StaticResource AtPrimaryButton}"/>
-       <StackPanel>
-        <TextBlock Text="当前 ECU 工程" FontSize="12" Foreground="#657E93"/>
-        <TextBlock Text="{Binding CurrentProjectName}" FontSize="22" FontWeight="SemiBold"
-         Foreground="#243F58" TextTrimming="CharacterEllipsis" ToolTip="{Binding CurrentProjectPath}"/>
-       </StackPanel>
+  <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+   HorizontalScrollBarVisibility="Disabled">
+   <StackPanel MaxWidth="1080" Margin="22,20,22,28">
+    <TextBlock Text="当前工程静态检查" FontWeight="SemiBold" FontSize="17"
+     Foreground="#294B6B" Margin="0,0,0,8"/>
+    <TextBlock Text="{Binding SetupTestStatus}" TextWrapping="Wrap"
+     Foreground="#4C6880" Margin="0,0,0,11"/>
+    <Border Background="#F5F8FB" BorderBrush="#DCE6EF"
+     BorderThickness="1" CornerRadius="7" Padding="14" Margin="0,0,0,15">
+     <StackPanel>
+      <DockPanel Margin="0,0,0,7">
+       <TextBlock DockPanel.Dock="Right"
+        Text="{Binding SetupRootCauseCount,StringFormat='{}{0} 组根因'}"
+        FontWeight="SemiBold" Foreground="#2C6594"/>
+       <TextBlock Text="资源变更影响" FontWeight="SemiBold" FontSize="14"
+        Foreground="#294B68"/>
       </DockPanel>
-      <TextBlock Text="{Binding SetupModelStatus}" Foreground="#627B91"
-       TextWrapping="Wrap" Margin="0,0,0,12"/>
-      <TextBlock Text="先编辑并调试 TEST、原生 FLASH 与工程资源。工位扫码、型号匹配、夹具和实体 START 在“生产准备”统一配置。"
-       TextWrapping="Wrap" Foreground="#315F83" Margin="0,0,0,16"/>
-      
-      <Border CornerRadius="8" BorderBrush="#DCE6EF" BorderThickness="1"
-       Background="White" Padding="18" Margin="0,0,0,12">
-       <DockPanel LastChildFill="True">
-        <Button DockPanel.Dock="Right" Content="编辑 TEST 项目" Command="{Binding OpenFirstTestProjectCommand}"
-         Padding="14,8" Margin="16,0,0,0" VerticalAlignment="Center"/>
-        <StackPanel>
-         <TextBlock Text="01  TEST 项目与步骤" FontSize="16" FontWeight="SemiBold"
-          Foreground="#274D70" Margin="0,0,0,7"/>
-         <TextBlock Text="一个工程只有一棵正式有序 TEST 树；支持准备、用例、收尾及开发调试。" TextWrapping="Wrap" Foreground="#5A748A"
-          Margin="0,0,0,7"/>
-         <TextBlock Text="{Binding SetupTestStatus}" TextWrapping="Wrap"
-          Foreground="#476A86"/>
-        </StackPanel>
-       </DockPanel>
-      </Border>
-      
-      <Border CornerRadius="8" BorderBrush="#DCE6EF" BorderThickness="1"
-       Background="White" Padding="18" Margin="0,0,0,12">
-       <DockPanel LastChildFill="True">
-        <Button DockPanel.Dock="Right" Content="编辑 FLASH 工艺" Tag="flash" Click="NavigateToStage_Click"
-         Padding="14,8" Margin="16,0,0,0" VerticalAlignment="Center"/>
-        <StackPanel>
-         <TextBlock Text="02  原生 FLASH 工艺" FontSize="16" FontWeight="SemiBold"
-          Foreground="#274D70" Margin="0,0,0,7"/>
-         <TextBlock Text="固件、算法和烧录参数归属 ECU 工程，不在扫码规则中重复选择。" TextWrapping="Wrap" Foreground="#5A748A"
-          Margin="0,0,0,7"/>
-         <TextBlock Text="{Binding SetupFlashStatus}" TextWrapping="Wrap"
-          Foreground="#476A86"/>
-        </StackPanel>
-       </DockPanel>
-      </Border>
-      <Border CornerRadius="8" BorderBrush="#DCE6EF" BorderThickness="1"
-       Background="White" Padding="18" Margin="0,0,0,12">
-       <DockPanel LastChildFill="True">
-        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="16,0,0,0">
-         <Button Content="DBC" Command="{Binding OpenDbcToolCommand}" Padding="12,8" Margin="0,0,8,0"/>
-         <Button Content="波形" Command="{Binding OpenWaveWorkbenchCommand}" Padding="12,8"/>
-        </StackPanel>
-        <StackPanel>
-         <TextBlock Text="03  DBC、波形与工程资源" FontSize="16" FontWeight="SemiBold"
-          Foreground="#274D70" Margin="0,0,0,7"/>
-         <TextBlock Text="{Binding SetupResourcesStatus}" Foreground="#476A86"
-          TextWrapping="Wrap"/>
-        </StackPanel>
-       </DockPanel>
-      </Border>
-      <Border CornerRadius="8" BorderBrush="#DCE6EF" BorderThickness="1"
-       Background="#F6F9FC" Padding="16">
-       <DockPanel LastChildFill="True">
-        <Button DockPanel.Dock="Right" Content="进入生产准备"
-         Command="{Binding NavigateProductionPreparationCommand}"
-         Padding="13,8" Margin="16,0,0,0"/>
-        <StackPanel>
-         <TextBlock Text="工程开发完成后，再进行工位发布" FontWeight="SemiBold"
-          Foreground="#284D70" Margin="0,0,0,5"/>
-         <TextBlock Text="扫码 COM、编码形制、型号工程绑定、夹具反馈与实体 START 是生产准备内容，不是 TEST 用例参数。"
-          Foreground="#607B91" TextWrapping="Wrap"/>
-        </StackPanel>
-       </DockPanel>
-      </Border>
+      <TextBlock Text="{Binding SetupDependencySummary}" TextWrapping="Wrap"
+       Foreground="#667F93" Margin="0,0,0,10"/>
+      <ItemsControl ItemsSource="{Binding SetupDependencyGroups}">
+       <ItemsControl.ItemTemplate>
+        <DataTemplate>
+         <Border Background="White" BorderBrush="#DFE7EF" BorderThickness="1"
+          CornerRadius="5" Margin="0,0,0,7" Padding="10,6">
+          <Expander>
+           <Expander.Header>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+             <TextBlock Text="{Binding Title}" FontWeight="SemiBold"
+              Foreground="#355770" Margin="0,0,12,0"/>
+             <TextBlock Text="{Binding AffectedCount,StringFormat='影响 {0} 项'}"
+              Foreground="#8A612F" FontSize="11"/>
+            </StackPanel>
+           </Expander.Header>
+           <StackPanel Margin="6,9,0,8">
+            <TextBlock Text="{Binding Explanation}" TextWrapping="Wrap"
+             Foreground="#506C82" Margin="0,0,0,9"/>
+            <Button Content="定位到受影响用例 / 资源" HorizontalAlignment="Left"
+             Tag="{Binding}" Click="LocateDependency_Click" Padding="12,7"
+             ToolTip="仅定位源资源和调用实例，不自动改写固定修订或 DBC 信号"/>
+           </StackPanel>
+          </Expander>
+         </Border>
+        </DataTemplate>
+       </ItemsControl.ItemTemplate>
+      </ItemsControl>
      </StackPanel>
-    </ScrollViewer>
-   </TabItem>
-      <TabItem Header="旧工程扫码（停用）" Visibility="Collapsed">
-    <Grid>
-     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-     <Border Grid.Row="0" Background="#F3F7FC" BorderBrush="#DBE5F0"
-      BorderThickness="0,0,0,1" Padding="14,8">
-      <TextBlock Text="工程提前声明扫码期望 · 一次扫码解析多个字段并核对期望；串口设备独立设置，试扫不是保存前提。"
-       Foreground="#506986" TextWrapping="Wrap"/>
-     </Border>
-     <ContentControl x:Name="ScannerSetupHost" Grid.Row="1"
-      HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
-    </Grid>
-   </TabItem>
-   <TabItem Header="烧录工艺">
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-     <StackPanel MaxWidth="880" Margin="22,22,22,18">
-      <TextBlock Text="工程前置烧录 · 原生工艺配置" FontSize="18" FontWeight="SemiBold"
-       Foreground="{StaticResource Ink}"/>
-      <TextBlock Text="{Binding SetupFlashStatus}" Foreground="#516B83"
-       TextWrapping="Wrap" Margin="0,10,0,14"/>
-      <TextBlock Text="当前工程内保存烧录参数、固件和算法。配置编辑器使用当前工程，不需要 CanTool XML，也不创建第二份扫码配方。"
-       Foreground="{StaticResource Subtle}" TextWrapping="Wrap"/>
-      <WrapPanel Margin="0,16,0,0">
-       <Button Content="编辑当前工程烧录工艺" Command="{Binding OpenNativeFlashProfileCommand}"
-        Padding="15,9" Margin="0,0,10,8" Style="{StaticResource AtPrimaryButton}"/>
-       <Button Content="真实烧录调试（查看 UDS/CAN）" Command="{Binding OpenFlashWorkbenchCommand}"
-        Padding="15,9" Margin="0,0,10,8"/>
-       <Button Content="检查当前配置" Command="{Binding RefreshEngineeringSetupCommand}"
-        Padding="15,9" Margin="0,0,10,8"/>
-      </WrapPanel>
-      <Border Background="#F2F6FA" BorderBrush="#E0E8EF" BorderThickness="1"
-       CornerRadius="6" Padding="12" Margin="0,10,0,0">
-       <StackPanel>
-        <TextBlock Text="正确的工程操作顺序" FontWeight="SemiBold" Margin="0,0,0,8"/>
-        <TextBlock Text="编辑并自动保存参数、固件和算法 → 核对配置 → 在“运行前检查”确认用于生产。正式检测使用工程内已确认的版本，不读取未确认的草稿。"
-         Foreground="{StaticResource Subtle}" TextWrapping="Wrap"/>
-        <TextBlock Text="烧录配置已保存不代表 ECU 已完成烧录。"
-         Margin="0,9,0,0" TextWrapping="Wrap" Foreground="#9A6A2C"/>
-       </StackPanel>
-      </Border>
-     </StackPanel>
-    </ScrollViewer>
-   </TabItem>
-   <TabItem Header="工装手动调试">
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-     <StackPanel MaxWidth="900" Margin="22,22,22,18">
-      <TextBlock Text="夹具与 IGN · 工艺编辑和实体操作" FontSize="18"
-       FontWeight="SemiBold" Foreground="{StaticResource Ink}"/>
-      <TextBlock Text="{Binding SetupStationStatus}" Foreground="#516B83"
-       TextWrapping="Wrap" Margin="0,10,0,14"/>
-      <TextBlock Text="配置 IGN 和夹具动作；实际输出可在手动台架检查。"
-       Foreground="{StaticResource Subtle}" TextWrapping="Wrap"/>
-      <WrapPanel Margin="0,14,0,0">
-       <Button Content="连接 / 断开主控" Command="{Binding ConnectHardwareCommand}" Padding="14,8"
-        Margin="0,0,9,8"/>
-       <Button Content="读取夹具 MCU GPIO" Command="{Binding ReadEngineeringClampGpioCommand}"
-        Padding="14,8" Margin="0,0,9,8"/>
-       <Button Content="打开真实夹具操作台架" Command="{Binding OpenManualBenchCommand}"
-        Style="{StaticResource AtPrimaryButton}" Padding="14,8" Margin="0,0,9,8"/>
-      </WrapPanel>
-      <Border Background="White" BorderBrush="#DDE6EE" BorderThickness="1"
-       CornerRadius="7" Padding="13" Margin="0,12,0,0">
-       <StackPanel>
-        <TextBlock Text="工位操作"
-         FontSize="13" FontWeight="SemiBold" Margin="0,0,0,10"/>
-        <WrapPanel Margin="0,0,0,8">
-         <TextBlock Text="夹具 1" Width="75" VerticalAlignment="Center" FontWeight="SemiBold"/>
-         <Button Content="压紧" Command="{Binding EngineeringClamp1PressCommand}" Padding="14,7" Margin="0,0,9,0"/>
-         <Button Content="释放" Command="{Binding EngineeringClamp1ReleaseCommand}" Padding="14,7" Margin="0,0,9,0"/>
-        </WrapPanel>
-        <WrapPanel Margin="0,0,0,8">
-         <TextBlock Text="夹具 2" Width="75" VerticalAlignment="Center" FontWeight="SemiBold"/>
-         <Button Content="压紧" Command="{Binding EngineeringClamp2PressCommand}" Padding="14,7" Margin="0,0,9,0"/>
-         <Button Content="释放" Command="{Binding EngineeringClamp2ReleaseCommand}" Padding="14,7" Margin="0,0,9,0"/>
-        </WrapPanel>
-        <WrapPanel>
-         <TextBlock Text="IGN" Width="75" VerticalAlignment="Center" FontWeight="SemiBold"/>
-         <Button Content="ON" Command="{Binding EngineeringIgnOnCommand}" Padding="14,7" Margin="0,0,9,0"/>
-         <Button Content="OFF" Command="{Binding EngineeringIgnOffCommand}" Padding="14,7" Margin="0,0,9,0"/>
-        </WrapPanel>
-        <TextBlock Text="工位操作需要主控连接；命令确认不代表夹具机械到位。"
-         Foreground="#687C8B" TextWrapping="Wrap" Margin="0,12,0,0"/>
-       </StackPanel>
-      </Border>
-      <Border Background="#F3F7FC" CornerRadius="7" BorderBrush="#DCE5EF"
-       BorderThickness="1" Padding="13" Margin="0,9,0,0">
-       <StackPanel>
-        <TextBlock Text="设备读取结果" FontWeight="SemiBold" Margin="0,0,0,8"/>
-        <TextBlock Text="{Binding EngineeringClampReadback}" Foreground="#3B607E"
-         TextWrapping="Wrap"/>
-        <TextBlock Text="回读只代表主控 GPIO，不能证明夹具机械到位。软件 START 仅限工程实测；正式生产等待真实实体 START 接口，不能以软件操作代替。"
-         Foreground="#7C6470" TextWrapping="Wrap" Margin="0,12,0,0"/>
-       </StackPanel>
-      </Border>
-      <Border Background="White" BorderBrush="#DDE6EE" BorderThickness="1"
-       CornerRadius="7" Padding="13" Margin="0,14,0,0">
-       <StackPanel>
-        <DockPanel Margin="0,0,0,10" LastChildFill="True">
-         <Button DockPanel.Dock="Right" Content="创建／编辑本工程工位动作"
-          Command="{Binding OpenInspectionProcedureCommand}" Padding="12,7"
-          Margin="12,0,0,0"/>
-         <TextBlock Text="本工程实际需要的夹具动作"
-          FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
-        </DockPanel>
-        <TextBlock Text="仅用于工程特殊工位动作调试；标准生产夹紧、实体 START 和互锁配置以“生产准备”为准。"
-         Foreground="{StaticResource Subtle}" TextWrapping="Wrap" Margin="0,0,0,12"/>
-        <ContentControl x:Name="InspectionProcedureHost"
-         HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
-       </StackPanel>
-      </Border>
-      <Border CornerRadius="7" BorderBrush="#DBE3ED" BorderThickness="1"
-       Background="White" Padding="13" Margin="0,14,0,0">
-       <StackPanel>
-        <TextBlock Text="正式检测关联" FontWeight="SemiBold" Margin="0,0,0,7"/>
-        <TextBlock Text="扫码 → 夹具准备 → START → 烧录 → 测试 → 收尾与报告。"
-         TextWrapping="Wrap" Foreground="{StaticResource Subtle}"/>
-       </StackPanel>
-      </Border>
-     </StackPanel>
-    </ScrollViewer>
-   </TabItem>
-   <TabItem Header="工程预检">
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-     <StackPanel MaxWidth="1050" Margin="22,22,22,22">
-      <DockPanel Margin="0,0,0,11">
-       <Button DockPanel.Dock="Right" Content="重新核对工程资源"
-        Command="{Binding RefreshEngineeringSetupCommand}" Padding="13,8"/>
-       <TextBlock Text="工程资源预检" FontSize="18"
-        FontWeight="SemiBold" Foreground="#284359" VerticalAlignment="Center"/>
-      </DockPanel>
-      <TextBlock Text="只核对当前 ECU 工程可编辑的 TEST、FLASH 和资源引用。工位扫码、型号绑定、机械夹具、实体 START 和生产发布必须在“生产准备”独立完成。"
-       Foreground="#61798F" TextWrapping="Wrap" Margin="0,0,0,16"/>
-      <Border BorderBrush="#DFE7F0" BorderThickness="1" CornerRadius="7"
-       Padding="14" Margin="0,0,0,10">
-       <DockPanel>
-        <Button DockPanel.Dock="Right" Content="修复 TEST 引用"
-         Command="{Binding OpenFirstTestProjectCommand}" Padding="12,7" Margin="14,0,0,0"/>
-        <StackPanel>
-         <TextBlock Text="TEST 项目" FontWeight="SemiBold" Margin="0,0,0,7"/>
-         <TextBlock Text="{Binding SetupTestStatus}" Foreground="#526B83"
-          TextWrapping="Wrap"/>
-         <TextBlock Text="{Binding SetupTestIssueDetails}" Foreground="#334D65"
-          TextWrapping="Wrap" Margin="0,12,0,0"/>
-        </StackPanel>
-       </DockPanel>
-      </Border>
-      <Border BorderBrush="#DFE7F0" BorderThickness="1" CornerRadius="7"
-       Padding="14" Margin="0,0,0,10">
-       <DockPanel>
-        <Button DockPanel.Dock="Right" Content="编辑 FLASH" Tag="flash"
-         Click="NavigateToStage_Click" Padding="12,7" Margin="14,0,0,0"/>
-        <StackPanel>
-         <TextBlock Text="原生烧录工艺" FontWeight="SemiBold" Margin="0,0,0,7"/>
-         <TextBlock Text="{Binding SetupFlashStatus}" Foreground="#526B83"
-          TextWrapping="Wrap"/>
-        </StackPanel>
-       </DockPanel>
-      </Border>
-      <Border BorderBrush="#DFE7F0" BorderThickness="1" CornerRadius="7"
-       Padding="14" Margin="0,0,0,14">
-       <StackPanel>
-        <TextBlock Text="DBC、波形与工程资源" FontWeight="SemiBold" Margin="0,0,0,7"/>
-        <TextBlock Text="{Binding SetupResourcesStatus}" Foreground="#526B83"
-         TextWrapping="Wrap"/>
-       </StackPanel>
-      </Border>
-      <Border Background="#F3F8FC" BorderBrush="#DFE8F1" BorderThickness="1"
-       CornerRadius="7" Padding="14">
-       <DockPanel LastChildFill="True">
-        <Button DockPanel.Dock="Right" Content="生产准备 · 发布与工位校验"
-         Command="{Binding NavigateProductionPreparationCommand}"
-         Padding="12,8" Margin="14,0,0,0"/>
-        <TextBlock Text="工程资源预检成功不代表生产合格。尚须已发布工程及工位映射、可信实体输入和完整 Inspection 证据。"
-         Foreground="#56718A" TextWrapping="Wrap" VerticalAlignment="Center"/>
-       </DockPanel>
-      </Border>
-     </StackPanel>
-    </ScrollViewer>
-   </TabItem>
-  </TabControl>
+    </Border>
+    <TextBlock Text="工程内其他资源" FontWeight="SemiBold" FontSize="14"
+     Foreground="#294B68" Margin="0,0,0,10"/>
+    <Border Background="White" BorderBrush="#DCE6EF" BorderThickness="1"
+     CornerRadius="7" Padding="14" Margin="0,0,0,9">
+     <DockPanel LastChildFill="True">
+      <Button Content="编辑原生 FLASH" Command="{Binding OpenNativeFlashProfileCommand}"
+       DockPanel.Dock="Right" Padding="12,7" Margin="12,0,0,0"/>
+      <StackPanel>
+       <TextBlock Text="烧录配置与固件" FontWeight="SemiBold" Margin="0,0,0,5"/>
+       <TextBlock Text="{Binding SetupFlashStatus}" Foreground="#60798B"
+        TextWrapping="Wrap"/>
+      </StackPanel>
+     </DockPanel>
+    </Border>
+    <Border Background="White" BorderBrush="#DCE6EF" BorderThickness="1"
+     CornerRadius="7" Padding="14" Margin="0,0,0,10">
+     <DockPanel LastChildFill="True">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="12,0,0,0">
+       <Button Content="DBC" Command="{Binding OpenDbcToolCommand}"
+        Padding="12,7" Margin="0,0,7,0"/>
+       <Button Content="波形" Command="{Binding OpenWaveWorkbenchCommand}"
+        Padding="12,7"/>
+      </StackPanel>
+      <StackPanel>
+       <TextBlock Text="DBC / 波形" FontWeight="SemiBold" Margin="0,0,0,5"/>
+       <TextBlock Text="{Binding SetupResourcesStatus}" Foreground="#60798B"
+        TextWrapping="Wrap"/>
+      </StackPanel>
+     </DockPanel>
+    </Border>
+    <Border Background="#F7FAFD" BorderBrush="#DCE6EF" BorderThickness="1"
+     CornerRadius="7" Padding="14">
+     <DockPanel LastChildFill="True">
+      <Button Content="生产准备" Command="{Binding NavigateProductionPreparationCommand}"
+       DockPanel.Dock="Right" Padding="12,7" Margin="12,0,0,0"/>
+      <TextBlock Text="扫码、夹具、实体 START 与生产发布属于工位；手动 IO 调试请打开独立手动台架。"
+       Foreground="#57738B" TextWrapping="Wrap" VerticalAlignment="Center"/>
+     </DockPanel>
+    </Border>
+   </StackPanel>
+  </ScrollViewer>
  </Grid>
 </UserControl>

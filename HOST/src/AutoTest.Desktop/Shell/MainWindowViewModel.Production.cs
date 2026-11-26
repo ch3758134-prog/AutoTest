@@ -115,7 +115,7 @@ public sealed partial class MainWindowViewModel
                 await ConfirmProductionConfigurationAsync();
                 return StatusMessage;
             },
-            () => OpenProjectConfigurationOverviewCommand.Execute())
+            () => OpenInspectionProcedureCommand.Execute())
         { Owner = global::System.Windows.Application.Current?.MainWindow };
         _productionPreparationWindow = window;
         window.Closed += (_, _) =>
