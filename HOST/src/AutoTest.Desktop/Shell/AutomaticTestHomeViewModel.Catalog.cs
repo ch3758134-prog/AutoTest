@@ -88,13 +88,11 @@ public sealed partial class AutomaticTestHomeViewModel
             _scanAlertRequired = false;
             Notify();
 
-            var station = await StationProductionConfigurationStore.LoadPublishedAsync();
-            if (station is null)
-            {
-                _scanStatus += " 还需完成工位设备设置，正式检测暂不可用。";
-                Notify();
-                return;
-            }
+            // Device configuration is independent of product mapping.
+            // It is checked here but cannot itself authorize formal START.
+            var station = await StationProductionConfigurationStore.LoadDraftAsync();
+            station.Fixture.Validate();
+            _ = StationFixtureExecutionPlan.From(station.Fixture);
             var device = await Task.Run(() =>
             {
                 var saved = StationScannerDeviceBinding.Load();
@@ -143,12 +141,12 @@ public sealed partial class AutomaticTestHomeViewModel
                     Guid.NewGuid(), observedAt, port, raw, serialized, ruleHash,
                     routed.ProductKey, routed.Serial, routed.Hardware, observedFields)
                 {
-                    PublishedConfigurationSha256 = station.ConfigurationSha256,
-                    PublicationId = station.PublicationId,
+                    PublishedConfigurationSha256 = "",
+                    PublicationId = Guid.Empty,
                     BarcodeRuleId = "PRODUCTION_CATALOG_V1",
                     BarcodeRuleRevision = 1,
                     ProjectDecisionBasis = "INSTALLED_CATALOG",
-                    StationSlotId = station.Configuration.Fixture.StationSlotId,
+                    StationSlotId = station.Fixture.StationSlotId,
                     ScannerPnpInstanceId = device.PnpInstanceId
                 }
             };
