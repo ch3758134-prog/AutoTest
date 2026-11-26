@@ -171,11 +171,11 @@ public sealed partial class AutomaticTestHomeViewModel
                 stationDraft.Fixture.Validate();
                 _ = StationFixtureExecutionPlan.From(stationDraft.Fixture);
                 var fixtureSha = FingerprintEngineeringFixture(stationDraft.Fixture);
-                var decision = await ProductionPreparationService.PrepareAsync(
+                var engineeringDecision = await ProductionPreparationService.PrepareAsync(
                     plan.Project, "", raw, requireProductionDeployment: false);
-                if (!decision.ConfigurationReady)
+                if (!engineeringDecision.ConfigurationReady)
                 {
-                    Reject("本次工程实测配置未就绪：" + decision.Explanation);
+                    Reject("本次工程实测配置未就绪：" + engineeringDecision.Explanation);
                     return;
                 }
                 if (revision != _scanRevision || !_engineeringVerificationArmed ||
@@ -190,11 +190,11 @@ public sealed partial class AutomaticTestHomeViewModel
                     Reject("扫码期间主控 USB/CAN 配置变化；请重新扫码。");
                     return;
                 }
-                const string ruleJson = "ENGINEERING_RAW_SERIAL_V1";
-                var ruleSha = Convert.ToHexString(
+                const string engineeringRuleJson = "ENGINEERING_RAW_SERIAL_V1";
+                var engineeringRuleSha = Convert.ToHexString(
                     System.Security.Cryptography.SHA256.HashData(
-                        System.Text.Encoding.UTF8.GetBytes(ruleJson)));
-                var repeated = string.Equals(_lastIdentity, raw,
+                        System.Text.Encoding.UTF8.GetBytes(engineeringRuleJson)));
+                var engineeringRepeated = string.Equals(_lastIdentity, raw,
                     StringComparison.Ordinal);
                 _lastIdentity = raw;
                 _dutSerial = raw;
@@ -206,11 +206,11 @@ public sealed partial class AutomaticTestHomeViewModel
                     ["ProjectBasis"] = "OPENED_ENGINEERING_PROJECT"
                 };
                 _acceptedStationEpoch = initialStationEpoch;
-                _prepared = decision.Preparation! with
+                _prepared = engineeringDecision.Preparation! with
                 {
                     AcceptedScannerObservation = new FrozenScanIdentity(
                         Guid.NewGuid(), scannedAt, scannerPort, raw,
-                        ruleJson, ruleSha, "", raw, "",
+                        engineeringRuleJson, engineeringRuleSha, "", raw, "",
                         _scanMappedFields.ToDictionary(x => x.Key, x => x.Value,
                             StringComparer.Ordinal))
                     {
@@ -221,7 +221,7 @@ public sealed partial class AutomaticTestHomeViewModel
                         EngineeringFixtureSha256 = fixtureSha
                     }
                 };
-                _scanStatus = repeated
+                _scanStatus = engineeringRepeated
                     ? "再次收到相同编号；不会计为新增 ECU。"
                     : "编号已接收；当前工程 TEST/FLASH 已核验，无需发布生产扫码规则。";
                 _status = StationReadiness;
