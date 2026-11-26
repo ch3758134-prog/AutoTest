@@ -148,6 +148,9 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
         public string StopInput { get; set; } = "NOT_WIRED";
         public string InterlockInput { get; set; } = "NOT_WIRED";
         public int MovementTimeoutMs { get; set; } = 3000;
+        public bool Clamp1PressHigh { get; set; } = true;
+        public bool Clamp2PressHigh { get; set; } = true;
+        public int SettleDelayMs { get; set; } = 0;
         public static FixtureRow From(ProductionFixtureConfiguration x) => new()
         {
             StationSlotId = x.StationSlotId, UseClamp1 = x.UseClamp1,
@@ -156,7 +159,10 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
             ClampOpenFeedback = x.ClampOpenFeedback,
             StartInput = x.StartInput, StopInput = x.StopInput,
             InterlockInput = x.InterlockInput,
-            MovementTimeoutMs = x.MovementTimeoutMs
+            MovementTimeoutMs = x.MovementTimeoutMs,
+            Clamp1PressHigh = x.Clamp1PressHigh,
+            Clamp2PressHigh = x.Clamp2PressHigh,
+            SettleDelayMs = x.SettleDelayMs
         };
         public ProductionFixtureConfiguration ToModel() =>
             new(StationSlotId.Trim(), UseClamp1, UseClamp2,
@@ -165,7 +171,7 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
                 StartInput.Trim(), StopInput.Trim(), InterlockInput.Trim(),
                 MovementTimeoutMs,
                 "AFTER_DURABLE_RECORD_AND_SAFE_RELEASE_CONFIRMATION",
-                FirstClamp);
+                FirstClamp, Clamp1PressHigh, Clamp2PressHigh, SettleDelayMs);
     }
 
     private readonly ProjectWorkspaceService _workspace;
