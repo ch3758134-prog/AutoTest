@@ -15,6 +15,7 @@ public sealed partial class AutomaticTestHomeViewModel
     private long _acceptedStationEpoch;
     private string _dutSerial = "等待扫码";
     private string _scanStatus = "请使用工位扫码枪扫描 ECU 编号";
+    private bool _scanAlertRequired;
     private string _lastObservedBarcode = "";
     private string _lastObservedAt = "";
 
@@ -94,23 +95,27 @@ public sealed partial class AutomaticTestHomeViewModel
         _lastObservedAt = DateTimeOffset.Now.ToString("HH:mm:ss");
         if (IsOperatorRunning)
         {
+            _scanAlertRequired = false;
             _scanStatus = "已收到扫码原文；工位正在执行，不能替换本次 ECU 身份。";
             Notify();
             return;
         }
         if (!_isProductionWorkspace() && !_engineeringVerificationArmed)
         {
-            _scanStatus = "已收到扫码原文；打开工程实测后可核验并运行。";
+            _scanAlertRequired = false;
+            _scanStatus = "已收到扫码；请进入工程测试后开始运行。";
             Notify();
             return;
         }
         if (_plans.Current is null)
         {
-            _scanStatus = "已收到扫码原文；当前没有可运行 ECU 工程，不能开始测试。";
+            _scanAlertRequired = true;
+            _scanStatus = "已收到扫码，但没有可用的检测工程。请先打开工程。";
             Notify();
             return;
         }
-        _scanStatus = "已收到扫码原文，正在核对 ECU 编号与工程资源。";
+        _scanAlertRequired = false;
+        _scanStatus = "已收到扫码，正在核对 ECU 编号与检测工程。";
         Notify();
         _ = InspectRealBarcodeAsync(raw);
     });
@@ -125,7 +130,7 @@ public sealed partial class AutomaticTestHomeViewModel
     internal void OnPublishedConfigurationChanged() => OnUi(() =>
         InvalidateScan("生产编码与工位发布版本已改变；旧扫码冻结身份作废，请重新扫码。"));
 
-    private void InvalidateScan(string reason)
+    private void InvalidateScan(string reason, bool requiresAttention = true)
     {
         Interlocked.Increment(ref _scanRevision);
         _prepared = null;
@@ -134,6 +139,7 @@ public sealed partial class AutomaticTestHomeViewModel
         _dutSerial = "等待扫码";
         _lastIdentity = null;
         _scanStatus = reason;
+        _scanAlertRequired = requiresAttention;
         Notify();
     }
 
@@ -151,6 +157,7 @@ public sealed partial class AutomaticTestHomeViewModel
         _acceptedStationEpoch = 0;
         _scanMappedFields = new Dictionary<string, string>(StringComparer.Ordinal);
         _dutSerial = "正在核对";
+        _scanAlertRequired = false;
         _scanStatus = "正在核对 ECU 编号与检测工程。";
         Notify();
         try
@@ -221,6 +228,7 @@ public sealed partial class AutomaticTestHomeViewModel
                         EngineeringFixtureSha256 = fixtureSha
                     }
                 };
+                _scanAlertRequired = false;
                 _scanStatus = engineeringRepeated
                     ? "再次收到相同编号；不会计为新增 ECU。"
                     : "已收到 ECU 编号，可继续检查并开始工程测试。";
@@ -350,8 +358,9 @@ public sealed partial class AutomaticTestHomeViewModel
                     ScannerPnpInstanceId = scannerPnp
                 }
             };
+            _scanAlertRequired = false;
             _scanStatus = repeated
-                ? "再次收到相同 ECU 编号；不会重复登记。"
+                ? "再次收到相同 ECU 编号；不会重复登记."
                 : "编号及工程资源已确认；" +
                   "等待工位启动条件。";
             _status = "身份与工程资源已核对 · 工位执行待验";
@@ -403,6 +412,7 @@ public sealed partial class AutomaticTestHomeViewModel
             _scanMappedFields = new Dictionary<string, string>(StringComparer.Ordinal);
             _dutSerial = "等待扫码";
             _scanStatus = reason;
+            _scanAlertRequired = true;
             Notify();
         }
     }

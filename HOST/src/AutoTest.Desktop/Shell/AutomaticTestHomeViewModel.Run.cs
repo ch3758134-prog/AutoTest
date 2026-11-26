@@ -130,7 +130,7 @@ public sealed partial class AutomaticTestHomeViewModel
         _engineeringVerificationArmed = false;
         _quickEngineeringStartOnScan = false;
         RebuildCases();
-        InvalidateScan("已返回自动测试；开发验证扫码身份已失效，请重新扫码。");
+        InvalidateScan("工程测试已退出，重新开始时请扫码。", requiresAttention: false);
         RefreshOperatorCommands();
     }
 
@@ -139,7 +139,7 @@ public sealed partial class AutomaticTestHomeViewModel
         if (_isProductionWorkspace() || IsOperatorRunning) return;
         _engineeringVerificationArmed = true;
         _quickEngineeringStartOnScan = startWithExplicitConsentOnScan;
-        InvalidateScan("请使用扫码枪扫描本台 ECU 编号。");
+        InvalidateScan("请使用扫码枪扫描本台 ECU 编号。", requiresAttention: false);
         StartRequestStatus = startWithExplicitConsentOnScan
             ? "扫码核对成功后会显示夹具与烧录确认。"
             : "请扫码。确认编号后即可开始工程测试。";

@@ -223,17 +223,9 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     public string ProductionFlashState => "尚未烧录";
     public string ProductionTestState => "尚未测试";
     public string ProductionRecordState => "尚无生产检测记录";
+    // UI severity is a separate fact; do not classify errors by translated text.
     public string ProductionAlert =>
-        _prepared is null &&
-        (_scanStatus.StartsWith("本次扫码身份未被接受", StringComparison.Ordinal) ||
-         _scanStatus.StartsWith("无法完成", StringComparison.Ordinal) ||
-         _scanStatus.StartsWith("当前工程缺少扫码期望", StringComparison.Ordinal) ||
-         _scanStatus.StartsWith("本次正式资源", StringComparison.Ordinal) ||
-         _scanStatus.StartsWith("扫码枪断开", StringComparison.Ordinal) ||
-         _scanStatus.Contains("失效", StringComparison.Ordinal) ||
-         _scanStatus.StartsWith("扫码预检期间", StringComparison.Ordinal) ||
-         _scanStatus.StartsWith("扫码期间", StringComparison.Ordinal))
-            ? _scanStatus : "";
+        _prepared is null && _scanAlertRequired ? _scanStatus : "";
 
     public string ProductionResultLabel =>
         "等待检测结果";
