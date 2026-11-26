@@ -102,7 +102,7 @@ public sealed partial class AutomaticTestHomeViewModel
             // One published station identity model. Legacy scanner recipes and
             // project barcode expectations cannot select physical TEST resources.
             string scannerPnp = "";
-            if (_isProductionWorkspace)
+            if (_isProductionWorkspace())
             {
                 // Real production identity is accepted only from the station\'s
                 // explicitly bound USB scanner, not any manually selected COM.

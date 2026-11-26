@@ -190,7 +190,8 @@ public sealed partial class RealTestWorkbenchService
             if (projectSession is not null &&
                 finished.Result.Verdict == RealTestVerdict.CompletedNoAssertion &&
                 formalVerdict == RealTestVerdict.Inconclusive &&
-                summary.Header.TerminalState == RunState.Completed)
+                string.Equals(summary.Header.TerminalState, nameof(RunState.Completed),
+                    StringComparison.Ordinal))
                 formalVerdict = RealTestVerdict.CompletedNoAssertion;
             var reported = finished.Result with
             {
