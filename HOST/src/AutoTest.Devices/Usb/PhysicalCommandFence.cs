@@ -173,7 +173,7 @@ public sealed class PhysicalCommandFence
         {
             if (_didGrant is not null || _programming is not null ||
                 _runFingerprint is not null || _manualBatchCan is not null || _manualCanRows.Count != 0 ||
-                _manualKeySteps is not null)
+                _manualKeySteps is not null || _stationFixtureFingerprint is not null)
                 throw new InvalidOperationException("A physical TEST, manual task, DID or flash job is already authorized.");
             _didGrant = new DidGrant { TxId=txId, RxId=rxId, Did=did,
                 Generation=generation, Expires=DateTimeOffset.UtcNow.AddSeconds(30) };
@@ -451,9 +451,10 @@ public sealed class PhysicalCommandFence
         lock (_sync)
         {
             if (_runFingerprint is not null || _manualBatchCan is not null || _manualCanRows.Count != 0 ||
-                _manualKeySteps is not null || _programming is not null || _didGrant is not null)
+                _manualKeySteps is not null || _programming is not null || _didGrant is not null ||
+                _stationFixtureFingerprint is not null)
                 throw new InvalidOperationException(
-                    "ECU CAN 码率切换要求空闲的 TEST、CAN、KEY、UDS、FLASH 会话。");
+                    "ECU CAN 码率切换要求工位夹具、TEST、CAN、KEY、UDS、FLASH 均空闲。");
             _singleCanPayload = null; _authorizedConnection = 0;
             _oneIgnState = null; _ignGeneration = 0;
             _singleClampPayload = null; _clampGeneration = 0;
