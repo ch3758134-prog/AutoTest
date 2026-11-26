@@ -21,7 +21,7 @@ public partial class ProductionProjectLibraryWindow : Window
     private IReadOnlyList<InstalledProductionPackage> _loadedPackages =
         Array.Empty<InstalledProductionPackage>();
 
-    private sealed record BindingDisplay(string Product, string Hardware, string Version);
+    public sealed record BindingDisplay(string Product, string Hardware, string Version);
 
     public ProductionProjectLibraryWindow(ProductionProjectCatalog catalog,
         ProjectWorkspaceService workspace, Func<bool> canModify,
@@ -83,7 +83,7 @@ public partial class ProductionProjectLibraryWindow : Window
 
     private void ApplySearchFilter()
     {
-        if (SearchBox is null) return;
+        if (SearchBox is null || CatalogTable is null) return;
         var query = SearchBox.Text.Trim();
         CatalogTable.ItemsSource = string.IsNullOrEmpty(query)
             ? _loadedPackages
@@ -256,7 +256,8 @@ public partial class ProductionProjectLibraryWindow : Window
         if (picker.ShowDialog(this) != true) return;
         await ModifyAsync(async () =>
         {
-            var count = await _catalog.ImportRegistryCsvAsync(picker.FileName);
+            var count = await Task.Run(() =>
+                _catalog.ImportRegistryCsvAsync(picker.FileName));
             PreviewResult.Text = "已导入 " + count +
                 " 条编号归属。重新扫码时将使用最新登记关系。";
         });
