@@ -1,7 +1,7 @@
 <Window x:Class="AutoTest.Desktop.Shell.ProductionPreparationWindow"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- Title="生产准备 · 产品识别、工程发布与工位配置" Width="1240" Height="830"
+ Title="生产准备 · 当前工程、真实扫码、受控发布" Width="1120" Height="800"
  MinWidth="870" MinHeight="560" WindowStartupLocation="CenterOwner"
  Background="#F6F8FB" Foreground="#293E52" FontSize="13"
  UseLayoutRounding="True">
@@ -44,7 +44,7 @@
     </StackPanel>
     <StackPanel>
      <TextBlock Text="生产准备" FontSize="21" FontWeight="SemiBold"/>
-     <TextBlock Text="工位产品识别 → 唯一已发布 ECU 工程 → 原生 FLASH 与完整 TEST → 真实工位"
+     <TextBlock Text="当前工程 → 真实扫码 → 核验发布（生产执行仍由可信硬件与正式记录控制）"
       Foreground="#62788D" FontSize="12" Margin="0,4,0,0"/>
     </StackPanel>
    </DockPanel>
