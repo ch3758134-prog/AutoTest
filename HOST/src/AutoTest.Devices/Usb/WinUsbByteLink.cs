@@ -167,14 +167,14 @@ public sealed class WinUsbByteLink : IUsbByteLink
     /// FLASH + TEST scope; only explicit station coordinator code obtains it.
     /// Per-output USB permission is still one-shot and phase bounded.</summary>
     public void AuthorizeStationFixtureScope(string fingerprint,
-        string confirmation, byte outputMask)
+        string confirmation, byte outputMask, bool allowIgn)
     {
         lock (_sync)
         {
             if (_state != WinUsbLinkState.Connected)
                 throw new IOException("主控未连接，不能授权工位夹具。");
             _fence.AuthorizeStationFixtureScope(fingerprint, confirmation,
-                outputMask, _epoch);
+                outputMask, allowIgn, _epoch);
         }
     }
 
@@ -185,6 +185,16 @@ public sealed class WinUsbByteLink : IUsbByteLink
             if (_state != WinUsbLinkState.Connected)
                 throw new IOException("主控断开，本次夹具动作不允许复用旧授权。");
             _fence.AuthorizeStationFixtureChange(fingerprint, clamp, press, _epoch);
+        }
+    }
+
+    public void AuthorizeStationIgnChange(string fingerprint, bool on)
+    {
+        lock (_sync)
+        {
+            if (_state != WinUsbLinkState.Connected)
+                throw new IOException("主控断开，不能使用旧工位 IGN 授权。");
+            _fence.AuthorizeStationIgnChange(fingerprint, on, _epoch);
         }
     }
 
