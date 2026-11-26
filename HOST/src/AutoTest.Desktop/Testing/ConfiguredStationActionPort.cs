@@ -196,18 +196,41 @@ public sealed partial class ConfiguredStationActionPort : ITestActuationPort, IT
         }
     }
 
-    public ValueTask CheckHealthAsync(CancellationToken ct)
+    public async ValueTask CheckHealthAsync(CancellationToken ct)
     {
-        ct.ThrowIfCancellationRequested();
-        if (_periodicErrors.TryPeek(out var fault))
-            throw new IOException("ECU CAN 周期发送发生通信故障，已停止后续步骤。", fault);
-        if (_fingerprint is not null &&
-            (!_hardware.IsConnected || _authorizedStationEpoch <= 0 ||
-             _authorizedStationEpoch != _hardware.CurrentStationEpoch))
-            throw new IOException("整组测试期间主控 USB 会话已经失效，禁止继续 ECU 物理动作。");
-        if (_unknown)
-            throw new IOException("KEY_SIM 输出状态 UNKNOWN，停止其他真实硬件操作。");
-        return ValueTask.CompletedTask;
+        // Periodic tasks share the hardware transport with foreground TEST.
+        // Check their progress at every case boundary instead of trusting a
+        // still-alive Task or an earlier CAN_PERIODIC_STARTED USB ACK.
+        await _serial.WaitAsync(ct);
+        try
+        {
+            if (_periodicErrors.TryPeek(out var fault))
+                throw new IOException("ECU CAN 周期发送发生通信故障，已停止后续步骤。", fault);
+            if (_fingerprint is not null &&
+                (!_hardware.IsConnected || _authorizedStationEpoch <= 0 ||
+                 _authorizedStationEpoch != _hardware.CurrentStationEpoch))
+                throw new IOException("整组测试期间主控 USB 会话已经失效，禁止继续 ECU 物理动作。");
+            if (_unknown)
+                throw new IOException("KEY_SIM 输出状态 UNKNOWN，停止其他真实硬件操作。");
+            var now = DateTimeOffset.UtcNow;
+            foreach (var sender in _periodic.Values)
+            {
+                var task = sender.Meter.Snapshot();
+                if (task.StoppedUtc is not null || task.DurationMs > 0) continue;
+                // A Windows timer or USB request can stall without completing
+                // its worker. The diagnostic threshold is intentionally much
+                // looser than CAN timing tolerance; it is NOT bus-period proof.
+                var latestAck = task.LastUsbAckUtc ?? task.StartedUtc;
+                var limitMs = Math.Max(3000L, (long)task.PeriodMs * 3L);
+                if (now - latestAck > TimeSpan.FromMilliseconds(limitMs))
+                    throw new IOException("持续周期 CAN 已无新 USB ACK，禁止将后续 ECU " +
+                        "判定当作有效：" + task.Channel + " 0x" +
+                        task.CanId.ToString("X") + "，周期 " + task.PeriodMs +
+                        "ms，最近 ACK " + latestAck.ToString("O") +
+                        "；请检查独立 CAN 分析仪和整组运行记录。");
+            }
+        }
+        finally { _serial.Release(); }
     }
 
     public IReadOnlyCollection<(byte Port, bool Extended, uint Id)> AuthorizedCanFrames(
