@@ -12,12 +12,21 @@ public partial class TestProjectWorkbenchView : UserControl
         VerticalContentAlignment = VerticalAlignment.Stretch
     };
 
-    public TestProjectWorkbenchView(TestProjectWorkbenchViewModel viewModel)
+    private readonly Action? _openDependencyReview;
+    public TestProjectWorkbenchView(TestProjectWorkbenchViewModel viewModel,
+        Action? openDependencyReview = null)
     {
+        _openDependencyReview = openDependencyReview;
         InitializeComponent();
         DataContext = viewModel;
         InspectorHost.Content = new TestProjectSelectionInspector(viewModel);
     }
+    private void OpenDependencyReview_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        _openDependencyReview?.Invoke();
+    }
+
     private void PackagesGrid_DoubleClick(object sender, MouseButtonEventArgs e)
     {
         if (e.ChangedButton == MouseButton.Left &&

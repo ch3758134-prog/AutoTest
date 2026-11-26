@@ -1784,7 +1784,7 @@ public sealed partial class MainWindowViewModel : BindableBase
             var editor = new TestProjectWorkbenchViewModel(_workspace, _testDialogs,
                 session, _runSelections, _realTest, _hardware);
             BindProjectNavigation(project, editor);
-            ActivateEditor(key, new TestProjectWorkbenchView(editor),
+            ActivateEditor(key, new TestProjectWorkbenchView(editor, ShowProjectConfiguration),
                 "测试项目 · " + project.Name, editor.ConfirmClose);
         });
         var createdTab = OpenEditors.FirstOrDefault(t => t.Key == key);
@@ -1828,7 +1828,7 @@ public sealed partial class MainWindowViewModel : BindableBase
             var projectEditor = new TestProjectWorkbenchViewModel(_workspace, _testDialogs,
                 projectSession, _runSelections, _realTest, _hardware);
             BindProjectNavigation(projectAsset, projectEditor);
-            ActivateEditor("project|" + projectAsset.Id, new TestProjectWorkbenchView(projectEditor),
+            ActivateEditor("project|" + projectAsset.Id, new TestProjectWorkbenchView(projectEditor, ShowProjectConfiguration),
                 "测试项目 · " + projectAsset.Name, projectEditor.ConfirmClose);
 
             var opened = await _workspace.OpenTestEditorAsync(caseAsset.Id);
@@ -1860,7 +1860,7 @@ public sealed partial class MainWindowViewModel : BindableBase
             var session = await _workspace.OpenTestProjectEditorAsync(entry.Id);
             var editor = new TestProjectWorkbenchViewModel(_workspace, _testDialogs, session, _runSelections, _realTest, _hardware);
             BindProjectNavigation(entry, editor);
-            ActivateEditor("project|" + entry.Id, new TestProjectWorkbenchView(editor),
+            ActivateEditor("project|" + entry.Id, new TestProjectWorkbenchView(editor, ShowProjectConfiguration),
                 "测试项目 · " + entry.Name, editor.ConfirmClose);
             StatusMessage = "测试项目已创建，请添加测试用例并设置顺序：" + entry.Name;
         });
@@ -1999,7 +1999,7 @@ public sealed partial class MainWindowViewModel : BindableBase
             var session = await _workspace.OpenTestProjectEditorAsync(asset.Id);
             var editor = new TestProjectWorkbenchViewModel(_workspace, _testDialogs, session, _runSelections, _realTest, _hardware);
             BindProjectNavigation(asset, editor);
-            ActivateEditor("project|" + asset.Id, new TestProjectWorkbenchView(editor),
+            ActivateEditor("project|" + asset.Id, new TestProjectWorkbenchView(editor, ShowProjectConfiguration),
                 asset.Name, editor.ConfirmClose);
             StatusMessage = "已打开测试项目：" + asset.Name;
         });
