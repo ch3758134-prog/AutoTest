@@ -380,6 +380,93 @@ public sealed partial class AutomaticTestHomeViewModel
         finally { if (File.Exists(temp)) File.Delete(temp); }
     }
 
+    // Human-readable projection of a REAL engineering verification receipt.
+    // It is never a production Inspection or permission to release the DUT.
+    private static string SaveOperatorHtmlReceipt(
+        string root, RealOperatorRunReceipt receipt)
+    {
+        var folder = Path.Combine(root, "test-records", "operator-verifications");
+        Directory.CreateDirectory(folder);
+        var path = Path.Combine(folder, receipt.VerificationId.ToString("N") + ".html");
+        Func<string, string> e = value =>
+            System.Net.WebUtility.HtmlEncode(value) ?? "";
+        var html = new System.Text.StringBuilder(4096);
+        html.Append("""
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AutoTest 工程验证报告</title>
+<style>
+body{font:14px/1.65 "Microsoft YaHei","Segoe UI",sans-serif;margin:0;background:#f5f7f9;color:#22384b}
+main{max-width:1050px;margin:30px auto;padding:28px 34px;background:white;border:1px solid #dfe8ef;border-radius:12px}
+h1{font-size:24px;margin:0}h2{font-size:18px;margin-top:28px;border-bottom:1px solid #e2e9ef;padding-bottom:8px}
+.muted,dt{color:#617588}.note{padding:12px;background:#fff5e8;border-left:4px solid #c78a39;margin:16px 0}
+dl{display:grid;grid-template-columns:170px 1fr;gap:7px 15px}dd{margin:0;overflow-wrap:anywhere}
+table{border-collapse:collapse;width:100%}th,td{padding:10px;border-bottom:1px solid #e4ecf2;text-align:left;vertical-align:top}
+th{background:#f1f5f8}code{font:12px Consolas,monospace;overflow-wrap:anywhere}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;border:1px solid #e4ecf2}
+</style></head><body><main>
+<h1>ECU 整组工程验证报告</h1>
+<div class="note"><strong>非正式生产记录。</strong> 本报告仅汇总真实工程验证事实，不构成出厂 PASS 或工位放行许可；没有实测的数据不作推断。</div>
+""");
+        void Pair(string label, string value) => html.Append("<dt>")
+            .Append(e(label)).Append("</dt><dd>").Append(e(value)).Append("</dd>");
+        html.Append("<h2>本台 ECU 与运行事实</h2><dl>");
+        Pair("工程验证 ID", receipt.VerificationId.ToString("D"));
+        Pair("ECU 编号", receipt.DutSerial);
+        Pair("开始 UTC", receipt.StartedUtc.ToString("O"));
+        Pair("结束 UTC", receipt.EndedUtc?.ToString("O") ?? "尚未结束");
+        Pair("整组执行结果", receipt.Outcome);
+        Pair("前置 FLASH", receipt.FlashState);
+        Pair("固件 SHA256", receipt.FirmwareSha256);
+        Pair("工程清单", receipt.ProjectPath);
+        Pair("真实 USB 设备", receipt.UsbIdentity);
+        Pair("USB 会话代次", receipt.UsbEpoch.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        Pair("扫码端口", receipt.ScannerPort);
+        Pair("扫码观察 ID", receipt.ScanObservation.ToString("D"));
+        Pair("冻结资源指纹", receipt.PreparationFingerprint);
+        html.Append("</dl>");
+        if (!string.IsNullOrWhiteSpace(receipt.Error))
+            html.Append("<div class=\"note\"><strong>异常/失败：</strong>")
+                .Append(e(receipt.Error)).Append("</div>");
+        html.Append("<h2>有序用例与独立结果</h2><p class=\"muted\">共记录 ")
+            .Append(receipt.Cases.Count)
+            .Append(" 个执行实例。逐步实测值和原始证据请查看每项对应的 RECORD 文件。</p>");
+        html.Append("<table><thead><tr><th>序号</th><th>用例</th><th>判定</th><th>RunId</th><th>证据文件</th></tr></thead><tbody>");
+        for (var i = 0; i < receipt.Cases.Count; i++)
+        {
+            var item = receipt.Cases[i];
+            html.Append("<tr><td>").Append(i + 1).Append("</td><td>")
+                .Append(e(item.Name)).Append("</td><td>").Append(e(item.Verdict))
+                .Append("</td><td><code>").Append(e(item.RunId.ToString("D")))
+                .Append("</code></td><td><code>")
+                .Append(e(string.IsNullOrWhiteSpace(item.ReportFile)
+                    ? "无已确认的证据文件路径" : item.ReportFile))
+                .Append("</code></td></tr>");
+        }
+        html.Append("</tbody></table><h2>真实运行事件</h2><p class=\"muted\">总计 ")
+            .Append(receipt.EventCount).Append(" 条，实时列表裁剪 ")
+            .Append(receipt.EventsEvictedFromLiveView)
+            .Append(" 条；下方只显示收据中保留的事件。</p><pre>");
+        foreach (var item in receipt.ObservedEvents)
+            html.Append(e(item)).Append('\n');
+        html.Append("</pre><p class=\"muted\">本 HTML 与原始 JSON 位于同一目录。工程验证记录不参与生产合格品统计。</p></main></body></html>");
+        var tmp = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            using (var stream = new FileStream(tmp, FileMode.CreateNew,
+                FileAccess.Write, FileShare.None, 65536, FileOptions.WriteThrough))
+            using (var writer = new StreamWriter(stream, new System.Text.UTF8Encoding(false)))
+            {
+                writer.Write(html.ToString());
+                writer.Flush();
+                stream.Flush(flushToDisk: true);
+            }
+            File.Move(tmp, path, overwrite: true);
+        }
+        finally { if (File.Exists(tmp)) File.Delete(tmp); }
+        return path;
+    }
+
     private async Task StartOperatorVerificationAsync()
     {
         if (!CanStartOperatorVerification || _prepared?.AcceptedScannerObservation is not { } scan ||
@@ -530,9 +617,7 @@ public sealed partial class AutomaticTestHomeViewModel
             };
         int activeCaseIndex = -1;
 
-        void Snapshot()
-        {
-            SaveOperatorReceipt(opened.RootDirectory, new RealOperatorRunReceipt(
+        RealOperatorRunReceipt CurrentReceipt() => new(
                 _operatorRunId, "ENGINEERING_VERIFICATION_NOT_PRODUCTION_RELEASE",
                 started, outcome == "执行中" ? null : DateTimeOffset.UtcNow,
                 scan.DutSerial, scan.ObservationId, scan.RuleSha256,
@@ -540,8 +625,8 @@ public sealed partial class AutomaticTestHomeViewModel
                 frozen.FirmwareSha256, _hardware.ConnectedDeviceIdentity ?? "UNKNOWN",
                 sessionEpoch, flashState, results.ToArray(), outcome, failure,
                 OperatorEvents.ToArray(), _operatorEventTotal,
-                Math.Max(0, _operatorEventTotal - OperatorEvents.Count)));
-        }
+                Math.Max(0, _operatorEventTotal - OperatorEvents.Count));
+        void Snapshot() => SaveOperatorReceipt(opened.RootDirectory, CurrentReceipt());
 
         void RequireFrozenCanRate()
         {
@@ -1012,8 +1097,10 @@ public sealed partial class AutomaticTestHomeViewModel
             try
             {
                 Snapshot();
-                OperatorRecordState = "工程验证过程记录已保存（非生产结案）";
-                OperatorRunEvidence = "真实运行记录：" +
+                var htmlReport = SaveOperatorHtmlReceipt(opened.RootDirectory, CurrentReceipt());
+                OperatorRecordState = "真实工程记录和可读报告已保存（非正式生产结案）";
+                OperatorRunEvidence = "工程验证报告：" + htmlReport +
+                    "\n真实原始记录：" +
                     Path.Combine(opened.RootDirectory, "test-records",
                         "operator-verifications", _operatorRunId.ToString("N") + ".json");
             }
