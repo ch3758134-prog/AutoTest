@@ -1225,6 +1225,15 @@ public sealed class TestEditorViewModel : BindableBase
                 " · " + OperatorVerdict(result.Verdict) + " · " + result.Facts.Length +
                 " 条步骤记录" + (result.EvidencePath is null ? "" :
                 " · HTML 报告：" + result.EvidencePath);
+            // A case opened from its editor is NOT the shared project scope.
+            // Never let a successful sender-start step imply that it will
+            // survive into a separately executed next case.
+            if (TestRunStepScope.EnabledSteps(candidate).Any(node =>
+                    node.Type == "Write" &&
+                    int.TryParse(node.Properties.GetValueOrDefault("periodMs", "0"),
+                        out var periodMs) && periodMs > 0))
+                RunSummary += " · 独立用例/步骤已结束，周期 CAN 随作用域停止。" +
+                    "跨用例保持须运行测试项目（含项目准备），不能逐个点击运行此用例。";
             StatusMessage = RunSummary;
         }
         catch (OperationCanceledException)
