@@ -163,6 +163,37 @@ public sealed class WinUsbByteLink : IUsbByteLink
         }
     }
 
+    /// <summary>Exact station-owned fixture authority across one physical
+    /// FLASH + TEST scope; only explicit station coordinator code obtains it.
+    /// Per-output USB permission is still one-shot and phase bounded.</summary>
+    public void AuthorizeStationFixtureScope(string fingerprint,
+        string confirmation, byte outputMask)
+    {
+        lock (_sync)
+        {
+            if (_state != WinUsbLinkState.Connected)
+                throw new IOException("主控未连接，不能授权工位夹具。");
+            _fence.AuthorizeStationFixtureScope(fingerprint, confirmation,
+                outputMask, _epoch);
+        }
+    }
+
+    public void AuthorizeStationFixtureChange(string fingerprint, byte clamp, bool press)
+    {
+        lock (_sync)
+        {
+            if (_state != WinUsbLinkState.Connected)
+                throw new IOException("主控断开，本次夹具动作不允许复用旧授权。");
+            _fence.AuthorizeStationFixtureChange(fingerprint, clamp, press, _epoch);
+        }
+    }
+
+    public void RevokeStationFixtureScope(string fingerprint)
+    {
+        lock (_sync)
+            _fence.RevokeStationFixtureScope(fingerprint, _epoch);
+    }
+
     /// <summary>Grant one exact 0x22 DID operation after a separate, explicit
     /// physical consent. This is not an unlock for any other UDS service.</summary>
     public void AuthorizeReadOnlyDid(uint txId,uint rxId,ushort did,string exactConfirmation)
