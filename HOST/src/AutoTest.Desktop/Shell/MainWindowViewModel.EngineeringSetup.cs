@@ -16,6 +16,7 @@ public sealed partial class MainWindowViewModel
     private int _setupRefreshId;
     private string _setupModelStatus = "尚未检查";
     private string _setupTestStatus = "尚未检查";
+    private string _setupTestIssueDetails = "请先打开 ECU 工程并进行资源预检。";
     private string _setupScanStatus = "尚未检查";
     private string _setupFlashStatus = "尚未检查";
     private string _setupStationStatus = "尚未检查";
@@ -158,6 +159,10 @@ public sealed partial class MainWindowViewModel
 
     public string SetupModelStatus => _setupModelStatus;
     public string SetupTestStatus => _setupTestStatus;
+    /// <summary>Exact authoring resource blockers returned by the one
+    /// canonical TEST resolver. Diagnostic only: never creates an alternate
+    /// test plan or changes physical execution permissions.</summary>
+    public string SetupTestIssueDetails => _setupTestIssueDetails;
     public string SetupResourcesStatus
     {
         get
@@ -201,9 +206,11 @@ public sealed partial class MainWindowViewModel
         var project = _workspace.Current;
         if (project is null)
         {
+            _setupTestIssueDetails = "请先打开 ECU 工程。";
+            RaisePropertyChanged(nameof(SetupTestIssueDetails));
             UpdateSetupStatuses("请先打开 ECU 工程", "未打开工程",
                 "等待工程", "等待工程", "待连接",
-                "打开工程后，在同一个检测准备工作台逐项配置和真实验证。");
+                "工程开发先编辑 TEST、DBC 和原生 FLASH；产品身份和工位发布在生产准备。");
             return;
         }
         // Never claim a live result based on a resource file or USB ACK.
@@ -211,6 +218,7 @@ public sealed partial class MainWindowViewModel
             ? "尚未设置 ECU 型号代码；编辑测试用例不受影响，正式烧录前需要匹配。"
             : "当前工程型号：" + project.Definition.EcuModelCode;
         var test = "正在核对 TEST 资源…";
+        var testDetails = "正在解析 TEST 项目中的资源引用。";
         var scan = "正在核对工位扫码设置…";
         var flash = "正在读取烧录配置…";
         var station = _hardware.IsConnected
@@ -225,6 +233,10 @@ public sealed partial class MainWindowViewModel
             try
             {
                 var snapshot = await AutomaticTestResourceContract.ResolveAsync(project);
+                testDetails = snapshot.Issues.Count == 0
+                    ? "未发现当前 TEST 项目的静态资源阻断。仍需在真实 ECU 上验证功能与数据质量。"
+                    : string.Join(Environment.NewLine,
+                        snapshot.Issues.Select((issue, i) => $"{i + 1}. {issue}"));
                 test = snapshot.CanExecute
                     ? snapshot.Cases.Count + " 个正式用例的静态资源检查通过（仍需实体运行）"
                     : snapshot.Cases.Count + " 个有效引用 · " +
@@ -236,6 +248,7 @@ public sealed partial class MainWindowViewModel
                 UnauthorizedAccessException or NotSupportedException)
             {
                 test = "TEST 未就绪：" + error.Message;
+                testDetails = "无法完成 TEST 资源解析：" + error.Message;
             }
 
             try
@@ -316,8 +329,12 @@ public sealed partial class MainWindowViewModel
             if (version == _setupRefreshId &&
                 string.Equals(project.ManifestPath, _workspace.Current?.ManifestPath,
                     StringComparison.OrdinalIgnoreCase))
+            {
+                _setupTestIssueDetails = testDetails;
+                RaisePropertyChanged(nameof(SetupTestIssueDetails));
                 UpdateSetupStatuses(model, test, scan, flash, station,
                     productionPin);
+            }
         }
     }
 }

@@ -240,7 +240,7 @@
          <TextBlock Text="本工程实际需要的夹具动作"
           FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
         </DockPanel>
-        <TextBlock Text="可选：检测前准备与检测后收尾动作。"
+        <TextBlock Text="仅用于工程特殊工位动作调试；标准生产夹紧、实体 START 和互锁配置以“生产准备”为准。"
          Foreground="{StaticResource Subtle}" TextWrapping="Wrap" Margin="0,0,0,12"/>
         <ContentControl x:Name="InspectionProcedureHost"
          HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
@@ -277,6 +277,8 @@
          <TextBlock Text="TEST 项目" FontWeight="SemiBold" Margin="0,0,0,7"/>
          <TextBlock Text="{Binding SetupTestStatus}" Foreground="#526B83"
           TextWrapping="Wrap"/>
+         <TextBlock Text="{Binding SetupTestIssueDetails}" Foreground="#334D65"
+          TextWrapping="Wrap" Margin="0,12,0,0"/>
         </StackPanel>
        </DockPanel>
       </Border>
