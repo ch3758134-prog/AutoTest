@@ -1,382 +1,159 @@
+using System.IO;
 using AutoTest.Desktop.Projects;
 using Xunit;
 
 namespace AutoTest.Desktop.Tests.Projects;
 
-/// <summary>Pure deterministic parsing/identity contracts. These tests never
-/// connect to a station, claim published ECU resources or issue CAN/FLASH.</summary>
+/// <summary>
+/// V2 station identity only. All inputs here are pure data; no test mocks,
+/// fake accepted production records, real device commands, or TEST execution.
+/// </summary>
 public sealed class ProductionIdentityConfigTests
 {
-    private static ProductionPublishedProduct Pin(string model, string hardware = "") =>
-        new(model, hardware, @"C:\offline-tests\project.autotest-project.json",
+    private static ProductionPublishedProduct Pin(string productKey = "", string hardware = "") =>
+        new(productKey, hardware, @"C:\offline-tests\project.autotest-project.json",
             Guid.NewGuid(), new string('A', 64), Guid.NewGuid(),
             new string('B', 64), new string('C', 64), new string('D', 64),
-            new string('E', 64), 500, new string('F', 64), ["准备", "驻车", "释放"]);
+            new string('E', 64), 500, new string('F', 64), ["驻车", "释放"]);
 
-    private static PublishedStationProductionConfiguration Fixture(
+    private static ProductionProductBinding Bind(ProductionPublishedProduct pin) =>
+        new(pin.ProductKey, pin.HardwareCode, pin.ManifestPath, pin.ProjectId);
+
+    private static StationProductionConfiguration Fixed(ProductionPublishedProduct pin) =>
+        StationProductionConfiguration.New() with
+        {
+            FixedProjectId = pin.ProjectId, Products = [Bind(pin)]
+        };
+
+    private static PublishedStationProductionConfiguration Published(
         StationProductionConfiguration config, params ProductionPublishedProduct[] pins) =>
-        new(1, StationProductionConfigurationStore.ConfigurationSha(config),
+        new(StationProductionConfiguration.CurrentSchema,
+            StationProductionConfigurationStore.ConfigurationSha(config),
             Guid.NewGuid(), DateTimeOffset.UtcNow, config, pins);
 
-    private static ProductionBarcodeRule Serial(string name) =>
-        ProductionBarcodeRule.NewSerial() with { Name = name };
-
     [Fact]
-    public void DefaultFixedStationCanPublishOfflineWithoutFakeScannerSamples()
+    public void FixedWorkcellNeedsNoModelOrBarcodeProductCode()
     {
-        var blank = ProductionBarcodeRule.NewSerial();
-        Assert.Empty(blank.Samples);
-        var pin = Pin("HYDEPB");
-        var config = StationProductionConfiguration.New() with
-        {
-            FixedModel = pin.ModelCode,
-            Products = [new(pin.ModelCode, "", pin.ManifestPath)]
-        };
+        var pin = Pin();
+        var config = Fixed(pin);
         Assert.Empty(StationProductionConfigurationStore.InspectRules(config));
-        Assert.True(blank.Parse("EPB000124").Accepted);
-        Assert.False(blank.Parse("EPB000124|").Accepted);
+        var result = ProductionIdentityResolver.Resolve(Published(config, pin), "SN0001234");
+        Assert.True(result.Accepted);
+        Assert.Equal("SN0001234", result.Serial);
+        Assert.Equal(pin.ProjectId, result.Project!.ProjectId);
+        Assert.Equal("", result.ProductKey);
+        Assert.Equal("FIXED_PROJECT_ID", result.ProjectBasis);
     }
 
     [Fact]
-    public void AdvancedBarcodeRulesStillRequireExplicitPositiveAndNegativeSamples()
+    public void FixedWorkcellRejectsMissingOrAmbiguousProjectBinding()
     {
-        var pin = Pin("HYDEPB");
-        var advanced = ProductionBarcodeRule.NewSerial() with
-        {
-            Format = ProductionBarcodeRule.Fixed, SerialStart = 3, SerialLength = 6,
-            ExactLength = 8
-        };
-        var config = StationProductionConfiguration.New() with
-        {
-            FixedModel = pin.ModelCode,
-            Products = [new(pin.ModelCode, "", pin.ManifestPath)],
-            Rules = [advanced]
-        };
-        Assert.Contains(StationProductionConfigurationStore.InspectRules(config),
-            issue => issue.Contains("正例和反例"));
-
-        var incomplete = config with
-        {
-            Rules = [ProductionBarcodeRule.NewSerial() with
-            {
-                Samples = [new ProductionBarcodeSample("EPB000124", true, "EPB000124")]
-            }]
-        };
-        Assert.Contains(StationProductionConfigurationStore.InspectRules(incomplete),
-            issue => issue.Contains("正例和反例"));
+        var a = Pin();
+        Assert.Throws<InvalidDataException>(() =>
+            (Fixed(a) with { FixedProjectId = Guid.Empty }).Validate());
+        Assert.Throws<InvalidDataException>(() =>
+            (Fixed(a) with { Products = [Bind(a), Bind(Pin())] }).Validate());
+        Assert.Throws<InvalidDataException>(() =>
+            (Fixed(a) with { Products = [Bind(Pin())] }).Validate());
     }
 
     [Fact]
-    public void LegacyArtificialStarterSamplesCannotReleaseStation()
+    public void SchemaOneIsRejectedRatherThanMigrated()
     {
-        var pin = Pin("HYDEPB");
-        var legacy = ProductionBarcodeRule.NewSerial() with
-        {
-            Samples = [new ProductionBarcodeSample("SN001234", true, "SN001234"),
-                new ProductionBarcodeSample("SN|BAD", false)]
-        };
-        var config = StationProductionConfiguration.New() with
-        {
-            FixedModel = pin.ModelCode,
-            Products = [new(pin.ModelCode, "", pin.ManifestPath)],
-            Rules = [legacy]
-        };
-        Assert.Contains(StationProductionConfigurationStore.InspectRules(config),
-            issue => issue.Contains("虚构"));
+        Assert.Throws<InvalidDataException>(() =>
+            (StationProductionConfiguration.New() with { SchemaVersion = 1 })
+                .ValidateDraft());
     }
 
     [Fact]
-    public void EmptyNegativeExampleIsNotConsideredPublicationValidation()
+    public void MixedLineBarcodeProductSelectsOnlyUniquePublishedProject()
     {
-        var pin = Pin("HYDEPB");
-        var invalid = ProductionBarcodeRule.NewSerial() with
-        {
-            Samples = [new ProductionBarcodeSample("EPB000127", true, "EPB000127"),
-                new ProductionBarcodeSample("", false)]
-        };
-        var config = StationProductionConfiguration.New() with
-        {
-            FixedModel = pin.ModelCode,
-            Products = [new(pin.ModelCode, "", pin.ManifestPath)],
-            Rules = [invalid]
-        };
-        Assert.Contains(StationProductionConfigurationStore.InspectRules(config),
-            issue => issue.Contains("不能留空"));
-    }
-
-    [Fact]
-    public void ActualSerialSampleAndExplicitGeneratedRejectPassStaticParser()
-    {
-        var pin = Pin("HYDEPB");
+        var p1 = Pin("P01");
+        var p2 = Pin("P02");
         var rule = ProductionBarcodeRule.NewSerial() with
         {
-            Samples = [new ProductionBarcodeSample("EPB000126", true, "EPB000126"),
-                new ProductionBarcodeSample("EPB000126|", false)]
+            Format = ProductionBarcodeRule.Delimited,
+            AllowedCharacters = @"[A-Za-z0-9_.|-]+",
+            Separator = "|",
+            SerialField = 2,
+            ModelField = 1,
+            Samples =
+            [
+                new("P01|UNIT0001", true, "UNIT0001", "P01"),
+                new("UNKNOWN", false)
+            ]
         };
         var config = StationProductionConfiguration.New() with
         {
-            FixedModel = pin.ModelCode,
-            Products = [new(pin.ModelCode, "", pin.ManifestPath)],
-            Rules = [rule]
+            Mode = StationProductionConfiguration.BarcodeModel,
+            Rules = [rule],
+            Products = [Bind(p1), Bind(p2)]
         };
         Assert.Empty(StationProductionConfigurationStore.InspectRules(config));
-        Assert.True(rule.Parse("EPB000126").Accepted);
-        Assert.False(rule.Parse("EPB000126|").Accepted);
+        var one = ProductionIdentityResolver.Resolve(Published(config, p1, p2), "P01|UNIT0001");
+        Assert.True(one.Accepted);
+        Assert.Equal(p1.ProjectId, one.Project!.ProjectId);
+        Assert.Equal("UNIT0001", one.Serial);
+        Assert.Equal("P01", one.ProductKey);
+        var other = ProductionIdentityResolver.Resolve(Published(config, p1, p2), "P99|UNIT0001");
+        Assert.False(other.Accepted);
+        Assert.Equal("PROJECT_MAPPING_NOT_UNIQUE", other.Code);
     }
 
     [Fact]
-    public void FixedStationSerialOnlyDoesNotRequireModelOrHardwareFields()
+    public void RegistryWithoutTrustedOwnershipCannotGuessProject()
     {
-        var pin = Pin("HYDEPB");
-        var rule = Serial("序列编号");
-        var config = StationProductionConfiguration.New() with
-        {
-            FixedModel = pin.ModelCode,
-            Rules = [rule],
-            Products = [new(pin.ModelCode, "", pin.ManifestPath)]
-        };
-        config.Validate();
-        var result = ProductionIdentityResolver.Resolve(Fixture(config, pin), "00000012");
-        Assert.True(result.Accepted);
-        Assert.Equal("00000012", result.Serial);
-        Assert.Equal("HYDEPB", result.Model);
-        Assert.Equal("FIXED_STATION_MODEL", result.ModelBasis);
-        Assert.Equal(pin.ProjectId, result.Project!.ProjectId);
-    }
-
-    [Fact]
-    public void TwoDifferentFormsMayIdentifySameEcuIdentity()
-    {
-        var pin = Pin("HYDEPB");
-        var serial = Serial("独立编号") with { Prefix = "SN" };
-        var delimited = Serial("分隔字段") with
-        {
-            RuleId = Guid.NewGuid().ToString("N"),
-            Format = ProductionBarcodeRule.Delimited,
-            Prefix = "H|", Separator = "|",
-            AllowedCharacters = @"[A-Za-z0-9|]+",
-            SerialField = 2, ModelField = 0
-        };
-        var config = StationProductionConfiguration.New() with
-        {
-            FixedModel = "HYDEPB",
-            Rules = [serial, delimited],
-            Products = [new("HYDEPB", "", pin.ManifestPath)]
-        };
-        Assert.True(ProductionIdentityResolver.Resolve(Fixture(config, pin), "SN001").Accepted);
-        var answer = ProductionIdentityResolver.Resolve(Fixture(config, pin), "H|SN001");
-        Assert.True(answer.Accepted);
-        Assert.Equal("SN001", answer.Serial);
-    }
-
-    [Fact]
-    public void PublishedBarcodeModelResolvesOnlyMatchingVariant()
-    {
-        var a = Pin("HYDEPB", "HW1");
-        var b = Pin("PARK2", "HW2");
-        var rule = Serial("字段识别") with
-        {
-            Format = ProductionBarcodeRule.Delimited,
-            Separator = "|",
-            SerialField = 3, ModelField = 1, HardwareField = 2,
-            AllowedCharacters = @"[A-Za-z0-9|]+"
-        };
-        var config = StationProductionConfiguration.New() with
-        {
-            Mode = StationProductionConfiguration.BarcodeModel,
-            Rules = [rule],
-            Products = [new(a.ModelCode, a.HardwareCode, a.ManifestPath),
-                new(b.ModelCode, b.HardwareCode, b.ManifestPath)]
-        };
-        var result = ProductionIdentityResolver.Resolve(Fixture(config, a, b),
-            "PARK2|HW2|SERIAL789");
-        Assert.True(result.Accepted);
-        Assert.Equal(b.ProjectId, result.Project!.ProjectId);
-        Assert.Equal("PUBLISHED_BARCODE_MODEL_FIELD", result.ModelBasis);
-    }
-
-    [Fact]
-    public void RegistryRequiresExplicitMatchingRowNoSerialGuessing()
-    {
-        var a = Pin("HYDEPB");
-        var b = Pin("PARK2");
+        var p1 = Pin("P01");
+        var p2 = Pin("P02");
         var config = StationProductionConfiguration.New() with
         {
             Mode = StationProductionConfiguration.RegistryModel,
-            Products = [new(a.ModelCode, "", a.ManifestPath),
-                new(b.ModelCode, "", b.ManifestPath)],
-            IdentityRows = [new("UNIT0001", "PARK2", "")]
+            Products = [Bind(p1), Bind(p2)],
+            IdentityRows = [new("UNIT0001", "P02", "")]
         };
-        Assert.Equal("IDENTITY_REGISTRY_NOT_FOUND",
-            ProductionIdentityResolver.Resolve(Fixture(config, a, b),
-                "UNIT9999").Code);
-        Assert.Equal(b.ProjectId,
-            ProductionIdentityResolver.Resolve(Fixture(config, a, b),
-                "UNIT0001").Project!.ProjectId);
+        var found = ProductionIdentityResolver.Resolve(
+            Published(config, p1, p2), "UNIT0001");
+        Assert.True(found.Accepted);
+        Assert.Equal(p2.ProjectId, found.Project!.ProjectId);
+        var unknown = ProductionIdentityResolver.Resolve(
+            Published(config, p1, p2), "UNIT0002");
+        Assert.Equal("IDENTITY_REGISTRY_NOT_FOUND", unknown.Code);
     }
 
     [Fact]
-    public void ConflictingSimultaneousBarcodeRulesRejectInsteadOfFirstMatch()
+    public void DifferentRuleInterpretationsNeverFallBackToFirstMatch()
     {
-        var pin = Pin("HYDEPB");
-        var r1 = Serial("all");
-        var r2 = Serial("substring") with
-        {
-            RuleId = Guid.NewGuid().ToString("N"),
-            Format = ProductionBarcodeRule.Fixed,
-            SerialStart = 2, SerialLength = 5
-        };
-        var config = StationProductionConfiguration.New() with
-        {
-            FixedModel = "HYDEPB",
-            Rules = [r1, r2],
-            Products = [new("HYDEPB", "", pin.ManifestPath)]
-        };
-        Assert.Equal("BARCODE_RULE_CONFLICT",
-            ProductionIdentityResolver.Resolve(Fixture(config, pin),
-                "ABCDEF").Code);
-    }
-
-    [Fact]
-    public void DuplicateSerialAndExpiredMappingsCannotBePublished()
-    {
-        var pin = Pin("HYDEPB");
-        var config = StationProductionConfiguration.New() with
-        {
-            Mode = StationProductionConfiguration.RegistryModel,
-            Products = [new("HYDEPB", "", pin.ManifestPath)],
-            IdentityRows = [new("ABC", "HYDEPB", ""),
-                new("ABC", "HYDEPB", "")]
-        };
-        Assert.Throws<InvalidDataException>(config.Validate);
-        config = config with
-        {
-            IdentityRows = [new("ABC", "HYDEPB", "",
-                DateTimeOffset.UtcNow.AddDays(-1))]
-        };
-        Assert.Throws<InvalidDataException>(config.Validate);
-    }
-
-    [Fact]
-    public void NoValidRuleOrUnknownModelNeverSelectsUnrelatedProject()
-    {
-        var pin = Pin("HYDEPB");
-        var config = StationProductionConfiguration.New() with
-        {
-            FixedModel = "HYDEPB",
-            Products = [new("HYDEPB", "", pin.ManifestPath)]
-        };
-        Assert.Equal("NO_BARCODE_RULE_MATCHED",
-            ProductionIdentityResolver.Resolve(Fixture(config, pin),
-                "WRONG|MODEL").Code);
-        config = config with
-        {
-            Mode = StationProductionConfiguration.BarcodeModel,
-            Rules = [Serial("code")],
-        };
-        Assert.Equal("BARCODE_MODEL_MISSING",
-            ProductionIdentityResolver.Resolve(Fixture(config, pin),
-                "UNIT1234").Code);
-    }
-
-    [Fact]
-    public void FixedPositionFormatExtractsOnlyConfiguredSerialRegion()
-    {
-        var pin = Pin("HYDEPB");
-        var rule = Serial("定长编号") with
-        {
-            Format = ProductionBarcodeRule.Fixed,
-            ExactLength = 8,
-            SerialStart = 3, SerialLength = 6
-        };
-        var config = StationProductionConfiguration.New() with
-        {
-            FixedModel = "HYDEPB", Rules = [rule],
-            Products = [new("HYDEPB", "", pin.ManifestPath)]
-        };
-        var decision = ProductionIdentityResolver.Resolve(
-            Fixture(config, pin), "AB000123");
-        Assert.True(decision.Accepted);
-        Assert.Equal("000123", decision.Serial);
-        Assert.Equal("NO_BARCODE_RULE_MATCHED",
-            ProductionIdentityResolver.Resolve(Fixture(config, pin),
-                "AB0001239").Code);
-    }
-
-    [Fact]
-    public void NamedRegexExtractsModelHardwareBatchAndSerial()
-    {
-        var pin = Pin("HYDEPB", "HW1");
-        var rule = Serial("型号硬件序列号") with
-        {
-            Format = ProductionBarcodeRule.RegexFormat,
-            AllowedCharacters = @"[A-Z0-9|]+",
-            RegexExpression = @"(?<model>[A-Z0-9]+)\|(?<hardware>[A-Z0-9]+)\|(?<serial>[A-Z0-9]+)\|(?<batch>[A-Z0-9]+)"
-        };
-        var config = StationProductionConfiguration.New() with
-        {
-            Mode = StationProductionConfiguration.BarcodeModel,
-            Rules = [rule], Products = [new("HYDEPB", "HW1", pin.ManifestPath)]
-        };
-        var decision = ProductionIdentityResolver.Resolve(
-            Fixture(config, pin), "HYDEPB|HW1|S001|B7");
-        Assert.True(decision.Accepted);
-        Assert.Equal("S001", decision.Serial);
-        Assert.Equal("B7", decision.Batch);
-        Assert.Equal("HW1", decision.Hardware);
-    }
-
-    [Fact]
-    public void SameSerialButDifferentBatchFromOverlappingRulesRejects()
-    {
-        var pin = Pin("HYDEPB");
-        var rule = Serial("带批次") with
+        var pin = Pin("P01");
+        var baseRule = ProductionBarcodeRule.NewSerial() with
         {
             Format = ProductionBarcodeRule.Delimited,
-            Separator = "|", SerialField = 1, BatchField = 2,
-            AllowedCharacters = @"[A-Za-z0-9|]+"
+            AllowedCharacters = @"[A-Za-z0-9_.|-]+",
+            Separator = "|", SerialField = 2, ModelField = 1
         };
-        var other = rule with
+        var conflicting = baseRule with
         {
             RuleId = Guid.NewGuid().ToString("N"),
-            Name = "读取不同批次",
-            BatchField = 3
+            SerialField = 1
         };
         var config = StationProductionConfiguration.New() with
         {
-            FixedModel = "HYDEPB", Rules = [rule, other],
-            Products = [new("HYDEPB", "", pin.ManifestPath)]
+            Mode = StationProductionConfiguration.BarcodeModel,
+            Products = [Bind(pin)], Rules = [baseRule, conflicting]
         };
-        Assert.Equal("BARCODE_RULE_CONFLICT",
-            ProductionIdentityResolver.Resolve(Fixture(config, pin),
-                "SER123|B09|X22").Code);
+        var result = ProductionIdentityResolver.Resolve(Published(config, pin), "P01|UNIT0001");
+        Assert.False(result.Accepted);
+        Assert.Equal("BARCODE_RULE_CONFLICT", result.Code);
     }
 
     [Fact]
-    public void FailedRuleSamplesBlockPublicationBeforeAnyProjectInspection()
+    public void RetestIdentityComesFromSameRawSerialAndDoesNotCreateANewDut()
     {
-        var pin = Pin("HYDEPB");
-        var rule = Serial("样例") with
-        {
-            Samples = [new ProductionBarcodeSample("SN001", true, "SN001"),
-                new ProductionBarcodeSample("SN001", false)]
-        };
-        var config = StationProductionConfiguration.New() with
-        {
-            FixedModel = "HYDEPB", Rules = [rule],
-            Products = [new("HYDEPB", "", pin.ManifestPath)]
-        };
-        Assert.Contains(StationProductionConfigurationStore.InspectRules(config),
-            x => x.Contains("样例"));
-    }
-
-    [Fact]
-    public void StartAndClampFeedbackCannotBeAssertedFromUsbAck()
-    {
-        var contract = ProductionFixtureConfiguration.Draft;
-        Assert.Contains(contract.PhysicalBlockers(),
-            x => x.Contains("START"));
-        Assert.Equal("MCU:PTB1/J1-B5", contract.Clamp1Output);
-        Assert.Equal("MCU:PTC2/J1-B4", contract.Clamp2Output);
+        var pin = Pin();
+        var config = Fixed(pin);
+        var release = Published(config, pin);
+        var a = ProductionIdentityResolver.Resolve(release, "ABC123");
+        var b = ProductionIdentityResolver.Resolve(release, "ABC123");
+        Assert.Equal(a.Serial, b.Serial);
+        Assert.Equal(a.Project!.ProjectId, b.Project!.ProjectId);
     }
 }
