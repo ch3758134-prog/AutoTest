@@ -202,22 +202,61 @@ public sealed partial class MainWindowViewModel
             throw new InvalidDataException("已安装工程版本与工程库记录不一致。");
         var context = new OpenProjectContext(project, path,
             Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)));
-        // Frozen TEST/FLASH and the one current deployed package are verified
-        // again before the runtime plan may change.
-        await StationDeploymentStore.DeployAsync(context);
-        await _automaticTestPlans.RestoreAsync(context,
-            requireProductionDeployment: true);
-        if (_automaticTestPlans.Current is null)
-            throw new InvalidDataException(_automaticTestPlans.Issue);
         var native = await NativeFlashPublicationStore.LoadPublishedAsync(
             context.RootDirectory)
             ?? throw new InvalidDataException("检测工程缺少有效烧录配置。");
+        _ = NativeFlashPublicationStore.FreezePublished(context.RootDirectory, native);
+        // A failed CAN reconfiguration must never activate another TEST/FLASH
+        // deployment. The library snapshot is already immutable and verified.
         if (_hardware.IsConnected)
         {
             _hardware.SelectRequestedEcuCanBitrate(native.Profile.EcuCanKbps);
             var confirmed = await _hardware.ApplyRequestedEcuCanBitrateAsync();
             if (confirmed != native.Profile.EcuCanKbps)
                 throw new IOException("主控 CAN 波特率未确认，请检查连接后重新扫码。");
+        }
+
+        var previous = await StationDeploymentStore.RestoreAsync();
+        var unchanged = previous is not null &&
+            previous.Project.Definition.Id == context.Definition.Id &&
+            string.Equals(previous.Project.ManifestSha256, context.ManifestSha256,
+                StringComparison.OrdinalIgnoreCase);
+        if (unchanged && _automaticTestPlans.Current is { } plan &&
+            string.Equals(plan.Project.ManifestPath, context.ManifestPath,
+                StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(plan.Project.ManifestSha256, context.ManifestSha256,
+                StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        try
+        {
+            if (!unchanged)
+                await StationDeploymentStore.DeployAsync(context);
+            await _automaticTestPlans.RestoreAsync(context,
+                requireProductionDeployment: true);
+            if (_automaticTestPlans.Current is null)
+                throw new InvalidDataException(_automaticTestPlans.Issue);
+        }
+        catch
+        {
+            // A package install/plan error is NOT permission to leave a
+            // half-selected candidate. Restore the previous checked package.
+            if (previous is not null && !unchanged)
+            {
+                try
+                {
+                    await StationDeploymentStore.DeployAsync(previous.Project);
+                    await _automaticTestPlans.RestoreAsync(previous.Project,
+                        requireProductionDeployment: true);
+                }
+                catch (Exception restoreError) when (restoreError is not OutOfMemoryException)
+                {
+                    StatusMessage = "工程切换失败，原工程也无法安全恢复：" +
+                        restoreError.Message + "。请停止工位操作并检查工程库。";
+                    throw new InvalidDataException(StatusMessage, restoreError);
+                }
+            }
+            throw;
         }
         StatusMessage = "已选择检测工程：" + project.Name +
             "。等待本台 ECU 的启动条件。";
