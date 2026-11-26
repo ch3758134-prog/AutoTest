@@ -90,6 +90,38 @@ public static class TestVariableFlowValidator
                     if (!values.ContainsKey(name))
                         values[name] = "IF 两个分支";
             }
+            else if (node.Type == "Switch")
+            {
+                var variable = node.Properties.GetValueOrDefault("variable", "").Trim();
+                if (variable.Length > 0 && !values.ContainsKey(variable))
+                    issues?.Add(node.Name + " (" + node.Id + "): SWITCH 变量 '" +
+                        variable + "' 没有可保证的上游赋值/读取来源。");
+                // SWITCH does not fall through. Each arm sees only variables
+                // guaranteed before the SWITCH. A value created in just one
+                // arm is not guaranteed downstream. Without Default the
+                // unmatched path also remains possible.
+                if (node.Slots.TryGetValue("cases", out var cases))
+                {
+                    var arms = cases.Where(StepExecutionPolicy.IsEnabled).ToArray();
+                    var exits = new List<Dictionary<string, string>>();
+                    var hasDefault = false;
+                    foreach (var arm in arms)
+                    {
+                        var label = arm.Properties.GetValueOrDefault("equals", "").Trim();
+                        if (label.Equals("default", StringComparison.OrdinalIgnoreCase))
+                            hasDefault = true;
+                        var branch = Copy(values);
+                        if (arm.Slots.TryGetValue("body", out var body))
+                            Walk(body, branch, inspect, issues);
+                        exits.Add(branch);
+                    }
+                    if (hasDefault && exits.Count > 0)
+                        foreach (var name in exits[0].Keys.ToArray())
+                            if (!values.ContainsKey(name) &&
+                                exits.All(exit => exit.ContainsKey(name)))
+                                values[name] = "SWITCH 所有分支";
+                }
+            }
             else if (node.Type == "Loop")
             {
                 // First iteration cannot rely on its prior iterations, and
