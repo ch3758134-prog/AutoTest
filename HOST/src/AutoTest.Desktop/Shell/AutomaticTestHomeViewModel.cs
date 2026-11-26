@@ -90,6 +90,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         _hardware.KeyRequestStateChanged += OnKeyRequestStateChanged;
         _scanner.PropertyChanged += OnScannerPropertyChanged;
         _scanner.CompleteBarcodeReceived += OnCompleteBarcodeReceived;
+        _scanner.IncompleteBarcodeObserved += OnIncompleteBarcodeObserved;
         _engineering.CurrentChanged += OnEngineeringProjectChanged;
     }
 
@@ -605,6 +606,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         _hardware.KeyRequestStateChanged -= OnKeyRequestStateChanged;
         _scanner.PropertyChanged -= OnScannerPropertyChanged;
         _scanner.CompleteBarcodeReceived -= OnCompleteBarcodeReceived;
+        _scanner.IncompleteBarcodeObserved -= OnIncompleteBarcodeObserved;
         _engineering.CurrentChanged -= OnEngineeringProjectChanged;
     }
 }
