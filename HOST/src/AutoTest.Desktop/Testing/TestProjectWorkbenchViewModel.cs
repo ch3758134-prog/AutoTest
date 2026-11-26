@@ -705,6 +705,53 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         _workspace.Current?.Definition.Assets.FirstOrDefault(x =>
             x.Id.Value == row.AssetId && x.Kind == ProjectWorkspaceService.TestProgramKind);
 
+    /// <summary>Review the actual saved NEW TEST definition before changing a
+    /// pinned invocation. The old content may not be retained by the current
+    /// project format; never invent a semantic old/new diff.</summary>
+    public async Task<(bool CanAdopt, string Summary)> ReviewCurrentRevisionAsync(
+        TestProjectPackageRow row, int expectedRevision, string expectedSha)
+    {
+        if (IsBusy || !Packages.Contains(row) || !row.CanAdoptLatest)
+            return (false, "当前调用实例没有可审核的新修订。");
+        var asset = CurrentAssetFor(row);
+        if (asset is null || asset.Revision != expectedRevision ||
+            !string.Equals(asset.Sha256, expectedSha, StringComparison.OrdinalIgnoreCase))
+            return (false, "待采用资源已变化；请重新核对工程资产。");
+        try
+        {
+            var latest = await _workspace.OpenTestEditorAsync(AssetId.Create(row.AssetId));
+            if (latest.AssetRevision != expectedRevision ||
+                !string.Equals(latest.FileHash, expectedSha,
+                    StringComparison.OrdinalIgnoreCase))
+                return (false, "新版 TEST 内容在审查期间发生变化；禁止采用。");
+            var plan = new PlanCompiler().Prepare(latest.Document,
+                allowRealOperations: true);
+            var steps = TestRunStepScope.EnabledSteps(latest.Document).ToArray();
+            var mappings = TestRunStepScope.RequiredMappings(latest.Document).ToArray();
+            var signature = string.Join("、", mappings.Take(7)
+                .Select(x => x.Name + " (" + x.Kind + ")"));
+            var preview = "用例：" + row.Name +
+                "\n项目固定：r" + row.Revision + " / " + row.Sha256 +
+                "\n当前资源：r" + expectedRevision + " / " + expectedSha +
+                "\n当前真实步骤：" + steps.Length + " 个，资源映射：" +
+                mappings.Length + " 项" +
+                (signature.Length == 0 ? "" : "\n映射摘要：" + signature) +
+                "\n\n旧版完整文件并未由本审查证明仍被保留，因此无法自动输出旧/新逐步差异。" +
+                "\n采用新版只修改当前调用实例的修订指针，不修复信号语义、其它用例或生产发布。" +
+                "\n采用后需要重新完成工程资源检查。";
+            if (!plan.Diagnostics.IsEmpty)
+                return (false, preview + "\n\n新版 TEST 步骤预检失败，不能采用：\n" +
+                    string.Join("\n", plan.Diagnostics.Take(8)));
+            return (true, preview);
+        }
+        catch (Exception error) when (error is IOException or InvalidDataException or
+            ArgumentException or InvalidOperationException or UnauthorizedAccessException or
+            AutoTest.Projects.Project.ProjectDataException or FormatException or NotSupportedException)
+        {
+            return (false, "无法验证当前 TEST 资源实际内容：" + error.Message);
+        }
+    }
+
     public void AdoptCurrentRevision(TestProjectPackageRow row, int expectedRevision, string expectedSha)
     {
         if (!Packages.Contains(row) || IsBusy) return;

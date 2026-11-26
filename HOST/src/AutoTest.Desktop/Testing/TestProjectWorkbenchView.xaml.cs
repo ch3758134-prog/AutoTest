@@ -40,7 +40,7 @@ public partial class TestProjectWorkbenchView : UserControl
             sender is Button { Tag: TestProjectPackageRow row })
             vm.OpenPackage(row);
     }
-    private void AdoptCurrentRevision_Click(object sender, RoutedEventArgs e)
+    private async void AdoptCurrentRevision_Click(object sender, RoutedEventArgs e)
     {
         e.Handled = true;
         if (DataContext is not TestProjectWorkbenchViewModel vm ||
@@ -49,20 +49,25 @@ public partial class TestProjectWorkbenchView : UserControl
         var asset = vm.CurrentAssetFor(row);
         if (asset is null)
         {
-            MessageBox.Show(Window.GetWindow(this), "原 TEST 资产已经不存在，不能采用最新版本。",
+            MessageBox.Show(Window.GetWindow(this),
+                "TEST 源资源已经不存在，禁止猜测或自动采用。",
                 "资源已失效", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
+        var (allowed, summary) = await vm.ReviewCurrentRevisionAsync(
+            row, asset.Revision, asset.Sha256);
+        if (!allowed)
+        {
+            MessageBox.Show(Window.GetWindow(this), summary,
+                "新版 TEST 预检未通过", MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
         var answer = MessageBox.Show(Window.GetWindow(this),
-            "测试用例：" + row.Name +
-            "\n\n项目当前固定引用：" +
-            "\n  Revision " + row.Revision + "\n  SHA256 " + row.Sha256 +
-            "\n\n当前正式 TEST 资源：" +
-            "\n  Revision " + asset.Revision + "\n  SHA256 " + asset.Sha256 +
-            "\n\n只更新当前这一条执行条目，不修改其他条目或历史记录。" +
-            "\n确认后将自动保存当前项目的这条引用。\n\n是否采用当前修订？",
-            "检查并更新本条 TEST 引用", MessageBoxButton.YesNo,
-            MessageBoxImage.Question, MessageBoxResult.No);
+            summary + "\n\n是否明确采用这个新修订？",
+            "检查新版 TEST 定义 · 采用修订",
+            MessageBoxButton.YesNo, MessageBoxImage.Question,
+            MessageBoxResult.No);
         if (answer == MessageBoxResult.Yes)
             vm.AdoptCurrentRevision(row, asset.Revision, asset.Sha256);
     }
