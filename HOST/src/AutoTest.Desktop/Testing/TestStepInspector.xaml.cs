@@ -136,7 +136,7 @@ public partial class TestStepInspector : UserControl
         new("sequence", "流程控制", "步骤分组", "Sequence", "", "按照顺序执行子步骤。"),
         new("wait", "流程控制", "固定等待", "Wait", "", "固定等待指定毫秒数。"),
         new("switch", "流程控制", "SWITCH / CASE", "Switch", "",
-            "创建真实 CASE Slot；当前运行器尚未实现，运行前阻断。"),
+            "按已有有效变量选择唯一 CASE；支持 default，未知数据阻断正常测试；无隐式贯穿。"),
         new("case", "流程控制", "CASE 分支", "Case", "",
             "在 SWITCH 子分支中填写匹配值并加入步骤。"),
         new("when", "流程控制", "WHEN 等待条件", "When", "",
@@ -447,6 +447,27 @@ public partial class TestStepInspector : UserControl
             ParameterFields.Add(new TestStepInputField("equals",
                 node.Properties.GetValueOrDefault("equals", ""),
                 "比较值（常量或 $其他变量）", "If"));
+        }
+        else if (action.StepType == "Switch")
+        {
+            var variable = node.Properties.GetValueOrDefault("variable", "");
+            var choices = _ifVariables.ToList();
+            if (!string.IsNullOrWhiteSpace(variable) &&
+                !choices.Any(x => string.Equals(x.Value, variable,
+                    StringComparison.OrdinalIgnoreCase)))
+                choices.Add(new TestStepFieldChoice(variable,
+                    variable + "（目前没有可保证的上游来源，运行前阻断）"));
+            ParameterFields.Clear();
+            ParameterFields.Add(new TestStepInputField("variable", variable,
+                "条件来源（必须是前面真实产生的变量）", "Switch", choices));
+        }
+        else if (action.StepType == "Case")
+        {
+            ParameterFields.Clear();
+            ParameterFields.Add(new TestStepInputField("equals",
+                node.Properties.GetValueOrDefault("equals", ""),
+                "匹配值（填写 default 即默认分支，其他值大小写不敏感）",
+                "Case"));
         }
     }
 
