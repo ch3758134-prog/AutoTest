@@ -504,7 +504,10 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
             FlashApproval = "";
             BatchResults.Clear();
             StatusMessage = "已冻结 " + _frozen.Count + " 条选中用例的修订、DBC/KEY 和实际步骤资源。" +
-                (flashConsent.Length == 0 ? " 可运行。" : " 运行前需手动输入唯一 FLASH 授权。");
+                (flashConsent.Length == 0
+                    ? " 连续运行将自动包含工程项目准备及项目收尾（如已配置），" +
+                      "它们可能发送 CAN/IGN/KEY；启动前请核对项目阶段。"
+                    : " 单独 FLASH 调试不执行工程项目准备/收尾，运行前需手动输入唯一 FLASH 授权。");
             RaisePropertyChanged(nameof(IsPrepared));
         }
         catch (Exception ex)
@@ -572,16 +575,40 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         var index = 0;
         var functionalFailure = false;
         RealTestWorkbenchService.ProjectExecutionSession? shared = null;
+        TestDocument? setupDocument = null, teardownDocument = null;
         try
         {
             if (batch.All(x => x.FlashConsent.Length == 0))
             {
+                var project = _workspace.Current ??
+                    throw new InvalidOperationException("工程已关闭，无法执行冻结的 TEST 范围。");
+                var resolved = await AutomaticTestResourceContract.ResolveAsync(project, token);
+                setupDocument = resolved.ProjectSetup?.Program;
+                teardownDocument = resolved.ProjectTeardown?.Program;
+                // The published project stages are not optional when entering
+                // an engineering continuous run. A selected functional subset
+                // must inherit the same prepared VCU CAN environment.
+                var ordered = new List<TestDocument>(batch.Length + 2);
+                if (setupDocument is not null) ordered.Add(setupDocument);
+                ordered.AddRange(batch.Select(x => x.Document));
+                if (teardownDocument is not null) ordered.Add(teardownDocument);
                 shared = await _realTest.OpenProjectSessionAsync(
-                    batch.Select(x => x.Document).ToArray(),
-                    Guid.NewGuid(), _frozenDut, token,
+                    ordered, Guid.NewGuid(), _frozenDut, token,
                     allowOrderedSubset: true);
                 BatchResults.Add("开发勾选范围共用一个真实硬件会话：" +
-                    shared.ProjectRunId + "；周期 CAN 将跨用例保持。");
+                    shared.ProjectRunId + "；项目准备 → 勾选用例 → 项目收尾，周期 CAN 跨用例保持。");
+                if (setupDocument is not null)
+                {
+                    var setup = await shared.ExecuteCaseAsync(setupDocument, token);
+                    BatchResults.Add("项目准备 · " + setup.Verdict +
+                        " · RunId=" + setup.Run.Value);
+                    if (setup.Verdict is not (RealTestVerdict.CompletedNoAssertion or RealTestVerdict.Passed))
+                        throw new InvalidDataException("项目准备步骤未完成，禁止运行后续功能用例：" +
+                            setup.Verdict + "。请检查项目阶段的独立真实记录。");
+                    await shared.Actions.CheckHealthAsync(token);
+                    BatchResults.Add("项目准备后活动周期 CAN：" +
+                        shared.PeriodicTasks.Count(x => x.StoppedUtc is null) + " 条。");
+                }
             }
             else
                 BatchResults.Add("单用例 FLASH 调试：单独物理许可与清理；不作为正式生产。");
@@ -660,6 +687,16 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
                                 "（源用例 " + x.SourceCaseId + "）")) +
                             "；如后续用例依赖该报文，请检查显式停止和持续时间。");
                 }
+            }
+            if (shared is not null && teardownDocument is not null)
+            {
+                var teardown = await shared.ExecuteCaseAsync(teardownDocument, token);
+                BatchResults.Add("项目收尾 · " + teardown.Verdict +
+                    " · RunId=" + teardown.Run.Value);
+                if (teardown.Verdict is not (RealTestVerdict.CompletedNoAssertion or RealTestVerdict.Passed))
+                    throw new InvalidDataException("工程项目收尾失败，工位最终状态未确认：" +
+                        teardown.Verdict);
+                await shared.Actions.CheckHealthAsync(token);
             }
             shared?.MarkCompleted();
             StatusMessage = functionalFailure
