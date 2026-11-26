@@ -17,6 +17,8 @@ namespace AutoTest.Desktop.Shell;
 /// pure reads, not physical commands or another ECU TEST recipe.</summary>
 public partial class ProductionPreparationWindow : Window, INotifyPropertyChanged
 {
+    public sealed record IdentityModeChoice(string Code, string Label);
+
     public sealed class ProductRow
     {
         public string ModelCode { get; set; } = "";
@@ -233,9 +235,12 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
         // No hidden combo-box entries: these are identity SOURCE modes.
         ModeBox.ItemsSource = new[]
         {
-            StationProductionConfiguration.FixedStation,
-            StationProductionConfiguration.BarcodeModel,
-            StationProductionConfiguration.RegistryModel
+            new IdentityModeChoice(StationProductionConfiguration.FixedStation,
+                "固定型号工位 · 只扫唯一编号"),
+            new IdentityModeChoice(StationProductionConfiguration.BarcodeModel,
+                "条码内容包含产品型号"),
+            new IdentityModeChoice(StationProductionConfiguration.RegistryModel,
+                "编号登记表确定型号")
         };
         _autosave.Tick += async (_, _) =>
         {

@@ -39,11 +39,8 @@
    CornerRadius="7" Padding="15,12" Margin="0,0,0,10">
    <DockPanel>
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-     <Button Content="发布当前 ECU 工程" Click="PublishProject_Click" Padding="13,8" Margin="0,0,9,0"/>
-     <Button Content="保存草稿" Click="Save_Click" Padding="13,8" Margin="0,0,9,0"/>
-     <Button Content="核对并发布配置" Click="Publish_Click"
-      Padding="17,8" Background="#2469B3" Foreground="White" Margin="0,0,9,0"/>
-     <Button Content="关闭" Click="Close_Click" Padding="13,8"/>
+      <Button Content="保存草稿" Click="Save_Click" Padding="13,8" Margin="0,0,9,0"/>
+      <Button Content="关闭" Click="Close_Click" Padding="13,8"/>
     </StackPanel>
     <StackPanel>
      <TextBlock Text="生产准备" FontSize="21" FontWeight="SemiBold"/>
@@ -64,10 +61,11 @@
        <StackPanel>
         <TextBlock Text="产品识别方式" FontWeight="SemiBold" Margin="0,0,0,8"/>
         <ComboBox x:Name="ModeBox" Width="320" HorizontalAlignment="Left"
-         SelectedItem="{Binding IdentityMode,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+         DisplayMemberPath="Label" SelectedValuePath="Code"
+         SelectedValue="{Binding IdentityMode,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
          SelectionChanged="DraftSelectionChanged"/>
         <TextBlock Style="{StaticResource Help}" Margin="0,8,0,10"
-         Text="FixedStation = 固定型号工位；BarcodeModel = 编码自带可信型号；RegistryModel = 编号绑定表确定型号。"/>
+         Text="只扫唯一编号请选择固定型号工位；条码本身带型号请选择条码识别；混合生产且只扫编号时使用受控编号表。"/>
         <WrapPanel>
          <StackPanel Margin="0,0,12,10">
           <TextBlock Text="固定工位型号" Foreground="#60758A"/>
@@ -110,7 +108,8 @@
        </StackPanel>
       </Border>
       <TextBlock Text="本工位已发布产品与完整 TEST 顺序" Style="{StaticResource Section}"/>
-      <TextBox Text="{Binding PublicationOverview}" IsReadOnly="True" TextWrapping="Wrap"
+      <TextBox Text="{Binding PublicationOverview,Mode=OneWay}" IsReadOnly="True"
+       Focusable="False" Background="#F7F9FC" TextWrapping="Wrap"
        VerticalScrollBarVisibility="Auto" MinHeight="100" MaxHeight="210"/>
      </StackPanel>
     </ScrollViewer>
@@ -309,6 +308,19 @@
        Text="输入单条或多条样例，每行一条；或使用已连接的真实 COM 扫码枪。此处只能离线解析和核对工程文件，绝不会启动夹具、FLASH 或 TEST。"/>
       <TextBox x:Name="PreviewInput" TextWrapping="Wrap" AcceptsReturn="True"
        MinHeight="88" MaxHeight="135" VerticalScrollBarVisibility="Auto"/>
+      <Border Background="#F3F7FB" CornerRadius="7" Padding="12"
+       BorderBrush="#DFE8F1" BorderThickness="1" Margin="0,0,0,12">
+       <StackPanel>
+        <TextBlock Text="工程与工位发布" FontWeight="SemiBold" Margin="0,0,0,7"/>
+        <TextBlock Text="① 冻结当前 ECU 工程的 FLASH、完整 TEST 与资源。② 发布工位的编码规则及产品绑定。两步均不触发真实机械动作。"
+         TextWrapping="Wrap" Foreground="#536F87" Margin="0,0,0,10"/>
+        <WrapPanel>
+         <Button Content="① 确认当前 ECU 工程" Click="PublishProject_Click" Padding="12,8" Margin="0,0,10,0"/>
+         <Button Content="② 校验并发布工位配置" Click="Publish_Click"
+          Padding="12,8" Background="#2469B3" Foreground="White"/>
+        </WrapPanel>
+       </StackPanel>
+      </Border>
       <WrapPanel Margin="0,10,0,12">
        <Button Content="批量试扫并检查资源" Click="Preview_Click"
         Padding="14,9" Margin="0,0,9,0"/>
