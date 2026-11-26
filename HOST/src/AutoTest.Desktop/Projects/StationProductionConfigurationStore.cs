@@ -81,6 +81,15 @@ public static class StationProductionConfigurationStore
         { return [e.Message]; }
         foreach (var rule in config.Rules.Where(x => x.Enabled))
         {
+            // Older R1 drafts prefilled these exact artificial examples.
+            // Do not let their mere existence satisfy a real station's
+            // positive/negative verification contract.
+            if (rule.Samples.Count == 2 &&
+                rule.Samples.Any(x => x.Raw == "SN001234" && x.ShouldAccept &&
+                    x.ExpectedSerial == "SN001234") &&
+                rule.Samples.Any(x => x.Raw == "SN|BAD" && !x.ShouldAccept))
+                issues.Add(rule.Name + "：仍使用旧版虚构的正反例；" +
+                    "请用本工位真实扫码替换，错误样例可明确使用人工构造的拒绝输入。");
             if (!rule.Samples.Any(s => s.ShouldAccept) ||
                 !rule.Samples.Any(s => !s.ShouldAccept))
                 issues.Add(rule.Name + "：正式发布前必须有正例和反例。");
