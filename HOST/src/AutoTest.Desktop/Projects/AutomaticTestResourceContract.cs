@@ -27,6 +27,8 @@ public sealed record AutomaticTestResourceSnapshot(
     /// judged TEST cases yet reuse the same pinned TestDocument DSL.</summary>
     public AutomaticTestCaseBinding? ProjectSetup { get; init; }
     public AutomaticTestCaseBinding? ProjectTeardown { get; init; }
+    public IReadOnlyList<ResourceDependencyGroup> DependencyGroups { get; init; } =
+        Array.Empty<ResourceDependencyGroup>();
 
     public IReadOnlyList<AutomaticTestCaseBinding> OrderedExecutions()
     {
@@ -70,11 +72,22 @@ public static class AutomaticTestResourceContract
         var tree = TestProjectCodec.Decode(bytes);
         var included = tree.AutomaticRunEntries();
         var issues = new List<string>();
+        var details = new List<ResourceDependencyIssue>();
+        void Flag(string original, string key, string category, string title,
+            string affected, string reason, Guid? resource = null, Guid? occurrence = null)
+        {
+            issues.Add(original);
+            details.Add(new(key, category, title, affected, reason, resource, occurrence));
+        }
         var cases = new List<AutomaticTestCaseBinding>();
         if (tree.Packages.Count == 0)
-            issues.Add("自动测试项目尚未添加测试用例。");
+            Flag("自动测试项目尚未添加测试用例.", "PROJECT:EMPTY",
+                "项目结构", "缺少有序测试用例", tree.Name,
+                "在 TEST 项目中添加正式用例实例。", projectAsset.Id.Value);
         else if (tree.Packages.Any(entry => !entry.Enabled))
-            issues.Add("工程包含历史排除的用例实例；正式生产必须运行完整有序项目。请在测试项目中逐条确认“恢复历史排除”并保存，或显式从工程顺序中移除不需要的实例。禁止静默跳过。");
+            Flag("工程包含历史排除的用例实例；正式生产必须运行完整有序项目。请在测试项目中逐条确认“恢复历史排除”并保存，或显式从工程顺序中移除不需要的实例。禁止静默跳过。",
+                "PROJECT:EXCLUDED", "项目结构", "历史排除实例待处置", tree.Name,
+                "明确恢复或者从有序项目中移除。", projectAsset.Id.Value);
 
         foreach (var entry in included)
         {
@@ -98,12 +111,19 @@ public static class AutomaticTestResourceContract
                 var prepared = new PlanCompiler().Prepare(program,
                     allowRealOperations: true);
                 foreach (var error in prepared.Diagnostics)
-                    issues.Add("用例「" + entry.DisplayName + "」：" + error);
+                    Flag("用例「" + entry.DisplayName + "」：" + error,
+                        "PLAN:" + entry.PackageAssetId.ToString("N"),
+                        "TEST 步骤", "TEST 定义预检失败", entry.DisplayName,
+                        error, entry.PackageAssetId, entry.ItemId);
                 // The automatic-test flow owns pre-run FLASH. An embedded
                 // case FLASH would program the same ECU twice.
                 if (TestRunStepScope.EnabledSteps(program).Any(s => s.Type == "Flash"))
-                    issues.Add("用例「" + entry.DisplayName +
-                        "」含烧录步骤；正式自动测试使用工程级前置烧录，不得重复烧录。");
+                    Flag("用例「" + entry.DisplayName +
+                        "」含烧录步骤；正式自动测试使用工程级前置烧录，不得重复烧录。",
+                        "FLASH:" + entry.PackageAssetId.ToString("N"),
+                        "执行冲突", "用例包含重复烧录", entry.DisplayName,
+                        "移除用例内 FLASH，使用工程前置原生烧录。",
+                        entry.PackageAssetId, entry.ItemId);
                 foreach (var mapping in TestRunStepScope.RequiredMappings(program))
                 {
                     try { await ValidateMappingAsync(project, mapping, ct); }
@@ -111,8 +131,13 @@ public static class AutomaticTestResourceContract
                         IOException or ArgumentException or ProjectDataException or
                         FormatException or NotSupportedException)
                     {
-                        issues.Add("用例「" + entry.DisplayName + "」资源「" +
-                            mapping.Name + "」：" + error.Message);
+                        Flag("用例「" + entry.DisplayName + "」资源「" +
+                            mapping.Name + "」：" + error.Message,
+                            "RESOURCE:" + mapping.Asset.Value.ToString("N") + ":" +
+                                mapping.Kind, "工程资源", "资源修订/映射需要复核",
+                            entry.DisplayName + " · " + mapping.Name,
+                            error.Message, mapping.Asset.Value == Guid.Empty ? null :
+                            mapping.Asset.Value, entry.ItemId);
                     }
                 }
                 cases.Add(new(entry, target, program, target.Sha256));
@@ -121,7 +146,11 @@ public static class AutomaticTestResourceContract
                 UnauthorizedAccessException or ArgumentException or ProjectDataException or
                 FormatException or NotSupportedException)
             {
-                issues.Add("用例「" + entry.DisplayName + "」：" + error.Message);
+                Flag("用例「" + entry.DisplayName + "」：" + error.Message,
+                    "CASE:" + entry.PackageAssetId.ToString("N"),
+                    "TEST 引用", "TEST 定义修订不一致或资源缺失",
+                    entry.DisplayName, error.Message, entry.PackageAssetId,
+                    entry.ItemId);
             }
         }
         var projectSetup = tree.ProjectSetup is null ? null :
@@ -132,7 +161,8 @@ public static class AutomaticTestResourceContract
                 "项目收尾", issues, ct).ConfigureAwait(false);
         return new(projectAsset, cases.AsReadOnly(), issues.AsReadOnly())
         {
-            ProjectSetup = projectSetup, ProjectTeardown = projectTeardown
+            ProjectSetup = projectSetup, ProjectTeardown = projectTeardown,
+            DependencyGroups = ResourceDependencyGroup.Group(details)
         };
     }
 
