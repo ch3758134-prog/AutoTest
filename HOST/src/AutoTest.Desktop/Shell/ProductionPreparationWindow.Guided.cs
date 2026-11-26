@@ -285,50 +285,38 @@ public partial class ProductionPreparationWindow
 
     private Task PreviewGuidedBarcodeAsync(string raw, bool actualDevice)
     {
-        if (_guidedScan is null || !_ready) return Task.CompletedTask;
-        var source = actualDevice ? "真实 COM 输入" : "手工试算";
-        if (string.IsNullOrWhiteSpace(raw))
-        {
-            _guidedScan.Text = source + "：没有有效编号。";
+        if (_guidedScan is null) return Task.CompletedTask;
+        var origin = actualDevice ? "真实扫码" : "规则试算";
+        _guidedScan.Text = origin + "：" + raw;
+        if (!_ready || string.IsNullOrWhiteSpace(raw))
             return Task.CompletedTask;
-        }
         try
         {
-            // Preview the barcode parser only. A scanner read must not
-            // freeze FLASH/TEST assets, publish an ECU project or claim an
-            // authorized production identity/START.
+            // Parse only; no scanner observation here can authorize production.
             var config = BuildDraft();
             var matches = config.Rules.Where(x => x.Enabled)
-                .Select(x => (Rule: x, Parsed: x.Parse(raw)))
-                .Where(x => x.Parsed.Accepted).ToArray();
+                .Select(x => x.Parse(raw))
+                .Where(x => x.Accepted).ToArray();
             if (matches.Length == 0)
             {
-                _guidedScan.Text = source + "：" + raw +
-                    "\n编号识别失败。请核对编码规则；工位发布与扫码验证相互独立。";
+                _guidedScan.Text += "\n未匹配编码规则";
                 return Task.CompletedTask;
             }
             var unique = matches.Select(x =>
-                x.Parsed.Serial + "|" + x.Parsed.Model + "|" +
-                x.Parsed.Hardware + "|" + x.Parsed.Batch)
+                x.Serial + "|" + x.Model + "|" + x.Hardware + "|" + x.Batch)
                 .Distinct(StringComparer.Ordinal).Count();
             if (unique != 1)
             {
-                _guidedScan.Text = source + "：" + raw +
-                    "\n不同规则解析出不同身份，禁止自动选择。请在高级识别配置中消除冲突。";
+                _guidedScan.Text += "\n编号解析有冲突 · 检查规则";
                 return Task.CompletedTask;
             }
-            var decoded = matches[0].Parsed;
-            _guidedScan.Text = source + "：" + raw +
-                "\n解析出的 ECU 唯一编号：" + decoded.Serial +
+            _guidedScan.Text += "\nECU 编号：" + matches[0].Serial +
                 (config.Mode == StationProductionConfiguration.FixedStation
-                    ? "\n固定型号来自工程/已发布工位配置；此处仅验证编号格式。"
-                    : "\n复杂型号映射仍须单独核对已发布的身份表和唯一工程。") +
-                "\n此结果不是生产身份放行，也不影响当前工程能否发布。";
+                    ? " · 当前固定型号" : " · 型号待核对");
         }
         catch (Exception error) when (error is not OutOfMemoryException)
         {
-            _guidedScan.Text = source + "：识别检查失败（" +
-                error.GetType().Name + "）；请检查高级编码规则。";
+            _guidedScan.Text += "\n解析失败：" + error.Message;
         }
         return Task.CompletedTask;
     }
