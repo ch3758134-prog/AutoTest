@@ -15,6 +15,14 @@ public sealed class PhysicalCommandFence
     private byte[]? _singleClampPayload;
     private long _clampGeneration;
     private DateTimeOffset _clampExpiry;
+    // Station execution owns this scoped fixture permit across FLASH/TEST,
+    // but a fixture write is never permitted WHILE either stage is active.
+    // It cannot be created by a barcode or software-only production view.
+    private string? _stationFixtureFingerprint;
+    private long _stationFixtureGeneration;
+    private DateTimeOffset _stationFixtureExpiry;
+    private byte _stationFixtureMask;
+    private byte[]? _stationFixtureExact;
     private byte[]? _singleLedPayload;
     private long _ledGeneration;
     private DateTimeOffset _ledExpiry;
@@ -498,6 +506,69 @@ public sealed class PhysicalCommandFence
         }
     }
 
+    /// <summary>Explicit, plan-fingerprinted station fixture ownership, not
+    /// a manual bench permit and not a blanket USB output authorization.
+    /// The same scope survives the FLASH/TEST phases without allowing clamp
+    /// commands inside them; each actual write requires a new exact grant.
+    /// </summary>
+    public void AuthorizeStationFixtureScope(string fingerprint,
+        string confirmation, byte allowedMask, long generation)
+    {
+        if (fingerprint.Length != 64 || !fingerprint.All(Uri.IsHexDigit) ||
+            confirmation != "AUTHORIZE STATION FIXTURE " + fingerprint ||
+            allowedMask is < 1 or > 3 || generation <= 0)
+            throw new UnauthorizedAccessException("工位夹具运行许可必须绑定本次冻结工艺、输出和设备会话。");
+        lock (_sync)
+        {
+            if (_stationFixtureFingerprint is not null || _programming is not null ||
+                _runFingerprint is not null || _didGrant is not null ||
+                _manualBatchCan is not null || _manualCanRows.Count != 0 ||
+                _manualKeySteps is not null)
+                throw new InvalidOperationException("工位正在由另一真实任务占用，不能取得夹具运行权限。");
+            _stationFixtureFingerprint = fingerprint;
+            _stationFixtureGeneration = generation;
+            _stationFixtureMask = allowedMask;
+            _stationFixtureExpiry = DateTimeOffset.UtcNow.AddMinutes(60);
+            _stationFixtureExact = null;
+            _singleClampPayload = null;
+            _clampGeneration = 0;
+            _clampExpiry = default;
+        }
+    }
+
+    public void AuthorizeStationFixtureChange(string fingerprint,
+        byte clamp, bool press, long generation)
+    {
+        if (clamp is not (1 or 2)) throw new ArgumentOutOfRangeException(nameof(clamp));
+        lock (_sync)
+        {
+            if (_stationFixtureFingerprint != fingerprint ||
+                _stationFixtureGeneration != generation ||
+                DateTimeOffset.UtcNow >= _stationFixtureExpiry ||
+                (_stationFixtureMask & (1 << (clamp - 1))) == 0 ||
+                _runFingerprint is not null || _programming is not null ||
+                _didGrant is not null || _manualKeySteps is not null ||
+                _manualBatchCan is not null || _manualCanRows.Count != 0)
+                throw new UnauthorizedAccessException(
+                    "夹具动作超出本次工位授权、运行阶段或 USB 连接世代。");
+            _stationFixtureExact = new byte[] { clamp, press ? (byte)1 : (byte)0 };
+        }
+    }
+
+    public void RevokeStationFixtureScope(string fingerprint, long generation)
+    {
+        lock (_sync)
+        {
+            if (_stationFixtureFingerprint != fingerprint ||
+                _stationFixtureGeneration != generation) return;
+            _stationFixtureFingerprint = null;
+            _stationFixtureGeneration = 0;
+            _stationFixtureExpiry = default;
+            _stationFixtureMask = 0;
+            _stationFixtureExact = null;
+        }
+    }
+
     /// <summary>Exact two-byte independent clamp change; manual one-shot only.
     /// A CAN/IGN or TEST lease cannot authorize 0x18.</summary>
     public void AuthorizeSingleClamp(byte clamp, bool press, string typedConfirmation,
@@ -510,8 +581,9 @@ public sealed class PhysicalCommandFence
             throw new InvalidOperationException("Cannot authorize a clamp without a live USB generation.");
         lock (_sync)
         {
-            if (_runFingerprint is not null || _programming is not null || _didGrant is not null)
-                throw new InvalidOperationException("Manual clamp is blocked while an automatic test run is authorized.");
+            if (_runFingerprint is not null || _programming is not null ||
+                _didGrant is not null || _stationFixtureFingerprint is not null)
+                throw new InvalidOperationException("Manual clamp is blocked while a station fixture or automatic run is authorized.");
             _singleClampPayload = new byte[] { clamp, press ? (byte)1 : (byte)0 };
             _clampGeneration = connectionGeneration;
             _clampExpiry = DateTimeOffset.UtcNow.AddSeconds(15);
@@ -595,6 +667,16 @@ public sealed class PhysicalCommandFence
                 return;
             }
             if (request.Command == MainControllerCodec.SetClamp &&
+                request.Payload.Length == 2 && _stationFixtureExact is not null &&
+                _stationFixtureGeneration == connectionGeneration &&
+                DateTimeOffset.UtcNow < _stationFixtureExpiry &&
+                _runFingerprint is null && _programming is null && _didGrant is null &&
+                request.Payload.AsSpan().SequenceEqual(_stationFixtureExact))
+            {
+                _stationFixtureExact = null; // exact, consumed before USB I/O
+                return;
+            }
+            if (request.Command == MainControllerCodec.SetClamp &&
                 request.Payload.Length == 2 && _singleClampPayload is not null &&
                 _clampGeneration == connectionGeneration && DateTimeOffset.UtcNow < _clampExpiry &&
                 request.Payload.AsSpan().SequenceEqual(_singleClampPayload))
@@ -655,6 +737,9 @@ public sealed class PhysicalCommandFence
             _baudPermit = null; _baudPermitEpoch = 0; _baudPermitExpires = default;
             _oneIgnState = null; _ignExpiry = default; _ignGeneration = 0;
             _singleClampPayload = null; _clampExpiry = default; _clampGeneration = 0;
+            _stationFixtureFingerprint = null; _stationFixtureGeneration = 0;
+            _stationFixtureExpiry = default; _stationFixtureMask = 0;
+            _stationFixtureExact = null;
             _singleLedPayload = null; _ledExpiry = default; _ledGeneration = 0;
             _programming = null; _didGrant = null;
             _runCan = null; _runIgn = false; _remainingWrites = 0;
