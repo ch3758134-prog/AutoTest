@@ -102,10 +102,10 @@ public sealed class SerialPortBarcodeLineSource : IVerifiedBarcodeLineSource, IA
             if (frame is null) continue;
             _lastIncompleteHex = "";
             LastFrameHex = frame.RawHex;
-            LastFrameText = frame.Text;
-            if (!frame.Accepted)
+            LastFrameText = frame.Text ?? "";
+            if (!frame.Accepted || frame.Text is not { } barcode)
                 throw new InvalidDataException("扫码枪数据帧无效：" + frame.Code);
-            return frame.Text;
+            return barcode;
         }
     }
 
