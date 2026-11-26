@@ -41,35 +41,29 @@ public partial class ProductionPreparationWindow
         PreparationTabs.Items.Clear();
 
         var guided = CreateGuidedOverview() as ScrollViewer
-            ?? throw new InvalidOperationException("生产配置总览未初始化。");
-        var oldRoot = guided.Content as StackPanel
-            ?? throw new InvalidOperationException("生产配置总览结构异常。");
+            ?? throw new InvalidOperationException("生产设置未初始化。");
+        var overview = guided.Content as StackPanel
+            ?? throw new InvalidOperationException("生产设置页面结构异常。");
         guided.Content = null;
-        var summary = oldRoot.Children.Cast<UIElement>().ToArray();
-        oldRoot.Children.Clear();
-        if (summary.Length != 6)
-            throw new InvalidOperationException("生产配置总览内容发生变化，拒绝丢弃配置。");
+        var summary = overview.Children.Cast<UIElement>().ToArray();
+        overview.Children.Clear();
+        if (summary.Length != 3)
+            throw new InvalidOperationException("生产设置概览结构发生变化。");
 
         var root = new StackPanel
         {
-            MaxWidth = 1080,
-            Margin = new Thickness(18, 15, 18, 24)
+            MaxWidth = 1090,
+            Margin = new Thickness(12, 12, 12, 18)
         };
 
-        // The first two items are the old duplicate title and introduction.
-        // The window has one title and one persistent save/status strip already.
-        root.Children.Add(summary[2]); // Current ECU and full TEST/FLASH
-        root.Children.Add(Section(0, "产品与 ECU 工程", original[0], false));
-
-        root.Children.Add(summary[3]); // Scanner observation / connection
-        root.Children.Add(Section(1, "编号格式与识别规则", original[1], false));
-        root.Children.Add(Section(2, "多型号编号登记（仅混线需要）", original[2], false));
-
-        root.Children.Add(summary[4]); // Clamp process and actual device facts
-        root.Children.Add(Section(3, "工位硬件、扫码枪、夹具与实体输入", original[3], false));
-
-        root.Children.Add(Section(4, "扫码试验与版本完整性检查", original[4], false));
-        root.Children.Add(summary[5]); // The ONLY visible "apply to station" action
+        // Three concise task summaries first. Original specialist controls
+        // remain below as on-demand details, not a second basic workflow.
+        foreach (var item in summary) root.Children.Add(item);
+        root.Children.Add(Section(0, "产品型号与工程绑定", original[0], false));
+        root.Children.Add(Section(1, "编码形制规则", original[1], false));
+        root.Children.Add(Section(2, "编号登记（混线时使用）", original[2], false));
+        root.Children.Add(Section(3, "扫码设备、夹具与实体输入", original[3], false));
+        root.Children.Add(Section(4, "验证与诊断", original[4], false));
 
         var scroll = new ScrollViewer
         {

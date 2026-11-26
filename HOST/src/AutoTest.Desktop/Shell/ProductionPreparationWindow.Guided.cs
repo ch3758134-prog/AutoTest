@@ -96,133 +96,119 @@ public partial class ProductionPreparationWindow
         return button;
     }
 
+    // One glance: active product, scanner observation, production sequence,
+    // and whether this station version was applied. All original specialist
+    // editors remain available below and edit the canonical same documents.
     internal UIElement CreateGuidedOverview()
     {
         var root = new StackPanel
         {
-            Margin = new Thickness(22, 17, 22, 17),
-            MaxWidth = 980
+            Margin = new Thickness(14, 12, 14, 10),
+            MaxWidth = 1060
         };
-        root.Children.Add(new TextBlock
-        {
-            Text = "工位设置",
-            Foreground = GuidedInk,
-            FontSize = 21,
-            FontWeight = FontWeights.SemiBold,
-            Margin = new Thickness(0, 0, 0, 5)
-        });
-        root.Children.Add(GuidedText(
-            "首次安装或更换 ECU 型号时设置一次。平时直接扫码检测，无需进入这里。"));
 
-        root.Children.Add(GuidedCard("当前检测工程", out var projectBody));
-        _guidedProject = GuidedText("正在检查 ECU 工程…");
+        var top = new Grid();
+        top.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        top.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        var project = GuidedCard("当前 ECU 工程", out var projectBody);
+        project.Margin = new Thickness(0, 0, 7, 12);
+        _guidedProject = GuidedText("检查工程中…", prominent: true);
         projectBody.Children.Add(_guidedProject);
         var projectActions = new WrapPanel();
-        var projectIssues = GuidedButton("工程检查详情");
-        projectIssues.Click += (_, _) => ShowGuidedProjectDiagnostics();
-        projectActions.Children.Add(projectIssues);
-        var openProduct = GuidedButton("型号与工程绑定");
-        openProduct.Click += (_, _) => OpenStationSection(0);
-        projectActions.Children.Add(openProduct);
-        var openFlash = GuidedButton("编辑前置 FLASH");
-        openFlash.Click += (_, _) =>
+        var flash = GuidedButton("编辑 FLASH");
+        flash.Click += (_, _) =>
         {
-            if (_openFlashEditor is null)
-                Status = "当前应用没有接入原生 FLASH 编辑入口。";
-            else
-            {
-                // The canonical FLASH editor is owned by the main shell.
-                // Minimize this non-modal setup window so the actual editor
-                // can receive focus instead of being covered by its owner.
-                WindowState = WindowState.Minimized;
-                _openFlashEditor();
-            }
+            if (_openFlashEditor is null) { Status = "FLASH 编辑器未连接。"; return; }
+            WindowState = WindowState.Minimized;
+            _openFlashEditor();
         };
-        projectActions.Children.Add(openFlash);
-        var openTest = GuidedButton("编辑完整 TEST");
-        openTest.Click += async (_, _) =>
+        projectActions.Children.Add(flash);
+        var test = GuidedButton("编辑 TEST");
+        test.Click += async (_, _) =>
         {
-            if (_openTestEditor is null)
-            {
-                Status = "当前应用没有接入完整 TEST 编辑入口。";
-                return;
-            }
+            if (_openTestEditor is null) { Status = "TEST 编辑器未连接。"; return; }
             try
             {
                 WindowState = WindowState.Minimized;
                 await _openTestEditor();
             }
             catch (Exception error) when (error is not OutOfMemoryException)
-            { Status = "打开 TEST 项目失败：" + error.Message; }
+            { Status = "打开 TEST 失败：" + error.Message; }
         };
-        projectActions.Children.Add(openTest);
+        projectActions.Children.Add(test);
+        var binding = GuidedButton("工程绑定");
+        binding.Click += (_, _) => OpenStationSection(0);
+        projectActions.Children.Add(binding);
+        var diagnostics = GuidedButton("资源问题");
+        diagnostics.Click += (_, _) => ShowGuidedProjectDiagnostics();
+        projectActions.Children.Add(diagnostics);
         projectBody.Children.Add(projectActions);
+        Grid.SetColumn(project, 0);
+        top.Children.Add(project);
 
-        root.Children.Add(GuidedCard("扫码枪与设备", out var deviceBody));
-        _guidedDevice = GuidedText("正在读取设备状态…");
-        deviceBody.Children.Add(_guidedDevice);
-        _guidedScan = GuidedText("尚未收到扫码；扫码成功后直接显示原文。");
-        deviceBody.Children.Add(_guidedScan);
-        var connect = GuidedButton("连接扫码枪");
-        connect.Click += (_, _) => OpenStationDetail(0);
-        deviceBody.Children.Add(connect);
-        // Detailed physical interlocks live under hardware settings; the
-        // first-use page focuses on the actual task, not protocol prose.
+        var scanner = GuidedCard("扫码与产品识别", out var scannerBody);
+        scanner.Margin = new Thickness(7, 0, 0, 12);
+        _guidedDevice = GuidedText("检查扫码设备中…");
+        scannerBody.Children.Add(_guidedDevice);
+        _guidedScan = GuidedText("等待扫码原文…", prominent: true);
+        scannerBody.Children.Add(_guidedScan);
+        var scanActions = new WrapPanel();
+        var device = GuidedButton("扫码设备");
+        device.Click += (_, _) => OpenStationSection(3);
+        scanActions.Children.Add(device);
+        var codes = GuidedButton("编号规则");
+        codes.Click += (_, _) => OpenStationSection(1);
+        scanActions.Children.Add(codes);
+        scannerBody.Children.Add(scanActions);
+        Grid.SetColumn(scanner, 1);
+        top.Children.Add(scanner);
+        root.Children.Add(top);
 
-        root.Children.Add(GuidedCard("自动夹具", out var fixtureBody));
-        _guidedFixtureEnabled = new CheckBox
-        {
-            Content = "自动控制夹具",
-            FontSize = 14,
-            FontWeight = FontWeights.SemiBold,
-            Foreground = GuidedInk,
-            Margin = new Thickness(0, 7, 0, 8),
-            MinHeight = 28
-        };
-        _guidedFixtureEnabled.Checked += (_, _) => OnGuidedFixtureEnabledChanged();
-        _guidedFixtureEnabled.Unchecked += (_, _) => OnGuidedFixtureEnabledChanged();
-        fixtureBody.Children.Add(_guidedFixtureEnabled);
-        var process = new WrapPanel { Margin = new Thickness(0, 2, 0, 7) };
+        root.Children.Add(GuidedCard("自动检测流程", out var fixtureBody));
+        var process = new WrapPanel { Margin = new Thickness(0, 0, 0, 4) };
         foreach (var item in new[]
         {
-            "检测前压紧", "  →  ", "自动烧录与完整 TEST", "  →  ", "正常完成后释放"
+            "扫码", "→", "实体启动 / 夹紧", "→", "FLASH", "→",
+            "完整 TEST", "→", "记录", "→", "释放"
         })
             process.Children.Add(new TextBlock
             {
                 Text = item,
-                FontSize = 13.5,
-                FontWeight = item.Contains("→") ? FontWeights.Normal :
-                    FontWeights.SemiBold,
-                Foreground = item.Contains("→") ? GuidedMuted : GuidedInk,
-                Margin = new Thickness(0, 3, 0, 3)
+                FontSize = 13,
+                FontWeight = item == "→" ? FontWeights.Normal : FontWeights.Medium,
+                Foreground = item == "→" ? GuidedMuted : GuidedInk,
+                Margin = new Thickness(0, 2, item == "→" ? 10 : 8, 4)
             });
         fixtureBody.Children.Add(process);
-        _guidedFixturePlan = GuidedText("尚未加载工位夹具设置。");
+        var fixtureActions = new WrapPanel();
+        _guidedFixtureEnabled = new CheckBox
+        {
+            Content = "自动压紧 / 释放",
+            FontSize = 13,
+            FontWeight = FontWeights.Medium,
+            Foreground = GuidedInk,
+            Margin = new Thickness(0, 10, 20, 4),
+            MinHeight = 26
+        };
+        _guidedFixtureEnabled.Checked += (_, _) => OnGuidedFixtureEnabledChanged();
+        _guidedFixtureEnabled.Unchecked += (_, _) => OnGuidedFixtureEnabledChanged();
+        fixtureActions.Children.Add(_guidedFixtureEnabled);
+        var hardware = GuidedButton("夹具与实体按钮");
+        hardware.Click += (_, _) => OpenStationSection(3);
+        fixtureActions.Children.Add(hardware);
+        fixtureBody.Children.Add(fixtureActions);
+        _guidedFixturePlan = GuidedText("读取夹具配置中…");
         fixtureBody.Children.Add(_guidedFixturePlan);
-        var settings = GuidedButton("夹具硬件设置");
-        settings.Click += (_, _) => OpenStationDetail(0);
-        fixtureBody.Children.Add(settings);
-        fixtureBody.Children.Add(GuidedText(
-            "这里不会立即执行夹具动作；异常中断后须现场确认机械状态。"));
 
-        root.Children.Add(GuidedCard("正式生产使用", out var releaseBody));
-        _guidedPublication = GuidedText("正在检查发布记录…");
-        releaseBody.Children.Add(_guidedPublication);
-        _guidedBlocker = GuidedText("正式生产准入还需要实体 START、夹具反馈和 Inspection 记录闭环。");
-        releaseBody.Children.Add(_guidedBlocker);
-        var publishActions = new WrapPanel();
-        // The one station-apply action remains visible in the window header
-        // while the engineer edits any inline section; no second release button.
-        var advanced = GuidedButton("编码规则与型号映射");
-        advanced.Click += (_, _) => OpenStationDetail(1);
-        publishActions.Children.Add(advanced);
-        var details = GuidedButton("核验详情");
-        details.Click += (_, _) => OpenStationDetail(2);
-        publishActions.Children.Add(details);
-        releaseBody.Children.Add(publishActions);
-        releaseBody.Children.Add(GuidedText(
-            "只需在首次使用或工程变更后确认一次。后台核对 TEST、FLASH、DBC、波形版本；" +
-            "不会立即控制夹具或烧录 ECU。"));
+        root.Children.Add(GuidedCard("工位应用状态", out var publishedBody));
+        _guidedPublication = GuidedText("检查当前应用版本中…", prominent: true);
+        publishedBody.Children.Add(_guidedPublication);
+        _guidedBlocker = GuidedText("检查运行条件中…");
+        publishedBody.Children.Add(_guidedBlocker);
+        var details = GuidedButton("查看待处理问题");
+        details.Click += (_, _) => OpenStationSection(4);
+        publishedBody.Children.Add(details);
 
         return new ScrollViewer
         {
