@@ -42,7 +42,7 @@
       <Border Grid.Row="1" BorderBrush="#E1E7E4" BorderThickness="1" CornerRadius="7"
      Background="White" ClipToBounds="True">
      <Grid>
-      <Grid.RowDefinitions><RowDefinition Height="42"/><RowDefinition Height="Auto"/>
+      <Grid.RowDefinitions><RowDefinition Height="42"/>
        <RowDefinition Height="*"/></Grid.RowDefinitions>
       <Border Grid.Row="0" Background="#FAFCFA" BorderBrush="#ECF2EF"
        BorderThickness="0,0,0,1">
