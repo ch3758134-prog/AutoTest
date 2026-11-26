@@ -38,6 +38,7 @@ public partial class ProductionPreparationWindow : Window
     private readonly List<ProductionIdentityRow> _registry = new();
     private StationProductionConfiguration _draft = StationProductionConfiguration.New();
     private bool _ready, _busy, _dirty, _allowClose;
+    private long _editGeneration;
     private string? _loadError;
 
     public ProductionPreparationWindow(ProjectWorkspaceService workspace,
@@ -197,6 +198,7 @@ public partial class ProductionPreparationWindow : Window
     {
         if (!_ready || _busy) return;
         _dirty = true;
+        _editGeneration++;
         _autosave.Stop();
         _autosave.Start();
     }
@@ -281,6 +283,22 @@ public partial class ProductionPreparationWindow : Window
             _registry.ToArray(), _products.ToArray(), fixture);
     }
 
+    // Compare VALUE, not draft revision or the parser's internal revision.
+    // Reopening and re-applying the same station must not manufacture a
+    // different publication simply because the UI serialized again.
+    private static string ContentKey(StationProductionConfiguration document)
+    {
+        var normalized = document with
+        {
+            Revision = 0,
+            Rules = document.Rules.Select(x => x with { Revision = 0 }).ToArray()
+        };
+        return System.Text.Json.JsonSerializer.Serialize(normalized);
+    }
+
+    private static string RuleKey(ProductionBarcodeRule rule) =>
+        System.Text.Json.JsonSerializer.Serialize(rule with { Revision = 0 });
+
     private async Task<bool> SaveAsync()
     {
         if (!_ready || !_mayEdit())
@@ -290,11 +308,30 @@ public partial class ProductionPreparationWindow : Window
         }
         try
         {
+            var generation = _editGeneration;
             var next = BuildDraft();
-            await StationProductionConfigurationStore.SaveDraftAsync(next);
-            _draft = next;
-            _dirty = false;
-            Say("草稿已自动保存；生产版本只有点击“应用到工位”才变化。");
+            var previousRule = _draft.Rules.Single();
+            var nextRule = next.Rules.Single();
+
+            // Changing clamp settings or project binding does not rewrite the
+            // barcode rule revision. Only a real change in its contents does.
+            if (RuleKey(previousRule) == RuleKey(nextRule))
+                next = next with
+                {
+                    Rules = [nextRule with { Revision = previousRule.Revision }]
+                };
+
+            // Nothing to save: do not increment the revision or invalidate a
+            // working station release. This is the normal repeated-Apply case.
+            if (ContentKey(next) != ContentKey(_draft))
+            {
+                await StationProductionConfigurationStore.SaveDraftAsync(next);
+                _draft = next;
+            }
+
+            _dirty = generation != _editGeneration;
+            if (_dirty) _autosave.Start();
+            Say(_dirty ? "还有更改正在保存" : "配置已保存");
             return true;
         }
         catch (Exception error) when (error is not OutOfMemoryException)
