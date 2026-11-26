@@ -287,6 +287,18 @@
          DisplayMemberPath="Label" SelectedValuePath="Value"
          SelectedValue="{Binding Fixture.FirstClamp,Mode=TwoWay}"
          SelectionChanged="DraftSelectionChanged"/>
+        <TextBlock Text="物理输出极性（安装时对照实际电磁阀验证）" FontWeight="SemiBold"/>
+        <WrapPanel Margin="0,5,0,12">
+         <CheckBox Content="输出1：HIGH 对应压紧" IsChecked="{Binding Fixture.Clamp1PressHigh,Mode=TwoWay}"
+          Margin="0,0,20,0" Checked="DraftSelectionChanged" Unchecked="DraftSelectionChanged"/>
+         <CheckBox Content="输出2：HIGH 对应压紧" IsChecked="{Binding Fixture.Clamp2PressHigh,Mode=TwoWay}"
+          Checked="DraftSelectionChanged" Unchecked="DraftSelectionChanged"/>
+        </WrapPanel>
+        <TextBlock Text="压紧/释放后的稳定等待（毫秒；0 表示不额外等待）"/>
+        <TextBox Width="135" HorizontalAlignment="Left" Margin="0,4,0,11"
+         Text="{Binding Fixture.SettleDelayMs,UpdateSourceTrigger=PropertyChanged}" TextChanged="DraftChanged"/>
+        <TextBlock Text="等待时间不是机械到位证明；实际机械反馈另行接线。"
+         Foreground="#536F87" TextWrapping="Wrap" Margin="0,0,0,11"/>
         <TextBlock Text="夹紧机械到位反馈来源（无可信输入填 NOT_WIRED）"/>
         <TextBox Margin="0,4,0,9" Text="{Binding Fixture.ClampClosedFeedback,UpdateSourceTrigger=PropertyChanged}" TextChanged="DraftChanged"/>
         <TextBlock Text="释放机械到位反馈来源"/>
