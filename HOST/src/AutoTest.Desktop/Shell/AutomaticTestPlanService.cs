@@ -50,6 +50,19 @@ public sealed class AutomaticTestPlanService
     public string? ConfiguredPath { get; private set; }
     public event EventHandler? Changed;
 
+    /// <summary>
+    /// Production starts without an engineer's last-opened project.
+    /// Only a new real barcode and a checked package may populate a plan.
+    /// No executor or hardware state is modified by this reset.
+    /// </summary>
+    public void ClearForProductionScan()
+    {
+        Current = null;
+        ConfiguredPath = null;
+        Issue = "请扫描 ECU 编号，系统将自动选择检测工程。";
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
     public Task RestoreAsync(CancellationToken ct = default) =>
         RestoreAsync(null, requireProductionDeployment: false, ct);
 
