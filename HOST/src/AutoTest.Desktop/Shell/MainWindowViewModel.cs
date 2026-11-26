@@ -387,8 +387,23 @@ public sealed partial class MainWindowViewModel : BindableBase
     /// The ECU project home is a normal editor document, not a detached
     /// information popup that hides the workspace and opens dead buttons.
     /// </summary>
-    // Project root is a real entry into engineering setup, not another welcome page.
-    public void ShowOverview() => ShowProjectConfiguration();
+    // A project root opens the actual work object. Resource review remains an
+    // optional secondary document, never a required setup screen.
+    public void ShowOverview() => _ = OpenDefaultEngineeringDocumentAsync();
+
+    private async Task OpenDefaultEngineeringDocumentAsync()
+    {
+        if (_workspace.Current is null) return;
+        if (TestProjectCount == 0)
+        {
+            // Do not silently modify a preexisting empty engineering project.
+            // A new project is explicitly seeded in OpenNewProjectAsync.
+            ShowProjectConfiguration();
+            return;
+        }
+        await OpenFirstAssetAsync(ProjectWorkspaceService.TestProjectKind,
+            CreateTestProjectAsync);
+    }
 
     public void ShowProjectConfiguration()
     {
@@ -403,7 +418,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         if (setupNode is not null) SelectResource(setupNode);
         if (IsAlreadyOpen("config-overview")) return;
         var view = new ProjectConfigurationOverviewView(this, _workspace);
-        ActivateEditor("config-overview", view, "工程首页 · " + CurrentProjectName, view.ConfirmClose);
+        ActivateEditor("config-overview", view, "工程依赖审查 · " + CurrentProjectName, view.ConfirmClose);
     }
 
     private bool _openingFlashLab;
@@ -1143,10 +1158,10 @@ public sealed partial class MainWindowViewModel : BindableBase
         RaiseActiveEditorChanged();
         RaisePropertyChanged(nameof(HasActiveEditor));
         RaisePropertyChanged(nameof(NoOpenEditors));
-        // Closing the last TEST document returns to editable project preparation;
-        // an opened ECU must not fall back to an empty, misleading welcome page.
+        // Closing a document is intentional: do not immediately reopen the
+        // same document or create an extra configuration window behind it.
         if (OpenEditors.Count == 0 && HasProject && IsEngineerWorkspace && !IsBusy)
-            ShowProjectConfiguration();
+            StatusMessage = "文档已关闭。左侧工程树可单击打开 TEST 项目或资源。";
         return true;
     }
     private bool IsAlreadyOpen(string key)
@@ -1272,7 +1287,12 @@ public sealed partial class MainWindowViewModel : BindableBase
             StatusMessage = "上次工程打开失败，可手动选择：" + error.Message;
         }
         finally { IsBusy = false; }
-        if (openedSuccessfully) await RestoreRecentEditorAsync();
+        if (openedSuccessfully)
+        {
+            await RestoreRecentEditorAsync();
+            if (IsEngineerWorkspace && OpenEditors.Count == 0)
+                await OpenDefaultEngineeringDocumentAsync();
+        }
     }
 
     /// <summary>Restore only an existing, validated resource from the opened project.</summary>
@@ -1289,8 +1309,8 @@ public sealed partial class MainWindowViewModel : BindableBase
         }
         if (lastKey is "config-overview" or "project-overview")
         {
-            // Both new and old workspace preferences restore the actual setup editor.
-            ShowProjectConfiguration();
+            // Old sessions must not force the obsolete engineering setup gate.
+            await OpenDefaultEngineeringDocumentAsync();
             return;
         }
         if (lastKey is null) return;
@@ -1567,9 +1587,6 @@ public sealed partial class MainWindowViewModel : BindableBase
         // and a separate categorized asset section. Do not nest the latter under root.
         ResourceNodes.Add(new ResourceTreeNode(current.Definition.Name, "", current.ManifestPath,
             role: "Root"));
-        ResourceNodes.Add(new ResourceTreeNode("工程首页", "",
-            "管理 TEST、FLASH、DBC、波形；工位身份与夹具配置另在生产准备",
-            role: "Setup"));
         ResourceNodes.Add(new ResourceTreeNode("测试项目与用例", "",
             "唯一有序用例实例；临时勾选仅用于开发调试",
             ProjectWorkspaceService.TestProjectKind, role: "Section"));
@@ -1600,6 +1617,10 @@ public sealed partial class MainWindowViewModel : BindableBase
                     entry.Kind, entry, role: "Case"));
             ResourceNodes.Add(unused);
         }
+        // Dependency review is secondary to the runnable project itself.
+        ResourceNodes.Add(new ResourceTreeNode("依赖与版本审查", "",
+            "核对 TEST、DBC、波形和烧录变更；不配置产线动作",
+            role: "Setup"));
         // A public flow is a reusable step resource, never a production test case.
         ResourceNodes.Add(new ResourceTreeNode("公共流程", "", "同一工程可复用的连续步骤",
             ProjectWorkspaceService.PublicFlowKind, role: "Section"));
@@ -1669,12 +1690,10 @@ public sealed partial class MainWindowViewModel : BindableBase
             // First-class setup stays available in a document tab. When no TEST
             // project exists create ONE formal order and its first linked case:
             // never leave a loose TEST asset outside the order by default.
-            ShowProjectConfiguration();
             if (TestProjectCount == 0)
                 await CreateStarterProjectAsync(useDefaultName: true);
             else
-                await OpenFirstAssetAsync(ProjectWorkspaceService.TestProjectKind,
-                    CreateTestProjectAsync);
+                await OpenDefaultEngineeringDocumentAsync();
         }
     }
 
@@ -1698,7 +1717,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         if (!opened) return;
         // A recent DBC is not auto-opened as a modal window on startup.
         await RestoreRecentEditorAsync();
-        if (OpenEditors.Count == 0) ShowProjectConfiguration();
+        if (OpenEditors.Count == 0) await OpenDefaultEngineeringDocumentAsync();
         timer.Stop();
         StatusMessage = "工程打开完成 · " + Path.GetFileName(path) +
             " · " + timer.ElapsedMilliseconds + " ms";

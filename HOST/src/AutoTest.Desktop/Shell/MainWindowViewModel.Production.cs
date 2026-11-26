@@ -310,10 +310,10 @@ public sealed partial class MainWindowViewModel
             _developerRestored = true;
             if (_workspace.Current is null) await RestoreLastProjectAsync();
         }
-        // Engineer home is the existing project setup/validation document,
-        // not a separate TEST or production recipe. Preserve open editors.
+        // A test engineer enters the ONE formal ordered TEST document, not a
+        // setup dashboard. Restore existing editors without replacing drafts.
         if (_workspace.Current is not null && OpenEditors.Count == 0)
-            ShowProjectConfiguration();
+            await OpenDefaultEngineeringDocumentAsync();
         // Mode switch must reload the one project under the correct policy:
         // engineering may inspect saved drafts, while production only reads
         // a verified station deployment. Never carry the previous mode's
