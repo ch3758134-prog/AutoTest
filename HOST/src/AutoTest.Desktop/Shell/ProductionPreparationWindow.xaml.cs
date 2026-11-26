@@ -440,11 +440,19 @@ public partial class ProductionPreparationWindow : Window
 
     private async void Test_Click(object sender, RoutedEventArgs e)
     {
-        try { await _openTestEditor(); }
+        try
+        {
+            WindowState = WindowState.Minimized;
+            await _openTestEditor();
+        }
         catch (Exception error) when (error is not OutOfMemoryException)
         { Say("TEST 编辑器无法打开：" + error.Message); }
     }
-    private void Flash_Click(object sender, RoutedEventArgs e) => _openFlashEditor();
+    private void Flash_Click(object sender, RoutedEventArgs e)
+    {
+        WindowState = WindowState.Minimized;
+        _openFlashEditor();
+    }
 
     private sealed record PointerSnapshot(string Path, byte[]? Bytes);
     private async Task<PointerSnapshot[]> CapturePointersAsync(string projectRoot)
@@ -503,7 +511,11 @@ public partial class ProductionPreparationWindow : Window
             _ = NativeFlashJobBuilder.Freeze(flash.Profile, project.RootDirectory);
             var test = await AutomaticTestResourceContract.ResolveAsync(project);
             test.RequireExecutable();
-            foreach (var binding in candidate.Products)
+            // The current project's native FLASH is published by the single
+            // Apply action below. Inspect only OTHER already frozen projects
+            // before changing any publication pointer.
+            foreach (var binding in candidate.Products.Where(x =>
+                x.ProjectId != project.Definition.Id.Value))
                 await StationProductionConfigurationStore.InspectProjectAsync(binding);
             _busy = true;
             ApplyButton.IsEnabled = false;

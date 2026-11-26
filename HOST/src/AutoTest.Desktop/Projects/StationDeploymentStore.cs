@@ -86,7 +86,7 @@ public static class StationDeploymentStore
             var job = NativeFlashPublicationStore.FreezePublished(
                 fresh.RootDirectory, native);
             var station = await UniqueProcedureAsync(fresh, ct).ConfigureAwait(false);
-            var pin = new Deployment(1, fresh.ManifestPath,
+            var pin = new Deployment(2, fresh.ManifestPath,
                 fresh.Definition.Id.Value, fresh.ManifestSha256,
                 snapshot.TestProjectAsset.Id.Value, snapshot.TestProjectAsset.Sha256,
                 native.ProfileSha256, job.Fingerprint,
@@ -148,7 +148,7 @@ public static class StationDeploymentStore
 
     public static async Task<Verified> VerifyAsync(Deployment pin, CancellationToken ct)
     {
-        if (pin.SchemaVersion != 1 || pin.ProjectId == Guid.Empty ||
+        if (pin.SchemaVersion != 2 || pin.ProjectId == Guid.Empty ||
             pin.TestProjectId == Guid.Empty ||
             (pin.InspectionProcedureId == Guid.Empty &&
              !string.Equals(pin.InspectionProcedureSha256,
@@ -157,7 +157,8 @@ public static class StationDeploymentStore
                 pin.NativeProfileSha256, pin.FlashJobFingerprint,
                 pin.InspectionProcedureSha256 }.Any(x =>
                     x is not { Length: 64 } || !x.All(Uri.IsHexDigit)))
-            throw new InvalidDataException("工位工程部署指纹或标识无效。");
+            throw new InvalidDataException(
+                "工程部署格式或指纹无效。旧版部署不兼容，必须从当前工程重新应用。");
         var current = await ReadProjectAsync(pin.ManifestPath, ct).ConfigureAwait(false);
         if (current.Definition.Id.Value != pin.ProjectId ||
             !string.Equals(current.ManifestSha256, pin.ManifestSha256,
