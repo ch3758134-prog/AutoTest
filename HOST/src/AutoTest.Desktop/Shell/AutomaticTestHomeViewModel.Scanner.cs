@@ -57,6 +57,18 @@ public sealed partial class AutomaticTestHomeViewModel
             OnUi(Notify);
     }
 
+    private void OnIncompleteBarcodeObserved(string raw) => OnUi(() =>
+    {
+        // Never treat an unterminated serial packet as an accepted DUT.
+        // Showing its bytes is diagnostics only, so invalidate any prior
+        // accepted identity rather than leaving a stale Start enabled.
+        InvalidateScan("串口已收到内容，但未检测到 CR/LF 结束符；" +
+            "请检查扫码枪串口结束符设置。本次还不能开始测试。");
+        _lastObservedBarcode = raw;
+        _lastObservedAt = DateTimeOffset.Now.ToString("HH:mm:ss") + " · 未完整";
+        Notify();
+    });
+
     private void OnCompleteBarcodeReceived(string raw) => OnUi(() =>
     {
         if (string.IsNullOrEmpty(raw)) return;
