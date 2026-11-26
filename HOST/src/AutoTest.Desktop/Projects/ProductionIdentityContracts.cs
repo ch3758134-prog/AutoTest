@@ -176,7 +176,7 @@ public sealed record ProductionFixtureConfiguration(
     string InterlockInput, int MovementTimeoutMs, string ReleasePolicy,
     int FirstClamp = 0,
     bool Clamp1PressHigh = true, bool Clamp2PressHigh = true,
-    int SettleDelayMs = 0)
+    int SettleDelayMs = 0, bool AutoClampEnabled = true)
 {
     public static ProductionFixtureConfiguration Draft => new(
         "SLOT-01", false, false, "MCU:PTB1/J1-B5",
@@ -216,9 +216,9 @@ public sealed record ProductionFixtureConfiguration(
         if (StartInput == "NOT_WIRED") issues.Add("实体 START 输入未接入并验证");
         if (StopInput == "NOT_WIRED") issues.Add("实体 STOP 输入未接入并验证");
         if (InterlockInput == "NOT_WIRED") issues.Add("安全互锁输入未接入并验证");
-        if ((UseClamp1 || UseClamp2) && ClampClosedFeedback == "NOT_WIRED")
+        if (AutoClampEnabled && (UseClamp1 || UseClamp2) && ClampClosedFeedback == "NOT_WIRED")
             issues.Add("夹具压紧机械反馈尚未取得可信来源");
-        if ((UseClamp1 || UseClamp2) && ClampOpenFeedback == "NOT_WIRED")
+        if (AutoClampEnabled && (UseClamp1 || UseClamp2) && ClampOpenFeedback == "NOT_WIRED")
             issues.Add("夹具释放机械反馈尚未取得可信来源");
         return issues;
     }
