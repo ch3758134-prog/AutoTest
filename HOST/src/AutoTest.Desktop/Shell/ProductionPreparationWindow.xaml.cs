@@ -548,6 +548,57 @@ public partial class ProductionPreparationWindow : Window
             _ = NativeFlashJobBuilder.Freeze(flash.Profile, project.RootDirectory);
             var test = await AutomaticTestResourceContract.ResolveAsync(project);
             test.RequireExecutable();
+            if (!candidate.Products.Any(x =>
+                x.ProjectId == project.Definition.Id.Value &&
+                string.Equals(x.ManifestPath, project.ManifestPath,
+                    StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidDataException(
+                    "当前 ECU 工程没有列在本工位的工程绑定中，请先选择正确工程。");
+
+            // A previously checked, unchanged release is already active.
+            // No fresh release ID, FLASH pointer, or station deployment write.
+            // Comparing the draft FLASH SHA ensures that saved edits to the
+            // real programming method cannot be concealed by this fast path.
+            try
+            {
+                var previousRelease = await
+                    StationProductionConfigurationStore.LoadPublishedAsync();
+                if (previousRelease is not null &&
+                    string.Equals(previousRelease.ConfigurationSha256,
+                        StationProductionConfigurationStore.ConfigurationSha(candidate),
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    var oldProject = previousRelease.Projects.SingleOrDefault(x =>
+                        x.ProjectId == project.Definition.Id.Value);
+                    var station = await StationDeploymentStore.RestoreAsync();
+                    if (oldProject is not null &&
+                        string.Equals(oldProject.NativeFlashSha256,
+                            flash.ProfileSha256, StringComparison.OrdinalIgnoreCase) &&
+                        station is not null &&
+                        station.Project.Definition.Id == project.Definition.Id &&
+                        string.Equals(station.Project.ManifestSha256,
+                            project.ManifestSha256, StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals(station.Pin.NativeProfileSha256,
+                            oldProject.NativeFlashSha256, StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals(station.Pin.FlashJobFingerprint,
+                            oldProject.FlashJobFingerprint, StringComparison.OrdinalIgnoreCase))
+                    {
+                        foreach (var pin in previousRelease.Projects)
+                            await StationProductionConfigurationStore.VerifyProductAsync(pin);
+                        Say("本工位已应用当前配置，无需重复应用。");
+                        await RefreshPublicationAsync();
+                        return;
+                    }
+                }
+            }
+            catch (Exception error) when (error is IOException or InvalidDataException or
+                UnauthorizedAccessException or AutoTest.Projects.Project.ProjectDataException)
+            {
+                // A stale release must be fully republished after validation.
+                // Never call this a successful release or silently reuse it.
+                Say("旧工位版本需要重新核对：" + error.Message);
+            }
+
             // The current project's native FLASH is published by the single
             // Apply action below. Inspect only OTHER already frozen projects
             // before changing any publication pointer.

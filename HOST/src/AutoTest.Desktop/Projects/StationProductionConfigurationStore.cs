@@ -68,6 +68,18 @@ public static class StationProductionConfigurationStore
             published.Projects is null || published.Projects.Count == 0)
             throw new InvalidDataException("已发布生产配置的版本或工程绑定无效。");
         published.Configuration.Validate();
+        if (published.Projects.Count != published.Configuration.Products.Count ||
+            published.Configuration.Products.Any(binding =>
+                !published.Projects.Any(pin =>
+                    pin.ProjectId == binding.ProjectId &&
+                    string.Equals(pin.ProductKey, binding.ProductKey,
+                        StringComparison.Ordinal) &&
+                    string.Equals(pin.HardwareCode, binding.HardwareCode,
+                        StringComparison.Ordinal) &&
+                    string.Equals(pin.ManifestPath, binding.ManifestPath,
+                        StringComparison.OrdinalIgnoreCase))))
+            throw new InvalidDataException(
+                "已发布工程集合与工位配置绑定不一致，禁止扫码。");
         if (!string.Equals(ConfigurationSha(published.Configuration),
             published.ConfigurationSha256, StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("已发布生产配置的 SHA256 不匹配，禁止扫码。");
@@ -240,7 +252,8 @@ public static class StationProductionConfigurationStore
         var pins = new List<ProductionPublishedProduct>();
         foreach (var product in config.Products)
             pins.Add(await FreezeProjectAsync(product, ct).ConfigureAwait(false));
-        var ephemeral = new PublishedStationProductionConfiguration(1,
+        var ephemeral = new PublishedStationProductionConfiguration(
+            StationProductionConfiguration.CurrentSchema,
             ConfigurationSha(config), Guid.NewGuid(), DateTimeOffset.UtcNow,
             config, pins.ToArray());
         return ProductionIdentityResolver.Resolve(ephemeral, raw);
