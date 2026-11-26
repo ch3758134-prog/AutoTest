@@ -19,6 +19,21 @@ public sealed class WaveAnalysisConfigTests
             ProjectConfigurationCodec.WaveSettingsKind,
             ProjectConfigurationCodec.Encode(ProjectConfigurationCodec.WaveSettingsKind, original));
         Assert.Equal("", oldDecoded.ReferenceName);
+        Assert.Equal(WaveInterpolationMode.Linear, oldDecoded.Comparison.InterpolationMode);
+
+        var discrete = original with
+        {
+            Comparison = original.Comparison with
+            {
+                InterpolationMode = WaveInterpolationMode.StepHold
+            }
+        };
+        var discreteBytes = ProjectConfigurationCodec.Encode(
+            ProjectConfigurationCodec.WaveSettingsKind, discrete);
+        var discreteReopened = (WaveSettingsDocument)ProjectConfigurationCodec.Decode(
+            ProjectConfigurationCodec.WaveSettingsKind, discreteBytes);
+        Assert.Equal(WaveInterpolationMode.StepHold,
+            discreteReopened.Comparison.InterpolationMode);
 
         var configured = original with
         {
