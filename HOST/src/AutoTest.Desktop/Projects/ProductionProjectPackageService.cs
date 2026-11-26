@@ -174,6 +174,8 @@ public static class ProductionProjectPackageService
         {
             var extracted = await ReadAndValidateArchiveAsync(archive, stage, ct);
             await ValidateInstalledAsync(stage, extracted, ct);
+            await File.WriteAllBytesAsync(Path.Combine(stage, MetadataEntry),
+                JsonSerializer.SerializeToUtf8Bytes(extracted, Json), ct);
             ct.ThrowIfCancellationRequested();
             // Directory rename is atomic on the local Windows volume.
             if (Directory.Exists(target))
@@ -243,8 +245,12 @@ public static class ProductionProjectPackageService
                 checked(size += file.Length) > MaxTotalBytes)
                 throw new InvalidDataException("工程包资源目录无效。");
         }
-        if (!unique.Contains(ProjectManifestName))
-            throw new InvalidDataException("工程包缺少工程清单。");
+        if (!unique.Contains(ProjectManifestName) ||
+            !string.Equals(header.Files.Single(x =>
+                string.Equals(x.RelativePath, ProjectManifestName,
+                    StringComparison.OrdinalIgnoreCase)).Sha256,
+                header.ManifestSha256, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("工程包清单身份不一致。");
         return header;
     }
 
@@ -274,7 +280,7 @@ public static class ProductionProjectPackageService
                 var buffer = new byte[81920];
                 long total = 0;
                 int read;
-                while ((read = await input.ReadAsync(buffer, ct)) > 0)
+                while ((read = await input.ReadAsync(buffer.AsMemory(), ct)) > 0)
                 {
                     total += read;
                     if (total > file.Length) throw new InvalidDataException("工程包内容超出声明长度。");
@@ -297,7 +303,7 @@ public static class ProductionProjectPackageService
                     long total = 0;
                     int read;
                     using var hash = SHA256.Create();
-                    while ((read = await input.ReadAsync(buffer, ct)) > 0)
+                    while ((read = await input.ReadAsync(buffer.AsMemory(), ct)) > 0)
                     {
                         total += read;
                         if (total > file.Length)
