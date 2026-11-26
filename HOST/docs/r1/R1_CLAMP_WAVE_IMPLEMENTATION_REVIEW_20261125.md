@@ -83,3 +83,21 @@
 | **WAVE 当前整体静态** | **8.4** | **8.8/10** | **仍未 Windows/ECU 验收，不得标为交付 9 分** |
 
 最重要的剩余项：需要受控的历史正确/错误 ECU 波形黄金样本验证、Windows 构建测试、硬件时钟与独立 CAN 仪器对比；真实机械到位、实体 START、Inspection 仍为生产 NO-GO。研究设计评分 9.3 不等于产品验收 9.3。
+
+
+## 五、再次发现并关闭的标准参考替换风险
+
+上一阶段仅将 `ReferenceName` 放入比较判据指纹。**相同名称并不等于相同的标准数据**：如果目录索引被替换或维护了不同修订，名称不变，真实判定可能漂移。因此再作如下整改：
+
+- `WaveSettingsDocument` 保存 `ApprovedReferenceAssetId`、`ApprovedReferenceAssetRevision`、`ApprovedReferenceAssetSha256`；这些字段与 DBC 身份/版本、信号、比较模式和容差一起组成批准指纹。
+- 配置编辑器只有在工程师显式确认、找到**唯一匹配 DBC 信号的命名参考**、实际读取并验证其不可变数据文件后，才签署这个批准指纹。
+- `ConfiguredWavePort.FreezeProfileReferencesAsync` 在冻结真实 TEST 参考时比较名称、资产 ID、修订和 SHA；`AnalyzeWithProfileAsync` 在实际使用前再次核对。索引替换、参考修订改变都不再被“同名”掩盖。
+- `StepDescriptorCatalog`、`StepTreeValidator`、`RealRunCoordinator`、TEST 属性编辑器改为要求明确映射 WAVE 资源，步骤里的旧容差/参考自由输入不再能绕过严格执行；旧步骤可编辑修复但不得判定 PASS。
+- 对真实整组工程，在压夹具、IGN、烧录前就执行 WAVE 项目级只读资源审查，而不是烧录后才发现过期参考。
+- 测试合同增加批准指纹因参考资产 ID、修订、SHA 修改而失效，旧式 WaveCompare 无已批准 profile 不可执行；**尚未运行这些测试**。
+
+上述改动意味着旧工程需要**一次明确的波形标准复核**，但不需要伪造 SHA 或静默重绑旧参考。工程师路径：WAVE 配置核对真实参考和连续/离散算法 → 明确确认新版判据 → 保存新的 WAVE 资源修订 → 在 TEST 更新该映射 → 工程核验与发布。
+
+## 六、本次整改后状态（非硬件验收）
+
+本轮静态核查覆盖了算法签署、实际标准资源 ID/SHA、TEST 作者/执行器、FLASH 前预检、工位夹具输出守卫等关键接口；无构建或硬件验收记录。波形**设计评分继续 9.3/10**；源码静态完整性可提升至**约 9.0/10**，但准确性、使用体验和正式生产合格率**不能打 9 分**，仍需要 Windows 编译、基准波形测试和真实 ECU 错误样本验证。正式生产 START、机械反馈、Inspection 准入仍维持阻断。
