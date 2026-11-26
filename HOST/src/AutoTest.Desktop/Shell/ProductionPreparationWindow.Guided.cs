@@ -168,7 +168,7 @@ public partial class ProductionPreparationWindow
         top.Children.Add(scanner);
         root.Children.Add(top);
 
-        root.Children.Add(GuidedCard("自动检测流程", out var fixtureBody));
+        root.Children.Add(GuidedCard("生产检测顺序（配置预览）", out var fixtureBody));
         var process = new WrapPanel { Margin = new Thickness(0, 0, 0, 4) };
         foreach (var item in new[]
         {
@@ -210,7 +210,7 @@ public partial class ProductionPreparationWindow
         _guidedBlocker = GuidedText("检查运行条件中…");
         publishedBody.Children.Add(_guidedBlocker);
         var blocked = GuidedText(
-            "正式生产启动功能未接通时，仍可使用真实工程整组实测；结果不计入生产合格品。");
+            "正式生产尚未接通实体启动与检测归档；下方可进入真实整组实测（不计入生产）。");
         publishedBody.Children.Add(blocked);
         var actions = new WrapPanel();
         var engineering = GuidedButton("进入真实整组实测");
@@ -658,7 +658,7 @@ public partial class ProductionPreparationWindow
             if (_guidedBlocker is not null)
                 _guidedBlocker.Text = (issues.Count == 0
                     ? "配置规则正常" : "配置有 " + issues.Count + " 项问题") +
-                    " · 正式生产仍待实体 START 与 Inspection 记录接线";
+                    " · 正式生产尚未接通实体启动按钮和正式检测记录";
         }
         catch (Exception error)
         {
