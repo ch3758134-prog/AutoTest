@@ -394,13 +394,29 @@ public sealed partial class AutomaticTestHomeViewModel
         StationFixtureExecutionPlan fixturePlan;
         try
         {
-            var preparedStation = await StationProductionConfigurationStore.LoadPublishedAsync()
-                ?? throw new InvalidDataException("工位配置尚未发布。");
-            if (preparedStation.PublicationId != scan.PublicationId ||
-                !string.Equals(preparedStation.ConfigurationSha256,
-                    scan.PublishedConfigurationSha256, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException("扫码后工位发布版本已改变，请重新扫码。");
-            fixturePlan = StationFixtureExecutionPlan.From(preparedStation.Configuration.Fixture);
+            if (!string.IsNullOrEmpty(scan.EngineeringFixtureSha256))
+            {
+                // Engineer-only runs pin the saved fixture draft, not the
+                // production barcode/model release. This is not production
+                // admission and never bypasses physical-operation consent.
+                var draft = await StationProductionConfigurationStore.LoadDraftAsync();
+                draft.Fixture.Validate();
+                if (!string.Equals(FingerprintEngineeringFixture(draft.Fixture),
+                        scan.EngineeringFixtureSha256, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException(
+                        "扫码后夹具设置已改变；请重新扫码确认装夹动作。");
+                fixturePlan = StationFixtureExecutionPlan.From(draft.Fixture);
+            }
+            else
+            {
+                var preparedStation = await StationProductionConfigurationStore.LoadPublishedAsync()
+                    ?? throw new InvalidDataException("工位配置尚未发布。");
+                if (preparedStation.PublicationId != scan.PublicationId ||
+                    !string.Equals(preparedStation.ConfigurationSha256,
+                        scan.PublishedConfigurationSha256, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException("扫码后工位发布版本已改变，请重新扫码。");
+                fixturePlan = StationFixtureExecutionPlan.From(preparedStation.Configuration.Fixture);
+            }
         }
         catch (Exception error)
         {
@@ -446,15 +462,29 @@ public sealed partial class AutomaticTestHomeViewModel
         // polarity, output route, or station process.
         try
         {
-            var latestStation = await StationProductionConfigurationStore.LoadPublishedAsync();
-            if (latestStation is null ||
-                latestStation.PublicationId != scan.PublicationId ||
-                !string.Equals(latestStation.ConfigurationSha256,
-                    scan.PublishedConfigurationSha256, StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrEmpty(scan.EngineeringFixtureSha256))
             {
-                StartRequestStatus = "确认期间工位配置已重新发布；禁止沿用旧夹具许可，" +
-                    "请重新扫码并确认本次工位工艺。";
-                return;
+                var currentDraft = await StationProductionConfigurationStore.LoadDraftAsync();
+                currentDraft.Fixture.Validate();
+                if (!string.Equals(
+                        FingerprintEngineeringFixture(currentDraft.Fixture),
+                        scan.EngineeringFixtureSha256, StringComparison.OrdinalIgnoreCase))
+                {
+                    StartRequestStatus = "确认期间夹具硬件设置已变更，请重新扫码后确认。";
+                    return;
+                }
+            }
+            else
+            {
+                var latestStation = await StationProductionConfigurationStore.LoadPublishedAsync();
+                if (latestStation is null ||
+                    latestStation.PublicationId != scan.PublicationId ||
+                    !string.Equals(latestStation.ConfigurationSha256,
+                        scan.PublishedConfigurationSha256, StringComparison.OrdinalIgnoreCase))
+                {
+                    StartRequestStatus = "确认期间工位发布版本已改变，请重新扫码。";
+                    return;
+                }
             }
         }
         catch (Exception error)
@@ -533,21 +563,40 @@ public sealed partial class AutomaticTestHomeViewModel
             AddOperatorEvent("软件 START 已明确确认；本次结果不会作为生产放行");
             // Any published code/product change invalidates the accepted
             // identity BEFORE the first fixture, FLASH, or TEST physical write.
-            var currentPublication = await StationProductionConfigurationStore.LoadPublishedAsync(ct)
-                ?? throw new InvalidDataException("当前工位正式编码发布已撤销。");
-            if (currentPublication.PublicationId != scan.PublicationId ||
-                !string.Equals(currentPublication.ConfigurationSha256,
-                    scan.PublishedConfigurationSha256, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException("扫码后生产发布配置已被修改；必须重新扫码。");
-            var rechecked = ProductionIdentityResolver.Resolve(
-                currentPublication, scan.RawBarcode);
-            if (!rechecked.Accepted || rechecked.RuleId != scan.BarcodeRuleId ||
-                rechecked.RuleRevision != scan.BarcodeRuleRevision ||
-                rechecked.Model != scan.ModelCode || rechecked.Serial != scan.DutSerial ||
-                rechecked.Hardware != (scan.HardwareCode ?? "") ||
-                rechecked.Project!.ProjectId != frozen.ProjectId)
-                throw new InvalidDataException("扫码身份的原始规则、型号或已发布工程已改变。");
-            await StationProductionConfigurationStore.VerifyProductAsync(rechecked.Project, ct);
+            if (!string.IsNullOrEmpty(scan.EngineeringFixtureSha256))
+            {
+                // Before any physical action, re-read the fixture draft.
+                // The serial came from real connected COM, and its model is
+                // pinned to this opened ECU project, not a release lookup.
+                var draft = await StationProductionConfigurationStore.LoadDraftAsync(ct);
+                draft.Fixture.Validate();
+                if (!string.Equals(FingerprintEngineeringFixture(draft.Fixture),
+                        scan.EngineeringFixtureSha256, StringComparison.OrdinalIgnoreCase) ||
+                    scan.BarcodeRuleId != "ENGINEERING_RAW_SERIAL" ||
+                    scan.RawBarcode != scan.DutSerial ||
+                    scan.ModelCode != plan.Project.Definition.EcuModelCode ||
+                    frozen.ProjectId != plan.Project.Definition.Id.Value)
+                    throw new InvalidDataException(
+                        "工程扫码、型号或夹具配置已改变；禁止复用旧物理许可。");
+            }
+            else
+            {
+                var currentPublication = await StationProductionConfigurationStore.LoadPublishedAsync(ct)
+                    ?? throw new InvalidDataException("当前工位正式编码发布已撤销。");
+                if (currentPublication.PublicationId != scan.PublicationId ||
+                    !string.Equals(currentPublication.ConfigurationSha256,
+                        scan.PublishedConfigurationSha256, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException("扫码后生产发布配置已被修改；必须重新扫码。");
+                var rechecked = ProductionIdentityResolver.Resolve(
+                    currentPublication, scan.RawBarcode);
+                if (!rechecked.Accepted || rechecked.RuleId != scan.BarcodeRuleId ||
+                    rechecked.RuleRevision != scan.BarcodeRuleRevision ||
+                    rechecked.Model != scan.ModelCode || rechecked.Serial != scan.DutSerial ||
+                    rechecked.Hardware != (scan.HardwareCode ?? "") ||
+                    rechecked.Project!.ProjectId != frozen.ProjectId)
+                    throw new InvalidDataException("扫码身份的规则、型号或已发布工程已改变。");
+                await StationProductionConfigurationStore.VerifyProductAsync(rechecked.Project, ct);
+            }
             if (!string.IsNullOrEmpty(scan.ScannerPnpInstanceId))
             {
                 // A real scan observation cannot be replayed after a physical
