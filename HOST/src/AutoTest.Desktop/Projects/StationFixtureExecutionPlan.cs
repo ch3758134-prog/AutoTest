@@ -43,6 +43,13 @@ public sealed class StationFixtureExecutionPlan
         ArgumentNullException.ThrowIfNull(fixture);
         fixture.Validate();
         var order = new List<byte>(2);
+        if (!fixture.AutoClampEnabled)
+        {
+            return new(Array.Empty<StationClampAction>(),
+                Array.Empty<StationClampAction>(), 0,
+                fixture.MovementTimeoutMs, fixture.SettleDelayMs,
+                fixture.Clamp1PressHigh, fixture.Clamp2PressHigh);
+        }
         if (fixture.UseClamp1 && fixture.UseClamp2)
         {
             // No silent default for two mechanical actuators: the order must
