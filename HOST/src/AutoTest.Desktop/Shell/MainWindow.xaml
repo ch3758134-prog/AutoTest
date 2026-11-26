@@ -130,9 +130,13 @@
          services, never a second test executor. -->
     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="9,0,8,0"
      VerticalAlignment="Center" chrome:WindowChrome.IsHitTestVisibleInChrome="True">
+     <Button Content="工程实测" Command="{Binding EnterEngineeringVerificationCommand}"
+      Style="{StaticResource AtQuietButton}" FontSize="13" FontWeight="SemiBold"
+      Foreground="#1769A8" Margin="0,0,5,0" Padding="12,5"
+      ToolTip="一次进入真实台架整组验证并准备扫码；扫码核对后单击开始，真实夹具/FLASH 前仍需确认（非正式生产放行）"/>
      <Button Content="生产检测" Command="{Binding ShowProductionWorkspaceCommand}"
       Style="{StaticResource AtQuietButton}" FontSize="13" Margin="0,0,2,0"
-      Padding="9,5" ToolTip="扫码、工装、真实实体 START、FLASH、完整 TEST 与结论；不能在此编辑配置"/>
+      Padding="9,5" ToolTip="正式生产模式：需实体 START、互锁、到位反馈和 Inspection，未接线不能放行"/>
      <Button Content="工程开发" Command="{Binding ShowEngineerWorkspaceCommand}"
       Style="{StaticResource AtQuietButton}" FontSize="13" Margin="0,0,2,0"
       Padding="9,5" ToolTip="ECU 工程、唯一 TEST、公共流程、DBC/波形、原生烧录与独立调试工具"/>
