@@ -235,7 +235,8 @@
        Foreground="#355770" TextWrapping="Wrap" Margin="0,0,0,6"/>
       <TextBlock x:Name="BlockerState" Style="{StaticResource SmallHint}"
        Text="正式检测仍需完成真实硬件及单台记录验收。"/>
-      <Button x:Name="ResetOldConfig" Content="重新建立工位配置"
+      <Button x:Name="ResetOldConfig" Content="重新设置工位"
+       ToolTip="只在工位设置无法读取时可用；先备份原文件，不修改已启用的检测配置"
        Click="ResetOld_Click" Visibility="Collapsed" HorizontalAlignment="Left"
        Margin="0,10,0,0"/>
      </StackPanel>
