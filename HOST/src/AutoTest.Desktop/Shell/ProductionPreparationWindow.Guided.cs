@@ -582,80 +582,69 @@ public partial class ProductionPreparationWindow
         var current = _workspace.Current;
         if (current is null)
         {
-            _guidedProject.Text = "尚未打开 ECU 工程；请先在开发与调试中打开并保存。";
-            _guidedProjectDiagnostics = "没有当前工程，无法执行资源检查。";
+            _guidedProject.Text = "未打开 ECU 工程";
+            _guidedProjectDiagnostics = "请先打开并保存 ECU 工程。";
         }
         else
         {
-            _guidedProject.Text = "型号 " + current.Definition.EcuModelCode +
-                " · " + current.Definition.Name +
-                "\n完整工程：" + Path.GetFileName(current.ManifestPath);
+            _guidedProject.Text = current.Definition.EcuModelCode +
+                " · " + current.Definition.Name;
             _guidedProjectDiagnostics = "当前工程：" + current.ManifestPath;
             try
             {
-                var snapshot = await AutomaticTestResourceContract.ResolveAsync(current);
+                var test = await AutomaticTestResourceContract.ResolveAsync(current);
                 var flash = await NativeFlashProfileStore.LoadAsync(current.RootDirectory);
                 if (_workspace.Current?.ManifestSha256 != current.ManifestSha256) return;
-                var errors = snapshot.Issues.ToArray();
-                _guidedProject.Text += "\nTEST：" + snapshot.Cases.Count +
-                    " 个用例" + (snapshot.ProjectSetup is null ? "" : " · 含项目准备") +
-                    (snapshot.ProjectTeardown is null ? "" : " · 含项目收尾") +
-                    (snapshot.CanExecute ? " · 资源检查通过" :
-                        " · 资源引用异常 " + errors.Length + " 项（查看工程问题）") +
-                    "\nFLASH：" + (flash is null
-                        ? "尚未保存原生烧录工艺"
-                        : "工艺草稿已保存 · 发布时严格核对文件及 SHA");
-                _guidedProjectDiagnostics = snapshot.CanExecute
-                    ? "TEST 资源闭包检查通过。" +
-                      "\n用例数：" + snapshot.Cases.Count +
-                      "\n仍需发布原生 FLASH 并完成生产工位版本冻结。"
-                    : "TEST 资源引用检查未通过，需回到开发与调试修正，不允许静默替换：" +
-                      "\n\n" + string.Join("\n\n", errors.Take(40));
+                var issues = test.Issues.ToArray();
+                _guidedProject.Text += "\nTEST " + test.Cases.Count + " 用例 · " +
+                    (test.CanExecute ? "资源正常" : issues.Length + " 项问题") +
+                    "   |   FLASH " + (flash is null ? "未配置" : "已保存");
+                _guidedProjectDiagnostics = test.CanExecute
+                    ? "TEST 资源闭包检查通过。\n工程清单：" + current.ManifestPath +
+                      "\nFLASH 与固件在应用工位时再执行完整验证。"
+                    : "TEST 资源问题：\n" + string.Join("\n", issues.Take(40));
             }
             catch (Exception error) when (error is not OutOfMemoryException)
             {
-                _guidedProject.Text += "\nTEST/FLASH：工程资源检查失败（查看工程问题）";
+                _guidedProject.Text += "\n资源检查异常 · 点击“资源问题”";
                 _guidedProjectDiagnostics = error.ToString();
             }
         }
 
         if (_guidedDevice is not null)
-            _guidedDevice.Text = (_stationDeviceStatus?.Invoke() ??
-                    "主控与 ECU CAN：在主界面查看真实连接/回读状态") +
-                "\n扫码枪：" + (_scanner?.IsConnected == true
-                    ? "已连接 " + _scanner.ConnectedPort
-                    : "未连接（工程发布不受影响）") +
-                "\n夹具、START、互锁：当前尚无可信实测反馈；正式生产保持阻断。";
+        {
+            var controller = _stationDeviceStatus?.Invoke() ?? "主控：状态未知";
+            controller = controller.Replace("主控 USB：", "主控：")
+                .Replace("（不影响工程发布）", "");
+            _guidedDevice.Text = (_scanner?.IsConnected == true
+                ? "扫码枪：已连接 " + _scanner.ConnectedPort
+                : "扫码枪：未连接") + "   ·   " + controller;
+        }
+
         try
         {
-            var deployment = await StationDeploymentStore.RestoreAsync();
+            var deployed = await StationDeploymentStore.RestoreAsync();
             var published = await StationProductionConfigurationStore.LoadPublishedAsync();
-            var deployed = deployment is not null && current is not null &&
-                deployment.Project.Definition.Id == current.Definition.Id &&
-                deployment.Project.ManifestSha256 == current.ManifestSha256;
-            var station = published?.Projects.FirstOrDefault(x => current is not null &&
+            var projectApplied = deployed is not null && current is not null &&
+                deployed.Project.Definition.Id == current.Definition.Id &&
+                deployed.Project.ManifestSha256 == current.ManifestSha256;
+            var matching = published?.Projects.FirstOrDefault(x => current is not null &&
                 x.ProjectId == current.Definition.Id.Value &&
                 x.ManifestSha256 == current.ManifestSha256);
             if (_guidedPublication is not null)
-                _guidedPublication.Text = "当前 ECU 工程：" +
-                    (deployed ? "已冻结部署" : "尚未完成当前版本的工程部署") +
-                    "\n工位产品与编码发布：" +
-                    (station is null ? "当前版本尚未发布" :
-                        "已发布 " + published!.PublicationId.ToString("N")[..10] +
-                        " · TEST " + station.OrderedCaseNames.Count + " 个") +
-                    "\n配置编辑不会自动改变已发布生产版本。";
+                _guidedPublication.Text = projectApplied && matching is not null
+                    ? "当前工程已应用 · " + published!.PublicationId.ToString("N")[..10]
+                    : "当前工程尚未应用到工位";
         }
         catch (Exception error)
         {
             if (_guidedPublication is not null)
-                _guidedPublication.Text = "发布版本尚未验证：" + error.Message;
+                _guidedPublication.Text = "应用版本无法读取 · " + error.Message;
         }
+
         try
         {
             var probe = BuildDraft();
-            // Publishing will bind the single currently open ECU project; the
-            // first-use summary should evaluate that exact candidate without
-            // silently modifying the saved draft just to paint the UI.
             if (current is not null &&
                 probe.Mode == StationProductionConfiguration.FixedStation &&
                 probe.Products.Count == 0)
@@ -666,19 +655,17 @@ public partial class ProductionPreparationWindow
                         current.Definition.EcuModelCode, probe.FixedHardware,
                         current.ManifestPath)]
                 };
-            var problems = StationProductionConfigurationStore.InspectRules(probe);
+            var issues = StationProductionConfigurationStore.InspectRules(probe);
             if (_guidedBlocker is not null)
-                _guidedBlocker.Text = (problems.Count == 0
-                        ? "编码规则：发布静态检查通过（不代表真扫码已验证）。"
-                        : "配置待核对：" + problems.Count +
-                          " 项。具体原因见“发布详情”。") +
-                    "\n生产运行仍阻断：实体 START、夹具反馈/互锁与正式 Inspection 写入未接通。";
+                _guidedBlocker.Text = (issues.Count == 0
+                    ? "配置规则正常" : "配置有 " + issues.Count + " 项问题") +
+                    " · 正式生产仍待实体 START 与 Inspection 记录接线";
         }
         catch (Exception error)
         {
             if (_guidedBlocker is not null)
-                _guidedBlocker.Text = "配置预检暂未通过，具体原因见发布详情。" +
-                    "\n正式生产 START / Inspection 仍未接通。";
+                _guidedBlocker.Text = "配置检查异常：" + error.Message;
         }
     }
+
 }
