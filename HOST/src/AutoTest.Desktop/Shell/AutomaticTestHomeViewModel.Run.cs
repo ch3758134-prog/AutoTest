@@ -400,12 +400,39 @@ public sealed partial class AutomaticTestHomeViewModel
             StartRequestStatus = "未满足真实整组实测准备条件；请检查工程、主控、CAN 码率及扫码身份。";
             return;
         }
+        // Clamp actuation is defined by the released STATION, never by a
+        // second user TEST recipe or by the scanner itself. Freeze the exact
+        // station publication BEFORE asking for physical execution consent.
+        StationFixtureExecutionPlan fixturePlan;
+        try
+        {
+            var preparedStation = await StationProductionConfigurationStore.LoadPublishedAsync()
+                ?? throw new InvalidDataException("工位配置尚未发布。");
+            if (preparedStation.PublicationId != scan.PublicationId ||
+                !string.Equals(preparedStation.ConfigurationSha256,
+                    scan.PublishedConfigurationSha256, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("扫码后工位发布版本已改变，请重新扫码。");
+            fixturePlan = StationFixtureExecutionPlan.From(preparedStation.Configuration.Fixture);
+        }
+        catch (Exception error)
+        {
+            StartRequestStatus = "不能启动夹具与自动测试：" + error.Message;
+            return;
+        }
+        var fixtureDescription = fixturePlan.Press.Count == 0
+            ? "未选择任何夹具输出：本次不会自动装夹。"
+            : "本次将自动压紧：" + string.Join(" → ", fixturePlan.Press
+                .Select(x => "夹具" + x.Clamp)) +
+              "；工程测试完成、真实记录写入后按反序释放。" +
+              "本机只能读取 MCU GPIO，不能证明气缸实际到位。";
         if (MessageBox.Show(
                 "本次真实整组实测将执行工程工位动作、擦写 ECU 固件，并依次运行全部 " +
                 plan.Cases.Count + " 个测试用例。\n\n" +
                 "ECU 编号：" + scan.DutSerial + "\n固件 SHA256：" +
                 _prepared.FirmwareSha256[..Math.Min(16, _prepared.FirmwareSha256.Length)] +
-                "…\n\n当前主控尚无正式实体 START 输入，本功能是软件确认的工程实测，" +
+                "…\n夹具：" + fixtureDescription +
+                "\n\n执行前请现场确认夹具区域无人员、设备接线及动作顺序已验证。" +
+                "\n当前主控尚无正式实体 START 输入，本功能是软件确认的工程实测，" +
                 "不会写入正式生产 PASS 或生产统计。是否明确开始真实物理操作？",
                 "确认真实工位与 ECU 烧录操作", MessageBoxButton.YesNo,
                 MessageBoxImage.Warning) != MessageBoxResult.Yes)
@@ -417,6 +444,9 @@ public sealed partial class AutomaticTestHomeViewModel
         var results = new List<RealOperatorCaseEvidence>();
         var flashState = "未执行";
         var stationOperationsMayHaveStarted = false;
+        var fixtureScopeGranted = false;
+        var fixtureActuationAttempted = false;
+        var fixturePressComplete = false;
         var outcome = "未完成";
         string? failure = null;
         _operatorRunId = Guid.NewGuid();
@@ -557,12 +587,41 @@ public sealed partial class AutomaticTestHomeViewModel
             // The resource and equipment checks above are read-only. Do not
             // send fixture cleanup commands if an inspection was rejected
             // before any physical command was even attempted.
+            // Standard fixture ownership lives in the frozen station
+            // configuration, not legacy project BeforeStart/AfterFinish.
+            if ((frozen.Fixture?.BeforeStart ?? []).Concat(
+                    frozen.Fixture?.AfterFinish ?? [])
+                .Any(x => x.Kind.StartsWith("Clamp", StringComparison.Ordinal)))
+                throw new InvalidDataException("工程工位动作仍包含旧夹具命令，" +
+                    "请删除重复装夹/释放步骤，由已发布工位夹具配置统一执行。");
+
             stationOperationsMayHaveStarted = true;
-            OperatorRunState = "准备工位 · 执行工程已保存的夹具/IGN 动作";
+            if (fixturePlan.Press.Count != 0)
+            {
+                RequireFrozenCanRate();
+                await _hardware.AuthorizeStationFixtureRunAsync(
+                    frozen.PreparationFingerprint, fixturePlan.AllowedOutputMask, ct);
+                fixtureScopeGranted = true;
+                OperatorRunState = "工位自动装夹 · USB 0x18 / GPIO 0x19";
+                foreach (var action in fixturePlan.Press)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    fixtureActuationAttempted = true;
+                    using var movement = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    movement.CancelAfter(fixturePlan.MovementTimeoutMs);
+                    AddOperatorEvent("夹具" + action.Clamp + " 请求压紧 · 限时 " +
+                        fixturePlan.MovementTimeoutMs + "ms");
+                    var bits = await _hardware.SendStationFixtureAsync(
+                        action.Clamp, true, frozen.PreparationFingerprint, movement.Token);
+                    AddOperatorEvent("夹具" + action.Clamp + " MCU GPIO 回读 0x" +
+                        bits.ToString("X2") + "；机械位置未验证（非生产到位证据）");
+                }
+                fixturePressComplete = true;
+            }
+            else AddOperatorEvent("工位未选择夹具输出，本次不执行自动装夹。");
+            OperatorRunState = "准备工位 · 执行工程已保存的 IGN / 等待动作";
             await ApplyStationActionsAsync(
-                frozen.Fixture?.BeforeStart ?? [], _hardware, ct,
-                AddOperatorEvent);
-            AddOperatorEvent("工位前置动作 USB ACK；夹具实际到位仍需真实传感器验证");
+                frozen.Fixture?.BeforeStart ?? [], _hardware, ct, AddOperatorEvent);
             RequireFrozenCanRate();
 
             OperatorRunState = "前置烧录 · 正在擦写 ECU";
@@ -780,7 +839,34 @@ public sealed partial class AutomaticTestHomeViewModel
                     await ApplyStationActionsAsync(
                         frozen.Fixture?.AfterFinish ?? [], _hardware, cleanup.Token,
                     AddOperatorEvent);
-                    AddOperatorEvent("工程配置的后置工位动作已发送；现场实际状态仍需确认");
+                    AddOperatorEvent("工程配置的 IGN / 等待收尾已执行；现场状态仍需确认");
+                    if (fixtureScopeGranted && fixturePressComplete &&
+                        outcome.StartsWith("工程整组", StringComparison.Ordinal) &&
+                        failure is null && !_hardware.IsTestRunApproved &&
+                        _hardware.IsConnected &&
+                        _hardware.CurrentStationEpoch == sessionEpoch)
+                    {
+                        // ReleasePolicy requires durable evidence BEFORE
+                        // releasing an actuator. This is an engineer-approved
+                        // verification, not a claim of sensor-observed safety.
+                        Snapshot();
+                        AddOperatorEvent("完整工程实测已归档；无活动 TEST/FLASH 授权，" +
+                            "按工程师本次授权执行受控夹具释放。");
+                        foreach (var action in fixturePlan.Release)
+                        {
+                            using var movement = new CancellationTokenSource(
+                                TimeSpan.FromMilliseconds(fixturePlan.MovementTimeoutMs));
+                            var bits = await _hardware.SendStationFixtureAsync(
+                                action.Clamp, false, frozen.PreparationFingerprint,
+                                movement.Token);
+                            AddOperatorEvent("夹具" + action.Clamp + " 请求释放并读回 GPIO 0x" +
+                                bits.ToString("X2") + "；实际机械释放仍未测量。");
+                        }
+                        OperatorRunState = outcome + " · 夹具释放请求完成";
+                    }
+                    else if (fixtureActuationAttempted)
+                        AddOperatorEvent("本次装夹/FLASH/TEST/记录未满足自动释放条件，" +
+                            "不擅自松夹；机械状态 UNKNOWN，须现场核查并受控处置。");
                 }
                 else
                     AddOperatorEvent("预检失败发生在物理动作之前；未向夹具/IGN 发送收尾指令");
@@ -792,6 +878,17 @@ public sealed partial class AutomaticTestHomeViewModel
                     "收尾动作失败：" + error.Message;
                 OperatorRunState = outcome;
                 AddOperatorEvent(failure);
+            }
+            if (fixtureScopeGranted)
+            {
+                try { await _hardware.RevokeStationFixtureRunAsync(frozen.PreparationFingerprint); }
+                catch (Exception error)
+                {
+                    outcome = "夹具授权撤销异常 · 工位状态待核查";
+                    failure = (failure is null ? "" : failure + "；") +
+                        "工位夹具权限撤销失败：" + error.Message;
+                    AddOperatorEvent(failure);
+                }
             }
             AddOperatorEvent("KEY 输出状态：" + _hardware.KeyRequestStatus +
                 "；测试结束/停止没有自动发送释放帧");
