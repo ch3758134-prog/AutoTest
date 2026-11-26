@@ -183,7 +183,9 @@ public sealed class ConfiguredWavePort : ITestWavePort
 
         var evaluated = await _capture.CompareWithConfigForRunAsync(
             evidence, pinned.Reference, settings.Comparison);
-        var usable = evaluated.Verdict is Verdict.Pass or Verdict.Fail or Verdict.Inconclusive;
+        // Inconclusive is a quality/coverage/clock failure, NOT a valid
+        // measurement value that TEST variables may promote to PASS.
+        var usable = evaluated.Verdict is Verdict.Pass or Verdict.Fail;
         return new(usable, evaluated.Verdict.ToString(), evaluated.Verdict.ToString(),
             string.Join(",", evaluated.Evidence.Select(x => x.ToString())),
             "Profile " + asset.Name + ": " + evaluated.Reason);
