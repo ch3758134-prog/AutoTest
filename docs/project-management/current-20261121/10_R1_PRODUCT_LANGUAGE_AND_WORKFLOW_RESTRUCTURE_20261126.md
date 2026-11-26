@@ -79,3 +79,15 @@
 - **R1** 是唯一实现分支，本次 UI/UX 重构与真实执行器同源维护，未另建新分支。
 - **Project_Management** 仅维护管理事实。本文件作为 11-26 当轮新增决策记录，老档案保留追溯，冲突项以用户后批准决定为准。
 - **正式准出尚未发生。** 不以静态源码回读、主观评分或“已提交”替代 Windows Build、WPF 操作和真实 ECU/工位验收。
+
+
+## 7. 2026-11-26 后续增量（同一轮重构）
+
+**R1 最新参考 HEAD：** `a82be31772ff904ebdf4b848b2b2471b5346a1fa`；本节覆盖本文件前文记录后继续实施的增量，不意味着源代码已经通过 Windows 编译。
+
+- 确认不再被主窗口、工程入口和 WPF 项目显式引用的两套旧页面已直接删除：`ProductionInspectionView.xaml[.cs]` 与 `ProjectBarcodeExpectationView.xaml[.cs]`。核心扫码身份数据模型及后端校验未随之删除；仍需 Windows 构建验证是否存在隐蔽引用。
+- `ProjectOverviewView.xaml` 原按钮文案“完整检测配置”实际上进入的是资源审查，现更名为“工程检查”；取消页面将扫码、烧录、夹具、资源混为同一种工程配置的描述。
+- `InspectionStationProcedureEditorView.xaml` 已去掉过期“生产准备→自动测试夹具工艺”和“旧夹具动作”等开发历史，对工程特殊动作与工位夹具的真实职责做了区分。
+- `NewProjectDialog.xaml`、`ProjectConfigurationOverviewInspector.xaml`、`ManualBenchKeyActionWindow.xaml` 完成增量操作语义审查，特别明确 20 个按键组合而不是 20 路独立输出。
+- 新增 `OperatorStatePresentationTests`，约束运行器状态键经 UI 转换后仍能准确呈现“未开始、进行中、通过、失败”，不对未知状态冒充 PASS，也不允许从转换器回写原执行键。
+- **门禁状态不变：** 本轮新增的测试尚未获得 Windows 执行回执。正式生产 START、夹具实际机械反馈、单台可靠记录及全链真机验收仍列为 P0 未关闭。
