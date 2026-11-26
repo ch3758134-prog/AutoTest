@@ -337,6 +337,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     public string IdentityLabel => IdentityAccepted ? "编号已核对" : "编号待核对";
     public string DutSerial => _dutSerial;
     public string ScanStatus => _scanStatus;
+    public string ScannerDiagnostic => _scanner.Status;
     public string Status => _status;
     public string DeploymentStatus => _plans.Current is null
         ? _isProductionWorkspace()
@@ -578,6 +579,9 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         RaisePropertyChanged(nameof(ModelCode));
         RaisePropertyChanged(nameof(DutSerial));
         RaisePropertyChanged(nameof(ScanStatus));
+        RaisePropertyChanged(nameof(LastObservedBarcode));
+        RaisePropertyChanged(nameof(LastObservedAt));
+        RaisePropertyChanged(nameof(ScannerDiagnostic));
         RaisePropertyChanged(nameof(ScanTraceSummary));
         RaisePropertyChanged(nameof(Status));
         RaisePropertyChanged(nameof(DeploymentStatus));
