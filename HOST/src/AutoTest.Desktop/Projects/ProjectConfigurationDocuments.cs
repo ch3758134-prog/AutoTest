@@ -26,6 +26,9 @@ public sealed record WaveSettingsDocument(int SchemaVersion, string Name,
     public const int CurrentComparisonAlgorithmRevision = 2;
     public int ApprovedAlgorithmRevision { get; init; }
     public string? ReviewedCriteriaSha256 { get; init; }
+    public Guid? ApprovedReferenceAssetId { get; init; }
+    public int? ApprovedReferenceAssetRevision { get; init; }
+    public string? ApprovedReferenceAssetSha256 { get; init; }
 
     /// <summary>Freeze the exact signal, reference and ALL comparison criteria.
     /// A later edit cannot inherit approval from a previous safety judgement.</summary>
@@ -35,13 +38,18 @@ public sealed record WaveSettingsDocument(int SchemaVersion, string Name,
         {
             Algorithm = CurrentComparisonAlgorithmRevision,
             DbcAssetId, DbcAssetRevision, DbcAssetFingerprint, Bus, CanId,
-            SignalName, Unit, ReferenceName, Comparison
+            SignalName, Unit, ReferenceName,
+            ApprovedReferenceAssetId, ApprovedReferenceAssetRevision,
+            ApprovedReferenceAssetSha256, Comparison
         });
         return Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
     }
 
     public bool IsComparisonReviewCurrent =>
         ApprovedAlgorithmRevision == CurrentComparisonAlgorithmRevision &&
+        ApprovedReferenceAssetId is { } referenceId && referenceId != Guid.Empty &&
+        ApprovedReferenceAssetRevision is > 0 &&
+        ApprovedReferenceAssetSha256 is { Length: 64 } &&
         ReviewedCriteriaSha256 is { Length: 64 } &&
         string.Equals(ReviewedCriteriaSha256, ComputeReviewFingerprint(),
             StringComparison.OrdinalIgnoreCase);
@@ -74,6 +82,18 @@ public sealed record WaveSettingsDocument(int SchemaVersion, string Name,
             (fingerprint.Length != 64 || !fingerprint.All(Uri.IsHexDigit)))
             throw new ProjectDataException("WAVE_APPROVAL",
                 "波形判据的算法批准版本或指纹无效。");
+        if (ApprovedReferenceAssetId is not null ||
+            ApprovedReferenceAssetRevision is not null ||
+            ApprovedReferenceAssetSha256 is not null)
+        {
+            if (ApprovedReferenceAssetId is not { } approvedId ||
+                approvedId == Guid.Empty ||
+                ApprovedReferenceAssetRevision is not > 0 ||
+                ApprovedReferenceAssetSha256 is not { Length: 64 } approvedSha ||
+                !approvedSha.All(Uri.IsHexDigit))
+                throw new ProjectDataException("WAVE_REFERENCE_APPROVAL",
+                    "已复核参考必须同时冻结资产 ID、修订号及 SHA256。");
+        }
         if (DbcAssetId.HasValue && !ProjectConfigurationCodec.ValidPin(DbcAssetRevision, DbcAssetFingerprint))
             throw new ProjectDataException("WAVE_DBC_PIN", "已选择的 DBC 缺少资源修订与哈希。");
         if (EvidenceAssetId.HasValue &&
