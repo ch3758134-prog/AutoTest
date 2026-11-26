@@ -161,9 +161,7 @@ public sealed partial class AutomaticTestHomeViewModel
             // and the existing explicit hardware confirmation.
             if (!_isProductionWorkspace())
             {
-                var model = plan.Project.Definition.EcuModelCode;
-                if (!_engineeringVerificationArmed ||
-                    string.IsNullOrWhiteSpace(model))
+                if (!_engineeringVerificationArmed)
                 {
                     Reject("扫码原文已显示；请进入工程实测并打开有效 ECU 工程。");
                     return;
@@ -174,7 +172,7 @@ public sealed partial class AutomaticTestHomeViewModel
                 _ = StationFixtureExecutionPlan.From(stationDraft.Fixture);
                 var fixtureSha = FingerprintEngineeringFixture(stationDraft.Fixture);
                 var decision = await ProductionPreparationService.PrepareAsync(
-                    plan.Project, model, raw, requireProductionDeployment: false);
+                    plan.Project, "", raw, requireProductionDeployment: false);
                 if (!decision.ConfigurationReady)
                 {
                     Reject("本次工程实测配置未就绪：" + decision.Explanation);
@@ -204,21 +202,21 @@ public sealed partial class AutomaticTestHomeViewModel
                     StringComparer.Ordinal)
                 {
                     ["DutSerial"] = raw,
-                    ["ModelCode"] = model,
-                    ["ModelBasis"] = "OPENED_ENGINEERING_PROJECT"
+                    ["ProjectId"] = plan.Project.Definition.Id.Value.ToString("D"),
+                    ["ProjectBasis"] = "OPENED_ENGINEERING_PROJECT"
                 };
                 _acceptedStationEpoch = initialStationEpoch;
                 _prepared = decision.Preparation! with
                 {
                     AcceptedScannerObservation = new FrozenScanIdentity(
                         Guid.NewGuid(), scannedAt, scannerPort, raw,
-                        ruleJson, ruleSha, model, raw, "",
+                        ruleJson, ruleSha, "", raw, "",
                         _scanMappedFields.ToDictionary(x => x.Key, x => x.Value,
                             StringComparer.Ordinal))
                     {
                         BarcodeRuleId = "ENGINEERING_RAW_SERIAL",
                         BarcodeRuleRevision = 1,
-                        ModelDecisionBasis = "OPENED_ENGINEERING_PROJECT",
+                        ProjectDecisionBasis = "OPENED_ENGINEERING_PROJECT",
                         StationSlotId = stationDraft.Fixture.StationSlotId,
                         EngineeringFixtureSha256 = fixtureSha
                     }
@@ -300,7 +298,7 @@ public sealed partial class AutomaticTestHomeViewModel
             var ruleSha = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
                 System.Text.Encoding.UTF8.GetBytes(ruleJson)));
             var decision = await ProductionPreparationService.PrepareAsync(
-                plan.Project, identity.Model, identity.Serial,
+                plan.Project, identity.ProductKey, identity.Serial,
                 requireProductionDeployment: _isProductionWorkspace());
             if (!decision.ConfigurationReady)
             {
@@ -325,10 +323,10 @@ public sealed partial class AutomaticTestHomeViewModel
             _scanMappedFields = new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["DutSerial"] = identity.Serial,
-                ["ModelCode"] = identity.Model,
+                ["ProductKey"] = identity.ProductKey,
                 ["HardwareCode"] = identity.Hardware,
                 ["BarcodeRule"] = identity.RuleId,
-                ["ModelBasis"] = identity.ModelBasis
+                ["ProjectBasis"] = identity.ProjectBasis
             };
             // Freeze the published station rule and its exact SHA.
             // This is not yet a formal RECORD fact; no RunId exists until
@@ -339,7 +337,7 @@ public sealed partial class AutomaticTestHomeViewModel
                 AcceptedScannerObservation = new FrozenScanIdentity(
                     Guid.NewGuid(), scannedAt, scannerPort, raw,
                     ruleJson, ruleSha,
-                    identity.Model, identity.Serial, identity.Hardware,
+                    identity.ProductKey, identity.Serial, identity.Hardware,
                     _scanMappedFields.ToDictionary(x => x.Key, x => x.Value,
                         StringComparer.Ordinal))
                 {
@@ -347,7 +345,7 @@ public sealed partial class AutomaticTestHomeViewModel
                     PublicationId = release.PublicationId,
                     BarcodeRuleId = identity.RuleId,
                     BarcodeRuleRevision = identity.RuleRevision,
-                    ModelDecisionBasis = identity.ModelBasis,
+                    ProjectDecisionBasis = identity.ProjectBasis,
                     StationSlotId = release.Configuration.Fixture.StationSlotId,
                     ScannerPnpInstanceId = scannerPnp
                 }

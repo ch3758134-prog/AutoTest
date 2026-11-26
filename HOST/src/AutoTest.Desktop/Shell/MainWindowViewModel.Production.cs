@@ -180,8 +180,7 @@ public sealed partial class MainWindowViewModel
         var deployed = await StationDeploymentStore.DeployAsync(project);
         _automaticTestHome.OnPublishedConfigurationChanged();
         await _automaticTestHome.RestoreAsync();
-        return "工位已切换到已发布型号：" + pin.ModelCode +
-            (pin.HardwareCode.Length == 0 ? "" : " / " + pin.HardwareCode) +
+        return "工位已切换到工程：" + project.Definition.Name +
             " · TEST " + deployed.Test.Cases.Count + " 个；" +
             (_hardware.IsConnected ? "ECU CAN 已真实回读确认 " + pin.EcuCanKbps + " kbit/s。" :
                 "主控当前未连接，后续连接必须重新应用并回读 CAN 码率。");
@@ -222,9 +221,6 @@ public sealed partial class MainWindowViewModel
             var draft = await NativeFlashProfileStore.LoadAsync(project.RootDirectory)
                 ?? throw new InvalidDataException("该 ECU 工程尚未保存原生烧录工艺。");
             var job = NativeFlashJobBuilder.Freeze(draft.Profile, project.RootDirectory);
-            if (!string.Equals(draft.Profile.EcuModelCode,
-                    project.Definition.EcuModelCode, StringComparison.Ordinal))
-                throw new InvalidDataException("原生烧录工艺与当前 ECU 工程型号不一致。");
             // The unified Apply button is already an explicit release decision.
             // Publishing changes files only; physical clamp/FLASH still requires
             // a separate real START and safety interlocks.
@@ -232,7 +228,7 @@ public sealed partial class MainWindowViewModel
                 global::System.Windows.Application.Current?.MainWindow,
                 "即将核对并冻结当前 ECU 工程作为本工位正式生产配置。\n" +
                 "无需创建第二套测试方案，正式检测仍执行工程内全部有序 TEST。\n\n" +
-                "型号：" + project.Definition.EcuModelCode + "\n" +
+                "工程 ID：" + project.Definition.Id.Value + "\n" +
                 "工程：" + project.Definition.Name + "\n" +
                 "FLASH 固件 SHA256：" + job.FirmwareSha256 + "\n" +
                 "原生工艺 SHA256：" + draft.ProfileSha256 + "\n\n" +
@@ -253,7 +249,7 @@ public sealed partial class MainWindowViewModel
                 project.RootDirectory, draft.ProfileSha256);
             var deployed = await StationDeploymentStore.DeployAsync(project);
             StatusMessage = "当前 ECU 工程已确认用于正式检测：" +
-                deployed.Project.Definition.EcuModelCode +
+                deployed.Project.Definition.Name +
                 "；下一步仅在真实扫码、实体 START 与生产 RECORD 均通过后允许启动。";
             await RefreshEngineeringSetupAsync();
             return true;

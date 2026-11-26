@@ -80,9 +80,9 @@ public static class StationDeploymentStore
             var native = await NativeFlashPublicationStore.LoadPublishedAsync(
                 fresh.RootDirectory, ct).ConfigureAwait(false)
                 ?? throw new InvalidDataException("该工程缺少已发布的原生前置烧录工艺。");
-            if (!string.Equals(native.Profile.EcuModelCode,
-                fresh.Definition.EcuModelCode, StringComparison.Ordinal))
-                throw new InvalidDataException("烧录工艺型号与 ECU 工程型号不一致。");
+            // FLASH eligibility is constrained by its verified method,
+            // immutable job fingerprint and actual safety approval, not a
+            // free-form project model label.
             var job = NativeFlashPublicationStore.FreezePublished(
                 fresh.RootDirectory, native);
             var station = await UniqueProcedureAsync(fresh, ct).ConfigureAwait(false);
@@ -175,11 +175,9 @@ public static class StationDeploymentStore
         var flash = await NativeFlashPublicationStore.LoadPublishedAsync(
             current.RootDirectory, ct).ConfigureAwait(false)
             ?? throw new InvalidDataException("工位部署引用的原生烧录发布已不存在。");
-        if (!string.Equals(flash.Profile.EcuModelCode,
-                current.Definition.EcuModelCode, StringComparison.Ordinal) ||
-            !string.Equals(flash.ProfileSha256, pin.NativeProfileSha256,
+        if (!string.Equals(flash.ProfileSha256, pin.NativeProfileSha256,
                 StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException("烧录工艺已被替换，必须重新部署。");
+            throw new InvalidDataException("烧录工艺已变更，必须重新部署。");
         var job = NativeFlashPublicationStore.FreezePublished(
             current.RootDirectory, flash);
         if (!string.Equals(job.Fingerprint, pin.FlashJobFingerprint,

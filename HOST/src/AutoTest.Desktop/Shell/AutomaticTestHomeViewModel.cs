@@ -185,9 +185,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
                 string.Equals(plan.Project.ManifestPath, prepared.ManifestPath,
                     StringComparison.OrdinalIgnoreCase) &&
                 string.Equals(plan.Project.ManifestSha256, prepared.ManifestSha256,
-                    StringComparison.OrdinalIgnoreCase) &&
-                string.Equals(plan.Project.Definition.EcuModelCode, prepared.ModelCode,
-                    StringComparison.Ordinal);
+                    StringComparison.OrdinalIgnoreCase);
             return ProductionAdmissionReview.Evaluate(new ProductionAdmissionFacts(
                 plan is not null,
                 plan?.ResourceReady == true,
@@ -290,10 +288,6 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
                 : string.IsNullOrWhiteSpace(_draftIssue)
                     ? "尚未打开检测工程。进入开发与调试创建或打开 ECU 工程。"
                     : _draftIssue;
-    public string ModelCode =>
-        (_plans.Current?.Project.Definition.EcuModelCode ??
-         (_isProductionWorkspace() ? null : _draftPreview?.Project.Definition.EcuModelCode))
-        is { Length: > 0 } code ? code : "未确认";
     public string ProjectName => _plans.Current?.Project.Definition.Name ??
         (_isProductionWorkspace() ? "正式检测工程未确认" :
             _draftPreview?.Project.Definition.Name ?? "未打开工程");
@@ -578,7 +572,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         RaisePropertyChanged(nameof(HasPlan));
         RaisePropertyChanged(nameof(NeedsSetup));
         RaisePropertyChanged(nameof(SetupIssue));
-        RaisePropertyChanged(nameof(ModelCode));
+        RaisePropertyChanged(nameof(ProjectName));
         RaisePropertyChanged(nameof(DutSerial));
         RaisePropertyChanged(nameof(ScanStatus));
         RaisePropertyChanged(nameof(LastObservedBarcode));

@@ -78,7 +78,7 @@
      <TextBlock Text="{Binding DutSerial,StringFormat='识别编号：{0}'}"
       Foreground="#52677D" FontSize="12" TextTrimming="CharacterEllipsis"
       ToolTip="{Binding DutSerial}"/>
-     <TextBlock Text="{Binding ModelCode,StringFormat='型号：{0}'}"
+     <TextBlock Text="{Binding ProjectName,StringFormat='工程：{0}'}"
       Foreground="#52677D" FontSize="12" TextTrimming="CharacterEllipsis"/>
     </StackPanel>
    </Grid>

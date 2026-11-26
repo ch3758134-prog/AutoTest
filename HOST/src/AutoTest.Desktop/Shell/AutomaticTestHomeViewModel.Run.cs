@@ -666,7 +666,6 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
                         scan.EngineeringFixtureSha256, StringComparison.OrdinalIgnoreCase) ||
                     scan.BarcodeRuleId != "ENGINEERING_RAW_SERIAL" ||
                     scan.RawBarcode != scan.DutSerial ||
-                    scan.ModelCode != plan.Project.Definition.EcuModelCode ||
                     frozen.ProjectId != plan.Project.Definition.Id.Value)
                     throw new InvalidDataException(
                         "工程扫码、型号或夹具配置已改变；禁止复用旧物理许可。");
@@ -683,7 +682,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
                     currentPublication, scan.RawBarcode);
                 if (!rechecked.Accepted || rechecked.RuleId != scan.BarcodeRuleId ||
                     rechecked.RuleRevision != scan.BarcodeRuleRevision ||
-                    rechecked.Model != scan.ModelCode || rechecked.Serial != scan.DutSerial ||
+                    rechecked.ProductKey != scan.ProductKey || rechecked.Serial != scan.DutSerial ||
                     rechecked.Hardware != (scan.HardwareCode ?? "") ||
                     rechecked.Project!.ProjectId != frozen.ProjectId)
                     throw new InvalidDataException("扫码身份的规则、型号或已发布工程已改变。");
@@ -710,7 +709,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
             // may deliberately use the saved draft rather than a published
             // production release. Production preflight defaults to published.
             var validated = await ProductionPreparationService.PrepareAsync(
-                plan.Project, scan.ModelCode, scan.DutSerial, ct,
+                plan.Project, scan.ProductKey, scan.DutSerial, ct,
                 requireProductionDeployment: false);
             if (!validated.ConfigurationReady ||
                 validated.Preparation?.PreparationFingerprint != frozen.PreparationFingerprint)
