@@ -36,17 +36,17 @@ public partial class ProductionPreparationWindow
 
         PreparationTabs.Items.Add(new TabItem
         {
-            Header = "1  交付准备",
+            Header = "工位概览",
             Content = CreateGuidedOverview()
         });
-        original[3].Header = "2  扫码与工位设备";
+        original[3].Header = "扫码枪与硬件";
         PreparationTabs.Items.Add(original[3]);
         PreparationTabs.Items.Add(new TabItem
         {
-            Header = "3  高级识别配置",
+            Header = "高级编号规则",
             Content = advanced
         });
-        original[4].Header = "4  发布详情与批量核验";
+        original[4].Header = "核验与版本详情";
         PreparationTabs.Items.Add(original[4]);
         PreparationTabs.SelectedIndex = 0;
     }
