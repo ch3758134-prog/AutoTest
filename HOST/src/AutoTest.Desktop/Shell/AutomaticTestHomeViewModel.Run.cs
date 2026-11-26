@@ -73,6 +73,7 @@ public sealed partial class AutomaticTestHomeViewModel
             RaisePropertyChanged(nameof(ProductionGuidance));
             RaisePropertyChanged(nameof(ProductionDisplayStage));
             RefreshOperatorCommands();
+            RaisePropertyChanged(nameof(EngineeringNextAction));
         }
     }
     public string OperatorRunState
@@ -138,10 +139,10 @@ public sealed partial class AutomaticTestHomeViewModel
         if (_isProductionWorkspace() || IsOperatorRunning) return;
         _engineeringVerificationArmed = true;
         _quickEngineeringStartOnScan = startWithExplicitConsentOnScan;
-        InvalidateScan("工程整组验证已准备：请用工位串口扫码枪扫描本台 ECU。");
+        InvalidateScan("请使用扫码枪扫描本台 ECU 编号。");
         StartRequestStatus = startWithExplicitConsentOnScan
-            ? "扫码资源核对成功后将显示一次真实夹具/烧录确认；只有明确同意才会执行。"
-            : "工程整组验证待扫码；扫码资源核对完成后明确启动。";
+            ? "扫码核对成功后会显示夹具与烧录确认。"
+            : "请扫码。确认编号后即可开始工程测试。";
         RefreshOperatorCommands();
     }
 
@@ -187,6 +188,7 @@ public sealed partial class AutomaticTestHomeViewModel
         StartOperatorVerificationCommand?.RaiseCanExecuteChanged();
         StopOperatorVerificationCommand?.RaiseCanExecuteChanged();
         RaisePropertyChanged(nameof(CanStartOperatorVerification));
+        RaisePropertyChanged(nameof(EngineeringNextAction));
     }
 
     private void OnOperatorStepBegan(StepId id, string name, TestPhase phase) =>
@@ -478,7 +480,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
         if (!CanStartOperatorVerification || _prepared?.AcceptedScannerObservation is not { } scan ||
             _plans.Current is not { } plan || _engineering.Current is not { } opened)
         {
-            StartRequestStatus = "未满足真实整组实测准备条件；请检查工程、主控、CAN 码率及扫码身份。";
+            StartRequestStatus = "暂不能开始测试，请检查工程、设备连接和 ECU 编号。";
             return;
         }
         // Clamp actuation is defined by the released STATION, never by a
@@ -503,11 +505,11 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
             else
             {
                 var preparedStation = await StationProductionConfigurationStore.LoadPublishedAsync()
-                    ?? throw new InvalidDataException("工位配置尚未发布。");
+                    ?? throw new InvalidDataException("工位配置尚未启用。");
                 if (preparedStation.PublicationId != scan.PublicationId ||
                     !string.Equals(preparedStation.ConfigurationSha256,
                         scan.PublishedConfigurationSha256, StringComparison.OrdinalIgnoreCase))
-                    throw new InvalidDataException("扫码后工位发布版本已改变，请重新扫码。");
+                    throw new InvalidDataException("扫码后工位设置发生变化，请重新扫码。");
                 fixturePlan = StationFixtureExecutionPlan.From(preparedStation.Configuration.Fixture);
             }
         }
@@ -517,22 +519,21 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
             return;
         }
         var fixtureDescription = fixturePlan.Press.Count == 0
-            ? "自动夹具未启用：本次不会自动压紧或释放。" +
-              "如工位需要装夹，请先在生产准备中启用并重新发布工位配置。"
-            : "本次将自动压紧：" + string.Join(" → ", fixturePlan.Press
-                .Select(x => "夹具" + x.Clamp)) +
-              "；工程测试完成、真实记录写入后按反序释放。" +
-              "本机只能读取 MCU GPIO，不能证明气缸实际到位。";
+            ? "本次不自动控制夹具，请确认 ECU 已正确固定。"
+            : "自动压紧：" + string.Join(" → ", fixturePlan.Press
+                .Select(x => "夹具 " + x.Clamp)) +
+              "；测试结束后将请求释放。" +
+              "当前无法仅凭主控反馈判定机械实际到位。";
+        // One operation-specific confirmation. The physical interlocks,
+        // project identity checks and execution authority are unchanged.
         if (MessageBox.Show(
-                "本次真实整组实测将执行工程工位动作、擦写 ECU 固件，并依次运行全部 " +
-                plan.Cases.Count + " 个测试用例。\n\n" +
-                "ECU 编号：" + scan.DutSerial + "\n固件 SHA256：" +
-                _prepared.FirmwareSha256[..Math.Min(16, _prepared.FirmwareSha256.Length)] +
-                "…\n夹具：" + fixtureDescription +
-                "\n\n执行前请现场确认夹具区域无人员、设备接线及动作顺序已验证。" +
-                "\n当前主控尚无正式实体 START 输入，本功能是软件确认的工程实测，" +
-                "不会写入正式生产 PASS 或生产统计。是否明确开始真实物理操作？",
-                "确认真实工位与 ECU 烧录操作", MessageBoxButton.YesNo,
+                "ECU 编号：" + scan.DutSerial + "\n" +
+                "测试用例：" + plan.Cases.Count + " 项\n" +
+                "夹具：" + fixtureDescription + "\n\n" +
+                "即将擦写 ECU 固件并执行整套测试。" +
+                "请确认接线正确、夹具运动范围内无人，" +
+                "且已现场核对机械状态。\n\n是否开始？",
+                "开始工程测试", MessageBoxButton.YesNo,
                 MessageBoxImage.Warning) != MessageBoxResult.Yes)
             return;
 
@@ -546,7 +547,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
                 StringComparison.OrdinalIgnoreCase))
         {
             StartRequestStatus = "确认过程中扫码身份、工程或设备发生变化；" +
-                "已取消自动夹具、烧录和 TEST，请重新扫码预检。";
+                "操作已取消，请重新扫码。";
             return;
         }
 
@@ -563,7 +564,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
                         FingerprintEngineeringFixture(currentDraft.Fixture),
                         scan.EngineeringFixtureSha256, StringComparison.OrdinalIgnoreCase))
                 {
-                    StartRequestStatus = "确认期间夹具硬件设置已变更，请重新扫码后确认。";
+                    StartRequestStatus = "夹具设置已改变，请重新扫码后确认。";
                     return;
                 }
             }
@@ -575,14 +576,14 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
                     !string.Equals(latestStation.ConfigurationSha256,
                         scan.PublishedConfigurationSha256, StringComparison.OrdinalIgnoreCase))
                 {
-                    StartRequestStatus = "确认期间工位发布版本已改变，请重新扫码。";
+                    StartRequestStatus = "确认期间工位设置已改变，请重新扫码。";
                     return;
                 }
             }
         }
         catch (Exception error)
         {
-            StartRequestStatus = "无法再次确认工位发布版本，已取消真实物理操作：" +
+            StartRequestStatus = "工位设置无法核对，已取消本次操作：" +
                 error.Message;
             return;
         }
@@ -780,7 +781,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
                     frozen.PreparationFingerprint, fixturePlan.AllowedOutputMask,
                     hasStationIgn, ct);
                 fixtureScopeGranted = true;
-                OperatorRunState = "工位自动装夹 · USB 0x18 / GPIO 0x19";
+                OperatorRunState = "正在压紧夹具";
                 foreach (var action in fixturePlan.Press)
                 {
                     ct.ThrowIfCancellationRequested();
@@ -808,13 +809,13 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
                 fixturePressComplete = true;
             }
             else AddOperatorEvent("工位未选择夹具输出，本次不执行自动装夹。");
-            OperatorRunState = "准备工位 · 执行工程已保存的 IGN / 等待动作";
+            OperatorRunState = "正在准备测试环境";
             await ApplyStationActionsAsync(
                 frozen.Fixture?.BeforeStart ?? [], _hardware, ct, AddOperatorEvent,
                 fixtureScopeGranted ? frozen.PreparationFingerprint : null);
             RequireFrozenCanRate();
 
-            OperatorRunState = "前置烧录 · 正在擦写 ECU";
+            OperatorRunState = "正在烧录 ECU";
             flashState = "烧录已启动 · 后续若中断 ECU 状态可能未知";
             OperatorFlashState = flashState;
             Snapshot();
@@ -848,7 +849,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
                 activeCaseIndex = -1;
                 _operatorActiveCaseIndex = -1;
                 OperatorCurrentCase = "项目准备 · " + setup.Entry.DisplayName;
-                OperatorCurrentStep = "正在建立整车 CAN/KEY/IGN 环境";
+                OperatorCurrentStep = "正在准备测试环境";
                 OperatorRunState = OperatorCurrentCase;
                 AddOperatorEvent("项目准备开始 · 使用固定 TEST 资产 r" +
                     setup.Asset.Revision);
@@ -876,7 +877,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
                 OperatorCurrentCase = (i + 1) + "/" + programs.Cases.Count +
                     " · " + item.Entry.DisplayName;
                 OperatorCurrentStep = "正在准备...";
-                OperatorRunState = "真实测试 · " + OperatorCurrentCase;
+                OperatorRunState = "正在测试 · " + OperatorCurrentCase;
                 ChangeCaseState(i, "执行中");
                 AddOperatorEvent("用例开始 · " + item.Entry.DisplayName);
                 var prepared = _operatorEngine.Prepare(item.Program);
@@ -973,7 +974,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
                 activeCaseIndex = -1;
                 _operatorActiveCaseIndex = -1;
                 OperatorCurrentCase = "项目收尾 · " + teardown.Entry.DisplayName;
-                OperatorCurrentStep = "执行 TEST 项目明确编写的收尾步骤";
+                OperatorCurrentStep = "正在执行测试收尾步骤";
                 OperatorRunState = OperatorCurrentCase;
                 AddOperatorEvent("项目收尾开始（不是工装安全释放）");
                 var stage = await projectScope.ExecuteCaseAsync(teardown.Program, ct);
@@ -1107,7 +1108,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
                 jsonSaved = true;
                 var htmlReport = SaveOperatorHtmlReceipt(opened.RootDirectory, CurrentReceipt());
                 OperatorHtmlReportPath = htmlReport;
-                OperatorRecordState = "真实工程记录和可读报告已保存（非正式生产结案）";
+                OperatorRecordState = "工程测试记录与报告已保存";
                 OperatorRunEvidence = "工程验证报告：" + htmlReport +
                     "\n真实原始记录：" +
                     Path.Combine(opened.RootDirectory, "test-records",
@@ -1117,7 +1118,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
             {
                 if (jsonSaved)
                 {
-                    OperatorRecordState = "原始真实记录已保存，但 HTML 汇总生成失败：" +
+                    OperatorRecordState = "测试记录已保存，但报告生成失败：" +
                         error.Message;
                     OperatorRunEvidence = "原始 JSON：" +
                         Path.Combine(opened.RootDirectory, "test-records",
@@ -1127,7 +1128,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
                 else
                 {
                     OperatorRunState = "记录保存失败；结果不可放行";
-                    OperatorRecordState = "真实记录保存失败：" + error.Message;
+                    OperatorRecordState = "测试记录保存失败：" + error.Message;
                     AddOperatorEvent("本次真实运行汇总未能归档：" + error.Message);
                 }
             }
