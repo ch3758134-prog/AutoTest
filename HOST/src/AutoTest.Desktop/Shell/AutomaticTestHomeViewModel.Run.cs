@@ -287,7 +287,7 @@ public sealed partial class AutomaticTestHomeViewModel
     private static async Task ApplyStationActionsAsync(
         IReadOnlyList<InspectionStationAction> actions,
         HardwareConnectionService hardware, CancellationToken ct,
-        Action<string>? observe = null)
+        Action<string>? observe = null, string? stationFingerprint = null)
     {
         foreach (var action in actions)
         {
@@ -308,10 +308,14 @@ public sealed partial class AutomaticTestHomeViewModel
                     await SetAndCheckClampRequestAsync(hardware, 2, false, ct);
                     break;
                 case "IgnOn":
-                    await SetAndCheckIgnRequestAsync(hardware, true, ct);
+                    if (stationFingerprint is not null)
+                        await hardware.SendStationIgnAsync(true, stationFingerprint, ct);
+                    else await SetAndCheckIgnRequestAsync(hardware, true, ct);
                     break;
                 case "IgnOff":
-                    await SetAndCheckIgnRequestAsync(hardware, false, ct);
+                    if (stationFingerprint is not null)
+                        await hardware.SendStationIgnAsync(false, stationFingerprint, ct);
+                    else await SetAndCheckIgnRequestAsync(hardware, false, ct);
                     break;
                 default:
                     throw new InvalidDataException("未识别的工位动作：" + action.Kind);
@@ -596,11 +600,15 @@ public sealed partial class AutomaticTestHomeViewModel
                     "请删除重复装夹/释放步骤，由已发布工位夹具配置统一执行。");
 
             stationOperationsMayHaveStarted = true;
-            if (fixturePlan.Press.Count != 0)
+            var hasStationIgn = (frozen.Fixture?.BeforeStart ?? [])
+                .Concat(frozen.Fixture?.AfterFinish ?? [])
+                .Any(x => x.Kind is "IgnOn" or "IgnOff");
+            if (fixturePlan.Press.Count != 0 || hasStationIgn)
             {
                 RequireFrozenCanRate();
                 await _hardware.AuthorizeStationFixtureRunAsync(
-                    frozen.PreparationFingerprint, fixturePlan.AllowedOutputMask, ct);
+                    frozen.PreparationFingerprint, fixturePlan.AllowedOutputMask,
+                    hasStationIgn, ct);
                 fixtureScopeGranted = true;
                 OperatorRunState = "工位自动装夹 · USB 0x18 / GPIO 0x19";
                 foreach (var action in fixturePlan.Press)
@@ -621,7 +629,8 @@ public sealed partial class AutomaticTestHomeViewModel
             else AddOperatorEvent("工位未选择夹具输出，本次不执行自动装夹。");
             OperatorRunState = "准备工位 · 执行工程已保存的 IGN / 等待动作";
             await ApplyStationActionsAsync(
-                frozen.Fixture?.BeforeStart ?? [], _hardware, ct, AddOperatorEvent);
+                frozen.Fixture?.BeforeStart ?? [], _hardware, ct, AddOperatorEvent,
+                fixtureScopeGranted ? frozen.PreparationFingerprint : null);
             RequireFrozenCanRate();
 
             OperatorRunState = "前置烧录 · 正在擦写 ECU";
@@ -838,7 +847,8 @@ public sealed partial class AutomaticTestHomeViewModel
                     using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(12));
                     await ApplyStationActionsAsync(
                         frozen.Fixture?.AfterFinish ?? [], _hardware, cleanup.Token,
-                    AddOperatorEvent);
+                        AddOperatorEvent,
+                        fixtureScopeGranted ? frozen.PreparationFingerprint : null);
                     AddOperatorEvent("工程配置的 IGN / 等待收尾已执行；现场状态仍需确认");
                     if (fixtureScopeGranted && fixturePressComplete &&
                         outcome.StartsWith("工程整组", StringComparison.Ordinal) &&
