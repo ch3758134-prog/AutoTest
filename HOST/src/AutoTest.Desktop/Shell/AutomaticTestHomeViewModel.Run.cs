@@ -876,7 +876,7 @@ public sealed partial class AutomaticTestHomeViewModel
                                 bits.ToString("X2") + "；实际机械释放仍未测量。");
                             Snapshot();
                             if (fixturePlan.SettleDelayMs > 0)
-                                await Task.Delay(fixturePlan.SettleDelayMs, movement.Token);
+                                await Task.Delay(fixturePlan.SettleDelayMs); // GPIO timeout does not bound pneumatic settling
                         }
                         OperatorRunState = outcome + " · 夹具释放请求完成";
                     }
