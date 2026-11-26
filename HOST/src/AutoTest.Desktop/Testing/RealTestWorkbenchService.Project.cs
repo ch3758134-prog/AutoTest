@@ -219,21 +219,25 @@ public sealed partial class RealTestWorkbenchService
                 // pinned project, never a second persisted production recipe.
                 // Unselected authoring drafts cannot expand the USB grant.
                 var cursor = 0;
+                // Project setup/teardown are executable TEST invocations too.
+                // A selected engineering subset must be allowed to run those
+                // pinned environment stages without creating another recipe.
+                var available = actual.OrderedExecutions();
                 foreach (var pin in _pinnedCases)
                 {
-                    while (cursor < actual.Cases.Count)
+                    while (cursor < available.Count)
                     {
-                        var current = actual.Cases[cursor++].Program;
+                        var current = available[cursor++].Program;
                         if (current.Id == pin.Id &&
                             string.Equals(_owner.Prepare(current).Fingerprint,
                                 pin.Sha, StringComparison.OrdinalIgnoreCase))
                             break;
                     }
-                    if (cursor == 0 || cursor > actual.Cases.Count ||
-                        actual.Cases[cursor - 1].Program.Id != pin.Id ||
-                        !string.Equals(_owner.Prepare(actual.Cases[cursor - 1].Program).Fingerprint,
+                    if (cursor == 0 || cursor > available.Count ||
+                        available[cursor - 1].Program.Id != pin.Id ||
+                        !string.Equals(_owner.Prepare(available[cursor - 1].Program).Fingerprint,
                             pin.Sha, StringComparison.OrdinalIgnoreCase))
-                        throw new IOException("开发勾选范围已不再属于当前工程冻结的有序 TEST 树。");
+                        throw new IOException("开发勾选范围已不再属于当前工程冻结的有序 TEST 树（含项目准备和收尾）。");
                 }
                 // Run-specific mappings were validated before authorization.
                 foreach (var map in TestRunStepScope.RequiredMappings(doc))
