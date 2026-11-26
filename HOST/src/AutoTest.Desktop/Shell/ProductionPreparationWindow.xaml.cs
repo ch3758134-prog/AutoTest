@@ -35,7 +35,6 @@ public partial class ProductionPreparationWindow : Window
     private StationProductionConfiguration _draft = StationProductionConfiguration.New();
     private bool _ready, _busy, _dirty, _allowClose;
     private long _editGeneration;
-    private string? _loadError;
 
     public ProductionPreparationWindow(ProjectWorkspaceService workspace,
         Func<bool> mayEdit, SerialScannerWorkbenchViewModel scanner,
@@ -215,11 +214,12 @@ public partial class ProductionPreparationWindow : Window
         }
         catch (Exception error) when (error is not OutOfMemoryException)
         {
-            _loadError = error.Message;
+            System.Diagnostics.Trace.TraceWarning(
+                "Station settings could not be loaded: " + error);
             ResetOldConfig.Visibility = Visibility.Visible;
             _ready = false;
-            Say("旧工位配置不能用于新版本：" + error.Message +
-                "。点击“重新建立工位配置”，不会自动猜测旧型号绑定。");
+            Say("本机工位设置无法读取。可以重新设置，原文件将先备份；" +
+                "当前已启用的检测配置不会被覆盖。");
         }
         await RefreshPublicationAsync();
     }
@@ -731,7 +731,7 @@ public partial class ProductionPreparationWindow : Window
             {
                 // A stale release must be fully republished after validation.
                 // Never call this a successful release or silently reuse it.
-                Say("旧工位版本需要重新核对：" + error.Message);
+                Say("当前已启用的工位设置需要重新核对：" + error.Message);
             }
 
             // The current project's native FLASH is published by the single
@@ -768,11 +768,11 @@ public partial class ProductionPreparationWindow : Window
                 try
                 {
                     await RestorePointersAsync(previous);
-                    Say("应用失败，旧版本已恢复：" + error.Message);
+                    Say("启用失败，原有工位配置已恢复：" + error.Message);
                 }
                 catch (Exception rollback) when (rollback is not OutOfMemoryException)
                 {
-                    Say("应用失败且旧版本未完全恢复！禁止正式生产：" +
+                    Say("工位配置未能安全恢复，当前不能进行正式检测：" +
                         error.Message + "；恢复异常：" + rollback.Message);
                 }
             }
@@ -833,25 +833,43 @@ public partial class ProductionPreparationWindow : Window
 
     private async void ResetOld_Click(object sender, RoutedEventArgs e)
     {
-        if (_mayEdit() == false) return;
-        if (MessageBox.Show(this,
-            "旧版型号配置与新 ProjectId 绑定不能自动对应。" +
-            "\n重新建立会覆盖旧草稿（不改变已应用生产版本）。是否继续？",
-            "确认重建工位草稿", MessageBoxButton.YesNo,
-            MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
+        if (_busy || !_mayEdit())
+        {
+            Say("工位正在使用中，无法修改设置。");
             return;
+        }
+        _busy = true;
+        ResetOldConfig.IsEnabled = false;
+        ApplyButton.IsEnabled = false;
+        SettingsBody.IsEnabled = false;
         try
         {
-            var fresh = StationProductionConfiguration.New();
-            await StationProductionConfigurationStore.SaveDraftAsync(fresh);
-            _draft = fresh;
-            ApplyToControls(fresh);
+            // Recover only from a failed read. The service preserves the
+            // original bytes as a verified backup and never alters the
+            // currently active production configuration.
+            if (_ready) return;
+            await StationProductionConfigurationStore.ResetUnreadableDraftAsync();
             ResetOldConfig.Visibility = Visibility.Collapsed;
-            _loadError = null;
-            Say("已建立新版工位草稿，请选择需要使用的工程。");
+            await LoadAsync();
+            if (_ready)
+                Say("工位设置已重新建立，原设置已备份。" +
+                    "请检查检测工程、扫码枪和夹具，然后按需启用。");
         }
         catch (Exception error) when (error is not OutOfMemoryException)
-        { Say("无法建立新版工位草稿：" + error.Message); }
+        {
+            System.Diagnostics.Trace.TraceError(
+                "Unable to recover unreadable station settings: " + error);
+            ResetOldConfig.Visibility = Visibility.Visible;
+            Say("无法重新设置工位。原有文件及当前已启用的配置未被主动覆盖；" +
+                "请检查本机文件访问权限，或查看诊断日志。");
+        }
+        finally
+        {
+            _busy = false;
+            ResetOldConfig.IsEnabled = true;
+            ApplyButton.IsEnabled = true;
+            SettingsBody.IsEnabled = true;
+        }
     }
 
     private async void Close_Click(object sender, RoutedEventArgs e)
