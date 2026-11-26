@@ -371,7 +371,7 @@ public sealed class ProductionProjectCatalog
             reader.GetInt32(3), reader.GetInt32(4));
     }
 
-    private static InstalledProductionPackage ReadPackage(SqliteDataReader reader) =>
+    private static InstalledProductionPackage ReadPackage(System.Data.Common.DbDataReader reader) =>
         new(Guid.Parse(reader.GetString(1)), reader.GetString(2),
             reader.GetInt32(3), reader.GetString(0), reader.GetString(4),
             DateTimeOffset.Parse(reader.GetString(5),
