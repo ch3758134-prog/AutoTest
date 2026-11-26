@@ -72,7 +72,7 @@ public sealed partial class MainWindowViewModel
         {
             _automaticTestHome.ArmEngineeringVerification();
             ShowEngineeringVerificationMonitor();
-            StatusMessage = "工程验证已准备：扫描本台真实 ECU 后，在监视窗口启动包含 FLASH 的整组实测。";
+            StatusMessage = "工程测试已打开，请扫描 ECU 编号并检查设备连接。";
         }, () => IsEngineerWorkspace && !_automaticTestHome.IsOperatorRunning);
         RunEngineeringFullRunCommand = _automaticTestHome.StartOperatorVerificationCommand;
         StopEngineeringFullRunCommand = _automaticTestHome.StopOperatorVerificationCommand;
@@ -295,14 +295,14 @@ public sealed partial class MainWindowViewModel
             _automaticTestHome.ArmEngineeringVerification(
                 startWithExplicitConsentOnScan: true);
             ShowEngineeringVerificationMonitor();
-            StatusMessage = "工程实测已准备：连接主控与扫码枪，扫描本台 ECU 编号。" +
-                "扫码和资源预检通过后自动弹出真实夹具/烧录授权确认；拒绝不会发送物理指令。";
+            StatusMessage = "工程测试已打开，请连接设备并扫描本台 ECU 编号。" +
+                "涉及烧录或夹具动作时，开始前会再次请求确认。";
         }
         catch (Exception error) when (error is IOException or InvalidDataException or
             UnauthorizedAccessException or InvalidOperationException or
             ArgumentException or ProjectDataException or FormatException)
         {
-            StatusMessage = "工程实测入口未就绪：" + error.Message;
+            StatusMessage = "无法打开工程测试：" + error.Message;
         }
     }
 

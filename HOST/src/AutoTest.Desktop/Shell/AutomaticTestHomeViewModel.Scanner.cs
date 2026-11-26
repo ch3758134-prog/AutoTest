@@ -151,7 +151,7 @@ public sealed partial class AutomaticTestHomeViewModel
         _acceptedStationEpoch = 0;
         _scanMappedFields = new Dictionary<string, string>(StringComparer.Ordinal);
         _dutSerial = "正在核对";
-        _scanStatus = "正在使用已发布编码形制和唯一工程清单核对身份。";
+        _scanStatus = "正在核对 ECU 编号与检测工程。";
         Notify();
         try
         {
@@ -163,7 +163,7 @@ public sealed partial class AutomaticTestHomeViewModel
             {
                 if (!_engineeringVerificationArmed)
                 {
-                    Reject("扫码原文已显示；请进入工程实测并打开有效 ECU 工程。");
+                    Reject("已收到扫码，请先打开检测工程。");
                     return;
                 }
                 var stationDraft =
@@ -223,7 +223,7 @@ public sealed partial class AutomaticTestHomeViewModel
                 };
                 _scanStatus = engineeringRepeated
                     ? "再次收到相同编号；不会计为新增 ECU。"
-                    : "编号已接收；当前工程 TEST/FLASH 已核验，无需发布生产扫码规则。";
+                    : "已收到 ECU 编号，可继续检查并开始工程测试。";
                 _status = StationReadiness;
                 Notify();
                 if (_quickEngineeringStartOnScan && CanStartOperatorVerification)
@@ -250,7 +250,7 @@ public sealed partial class AutomaticTestHomeViewModel
             if (_isProductionWorkspace() &&
                 (!_hardware.IsConnected || initialStationEpoch <= 0))
             {
-                Reject("主控 USB 尚未连接；本次扫码不能绑定真实工位会话，请连接主控后重新扫描。");
+                Reject("主控未连接，请连接后重新扫码。");
                 return;
             }
             // One published station identity model. Legacy scanner recipes and
@@ -290,7 +290,7 @@ public sealed partial class AutomaticTestHomeViewModel
                 !string.Equals(identity.Project.ManifestSha256, plan.Project.ManifestSha256,
                     StringComparison.OrdinalIgnoreCase))
             {
-                Reject("此编号匹配另一份已发布 ECU 工程；须在工位空闲时切换，不能使用当前 TEST/FLASH。");
+                Reject("此编号对应另一份检测工程，请先切换到正确工程。");
                 return;
             }
             var rule = release.Configuration.Rules.Single(x => x.RuleId == identity.RuleId);
@@ -313,7 +313,7 @@ public sealed partial class AutomaticTestHomeViewModel
             if (_hardware.CurrentStationEpoch != initialStationEpoch ||
                 _hardware.RequestedEcuCanBitrateKbps != initialCanTarget)
             {
-                Reject("扫码预检期间主控会话或 ECU CAN 目标码率改变；请重新扫码。");
+                Reject("扫码期间设备连接或 CAN 波特率改变，请重新扫码。");
                 return;
             }
             var repeated = string.Equals(_lastIdentity, identity.Serial,
@@ -351,9 +351,9 @@ public sealed partial class AutomaticTestHomeViewModel
                 }
             };
             _scanStatus = repeated
-                ? "同一 ECU 编号再次扫码：仅更新真实观察，不计新增 DUT，也不触发复检。"
-                : "已接受真实扫码并冻结本次 TEST/固件/算法资源；" +
-                  "尚未确认夹具、START 或生产执行授权。";
+                ? "再次收到相同 ECU 编号；不会重复登记。"
+                : "编号及工程资源已确认；" +
+                  "等待工位启动条件。";
             _status = "身份与工程资源已核对 · 工位执行待验";
             Notify();
 
