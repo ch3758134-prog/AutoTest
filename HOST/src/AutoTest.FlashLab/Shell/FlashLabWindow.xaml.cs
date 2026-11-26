@@ -590,7 +590,7 @@ public partial class FlashLabWindow : Window
         try
         {
             var root = NativeStorageRoot;
-            var window = new NativeFlashProfileWindow(root, NativeProjectModelCode) { Owner = this };
+            var window = new NativeFlashProfileWindow(root) { Owner = this };
             window.ShowDialog();
             var current = await NativeFlashProfileStore.LoadAsync(root);
             if (current is null)
