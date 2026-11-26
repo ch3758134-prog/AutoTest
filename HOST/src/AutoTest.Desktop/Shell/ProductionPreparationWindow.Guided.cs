@@ -129,7 +129,7 @@ public partial class ProductionPreparationWindow
         _guidedScan = GuidedText("尚未收到扫码；扫码成功后直接显示原文。");
         deviceBody.Children.Add(_guidedScan);
         var connect = GuidedButton("连接扫码枪");
-        connect.Click += (_, _) => PreparationTabs.SelectedIndex = 1;
+        connect.Click += (_, _) => OpenStationDetail(0);
         deviceBody.Children.Add(connect);
         // Detailed physical interlocks live under hardware settings; the
         // first-use page focuses on the actual task, not protocol prose.
@@ -165,7 +165,7 @@ public partial class ProductionPreparationWindow
         _guidedFixturePlan = GuidedText("尚未加载工位夹具设置。");
         fixtureBody.Children.Add(_guidedFixturePlan);
         var settings = GuidedButton("夹具硬件设置");
-        settings.Click += (_, _) => PreparationTabs.SelectedIndex = 1;
+        settings.Click += (_, _) => OpenStationDetail(0);
         fixtureBody.Children.Add(settings);
         fixtureBody.Children.Add(GuidedText(
             "这里不会立即执行夹具动作；异常中断后须现场确认机械状态。"));
@@ -180,10 +180,10 @@ public partial class ProductionPreparationWindow
         publish.Click += async (_, _) => await GuidedPublishAsync();
         publishActions.Children.Add(publish);
         var advanced = GuidedButton("高级型号/编号规则");
-        advanced.Click += (_, _) => PreparationTabs.SelectedIndex = 2;
+        advanced.Click += (_, _) => OpenStationDetail(1);
         publishActions.Children.Add(advanced);
         var details = GuidedButton("核验详情");
-        details.Click += (_, _) => PreparationTabs.SelectedIndex = 3;
+        details.Click += (_, _) => OpenStationDetail(2);
         publishActions.Children.Add(details);
         releaseBody.Children.Add(publishActions);
         releaseBody.Children.Add(GuidedText(
