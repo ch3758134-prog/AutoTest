@@ -139,6 +139,12 @@ public sealed partial class RealTestWorkbenchService
             int Sequence, string TestDocumentId, Guid CaseRunId,
             Guid CaseAttemptId, string PlanFingerprint, string Verdict, string? EvidencePath,
             DateTimeOffset CompletedUtc);
+        private sealed record ProjectPeriodicCaseBoundary(
+            int Sequence, string TestDocumentId, DateTimeOffset CapturedUtc,
+            PeriodicCanTaskEvidence[] ActiveBefore,
+            PeriodicCanTaskEvidence[] ActiveAfter,
+            PeriodicCanTaskEvidence[] StoppedDuring);
+        private readonly List<ProjectPeriodicCaseBoundary> _periodicCaseBoundaries = new();
 
         internal ConfiguredStationActionPort Actions { get; }
         public Guid ProjectRunId { get; }
@@ -147,6 +153,10 @@ public sealed partial class RealTestWorkbenchService
         public int PlannedCases => _pinnedCases.Length;
         public IReadOnlyList<PeriodicCanTaskEvidence> PeriodicTasks =>
             Actions.PeriodicEvidenceSnapshot();
+        public IReadOnlyList<PeriodicCanTaskEvidence> LastCaseStoppedPeriodic =>
+            _periodicCaseBoundaries.Count == 0
+                ? Array.Empty<PeriodicCanTaskEvidence>()
+                : _periodicCaseBoundaries[^1].StoppedDuring;
 
         internal ProjectExecutionSession(RealTestWorkbenchService owner,
             ConfiguredStationActionPort actions, OpenProjectContext project,
@@ -231,8 +241,22 @@ public sealed partial class RealTestWorkbenchService
                         _project, map, ct).ConfigureAwait(false);
             }
             await Actions.CheckHealthAsync(ct);
+            // Record the physical CAN sender transition at the actual case
+            // boundary, not merely as a single end-of-project snapshot.
+            var activeBefore = Actions.PeriodicEvidenceSnapshot()
+                .Where(x => x.StoppedUtc is null).ToArray();
             var result = await _owner.ExecuteAsync(doc, "", "", _dut, ct,
                 projectSession: this);
+            var after = Actions.PeriodicEvidenceSnapshot();
+            var activeAfter = after.Where(x => x.StoppedUtc is null).ToArray();
+            var stoppedDuring = after.Where(x => x.StoppedUtc is not null &&
+                activeBefore.Any(prior => prior.TaskId == x.TaskId)).ToArray();
+            _periodicCaseBoundaries.Add(new ProjectPeriodicCaseBoundary(
+                _next + 1, doc.Id.ToString(), DateTimeOffset.UtcNow,
+                activeBefore, activeAfter, stoppedDuring));
+            // A sender can silently stall during a long case. Do not let the
+            // next ECU judgement proceed on a stale periodic environment.
+            await Actions.CheckHealthAsync(ct);
             _cases.Add(new ProjectCaseReceipt(_next + 1, doc.Id.ToString(),
                 result.Run.Value, result.CaseAttemptId,
                 result.PlanFingerprint, result.Verdict.ToString(),
@@ -272,6 +296,7 @@ public sealed partial class RealTestWorkbenchService
                     PinnedCases = _pinnedCases.Select(x => new
                         { TestDocumentId = x.Id.ToString(), Fingerprint = x.Sha }).ToArray(),
                     Cases = _cases.ToArray(),
+                    PeriodicCaseBoundaries = _periodicCaseBoundaries.ToArray(),
                     PeriodicCan = Actions.PeriodicEvidenceSnapshot(),
                     PeriodicEvidenceType = "HOST_REQUEST_USB_ACK_NOT_ECU_RX",
                     ProjectCanTimeline = _projectTimelinePath,
