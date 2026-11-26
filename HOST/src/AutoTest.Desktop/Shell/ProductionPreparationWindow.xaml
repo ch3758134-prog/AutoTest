@@ -1,7 +1,7 @@
 <Window x:Class="AutoTest.Desktop.Shell.ProductionPreparationWindow"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- Title="工位设置" Width="1020" Height="770" MinWidth="760" MinHeight="550"
+ Title="工位配置" Width="920" Height="715" MinWidth="720" MinHeight="530"
  WindowStartupLocation="CenterOwner" Background="#F6F8FB"
  FontFamily="Microsoft YaHei" FontSize="13">
  <Window.Resources>
@@ -44,141 +44,185 @@
    <RowDefinition Height="*"/>
    <RowDefinition Height="Auto"/>
   </Grid.RowDefinitions>
-  <DockPanel Margin="0,0,0,12">
+  <DockPanel Margin="0,0,0,14">
    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-    <Button Content="真实整组实测" Click="Engineering_Click"
-      ToolTip="打开已有工程实测执行器。真实夹具和烧录仍需要明确许可。"/>
-    <Button Content="返回生产检测" Click="Production_Click"
-      ToolTip="正式生产在实体 START/记录适配器接通前保持阻断。"/>
-    <Button x:Name="ApplyButton" Content="应用到工位" Click="Apply_Click"
-      Padding="17,8" Background="#266BB4" BorderBrush="#266BB4"
+    <Button x:Name="ApplyButton" Content="启用工位配置" Click="Apply_Click"
+      ToolTip="保存并检查当前工程、烧录资源及扫码配置；成功后作为本工位的有效版本"
+      Padding="16,8" Background="#266BB4" BorderBrush="#266BB4"
       Foreground="White" FontWeight="SemiBold"/>
     <Button Content="关闭" Click="Close_Click"/>
    </StackPanel>
-   <StackPanel>
-    <TextBlock Text="工位设置" FontSize="21" FontWeight="SemiBold" Foreground="#243B51"/>
-    <TextBlock Text="工程 · 扫码 · 夹具" Style="{StaticResource SmallHint}"/>
+   <StackPanel VerticalAlignment="Center">
+    <TextBlock Text="工位配置" FontSize="21" FontWeight="SemiBold" Foreground="#243B51"/>
+    <TextBlock Text="设置一次，日常检测直接扫码" Style="{StaticResource SmallHint}" Margin="0,3,0,0"/>
    </StackPanel>
   </DockPanel>
   <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
-    HorizontalScrollBarVisibility="Disabled">
-   <StackPanel MaxWidth="1050">
+   HorizontalScrollBarVisibility="Disabled">
+   <StackPanel MaxWidth="950">
     <Border Style="{StaticResource Card}">
      <StackPanel>
-      <TextBlock Text="当前工程" Style="{StaticResource SectionTitle}"/>
-      <TextBlock x:Name="ProjectSummary" Text="尚未打开 ECU 工程" FontSize="15"
-        TextWrapping="Wrap" Foreground="#304D64" Margin="0,0,0,10"/>
+      <TextBlock Text="检测工程" Style="{StaticResource SectionTitle}"/>
+      <TextBlock x:Name="ProjectSummary" Text="尚未打开工程"
+        FontSize="16" FontWeight="SemiBold" Foreground="#284B68"
+        TextWrapping="Wrap" Margin="0,0,0,5"/>
+      <TextBlock x:Name="BoundProjectSummary" Style="{StaticResource SmallHint}"
+        Text="工程中的 TEST、FLASH、DBC 和波形将用于检测" Margin="0,0,0,11"/>
       <WrapPanel>
-       <Button Content="使用当前打开的工程" Click="BindCurrent_Click"/>
-       <Button Content="选择其他工程…" Click="SelectProject_Click"/>
-       <Button Content="编辑 TEST" Click="Test_Click"/>
-       <Button Content="编辑 FLASH" Click="Flash_Click"/>
+       <Button x:Name="BindCurrentButton" Content="使用当前工程"
+        Click="BindCurrent_Click" Visibility="Collapsed"/>
+       <Button Content="更换工程…" Click="SelectProject_Click"/>
       </WrapPanel>
      </StackPanel>
     </Border>
     <Border Style="{StaticResource Card}">
      <StackPanel>
       <TextBlock Text="扫码枪" Style="{StaticResource SectionTitle}"/>
-      <TextBlock x:Name="ScannerState" Text="检查扫码设备…" Style="{StaticResource SmallHint}"
-        Margin="0,0,0,6"/>
-      <TextBlock Text="最近收到的原始内容" Style="{StaticResource SmallHint}"/>
-      <TextBlock x:Name="ScanRaw" FontSize="19" FontWeight="SemiBold"
-        Foreground="#245F8B" TextWrapping="Wrap" Text="等待扫码…" Margin="0,3,0,10"/>
-      <WrapPanel>
-       <Button Content="重新检测" Click="RetryScanner_Click"/>
-       <Button Content="设备设置…" Click="ScannerSettings_Click"/>
-       <TextBox x:Name="ScanTrial" Width="220" ToolTip="可输入编号进行规则试算；不授权生产身份或物理动作"/>
-       <Button Content="试算编号" Click="Preview_Click"/>
+      <TextBlock x:Name="ScannerState" Text="扫码枪未连接"
+        FontWeight="SemiBold" Foreground="#47677E" Margin="0,0,0,9"/>
+      <Border Background="#F4F8FC" CornerRadius="7" Padding="13"
+       BorderBrush="#E2EAF2" BorderThickness="1" Margin="0,0,0,9">
+       <StackPanel>
+        <TextBlock Text="最近收到的编号" Style="{StaticResource SmallHint}"/>
+        <TextBlock x:Name="ScanRaw" Text="等待扫码…"
+          FontFamily="Consolas,Microsoft YaHei" FontSize="21"
+          FontWeight="SemiBold" Foreground="#245F8B" TextWrapping="Wrap"
+          Margin="0,5,0,4"/>
+        <TextBlock x:Name="ScanObservedAt" Text=""
+          Style="{StaticResource SmallHint}"/>
+       </StackPanel>
+      </Border>
+      <WrapPanel Margin="0,0,0,7">
+       <Button Content="连接设置…" Click="ScannerSettings_Click"/>
+       <Button Content="重新连接" Click="RetryScanner_Click"/>
       </WrapPanel>
-      <TextBlock x:Name="PreviewStatus" Style="{StaticResource SmallHint}"/>
-     </StackPanel>
-    </Border>
-    <Border Style="{StaticResource Card}">
-     <StackPanel>
-      <TextBlock Text="扫码如何选择工程" Style="{StaticResource SectionTitle}"/>
-      <ComboBox x:Name="MatchMode" Width="350" HorizontalAlignment="Left"
-        Margin="0,0,0,8" SelectionChanged="ConfigChanged">
-       <ComboBoxItem Content="固定工程 · 整串作为 ECU 唯一编号"/>
-       <ComboBoxItem Content="混线 · 从条码提取产品识别码"/>
-       <ComboBoxItem Content="混线 · 从受控编号表查询归属"/>
-      </ComboBox>
-      <TextBlock Text="固定工程不要求填写 ECU 型号、硬件版本或提前登记每台 ECU。"
-       Style="{StaticResource SmallHint}"/>
-      <Expander Header="混线匹配配置（只有检测不同工程时才需要）"
-        x:Name="MixedOptions" Margin="0,9,0,0">
-       <StackPanel Margin="0,12,0,0">
-        <TextBlock Text="产品识别码 → 工程（必须唯一）" FontWeight="SemiBold"
-         Margin="0,0,0,7"/>
+      <TextBlock x:Name="PreviewStatus" Style="{StaticResource SmallHint}"
+       Text="连接扫码枪后，原始内容将直接显示在这里。"
+       Margin="0,0,0,4"/>
+      <Expander Header="测试编号识别（可手动输入，仅预览）"
+       Margin="0,8,0,0">
+       <StackPanel Margin="0,11,0,0">
         <WrapPanel>
-         <TextBox x:Name="ProductKeyInput" Width="135" ToolTip="条码可解析的产品识别码，例如 P01"/>
-         <TextBox x:Name="HardwareInput" Width="130" ToolTip="可选的硬件版本；与条码中的字段匹配"/>
-         <Button Content="绑定当前工程" Click="AddMixedProject_Click"/>
-         <Button Content="删除选中绑定" Click="RemoveMixedProject_Click"/>
+         <TextBox x:Name="ScanTrial" Width="255"
+          ToolTip="输入测试编号；不会模拟真实扫码或启动任何硬件"/>
+         <Button Content="测试识别" Click="Preview_Click"/>
         </WrapPanel>
-        <DataGrid x:Name="ProjectMappings" Height="130" AutoGenerateColumns="False"
-          IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column"
-          Margin="0,0,0,9">
-         <DataGrid.Columns>
-          <DataGridTextColumn Header="产品识别码" Binding="{Binding ProductKey}" Width="130"/>
-          <DataGridTextColumn Header="硬件版本" Binding="{Binding HardwareCode}" Width="95"/>
-          <DataGridTextColumn Header="工程 ID" Binding="{Binding ProjectId}" Width="235"/>
-          <DataGridTextColumn Header="工程路径" Binding="{Binding ManifestPath}" Width="*"/>
-         </DataGrid.Columns>
-        </DataGrid>
-        <TextBlock Text="条码解析规则" FontWeight="SemiBold" Margin="0,5,0,7"/>
-        <WrapPanel>
-         <TextBlock Text="分隔符" VerticalAlignment="Center" Margin="0,0,5,0"/>
-         <TextBox x:Name="SeparatorInput" Width="58" Text="|" TextChanged="ConfigChanged"/>
-         <TextBlock Text="产品字段序号" VerticalAlignment="Center" Margin="0,0,5,0"/>
-         <TextBox x:Name="ProductIndexInput" Width="55" Text="1" TextChanged="ConfigChanged"/>
-         <TextBlock Text="序列号字段序号" VerticalAlignment="Center" Margin="0,0,5,0"/>
-         <TextBox x:Name="SerialIndexInput" Width="55" Text="2" TextChanged="ConfigChanged"/>
-          <TextBlock Text="硬件版本字段（可选）" VerticalAlignment="Center" Margin="8,0,5,0"/>
-          <TextBox x:Name="HardwareIndexInput" Width="55" Text="0"
-            ToolTip="0 表示条码没有硬件版本字段；区分同产品不同版本时填实际字段序号"
-            TextChanged="ConfigChanged"/>
-        </WrapPanel>
-        <TextBlock Text="验证样例（混线规则需要一个正确样例和一个应拒绝样例）"
+        <TextBlock Text="手动输入仅用于检查编号规则，不代表扫码枪已经连接。"
          Style="{StaticResource SmallHint}"/>
-        <WrapPanel Margin="0,6,0,0">
-         <TextBox x:Name="PositiveSample" Width="220" ToolTip="真实或明确已知正确的产品编号"/>
-         <TextBox x:Name="NegativeSample" Width="220" ToolTip="必须被规则拒绝的编号"/>
-        </WrapPanel>
-        <TextBlock Text="编号登记表（仅编号本身没有产品识别字段时使用）"
-         FontWeight="SemiBold" Margin="0,6,0,5"/>
-        <Button Content="导入受控 CSV…" Click="ImportRegistry_Click" HorizontalAlignment="Left"/>
-        <TextBlock x:Name="RegistrySummary" Text="未导入编号表" Style="{StaticResource SmallHint}"/>
        </StackPanel>
       </Expander>
      </StackPanel>
     </Border>
     <Border Style="{StaticResource Card}">
      <StackPanel>
-      <TextBlock Text="工位夹具" Style="{StaticResource SectionTitle}"/>
-      <TextBlock Text="扫码和应用配置都不会直接驱动夹具。真实动作由手动台架或经过授权的执行器控制。"
-       Style="{StaticResource SmallHint}" Margin="0,0,0,10"/>
-      <WrapPanel>
-       <CheckBox x:Name="AutoClamp" Content="自动压紧/释放" Checked="ConfigChanged" Unchecked="ConfigChanged"/>
-       <CheckBox x:Name="Clamp1" Content="夹具输出 1" Checked="ConfigChanged" Unchecked="ConfigChanged"/>
-       <CheckBox x:Name="Clamp2" Content="夹具输出 2" Checked="ConfigChanged" Unchecked="ConfigChanged"/>
-       <ComboBox x:Name="FirstClampChoice" Width="130" SelectionChanged="ConfigChanged">
-        <ComboBoxItem Content="先夹具 1"/><ComboBoxItem Content="先夹具 2"/>
-       </ComboBox>
-      </WrapPanel>
-      <Expander Header="实体输入与机械反馈（正式生产安全条件）" Margin="0,8,0,0">
+      <TextBlock Text="编号与工程" Style="{StaticResource SectionTitle}"/>
+      <TextBlock x:Name="MatchSummary" Foreground="#34546D" TextWrapping="Wrap"
+       Text="固定工程：完整扫码内容就是 ECU 编号" Margin="0,0,0,5"/>
+      <TextBlock Text="只检测当前工程时，无需填写 ECU 型号、硬件版本或提前登记编号。"
+       Style="{StaticResource SmallHint}"/>
+      <Expander x:Name="AdvancedMatching" Header="高级：多种 ECU 共用一个工位"
+       Margin="0,11,0,0">
        <StackPanel Margin="0,10,0,0">
-        <TextBlock Text="配置文字不能代替实体输入、互锁或夹具到位传感器；没有可信反馈则正式生产不能启动。"
-         Style="{StaticResource SmallHint}" Margin="0,0,0,10"/>
-        <UniformGrid Columns="2">
-         <StackPanel><TextBlock Text="实体 START 输入"/><TextBox x:Name="StartInput"/></StackPanel>
-         <StackPanel><TextBlock Text="实体 STOP 输入"/><TextBox x:Name="StopInput"/></StackPanel>
-         <StackPanel><TextBlock Text="安全互锁输入"/><TextBox x:Name="InterlockInput"/></StackPanel>
-         <StackPanel><TextBlock Text="压紧机械反馈"/><TextBox x:Name="ClosedFeedback"/></StackPanel>
-         <StackPanel><TextBlock Text="释放机械反馈"/><TextBox x:Name="OpenFeedback"/></StackPanel>
-         <StackPanel>
-          <TextBlock Text="机械稳定等待（毫秒）"/>
-          <TextBox x:Name="SettleDelayInput" Text="0"/>
+        <TextBlock Text="仅当一个工位需要区分不同检测工程时修改" Style="{StaticResource SmallHint}"
+         Margin="0,0,0,8"/>
+        <ComboBox x:Name="MatchMode" Width="360" HorizontalAlignment="Left"
+         Margin="0,0,0,7" SelectionChanged="ConfigChanged">
+         <ComboBoxItem Content="单工程 · 整串作为 ECU 编号"/>
+         <ComboBoxItem Content="多工程 · 通过条码字段确定工程"/>
+         <ComboBoxItem Content="多工程 · 通过编号登记表确定工程"/>
+        </ComboBox>
+        <Expander Header="多工程详细匹配配置" x:Name="MixedOptions"
+         Margin="0,7,0,0">
+         <StackPanel Margin="0,11,0,0">
+          <TextBlock Text="产品识别码 → 对应工程" FontWeight="SemiBold"
+           Margin="0,0,0,7"/>
+          <WrapPanel>
+           <TextBox x:Name="ProductKeyInput" Width="145"
+            ToolTip="条码或编号表中实际存在的产品识别码，如 EPB01"/>
+           <TextBox x:Name="HardwareInput" Width="132"
+            ToolTip="仅在需要区分硬件版本时填写"/>
+           <Button Content="添加当前工程" Click="AddMixedProject_Click"/>
+           <Button Content="删除选中项" Click="RemoveMixedProject_Click"/>
+          </WrapPanel>
+          <DataGrid x:Name="ProjectMappings" Height="125" AutoGenerateColumns="False"
+           IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column"
+           Margin="0,0,0,11">
+           <DataGrid.Columns>
+            <DataGridTextColumn Header="产品识别码" Binding="{Binding ProductKey}" Width="130"/>
+            <DataGridTextColumn Header="硬件版本" Binding="{Binding HardwareCode}" Width="105"/>
+            <DataGridTextColumn Header="工程文件" Binding="{Binding ManifestPath}" Width="*"/>
+           </DataGrid.Columns>
+          </DataGrid>
+          <TextBlock Text="条码字段" FontWeight="SemiBold" Margin="0,0,0,7"/>
+          <WrapPanel>
+           <TextBlock Text="分隔符" VerticalAlignment="Center" Margin="0,0,5,0"/>
+           <TextBox x:Name="SeparatorInput" Width="55" Text="|" TextChanged="ConfigChanged"/>
+           <TextBlock Text="产品字段" VerticalAlignment="Center" Margin="0,0,5,0"/>
+           <TextBox x:Name="ProductIndexInput" Width="48" Text="1" TextChanged="ConfigChanged"/>
+           <TextBlock Text="编号字段" VerticalAlignment="Center" Margin="0,0,5,0"/>
+           <TextBox x:Name="SerialIndexInput" Width="48" Text="2" TextChanged="ConfigChanged"/>
+           <TextBlock Text="版本字段" VerticalAlignment="Center" Margin="0,0,5,0"/>
+           <TextBox x:Name="HardwareIndexInput" Width="48" Text="0"
+            ToolTip="0 表示条码中没有硬件版本" TextChanged="ConfigChanged"/>
+          </WrapPanel>
+          <TextBlock Text="验证样例（一个应接受，一个应拒绝）"
+           Style="{StaticResource SmallHint}" Margin="0,4,0,7"/>
+          <WrapPanel>
+           <TextBox x:Name="PositiveSample" Width="245"
+            ToolTip="明确应当识别为有效的编号"/>
+           <TextBox x:Name="NegativeSample" Width="245"
+            ToolTip="明确应当拒绝的编号"/>
+          </WrapPanel>
+          <TextBlock Text="只有编号表才能确定产品归属时，导入已核对的登记表。"
+           Style="{StaticResource SmallHint}"/>
+          <WrapPanel Margin="0,8,0,0">
+           <Button Content="导入编号表 CSV…" Click="ImportRegistry_Click"/>
+           <TextBlock x:Name="RegistrySummary" Text="未导入编号表"
+            Style="{StaticResource SmallHint}" VerticalAlignment="Center"/>
+          </WrapPanel>
          </StackPanel>
+        </Expander>
+       </StackPanel>
+      </Expander>
+     </StackPanel>
+    </Border>
+    <Border Style="{StaticResource Card}">
+     <StackPanel>
+      <TextBlock Text="夹具" Style="{StaticResource SectionTitle}"/>
+      <CheckBox x:Name="AutoClamp" Content="检测时自动压紧，结束后释放"
+       Checked="ConfigChanged" Unchecked="ConfigChanged"/>
+      <TextBlock x:Name="FixtureSummary" Text="请先核对真实夹具输出"
+       Style="{StaticResource SmallHint}" Margin="0,5,0,7"/>
+      <TextBlock x:Name="MainBoardState" Text="主控未连接"
+       Style="{StaticResource SmallHint}" Margin="0,0,0,5"/>
+      <Expander Header="夹具通道与实体输入（工程师设置）" Margin="0,8,0,0">
+       <StackPanel Margin="0,10,0,0">
+        <WrapPanel>
+         <CheckBox x:Name="Clamp1" Content="夹具输出 1"
+          Checked="ConfigChanged" Unchecked="ConfigChanged"/>
+         <CheckBox x:Name="Clamp2" Content="夹具输出 2"
+          Checked="ConfigChanged" Unchecked="ConfigChanged"/>
+         <ComboBox x:Name="FirstClampChoice" Width="120"
+          SelectionChanged="ConfigChanged">
+          <ComboBoxItem Content="先夹具 1"/>
+          <ComboBoxItem Content="先夹具 2"/>
+         </ComboBox>
+        </WrapPanel>
+        <TextBlock Text="以下字段必须对应实际接线；没有传感器时不能假定机械已到位。"
+         Style="{StaticResource SmallHint}" Margin="0,8,0,10"/>
+        <UniformGrid Columns="2">
+         <StackPanel><TextBlock Text="实体 START 输入"/>
+          <TextBox x:Name="StartInput"/></StackPanel>
+         <StackPanel><TextBlock Text="实体 STOP 输入"/>
+          <TextBox x:Name="StopInput"/></StackPanel>
+         <StackPanel><TextBlock Text="安全互锁输入"/>
+          <TextBox x:Name="InterlockInput"/></StackPanel>
+         <StackPanel><TextBlock Text="压紧反馈来源"/>
+          <TextBox x:Name="ClosedFeedback"/></StackPanel>
+         <StackPanel><TextBlock Text="释放反馈来源"/>
+          <TextBox x:Name="OpenFeedback"/></StackPanel>
+         <StackPanel><TextBlock Text="机械稳定时间（毫秒）"/>
+          <TextBox x:Name="SettleDelayInput" Text="0"/></StackPanel>
         </UniformGrid>
        </StackPanel>
       </Expander>
@@ -186,14 +230,14 @@
     </Border>
     <Border Style="{StaticResource Card}">
      <StackPanel>
-      <TextBlock Text="应用版本" Style="{StaticResource SectionTitle}"/>
-      <TextBlock x:Name="PublicationState" Foreground="#36546B"
-       TextWrapping="Wrap" Text="尚未应用" Margin="0,0,0,8"/>
+      <TextBlock Text="当前工位状态" Style="{StaticResource SectionTitle}"/>
+      <TextBlock x:Name="PublicationState" Text="尚未启用工位配置"
+       Foreground="#355770" TextWrapping="Wrap" Margin="0,0,0,6"/>
       <TextBlock x:Name="BlockerState" Style="{StaticResource SmallHint}"
-       Text="正式生产仍需物理 START、机械反馈和真实 Inspection 记录。"/>
-      <Button x:Name="ResetOldConfig" Content="重新建立工位配置（不兼容旧版本）"
+       Text="正式检测仍需完成真实硬件及单台记录验收。"/>
+      <Button x:Name="ResetOldConfig" Content="重新建立工位配置"
        Click="ResetOld_Click" Visibility="Collapsed" HorizontalAlignment="Left"
-       Margin="0,9,0,0"/>
+       Margin="0,10,0,0"/>
      </StackPanel>
     </Border>
    </StackPanel>
@@ -201,7 +245,7 @@
   <Border Grid.Row="2" Background="White" BorderBrush="#DEE6ED"
    BorderThickness="1" CornerRadius="6" Padding="11" Margin="0,10,0,0">
    <TextBlock x:Name="StatusText" Foreground="#385D7B" TextWrapping="Wrap"
-    Text="工位配置尚未载入"/>
+    Text="正在读取配置…"/>
   </Border>
  </Grid>
 </Window>
