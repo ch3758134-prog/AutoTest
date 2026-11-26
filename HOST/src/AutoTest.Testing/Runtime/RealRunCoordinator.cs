@@ -334,6 +334,56 @@ public sealed class RealRunCoordinator
                             phase, occurrence, path, loopIteration);
                         break;
                     }
+                    case "Switch":
+                    {
+                        var sourceName = Property(node, "variable");
+                        if (!variables.TryGetValue(sourceName, out var source) ||
+                            source.Value is null ||
+                            (source.Quality is not null and not TestSignalStatus.Valid))
+                        {
+                            incomplete = true;
+                            if (!cleanup) stopAfterUnknownBranch = true;
+                            Fact(node, RealStepStatus.NoData, actual: source?.Value ?? "",
+                                detail: "SWITCH 缺少有效变量：" + sourceName +
+                                    "；未选择任何 CASE，已阻断后续正常测试步骤。");
+                            break;
+                        }
+                        var actual = source.Value;
+                        var arms = node.Slots["cases"]
+                            .Where(StepExecutionPolicy.IsEnabled).ToArray();
+                        var match = arms.FirstOrDefault(arm =>
+                            !Property(arm, "equals").Trim().Equals("default",
+                                StringComparison.OrdinalIgnoreCase) &&
+                            string.Equals(Property(arm, "equals").Trim(), actual,
+                                StringComparison.OrdinalIgnoreCase));
+                        match ??= arms.FirstOrDefault(arm =>
+                            Property(arm, "equals").Trim().Equals("default",
+                                StringComparison.OrdinalIgnoreCase));
+                        if (match is null)
+                        {
+                            Fact(node, RealStepStatus.ConditionFalse, actual: actual,
+                                detail: "SWITCH 没有匹配值且未设置 DEFAULT；未执行任何 CASE。");
+                            break;
+                        }
+                        Fact(node, RealStepStatus.Completed,
+                            expected: Property(match, "equals"), actual: actual,
+                            detail: "SWITCH " + sourceName + " → CASE " +
+                                Property(match, "equals") + "（不会继续执行后续分支）");
+                        await Execute(ImmutableArray.Create(match), ct, cleanup,
+                            phase, occurrence, path, loopIteration);
+                        break;
+                    }
+                    case "Case":
+                    {
+                        // CASE may only occur under its parent SWITCH after
+                        // structural validation. One selected arm gets its
+                        // own StepOccurrence and never falls through.
+                        Fact(node, RealStepStatus.Completed,
+                            expected: Property(node, "equals"));
+                        await Execute(node.Slots["body"], ct, cleanup,
+                            phase, occurrence, path, loopIteration);
+                        break;
+                    }
                     case "Loop":
                     {
                         var count = Milliseconds(node, "count", 1000);
