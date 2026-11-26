@@ -474,40 +474,51 @@ public partial class ProductionPreparationWindow
         if (_guidedProject is null || !_ready) return;
         var current = _workspace.Current;
         if (current is null)
-            _guidedProject.Text = "没有打开工程。请先进入“开发与调试”创建并保存完整 ECU 工程。";
+        {
+            _guidedProject.Text = "尚未打开 ECU 工程；请先在开发与调试中打开并保存。";
+            _guidedProjectDiagnostics = "没有当前工程，无法执行资源检查。";
+        }
         else
         {
-            _guidedProject.Text = "当前：" + current.Definition.Name +
-                " · ECU 型号 " + current.Definition.EcuModelCode +
-                "\n" + Path.GetFileName(current.ManifestPath) +
-                (Products.Any(x => x.ModelCode == current.Definition.EcuModelCode &&
-                    string.Equals(x.ManifestPath, current.ManifestPath,
-                        StringComparison.OrdinalIgnoreCase))
-                    ? " · 已列入工位绑定草稿" : " · 尚未绑定到当前工位");
+            _guidedProject.Text = "型号 " + current.Definition.EcuModelCode +
+                " · " + current.Definition.Name +
+                "\n完整工程：" + Path.GetFileName(current.ManifestPath);
+            _guidedProjectDiagnostics = "当前工程：" + current.ManifestPath;
             try
             {
                 var snapshot = await AutomaticTestResourceContract.ResolveAsync(current);
                 var flash = await NativeFlashProfileStore.LoadAsync(current.RootDirectory);
                 if (_workspace.Current?.ManifestSha256 != current.ManifestSha256) return;
-                _guidedProject.Text += "\n正式 TEST：" + snapshot.Cases.Count +
-                    " 个用例" + (snapshot.ProjectSetup is null ? "" : " · 有项目准备") +
-                    (snapshot.ProjectTeardown is null ? "" : " · 有项目收尾") +
-                    (snapshot.CanExecute ? " · 资源闭包静态检查通过"
-                        : " · 未就绪：" + string.Join("；", snapshot.Issues.Take(3))) +
-                    "\n原生 FLASH：" + (flash is null ? "尚未保存原生烧录工艺"
-                        : "已保存工艺草稿，发布时须再次核对固件、安全算法和资源 SHA");
+                var errors = snapshot.Issues.ToArray();
+                _guidedProject.Text += "\nTEST：" + snapshot.Cases.Count +
+                    " 个用例" + (snapshot.ProjectSetup is null ? "" : " · 含项目准备") +
+                    (snapshot.ProjectTeardown is null ? "" : " · 含项目收尾") +
+                    (snapshot.CanExecute ? " · 资源检查通过" :
+                        " · 资源引用异常 " + errors.Length + " 项（查看工程问题）") +
+                    "\nFLASH：" + (flash is null
+                        ? "尚未保存原生烧录工艺"
+                        : "工艺草稿已保存 · 发布时严格核对文件及 SHA");
+                _guidedProjectDiagnostics = snapshot.CanExecute
+                    ? "TEST 资源闭包检查通过。" +
+                      "\n用例数：" + snapshot.Cases.Count +
+                      "\n仍需发布原生 FLASH 并完成生产工位版本冻结。"
+                    : "TEST 资源引用检查未通过，需回到开发与调试修正，不允许静默替换：" +
+                      "\n\n" + string.Join("\n\n", errors.Take(40));
             }
             catch (Exception error) when (error is not OutOfMemoryException)
             {
-                _guidedProject.Text += "\n工程 TEST/FLASH 预检尚未通过：" + error.Message;
+                _guidedProject.Text += "\nTEST/FLASH：工程资源检查失败（查看工程问题）";
+                _guidedProjectDiagnostics = error.ToString();
             }
         }
 
         if (_guidedDevice is not null)
-            _guidedDevice.Text = _scanner?.IsConnected == true
-                ? "真实扫码设备：" + _scanner.ConnectedPort +
-                  "；只有已绑定 PnP 设备的本次实扫可以用于工位发布。"
-                : "扫码枪未连接。可以手动试算编码，但不能冒充真实 COM 设备验证。";
+            _guidedDevice.Text = (_stationDeviceStatus?.Invoke() ??
+                    "主控与 ECU CAN：在主界面查看真实连接/回读状态") +
+                "\n扫码枪：" + (_scanner?.IsConnected == true
+                    ? "已连接 " + _scanner.ConnectedPort
+                    : "未连接（工程发布不受影响）") +
+                "\n夹具、START、互锁：当前尚无可信实测反馈；正式生产保持阻断。";
         try
         {
             var deployment = await StationDeploymentStore.RestoreAsync();
@@ -537,9 +548,10 @@ public partial class ProductionPreparationWindow
             var problems = StationProductionConfigurationStore.InspectRules(BuildDraft());
             if (_guidedBlocker is not null)
                 _guidedBlocker.Text = (problems.Count == 0
-                        ? "编码规则静态校验无冲突；仍需真实设备与工程冻结验证。"
-                        : "当前编码/产品配置问题：" + string.Join("；", problems.Take(3))) +
-                    "\n正式生产仍阻断：可信实体 START、夹具机械反馈/互锁和正式 Inspection 写入尚未接通。";
+                        ? "编码规则：发布静态检查通过（不代表真扫码已验证）。"
+                        : "配置待核对：" + problems.Count +
+                          " 项。具体原因见“发布详情”。") +
+                    "\n生产运行仍阻断：实体 START、夹具反馈/互锁与正式 Inspection 写入未接通。";
         }
         catch (Exception error)
         {
