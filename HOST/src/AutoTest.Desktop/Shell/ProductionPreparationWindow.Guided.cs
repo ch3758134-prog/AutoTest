@@ -19,12 +19,6 @@ public partial class ProductionPreparationWindow
     private TextBlock? _guidedScan;
     private TextBlock? _guidedPublication;
     private TextBlock? _guidedBlocker;
-    private TextBox? _guidedManualInput;
-    private string? _lastRealBarcode;
-    private string _lastRealBarcodePort = "";
-    private string _lastRealBarcodePnp = "";
-    private DateTimeOffset? _lastRealBarcodeUtc;
-    private int _guidedPreviewSequence;
 
     // A successful barcode read belongs to one concrete scanner/COM session.
     // A disconnect or COM rebind invalidates the proof even if the port name
@@ -38,21 +32,11 @@ public partial class ProductionPreparationWindow
         Dispatcher.BeginInvoke(new Action(async () =>
         {
             if (!IsVisible || _scanner is null) return;
-            if (!_scanner.IsConnected ||
-                (_lastRealBarcode is not null &&
-                 !string.Equals(_lastRealBarcodePort, _scanner.ConnectedPort,
-                     StringComparison.OrdinalIgnoreCase)))
-            {
-                _lastRealBarcode = null;
-                _lastRealBarcodePort = "";
-                _lastRealBarcodePnp = "";
-                _lastRealBarcodeUtc = null;
-                if (_guidedScan is not null)
-                    _guidedScan.Text = "扫码设备已断开或串口会话发生变化，旧实扫凭证失效。";
-            }
+            if (!_scanner.IsConnected && _guidedScan is not null)
+                _guidedScan.Text = "扫码枪未连接；仍然可以离线发布工程。真实生产扫码需重新连接已绑定设备。";
             ConnectionHint = _scanner.IsConnected
-                ? "真实扫码设备：" + _scanner.ConnectedPort + " · 仅配置验证"
-                : "扫码枪未连接；手动输入不能用于真实扫码发布凭证";
+                ? "扫码枪：" + _scanner.ConnectedPort + " · 不影响工程发布"
+                : "扫码枪未连接 · 可离线发布工程";
             await RefreshGuidedOverviewAsync();
         }));
     }
@@ -183,136 +167,6 @@ public partial class ProductionPreparationWindow
             : _guidedProjectDiagnostics;
         MessageBox.Show(this, message.Length > 10000 ? message[..10000] : message,
             "ECU 工程资源核查（仅诊断）", MessageBoxButton.OK, MessageBoxImage.Information);
-    }
-
-    private void GuidedUseCurrentProject()
-    {
-        if (!_ready || !_mayEdit())
-        {
-            Status = "正在执行工位任务或生产配置尚未加载，不允许更换绑定。";
-            return;
-        }
-        var project = _workspace.Current;
-        if (project is null || string.IsNullOrWhiteSpace(project.Definition.EcuModelCode))
-        {
-            Status = "请先在开发与调试打开并保存完整 ECU 工程。";
-            return;
-        }
-        if (Products.Count > 1)
-        {
-            Status = "当前存在多型号工程绑定，不能自动替换。请进入高级配置审查现有产品关系。";
-            PreparationTabs.SelectedIndex = 2;
-            return;
-        }
-        if (IdentityMode == StationProductionConfiguration.FixedStation &&
-            FixedModel == project.Definition.EcuModelCode &&
-            Products.Count == 1 &&
-            Products[0].ModelCode == project.Definition.EcuModelCode &&
-            Products[0].HardwareCode == FixedHardware &&
-            string.Equals(Products[0].ManifestPath, project.ManifestPath,
-                StringComparison.OrdinalIgnoreCase))
-        {
-            Status = "当前 ECU 工程已绑定，无需重复保存或重新增加发布修订。";
-            return;
-        }
-        if (IdentityMode != StationProductionConfiguration.FixedStation)
-        {
-            var consent = MessageBox.Show(this,
-                "目前使用了条码型号/编号登记的高级识别模式。\n" +
-                "确定改为固定型号工位吗？现有高级规则和编号表将保留为草稿，但固定工位不再使用它们决定型号。",
-                "切换为单型号工位", MessageBoxButton.YesNo, MessageBoxImage.Question,
-                MessageBoxResult.No);
-            if (consent != MessageBoxResult.Yes) return;
-            IdentityMode = StationProductionConfiguration.FixedStation;
-        }
-        var code = project.Definition.EcuModelCode;
-        var hardware = FixedHardware;
-        if (Products.Count == 1)
-        {
-            var existing = Products[0];
-            if (existing.ModelCode != code ||
-                existing.HardwareCode != hardware ||
-                !string.Equals(existing.ManifestPath, project.ManifestPath,
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                var replace = MessageBox.Show(this,
-                    "当前仅有一条绑定，但它指向另一份型号/硬件版本/工程。\n" +
-                    "确定用已打开的工程替换该草稿绑定吗？旧正式发布不会自动变更，必须重新核对并发布。",
-                    "明确替换当前工位工程", MessageBoxButton.YesNo,
-                    MessageBoxImage.Warning, MessageBoxResult.No);
-                if (replace != MessageBoxResult.Yes) return;
-                Products.Clear();
-            }
-        }
-        FixedModel = code;
-        if (Products.Count == 0)
-            Products.Add(new ProductRow
-            {
-                ModelCode = code, HardwareCode = hardware,
-                ManifestPath = project.ManifestPath
-            });
-        MarkDirty();
-        Status = "已从当前 ECU 工程读取型号并建立单型号绑定；还需真实扫码验证和发布。";
-        _ = RefreshGuidedOverviewAsync();
-    }
-
-    private void GuidedAdoptRealSample()
-    {
-        if (!_ready || !_mayEdit())
-        {
-            Status = "工位配置不可编辑，未改变任何校验样例。";
-            return;
-        }
-        if (string.IsNullOrEmpty(_lastRealBarcode) ||
-            _scanner?.IsConnected != true ||
-            _lastRealBarcodePort != _scanner.ConnectedPort)
-        {
-            Status = "请先连接已绑定的真实扫码枪并扫码。手工试算不能登记为现场正例。";
-            return;
-        }
-        if (string.IsNullOrWhiteSpace(_lastRealBarcodePnp))
-        {
-            Status = "扫码枪尚未按 USB 设备身份完成绑定。请先“记住当前扫码枪”并重新扫码。";
-            return;
-        }
-        if (Rules.Count != 1 || !Rules[0].Enabled ||
-            Rules[0].Format != ProductionBarcodeRule.Serial)
-        {
-            Status = "当前是多规则/复杂条码解析，请在高级识别中逐条配置样例。";
-            PreparationTabs.SelectedIndex = 2;
-            return;
-        }
-        var row = Rules[0];
-        var match = row.ToModel().Parse(_lastRealBarcode);
-        if (!match.Accepted)
-        {
-            Status = "真实扫码内容不符合当前编码规则：" + match.Detail;
-            return;
-        }
-        // Remove only the known legacy artificial two-sample starter set.
-        if (row.Samples.Count == 2 &&
-            row.Samples.Any(x => x.Raw == "SN001234" && x.ShouldAccept &&
-                x.ExpectedSerial == "SN001234") &&
-            row.Samples.Any(x => x.Raw == "SN|BAD" && !x.ShouldAccept))
-            row.Samples.Clear();
-        if (!row.Samples.Any(x => x.Raw == _lastRealBarcode && x.ShouldAccept))
-            row.Samples.Add(new SampleRow
-            {
-                Raw = _lastRealBarcode,
-                ShouldAccept = true,
-                ExpectedSerial = match.Serial
-            });
-        // Explicitly generated parser rejection sample; NEVER a claim that
-        // a real scanner sent this malformed barcode.
-        var invalid = _lastRealBarcode + "|";
-        if (invalid.Length > 256) invalid = "|";
-        if (!row.Samples.Any(x => x.Raw == invalid && !x.ShouldAccept) &&
-            !row.ToModel().Parse(invalid).Accepted)
-            row.Samples.Add(new SampleRow { Raw = invalid, ShouldAccept = false });
-        MarkDirty();
-        Status = "本次真实扫码已登记为正例；非法字符拒绝反例由软件构造，" +
-            "不代表设备曾扫描该错误条码。请核对解析结果并发布。";
-        _ = RefreshGuidedOverviewAsync();
     }
 
     private Task PreviewGuidedBarcodeAsync(string raw, bool actualDevice)
