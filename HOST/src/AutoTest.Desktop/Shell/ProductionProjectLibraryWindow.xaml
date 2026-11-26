@@ -50,6 +50,11 @@
      <StackPanel>
       <TextBlock Text="已安装的工程" Style="{StaticResource SectionLabel}"/>
       <WrapPanel Margin="0,0,0,8">
+       <TextBlock Text="搜索" Margin="0,6,8,0"/>
+       <TextBox x:Name="SearchBox" Width="255"
+        TextChanged="SearchChanged" ToolTip="按工程名称、修订或版本指纹筛选"/>
+      </WrapPanel>
+      <WrapPanel Margin="0,0,0,8">
        <Button Content="导入工程包…" Click="Import_Click" Background="#E6F0FA"
         BorderBrush="#A6C7E5" FontWeight="SemiBold"/>
        <Button Content="从当前工程导出…" Click="Export_Click"
@@ -108,6 +113,8 @@
        <TextBox x:Name="HardwareInput" Width="130" ToolTip="硬件版本，可不填"/>
        <Button Content="保存工程关联" Click="Bind_Click"/>
       </WrapPanel>
+      <Button Content="删除选中的关联" Click="RemoveBinding_Click"
+       HorizontalAlignment="Left" Margin="0,0,0,8"/>
       <DataGrid x:Name="BindingsTable" Height="115" AutoGenerateColumns="False"
        CanUserAddRows="False" IsReadOnly="True" HeadersVisibility="Column">
        <DataGrid.Columns>
@@ -124,6 +131,7 @@
          <TextBox x:Name="SerialRegistryInput" Width="260"
           ToolTip="ECU 唯一编号"/>
          <Button Content="登记编号" Click="RegisterSerial_Click"/>
+         <Button Content="批量导入编号表…" Click="ImportRegistry_Click"/>
         </WrapPanel>
        </StackPanel>
       </Expander>
