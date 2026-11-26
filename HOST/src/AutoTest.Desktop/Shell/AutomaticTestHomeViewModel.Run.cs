@@ -442,6 +442,20 @@ public sealed partial class AutomaticTestHomeViewModel
                 MessageBoxImage.Warning) != MessageBoxResult.Yes)
             return;
 
+        // The modal physical-operation confirmation pumps the WPF dispatcher.
+        // An asynchronous scanner observation or project switch must not
+        // replace the frozen DUT/fixture identity while that dialog is open.
+        if (_prepared?.AcceptedScannerObservation?.ObservationId != scan.ObservationId ||
+            _plans.Current?.Project.ManifestSha256 != plan.Project.ManifestSha256 ||
+            !_scanner.IsConnected ||
+            !string.Equals(_scanner.ConnectedPort, scan.ScannerPort,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            StartRequestStatus = "确认过程中扫码身份、工程或设备发生变化；" +
+                "已取消自动夹具、烧录和 TEST，请重新扫码预检。";
+            return;
+        }
+
         var frozen = _prepared!;
         var sessionEpoch = _hardware.CurrentStationEpoch;
         var started = DateTimeOffset.UtcNow;
