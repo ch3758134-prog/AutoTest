@@ -27,8 +27,8 @@ public static class StepUiCatalog
         new("WaveStart", "开始波形记录", "开始记录所选的实时 DBC 信号", true),
         new("WaveStop", "结束波形记录", "结束采集并将样本数保存为数据", true),
         new("WaveAnalyze", "波形分析", "独立分析已采集波形，将分析结果保存为数据", true),
-        new("Switch", "SWITCH 分支", "分派表达式与 Case 子分支；运行器尚未实现", false),
-        new("Case", "CASE / 默认分支", "SWITCH 子分支；运行器尚未实现", false),
+        new("Switch", "SWITCH 分支", "按已有有效变量匹配 CASE，默认分支可选；无数据阻断后续执行", true),
+        new("Case", "CASE / 默认分支", "仅能添加在 SWITCH 内；比较值填 default 为默认分支", true),
         new("When", "WHEN 条件等待", "条件与超时、嵌套步骤；运行器尚未实现", false),
         new("TryCatch", "TRY / CATCH / FINALLY", "异常处理分支；运行器尚未实现", false),
         new("Subroutine", "子程序", "有名子步骤容器；运行器尚未实现", false),
@@ -161,7 +161,7 @@ public static class StepUiCatalog
         // references must be reported at preflight, not silently defaulted.
         node = type switch
         {
-            "Switch" => node.WithProperty("variable", ""),
+            "Switch" => node.WithProperty("variable", "value"),
             "AssertSignal" => node.WithProperty("operator", "==")
                 .WithProperty("expected", "").WithProperty("timeoutMs", "5000"),
             "When" => node.WithProperty("variable", "").WithProperty("equals", "")
