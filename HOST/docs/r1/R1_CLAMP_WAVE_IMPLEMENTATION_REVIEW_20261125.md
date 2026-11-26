@@ -42,3 +42,44 @@
 3. 用户以真实扫码进入**工程整组验证**，确认装夹 0x18/0x19、设置稳定等待、完整 FLASH、连续 TEST、受控收尾，外部夹具观察为准；断电/超时/故障时状态 UNKNOWN，禁止虚假 PASS。
 4. WAVE 以实际 65ms CAN 信号、连续量电流等分别采集**多条同时查看**，显式保存标准参考，连续/离散分别对正确样本、已知错误样本、短跳变、Gap、USB重连、DBC SHA 修改与主机到达时间源做判定。测试线性与阶梯比较都必须有严格记录证据。
 5. 正式生产的可信实体 START、机械到位/互锁及 InspectionAttempt 仍未接通；**绝不取消现有准入阻断**。GPIO / USB ACK 只是 MCU 电平读回，不是机械安全证明。HostArrival 时间戳不能实现硬件级精密时序。
+
+
+## 四、后续 R1 独立复审与针对性修复（持续整改）
+
+本轮未扩大到 main/固件，未执行 CI、编译或真机操作。继承同一 R1 的正式代码。
+
+### 已纠正的实际断点
+
+1. **跨时钟来源不可直接判定**：`WaveComparator` 在两份源各自通过质量检查后，还必须校验 `TimeSource/TimeQuality` 属于同一时钟域；例如 HostArrival 与 Replay/DeviceSample 不能因为数值相同而返回 PASS。保留 `RequireSynchronizedHardwareTime` 更严格的工艺设置。
+2. **波形算法版本的批准证据**：`WaveSettingsDocument` 新增 `ApprovedAlgorithmRevision=2` 和 `ReviewedCriteriaSha256`。指纹覆盖 DBC 身份、修订/SHA、CAN ID/信号/单位、命名参考及完整比较参数。旧文件或版本变更文件依然能打开、查看、编辑，**不再能被误当作已批准的自动 TEST 判据**；阈值、模式、DBC 或命名参考发生变化将自动使旧批准指纹失效。
+3. **WAVE 配置 UI 显示批准状态**，保存新修订时必须显式确认已复核当前阈值/算法/参考；不是单凭“导入成功”批准。批量自动测试严禁仅靠步骤自由输入的参考名与容差绕开这一层。
+4. **TEST 作者与执行器合同同步**：`WaveCompare / WaveAnalyze` 必须选择真实的 `WaveProfile` 映射；`StepDescriptorCatalog`、`StepTreeValidator`、TEST 步骤 Inspector 和 `RealRunCoordinator` 已同步。旧式步骤可以在编辑器中看到并迁移，不得参与严格运行或以隐式缺省转成 PASS。
+5. **不可判定不得变成有效变量**：在真实 `ConfiguredWavePort` 中，只有确实得到 Pass/Fail 的判定可用；Inconclusive 保留证据但不作为有效测量变量。运行步骤报告 `NoData`，而不是误作 Completed 或正常断言。
+6. **波形资源先于不可逆操作核验**：`RealTestWorkbenchService.VerifyProjectWaveProfilesBeforeHardwareAsync` 只读检查全部有序 TEST 的有效结构、映射、WAVE 审批与标准参考，`AutomaticTestHomeViewModel` 在夹具、IGN、FLASH 之前调用。避免擦写 ECU 后才发现 WAVE 引用失效。
+7. **阈值质量兜底**：`MaximumGapFactor` 的 NaN、无穷及过大值拒绝；时长阈值限制为硬性采集范围，避免借极端参数绕过缺帧判断。
+
+### 夹具额外修复
+
+- 新建工位草稿默认 **AutoClampEnabled=false**；已安装通道仍可保留，在主界面一键启用/停用。
+- 工位发布和实际装夹计划分别阻止“自动夹具已启用但没有配置任何 MCU 输出”的状态；不能一边显示自动装夹一边静默烧录 TEST。
+- 工程师点击真实物理操作确认后，第二次回读工位发布版本；如果等待确认期间重新发布了输出路由、极性或工艺参数，取消执行并要求重新扫码/确认。
+- 以上只验证输出请求和 MCU GPIO，实际机械压紧/释放、独立到位与 START 输入仍未现场验收。
+
+### 必须告知 Windows/现场验收者的更改
+
+- 旧 WAVE 资源**不会自动升级算法批准**。请在配置工作台选择真实 WAVE 配置，核对标准参考、DBC、连续/离散模式和时间质量，在“确认已复核本次波形判据”选择“是”，保存新 WAVE 资源修订，随后在 TEST 编辑器明确更新此资源引用和工程发布。未完成时应在烧录之前阻断，而不是迁就旧配置运行。
+- 旧 WaveAnalyze/WaveCompare 步骤若仅有参考名称与临时容差，必须明确改成受版本管理的 `WaveProfile` 映射；不会把旧判据当作安全合格。
+- 测量误差 / 实际状态异常是 **Fail**；缺帧、跨时钟来源、流溢出和不充分覆盖是 **Inconclusive/NoData**；引用与参数不合法是 **Error/InvalidData**。三种含义不可混淆。
+- 编译、测试执行、真实波形计时及机械动作方向仍未验证；**当前不是正式出厂检测的准入证明**。
+
+### 本轮复评分（静态源码审查，非实测）
+
+| 维度 | 上轮 | 本轮静态 | 增量 |
+| --- | ---: | ---: | --- |
+| WAVE 算法/时间质量 | 8.8 | 9.0 | 跨时钟 fail-closed、异常阈值有效性 |
+| WAVE 资源审计、执行前准入 | 7.5 | 9.0 | 算法 + 判据指纹、旧资源显式复核、FLASH 前阻断 |
+| WAVE 工具与 TEST 配置使用 | 8.5 | 8.8 | 避免自由阈值与临时参考、状态在 Inspector 可见 |
+| 工位夹具执行合同 | 8.6 | 8.9 | 不允许启用却无输出、双重检查工位发布 |
+| **WAVE 当前整体静态** | **8.4** | **8.8/10** | **仍未 Windows/ECU 验收，不得标为交付 9 分** |
+
+最重要的剩余项：需要受控的历史正确/错误 ECU 波形黄金样本验证、Windows 构建测试、硬件时钟与独立 CAN 仪器对比；真实机械到位、实体 START、Inspection 仍为生产 NO-GO。研究设计评分 9.3 不等于产品验收 9.3。
