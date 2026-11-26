@@ -162,3 +162,26 @@ public sealed class OperatorRowWidthConverter : IValueConverter
     public object ConvertBack(object value, Type targetType, object parameter,
         CultureInfo culture) => Binding.DoNothing;
 }
+
+/// <summary>
+/// Present stable executor states in operator language without changing the
+/// underlying state keys used for execution, follow-navigation or evidence.
+/// </summary>
+public sealed class OperatorStateTextConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter,
+        CultureInfo culture) => value is string state ? state switch
+    {
+        "未执行" => "未开始",
+        "执行中" => "进行中",
+        "实测通过" => "通过",
+        "实测失败" => "失败",
+        "引用需修复" => "资源需检查",
+        "已停止" => "已停止",
+        "执行异常" => "执行异常",
+        _ => state
+    } : "—";
+
+    public object ConvertBack(object value, Type targetType, object parameter,
+        CultureInfo culture) => Binding.DoNothing;
+}

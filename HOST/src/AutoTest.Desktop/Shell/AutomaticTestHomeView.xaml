@@ -6,6 +6,7 @@
  Background="#F5F7FA" Foreground="#263849" UseLayoutRounding="True">
  <UserControl.Resources>
   <local:OperatorRowWidthConverter x:Key="OperatorRowWidthConverter"/>
+  <local:OperatorStateTextConverter x:Key="OperatorStateTextConverter"/>
   <Style x:Key="OperatorCaption" TargetType="TextBlock">
    <Setter Property="FontSize" Value="12"/>
    <Setter Property="Foreground" Value="#62758A"/>
@@ -176,7 +177,7 @@
            <TextBlock Text="{Binding StepCountLabel}" FontSize="11"
             Foreground="#65788B"/>
           </StackPanel>
-          <TextBlock Grid.Column="2" Text="{Binding State}"
+          <TextBlock Grid.Column="2" Text="{Binding State,Converter={StaticResource OperatorStateTextConverter}}"
            Style="{StaticResource OperatorState}"
            ToolTip="{Binding State}" TextTrimming="CharacterEllipsis"/>
          </Grid>
@@ -213,7 +214,7 @@
             Foreground="#6B7E90" TextTrimming="CharacterEllipsis"
             ToolTip="{Binding ActionSummary}"/>
           </StackPanel>
-          <TextBlock Grid.Column="2" Text="{Binding State}"
+          <TextBlock Grid.Column="2" Text="{Binding State,Converter={StaticResource OperatorStateTextConverter}}"
            Style="{StaticResource OperatorState}"
            ToolTip="{Binding State}" TextTrimming="CharacterEllipsis"/>
          </Grid>

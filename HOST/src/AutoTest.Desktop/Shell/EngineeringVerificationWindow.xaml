@@ -7,6 +7,7 @@
  FontSize="13" Background="#F6F8FB" Foreground="#24384C"
  UseLayoutRounding="True">
  <Window.Resources>
+  <local:OperatorStateTextConverter x:Key="OperatorStateTextConverter"/>
   <Style x:Key="EngPanel" TargetType="Border">
    <Setter Property="Background" Value="White"/>
    <Setter Property="BorderBrush" Value="#DAE4EC"/>
@@ -188,8 +189,8 @@
            TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}"/>
           <TextBlock Text="{Binding StepCountLabel}" Style="{StaticResource EngCaption}"/>
          </StackPanel>
-         <TextBlock Grid.Column="2" Text="{Binding State}" Style="{StaticResource EngState}"
-          VerticalAlignment="Center" ToolTip="{Binding State}"/>
+         <TextBlock Grid.Column="2" Text="{Binding State,Converter={StaticResource OperatorStateTextConverter}}" Style="{StaticResource EngState}"
+          VerticalAlignment="Center" ToolTip="{Binding State,Converter={StaticResource OperatorStateTextConverter}}"/>
         </Grid>
        </HierarchicalDataTemplate>
        <HierarchicalDataTemplate DataType="{x:Type local:AutomaticTestStep}"
@@ -208,8 +209,8 @@
           <TextBlock Text="{Binding ActionSummary}" Style="{StaticResource EngCaption}"
            TextTrimming="CharacterEllipsis" ToolTip="{Binding ActionSummary}"/>
          </StackPanel>
-         <TextBlock Grid.Column="2" Text="{Binding State}" Style="{StaticResource EngState}"
-          VerticalAlignment="Center" ToolTip="{Binding State}"/>
+         <TextBlock Grid.Column="2" Text="{Binding State,Converter={StaticResource OperatorStateTextConverter}}" Style="{StaticResource EngState}"
+          VerticalAlignment="Center" ToolTip="{Binding State,Converter={StaticResource OperatorStateTextConverter}}"/>
         </Grid>
        </HierarchicalDataTemplate>
       </TreeView.Resources>

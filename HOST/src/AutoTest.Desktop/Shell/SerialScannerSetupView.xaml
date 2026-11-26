@@ -51,10 +51,14 @@
       <TextBox Text="{Binding LastRaw,Mode=OneWay}" IsReadOnly="True"
        FontSize="20" FontWeight="SemiBold" Foreground="#245B83"
        TextWrapping="Wrap" Padding="10" Margin="0,6,0,15"/>
-      <TextBlock Text="原始串口数据（HEX）" Foreground="#657B8D"/>
-      <TextBox Text="{Binding LastHex,Mode=OneWay}" IsReadOnly="True"
-       FontFamily="Consolas" FontSize="12" TextWrapping="Wrap"
-       Padding="10" Margin="0,6,0,12"/>
+      <Expander Header="串口诊断" IsExpanded="False" Margin="0,0,0,10">
+       <StackPanel Margin="0,8,0,0">
+        <TextBlock Text="接收数据（HEX）" Foreground="#657B8D"/>
+        <TextBox Text="{Binding LastHex,Mode=OneWay}" IsReadOnly="True"
+         FontFamily="Consolas" FontSize="12" TextWrapping="Wrap"
+         Padding="10" Margin="0,6,0,0"/>
+       </StackPanel>
+      </Expander>
       <TextBlock Text="检测工程的关联方式可在“工位设置”中修改。"
        Foreground="#657B8D" TextWrapping="Wrap"/>
      </StackPanel>
