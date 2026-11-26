@@ -4,29 +4,29 @@
  FontFamily="{StaticResource UiFont}" FontSize="12" Background="#FBFCFF">
  <ScrollViewer VerticalScrollBarVisibility="Auto">
   <StackPanel Margin="14">
-   <TextBlock Text="当前 ECU 工程" Foreground="#64758C" FontSize="11" Margin="0,0,0,7"/>
+   <TextBlock Text="当前工程" Foreground="#64758C" FontSize="11" Margin="0,0,0,7"/>
    <TextBlock Text="{Binding CurrentProjectName}" FontWeight="SemiBold" FontSize="15"
     Foreground="#254666" TextWrapping="Wrap" Margin="0,0,0,9"/>
    <TextBlock Text="{Binding SetupModelStatus}" Foreground="#536C85"
     TextWrapping="Wrap" Margin="0,0,0,12"/>
    <Border Background="#DBE3ED" Height="1" Margin="0,0,0,12"/>
-   <TextBlock Text="当前工作进度" FontWeight="SemiBold" Margin="0,0,0,9"/>
+   <TextBlock Text="工程检查" FontWeight="SemiBold" Margin="0,0,0,9"/>
    <TextBlock Text="测试项目" Foreground="#617890"/>
    <TextBlock Text="{Binding SetupTestStatus}" TextWrapping="Wrap" Margin="0,2,0,10"/>
-   <TextBlock Text="扫码身份" Foreground="#617890"/>
+   <TextBlock Text="扫码配置" Foreground="#617890"/>
    <TextBlock Text="{Binding SetupScanStatus}" TextWrapping="Wrap" Margin="0,2,0,10"/>
-   <TextBlock Text="工程烧录" Foreground="#617890"/>
+   <TextBlock Text="烧录配置" Foreground="#617890"/>
    <TextBlock Text="{Binding SetupFlashStatus}" TextWrapping="Wrap" Margin="0,2,0,10"/>
    <TextBlock Text="工位与夹具" Foreground="#617890"/>
    <TextBlock Text="{Binding SetupStationStatus}" TextWrapping="Wrap" Margin="0,2,0,13"/>
-   <Button Content="重新核对工程与资源" Command="{Binding RefreshEngineeringSetupCommand}"
+   <Button Content="重新检查" Command="{Binding RefreshEngineeringSetupCommand}"
     Padding="12,7" Margin="0,0,0,8"/>
-   <Button Content="编辑正式 TEST 项目" Command="{Binding OpenFirstTestProjectCommand}"
+   <Button Content="编辑测试项目" Command="{Binding OpenFirstTestProjectCommand}"
     Padding="12,7" Margin="0,0,0,8"/>
-   <Button Content="编辑夹具动作工艺" Command="{Binding OpenInspectionProcedureCommand}"
+   <Button Content="编辑工程特殊动作" Command="{Binding OpenInspectionProcedureCommand}"
     Padding="12,7" Margin="0,0,0,10"/>
    <Border Background="#EEF4FA" CornerRadius="6" Padding="10">
-    <TextBlock Text="调试记录与生产验收分开。所有状态来自现有正式工程资源和工位观测；完整自动检测尚未实物验收。"
+    <TextBlock Text="工程检查只评估配置状态；实际检测仍需连接设备并完成现场验证。"
      TextWrapping="Wrap" Foreground="#63788A" FontSize="11"/>
    </Border>
   </StackPanel>

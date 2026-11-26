@@ -17,7 +17,7 @@
             BorderThickness="0,0,0,1" Padding="19,15">
       <StackPanel>
         <TextBlock Text="新建工程" FontSize="18" FontWeight="SemiBold"/>
-        <TextBlock Text="只需工程名称，自动创建唯一的空 TEST 项目"
+        <TextBlock Text="填写工程名称和保存位置，即可开始创建测试用例"
                    Foreground="{StaticResource Subtle}" FontSize="11" Margin="0,3,0,0"/>
       </StackPanel>
     </Border>

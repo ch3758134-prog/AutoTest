@@ -37,14 +37,14 @@
  </UserControl.Resources>
  <ScrollViewer VerticalScrollBarVisibility="Auto">
   <StackPanel Margin="0,5,0,5">
-   <TextBlock Text="本 ECU 的工位动作（工程草稿）" FontSize="14" FontWeight="SemiBold"
+   <TextBlock Text="工程特殊动作" FontSize="14" FontWeight="SemiBold"
     Foreground="#223B54" Margin="0,0,0,7"/>
-   <TextBlock Text="这里仅编辑 IGN、等待等工程特殊动作。标准夹具1/2的装夹和释放在“生产准备 → 自动测试夹具工艺”配置，并由整组执行器自动完成；旧夹具动作须移除，禁止重复驱动。"
+   <TextBlock Text="在这里编辑点火控制、等待等特殊动作。夹具压紧和释放统一在“工位设置”中配置，避免重复控制。"
     Foreground="#65798B" TextWrapping="Wrap" Margin="0,0,0,12"/>
    <DockPanel LastChildFill="True" Margin="0,0,0,7">
-    <Button DockPanel.Dock="Right" Content="＋ 添加准备动作" Command="{Binding AddBeforeCommand}"
+    <Button DockPanel.Dock="Right" Content="添加测试前动作" Command="{Binding AddBeforeCommand}"
      Padding="12,6" Margin="10,0,0,0"/>
-    <TextBlock Text="START 前准备" FontWeight="SemiBold" FontSize="13"
+    <TextBlock Text="测试前动作" FontWeight="SemiBold" FontSize="13"
      VerticalAlignment="Center"/>
    </DockPanel>
    <Border BorderBrush="#DEE5EC" BorderThickness="1" CornerRadius="6"
@@ -52,9 +52,9 @@
     <ItemsControl ItemsSource="{Binding BeforeStart}" ItemTemplate="{StaticResource StationActionRow}"/>
    </Border>
    <DockPanel LastChildFill="True" Margin="0,0,0,7">
-    <Button DockPanel.Dock="Right" Content="＋ 添加收尾动作" Command="{Binding AddAfterCommand}"
+    <Button DockPanel.Dock="Right" Content="添加测试后动作" Command="{Binding AddAfterCommand}"
      Padding="12,6" Margin="10,0,0,0"/>
-    <TextBlock Text="检测结束收尾（失败/异常需独立确认）" FontWeight="SemiBold"
+    <TextBlock Text="测试后动作" FontWeight="SemiBold"
      FontSize="13" VerticalAlignment="Center"/>
    </DockPanel>
    <Border BorderBrush="#DEE5EC" BorderThickness="1" CornerRadius="6"
@@ -62,12 +62,12 @@
     <ItemsControl ItemsSource="{Binding AfterFinish}" ItemTemplate="{StaticResource StationActionRow}"/>
    </Border>
    <DockPanel LastChildFill="True" Margin="0,12,0,0">
-    <Button DockPanel.Dock="Right" Content="保存工程动作" Command="{Binding SaveCommand}"
+    <Button DockPanel.Dock="Right" Content="保存动作" Command="{Binding SaveCommand}"
      Padding="12,7" Margin="10,0,0,0"/>
     <TextBlock Text="{Binding SaveStatus}" Foreground="#526F8C" TextWrapping="Wrap"
      VerticalAlignment="Center"/>
    </DockPanel>
-   <TextBlock Text="无机械位置传感器时，MCU GPIO 读回只能证明控制请求，不能作为正式生产装夹到位或 START 证据。"
+   <TextBlock Text="主控返回成功不能证明夹具机械到位；没有位置反馈时，仍需现场确认。"
     Foreground="#9A6C29" TextWrapping="Wrap" Margin="0,12,0,0"/>
   </StackPanel>
  </ScrollViewer>

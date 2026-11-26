@@ -12,7 +12,7 @@
     <Button DockPanel.Dock="Right" Content="新建工程"
      Command="{Binding NewProjectCommand}" VerticalAlignment="Center"
      Padding="12,7"/>
-    <TextBlock Text="当前 ECU 检测工程" FontSize="16" FontWeight="SemiBold"
+    <TextBlock Text="检测工程" FontSize="16" FontWeight="SemiBold"
      Foreground="#253E55" VerticalAlignment="Center"/>
    </DockPanel>
   </Border>
@@ -20,12 +20,12 @@
    <StackPanel MaxWidth="1050" Margin="22,19,22,24">
     <TextBlock Text="{Binding CurrentProjectName}" FontSize="21"
      FontWeight="SemiBold" Foreground="#243950"/>
-    <TextBlock Text="一份工程包含完整的检测内容：测试用例、实际需要的资源、前置烧录和工位动作。扫码枪和主控属于固定工位，无须重复建立台架配置。"
+    <TextBlock Text="在这里编辑测试用例、烧录配置和信号资源。工位设备可在“工位设置”中管理。"
      TextWrapping="Wrap" Foreground="#65798A" Margin="0,8,0,14"/>
     <Border CornerRadius="7" BorderBrush="#DFE7F1" BorderThickness="1"
      Background="#F5F8FC" Padding="13" Margin="0,0,0,17">
      <StackPanel>
-      <TextBlock Text="当前配置与调试状态" FontSize="13" FontWeight="SemiBold"
+      <TextBlock Text="工程状态" FontSize="13" FontWeight="SemiBold"
        Foreground="#2C587E"/>
       <TextBlock Text="{Binding SetupOverallStatus}" Foreground="#536E87"
        TextWrapping="Wrap" Margin="0,6,0,0"/>
@@ -44,7 +44,7 @@
         Foreground="#263B51" FontWeight="SemiBold"/>
        <TextBlock Text="{Binding TestProgramCount,StringFormat='当前 {0} 个测试用例'}"
         Foreground="#2368BD" FontSize="13" Margin="0,9,0,6"/>
-       <TextBlock Text="添加和排序用例，选择用例直接编辑实际步骤"
+       <TextBlock Text="设置执行顺序，点击用例编辑测试步骤"
         Foreground="#62788E" TextWrapping="Wrap"/>
       </StackPanel>
      </Button>
@@ -52,11 +52,11 @@
       Background="White" BorderBrush="#DBE3ED" Height="118"
       Padding="15" HorizontalContentAlignment="Stretch">
       <StackPanel>
-       <TextBlock Text="完整检测配置" FontSize="14"
+       <TextBlock Text="工程检查" FontSize="14"
         Foreground="#263B51" FontWeight="SemiBold"/>
-       <TextBlock Text="扫码 · 烧录 · 夹具 · 资源" Foreground="#2368BD"
+       <TextBlock Text="测试用例 · 烧录 · DBC · 波形" Foreground="#2368BD"
         FontSize="13" Margin="0,9,0,6"/>
-       <TextBlock Text="管理 ECU 测试工程"
+       <TextBlock Text="查看资源是否完整、引用是否有效"
         Foreground="#62788E" TextWrapping="Wrap"/>
       </StackPanel>
      </Button>
@@ -79,7 +79,7 @@
        Style="{StaticResource AtPrimaryButton}" Padding="12,8"
        Margin="12,0,0,0" VerticalAlignment="Center"/>
       <StackPanel>
-       <TextBlock Text="当前工程还没有用例执行清单"
+       <TextBlock Text="当前工程还没有测试用例"
         Foreground="#245B96" FontSize="13" FontWeight="SemiBold"/>
        <TextBlock Text="新建用例后即可添加测试步骤。"
         Foreground="#597491" TextWrapping="Wrap" Margin="0,5,0,0"/>
@@ -103,12 +103,12 @@
     <WrapPanel>
      <Button Content="手动台架" Command="{Binding OpenManualBenchCommand}"
       Padding="13,8" Margin="0,0,9,7"/>
-     <Button Content="原生烧录调试" Command="{Binding OpenFlashWorkbenchCommand}"
+     <Button Content="ECU 烧录" Command="{Binding OpenFlashWorkbenchCommand}"
       Padding="13,8" Margin="0,0,9,7"/>
      <Button Content="检查工程配置" Command="{Binding OpenProjectConfigurationOverviewCommand}"
       Padding="13,8" Margin="0,0,9,7"/>
     </WrapPanel>
-    <TextBlock Text="专业工具可以独立使用。"
+    <TextBlock Text="各工具可以独立打开。"
      TextWrapping="Wrap" Foreground="#798899" Margin="0,12,0,0"/>
    </StackPanel>
   </ScrollViewer>
