@@ -881,8 +881,8 @@ public sealed partial class HardwareConnectionService : IAsyncDisposable
     /// A failed ACK/readback is UNKNOWN; do NOT retry actuation automatically.
     /// </summary>
     public async Task<byte> SendStationFixtureAsync(
-        byte clamp, bool press, string runFingerprint,
-        CancellationToken ct = default)
+        byte clamp, bool outputHigh, string runFingerprint,
+        CancellationToken ct = default, bool? logicalPress = null)
     {
         if (clamp is not (1 or 2)) throw new ArgumentOutOfRangeException(nameof(clamp));
         await _lifecycle.WaitAsync(ct);
@@ -893,18 +893,20 @@ public sealed partial class HardwareConnectionService : IAsyncDisposable
                 _link is null || IsFlashSecuritySensitive)
                 throw new InvalidOperationException(
                     "当前 FLASH/TEST 或主控连接状态不允许发送夹具动作。");
-            _link.AuthorizeStationFixtureChange(runFingerprint, clamp, press);
-            Record("工位夹具" + clamp + " 请求" + (press ? "压紧" : "释放") +
-                " · 来源：本次冻结工程工位执行 · 非手动授权");
+            _link.AuthorizeStationFixtureChange(runFingerprint, clamp, outputHigh);
+            Record("工位夹具" + clamp + " " +
+                (logicalPress is null ? "输出设定" : logicalPress.Value ? "请求压紧" : "请求释放") +
+                " · GPIO " + (outputHigh ? "HIGH" : "LOW") +
+                " · 本次冻结工位工艺，非手动授权");
             await _usb.RequestAsync(MainControllerCodec.SetClamp,
-                new byte[] { clamp, press ? (byte)1 : (byte)0 },
+                new byte[] { clamp, outputHigh ? (byte)1 : (byte)0 },
                 TimeSpan.FromSeconds(3), ct);
             var answer = await _usb.RequestAsync(MainControllerCodec.GetClamps,
                 ReadOnlyMemory<byte>.Empty, TimeSpan.FromSeconds(3), ct);
             if (answer.Payload.Length != 1 || (answer.Payload[0] & 0xFC) != 0)
                 throw new InvalidDataException("夹具 GPIO 回读帧不合法，实体状态 UNKNOWN。");
             var levels = answer.Payload[0];
-            if (((levels >> (clamp - 1)) & 1) != (press ? 1 : 0))
+            if (((levels >> (clamp - 1)) & 1) != (outputHigh ? 1 : 0))
                 throw new IOException("夹具" + clamp + " MCU GPIO 回读与请求不一致，" +
                     "停止后续 FLASH/TEST，不能判定实际机械到位。");
             Record("工位夹具" + clamp + " USB ACK / MCU GPIO 回读一致 0x" +
