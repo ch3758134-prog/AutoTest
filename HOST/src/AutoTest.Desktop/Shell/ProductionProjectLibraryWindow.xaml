@@ -57,7 +57,7 @@
       <WrapPanel Margin="0,0,0,8">
        <Button Content="导入工程包…" Click="Import_Click" Background="#E6F0FA"
         BorderBrush="#A6C7E5" FontWeight="SemiBold"/>
-       <Button Content="从当前工程导出…" Click="Export_Click"
+       <Button x:Name="ExportButton" Content="从当前工程导出…" Click="Export_Click"
         ToolTip="由工程开发人员导出，包含测试、烧录、固件、安全算法和资源"/>
        <Button Content="刷新" Click="Refresh_Click"/>
       </WrapPanel>
