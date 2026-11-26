@@ -16,6 +16,10 @@ public sealed class SerialBarcodeCapture
     private readonly BarcodeInputRouter _router;
     private readonly TimeProvider _clock;
     private IVerifiedBarcodeLineSource? _source;
+    // A physically completed serial frame is observable even if the current
+    // station is busy or the production project has not yet been published.
+    // This diagnostic is never an accepted DUT identity or START permission.
+    public string? LastObservedRaw { get; private set; }
     public SerialBarcodeCapture(BarcodeInputRouter router, TimeProvider? clock = null)
     { _router = router; _clock = clock ?? TimeProvider.System; }
 
@@ -31,10 +35,12 @@ public sealed class SerialBarcodeCapture
 
     public async ValueTask<ScanIngressResult> ReadAsync(CancellationToken ct)
     {
+        LastObservedRaw = null;
         if (_source is null) return ScanIngressResult.Reject("SERIAL_NOT_VERIFIED");
         var line = await _source.ReadLineAsync(ct).ConfigureAwait(false);
         if (line is null) return ScanIngressResult.Reject("SERIAL_END_OF_INPUT");
-        var scan = new RawScan(line.TrimEnd('\r', '\n'), "serial",
+        LastObservedRaw = line.TrimEnd('\r', '\n');
+        var scan = new RawScan(LastObservedRaw, "serial",
             TimePoint.FromHostArrival(_clock.GetUtcNow(), Stopwatch.GetTimestamp()), true);
         return _router.PublishRaw(scan, ScannerCaptureMode.VerifiedSerial);
     }

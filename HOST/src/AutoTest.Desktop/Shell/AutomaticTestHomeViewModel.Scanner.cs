@@ -69,6 +69,15 @@ public sealed partial class AutomaticTestHomeViewModel
         Notify();
     });
 
+    private void OnRawBarcodeObserved(string raw) => OnUi(() =>
+    {
+        _lastObservedBarcode = raw;
+        _lastObservedAt = DateTimeOffset.Now.ToString("HH:mm:ss");
+        // A rejected scan is still visible, but never changes the accepted
+        // identity, resource pin, or production RunId.
+        Notify();
+    });
+
     private void OnCompleteBarcodeReceived(string raw) => OnUi(() =>
     {
         if (string.IsNullOrEmpty(raw)) return;

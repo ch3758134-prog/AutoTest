@@ -302,6 +302,10 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
     /// previous scan. Observers must not control the scanner's USB lifecycle.
     /// </summary>
     public event Action<string>? CompleteBarcodeReceived;
+    // Called on the UI thread for every complete physical serial frame,
+    // including frames rejected by the station-admission gate.
+    // Never use this event to match DUT identity or start TEST/FLASH.
+    public event Action<string>? RawBarcodeObserved;
     // Diagnostic preview of real bytes with no CR/LF terminator.
     // It is NOT a valid scan and cannot authorize identity or a test.
     public event Action<string>? IncompleteBarcodeObserved;
@@ -757,8 +761,19 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { break; }
             catch (InvalidDataException error)
             {
-                OnUi(() => LastHex = _source?.LastFrameHex ?? "");
-                SetStatus(error.Message + "；已丢弃该帧");
+                var invalidHex = _source?.LastFrameHex ?? "";
+                var invalidRaw = _source?.LastFrameText ?? "";
+                OnUi(() =>
+                {
+                    LastHex = invalidHex;
+                    if (invalidRaw.Length > 0)
+                    {
+                        LastRaw = invalidRaw;
+                        try { RawBarcodeObserved?.Invoke(invalidRaw); }
+                        catch { /* Diagnostic viewers cannot change the scanner. */ }
+                    }
+                    Status = error.Message + "；原始内容已显示，但不能用于生产身份。";
+                });
                 continue;
             }
             catch (Exception error) when (error is IOException or InvalidOperationException or
@@ -768,9 +783,22 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
                 break;
             }
 
+            // A complete physical serial line is an observation regardless
+            // of admission. Echo first; do not freeze or replace a DUT until
+            // the actual accepted event is processed below.
+            var observedRaw = _capture.LastObservedRaw;
+            var observedHex = _source?.LastFrameHex ?? "";
+            if (observedRaw is not null)
+                OnUi(() =>
+                {
+                    LastRaw = observedRaw;
+                    LastHex = observedHex;
+                    try { RawBarcodeObserved?.Invoke(observedRaw); }
+                    catch { /* Diagnostic viewers cannot change the scanner. */ }
+                });
             if (!result.Accepted || result.Event is null)
             {
-                SetStatus("扫码未接受：" + result.Code);
+                SetStatus("扫码原文已显示，但未被用于生产身份：" + result.Code);
                 continue;
             }
             if (Interlocked.Exchange(ref _handling, 1) != 0)

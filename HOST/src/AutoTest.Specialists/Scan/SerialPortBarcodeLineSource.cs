@@ -31,6 +31,8 @@ public sealed class SerialPortBarcodeLineSource : IVerifiedBarcodeLineSource, IA
     private readonly SerialBarcodeFrameDecoder _decoder = new();
     private bool _disposed;
     public string LastFrameHex { get; private set; } = "";
+    // Decoder-rejected frames are still physical observations, not DUT IDs.
+    public string LastFrameText { get; private set; } = "";
     private string _lastIncompleteHex = "";
     // Diagnostic only: a device may send bytes without the required CR/LF
     // suffix. The caller may display these bytes but never accept a scan.
@@ -100,6 +102,7 @@ public sealed class SerialPortBarcodeLineSource : IVerifiedBarcodeLineSource, IA
             if (frame is null) continue;
             _lastIncompleteHex = "";
             LastFrameHex = frame.RawHex;
+            LastFrameText = frame.Text;
             if (!frame.Accepted)
                 throw new InvalidDataException("扫码枪数据帧无效：" + frame.Code);
             return frame.Text;
