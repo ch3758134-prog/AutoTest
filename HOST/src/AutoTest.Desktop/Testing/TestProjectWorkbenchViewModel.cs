@@ -171,6 +171,16 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     {
         if (SelectedPackage is { } row) OpenPackageRequested?.Invoke(row.AssetId);
     }
+
+    /// <summary>Focus an existing invocation without updating a revision or
+    /// implying that its latest resource is safe to use.</summary>
+    public bool FocusInvocation(Guid invocationId)
+    {
+        var row = Packages.FirstOrDefault(x => x.ItemId == invocationId);
+        if (row is null) return false;
+        SelectedPackage = row;
+        return true;
+    }
     public void OpenPackage(TestProjectPackageRow row)
     {
         if (Packages.Contains(row)) OpenPackageRequested?.Invoke(row.AssetId);
