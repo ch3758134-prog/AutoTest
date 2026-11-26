@@ -154,7 +154,7 @@ public sealed partial class AutomaticTestHomeViewModel
     {
         _operatorEngine = engine;
         ArmOperatorVerificationCommand = new DelegateCommand(
-            ArmEngineeringVerification,
+            () => ArmEngineeringVerification(),
             () => !_isProductionWorkspace() && !IsOperatorRunning);
         StartOperatorVerificationCommand = new DelegateCommand(
             async () =>
