@@ -13,6 +13,7 @@ namespace AutoTest.Desktop.Shell;
 public partial class ProductionPreparationWindow
 {
     private readonly Dictionary<int, Expander> _stationSections = new();
+    private Expander? _detailsPanel;
 
     private void OpenStationDetail(int detailIndex) => OpenStationSection(
         detailIndex switch
@@ -26,6 +27,7 @@ public partial class ProductionPreparationWindow
     private void OpenStationSection(int index)
     {
         if (!_stationSections.TryGetValue(index, out var target)) return;
+        if (_detailsPanel is not null) _detailsPanel.IsExpanded = true;
         target.IsExpanded = true;
         Dispatcher.BeginInvoke(new Action(target.BringIntoView), DispatcherPriority.Loaded);
     }
@@ -59,11 +61,27 @@ public partial class ProductionPreparationWindow
         // Three concise task summaries first. Original specialist controls
         // remain below as on-demand details, not a second basic workflow.
         foreach (var item in summary) root.Children.Add(item);
-        root.Children.Add(Section(0, "产品型号与工程绑定", original[0], false));
-        root.Children.Add(Section(1, "编码形制规则", original[1], false));
-        root.Children.Add(Section(2, "编号登记（混线时使用）", original[2], false));
-        root.Children.Add(Section(3, "扫码设备、夹具与实体输入", original[3], false));
-        root.Children.Add(Section(4, "验证与诊断", original[4], false));
+        var detailRows = new StackPanel { Margin = new Thickness(9, 11, 9, 4) };
+        detailRows.Children.Add(Section(0, "产品型号与工程绑定", original[0], false));
+        detailRows.Children.Add(Section(1, "编码形制规则", original[1], false));
+        detailRows.Children.Add(Section(2, "编号登记（混线时使用）", original[2], false));
+        detailRows.Children.Add(Section(3, "扫码设备、夹具与实体输入", original[3], false));
+        detailRows.Children.Add(Section(4, "验证与诊断", original[4], false));
+        _detailsPanel = new Expander
+        {
+            Header = "详细配置",
+            IsExpanded = false,
+            FontSize = 13,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = new SolidColorBrush(Color.FromRgb(38, 60, 79)),
+            Background = Brushes.White,
+            BorderBrush = new SolidColorBrush(Color.FromRgb(222, 230, 237)),
+            BorderThickness = new Thickness(1),
+            Margin = new Thickness(0, 2, 0, 12),
+            Padding = new Thickness(6),
+            Content = detailRows
+        };
+        root.Children.Add(_detailsPanel);
 
         var scroll = new ScrollViewer
         {
