@@ -60,4 +60,38 @@ public sealed class ProductionAdmissionReviewTests
         Assert.Equal("PRODUCTION_ADMISSION_CONDITIONS_MET", decision.Code);
         Assert.DoesNotContain("PASS", decision.Headline);
     }
+    [Fact]
+    public void EveryAdmissionStateHasTaskFocusedOperatorLanguage()
+    {
+        var ready = All(start: true, recorder: true);
+        var states = new[]
+        {
+            ready with { DeployedProjectLoaded = false },
+            ready with { ResourcesExecutable = false },
+            ready with { ControllerConnected = false },
+            ready with { EcuCanRateConfirmed = false },
+            ready with { ScannerConnected = false },
+            ready with { AcceptedScannerObservation = false },
+            ready with { FrozenProjectMatches = false },
+            ready with { SameControllerSession = false },
+            ready with { SameScannerPort = false },
+            ready with { SameEcuCanRate = false },
+            ready with { TrustedPhysicalStartConnected = false },
+            ready with { VerifiedInspectionWriterConnected = false },
+            ready
+        };
+        foreach (var state in states)
+        {
+            var decision = ProductionAdmissionReview.Evaluate(state);
+            Assert.False(string.IsNullOrWhiteSpace(decision.Headline));
+            Assert.False(string.IsNullOrWhiteSpace(decision.Guidance));
+            Assert.False(string.IsNullOrWhiteSpace(decision.Stage));
+            var visible = decision.Stage + decision.Headline + decision.Guidance;
+            foreach (var internalTerm in new[]
+                { "ProjectId", "Inspection", "Schema", "TEST", "FLASH",
+                  "预检", "资源冻结", "旧版", "发布版本" })
+                Assert.DoesNotContain(internalTerm, visible);
+        }
+    }
+
 }
