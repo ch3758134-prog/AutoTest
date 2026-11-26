@@ -22,6 +22,60 @@ public sealed class ProductionIdentityConfigTests
         ProductionBarcodeRule.NewSerial() with { Name = name };
 
     [Fact]
+    public void NewStationRuleDoesNotPretendToHaveRealScannerSamples()
+    {
+        var blank = ProductionBarcodeRule.NewSerial();
+        Assert.Empty(blank.Samples);
+        var pin = Pin("HYDEPB");
+        var config = StationProductionConfiguration.New() with
+        {
+            FixedModel = pin.ModelCode,
+            Products = [new(pin.ModelCode, "", pin.ManifestPath)]
+        };
+        Assert.Contains(StationProductionConfigurationStore.InspectRules(config),
+            issue => issue.Contains("正例和反例"));
+    }
+
+    [Fact]
+    public void LegacyArtificialStarterSamplesCannotReleaseStation()
+    {
+        var pin = Pin("HYDEPB");
+        var legacy = ProductionBarcodeRule.NewSerial() with
+        {
+            Samples = [new ProductionBarcodeSample("SN001234", true, "SN001234"),
+                new ProductionBarcodeSample("SN|BAD", false)]
+        };
+        var config = StationProductionConfiguration.New() with
+        {
+            FixedModel = pin.ModelCode,
+            Products = [new(pin.ModelCode, "", pin.ManifestPath)],
+            Rules = [legacy]
+        };
+        Assert.Contains(StationProductionConfigurationStore.InspectRules(config),
+            issue => issue.Contains("虚构"));
+    }
+
+    [Fact]
+    public void ActualSerialSampleAndExplicitGeneratedRejectPassStaticParser()
+    {
+        var pin = Pin("HYDEPB");
+        var rule = ProductionBarcodeRule.NewSerial() with
+        {
+            Samples = [new ProductionBarcodeSample("EPB000126", true, "EPB000126"),
+                new ProductionBarcodeSample("EPB000126|", false)]
+        };
+        var config = StationProductionConfiguration.New() with
+        {
+            FixedModel = pin.ModelCode,
+            Products = [new(pin.ModelCode, "", pin.ManifestPath)],
+            Rules = [rule]
+        };
+        Assert.Empty(StationProductionConfigurationStore.InspectRules(config));
+        Assert.True(rule.Parse("EPB000126").Accepted);
+        Assert.False(rule.Parse("EPB000126|").Accepted);
+    }
+
+    [Fact]
     public void FixedStationSerialOnlyDoesNotRequireModelOrHardwareFields()
     {
         var pin = Pin("HYDEPB");
