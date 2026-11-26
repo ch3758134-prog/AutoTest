@@ -133,8 +133,7 @@ public static class AutomaticTestResourceContract
                     {
                         Flag("用例「" + entry.DisplayName + "」资源「" +
                             mapping.Name + "」：" + error.Message,
-                            "RESOURCE:" + mapping.Asset.Value.ToString("N") + ":" +
-                                mapping.Kind, "工程资源", "资源修订/映射需要复核",
+                            MappingCauseKey(mapping), "工程资源", "资源修订/映射需要复核",
                             entry.DisplayName + " · " + mapping.Name,
                             error.Message, mapping.Asset.Value == Guid.Empty ? null :
                             mapping.Asset.Value, entry.ItemId);
@@ -208,7 +207,7 @@ public static class AutomaticTestResourceContract
                 {
                     issues.Add(phaseName + " 资源「" + mapping.Name + "」：" + error.Message);
                     details.Add(new ResourceDependencyIssue(
-                        "RESOURCE:" + mapping.Asset.Value.ToString("N") + ":" + mapping.Kind,
+                        MappingCauseKey(mapping),
                         "工程资源", "资源修订/映射需要复核",
                         phaseName + " · " + mapping.Name, error.Message,
                         mapping.Asset.Value == Guid.Empty ? null : mapping.Asset.Value,
@@ -257,6 +256,12 @@ public static class AutomaticTestResourceContract
             throw new InvalidDataException("资源文件内容与工程索引 SHA256 不一致：" + asset.Name);
         return content;
     }
+
+    private static string MappingCauseKey(TestTargetMapping mapping) =>
+        mapping.Asset.Value == Guid.Empty
+            ? "RAW:" + mapping.Kind + ":" + mapping.Role + ":" +
+              mapping.CanId.ToString("X")
+            : "RESOURCE:" + mapping.Asset.Value.ToString("N");
 
     internal static async Task ValidateMappingAsync(OpenProjectContext project,
         TestTargetMapping mapping, CancellationToken ct)
