@@ -432,6 +432,29 @@ public sealed partial class AutomaticTestHomeViewModel
             return;
         }
 
+        // Publication may change while the modal consent dialog is open.
+        // Do not reuse a previous operator approval for a changed fixture
+        // polarity, output route, or station process.
+        try
+        {
+            var latestStation = await StationProductionConfigurationStore.LoadPublishedAsync();
+            if (latestStation is null ||
+                latestStation.PublicationId != scan.PublicationId ||
+                !string.Equals(latestStation.ConfigurationSha256,
+                    scan.PublishedConfigurationSha256, StringComparison.OrdinalIgnoreCase))
+            {
+                StartRequestStatus = "确认期间工位配置已重新发布；禁止沿用旧夹具许可，" +
+                    "请重新扫码并确认本次工位工艺。";
+                return;
+            }
+        }
+        catch (Exception error)
+        {
+            StartRequestStatus = "无法再次确认工位发布版本，已取消真实物理操作：" +
+                error.Message;
+            return;
+        }
+
         var frozen = _prepared!;
         var sessionEpoch = _hardware.CurrentStationEpoch;
         var started = DateTimeOffset.UtcNow;
