@@ -75,7 +75,7 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
     private string _selectedPort = "";
     private int _baudRate = 9600;
     private string _modelCode = "";
-    private string _status = "选择真实 USB 串口并连接";
+    private string _status = "正在自动查找真实 USB 扫码设备";
     private string _lastRaw = "";
     private string _lastHex = "";
     private string _lastModel = "";
@@ -86,7 +86,7 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
     private readonly System.Windows.Threading.DispatcherTimer _deviceWatch =
         new() { Interval = TimeSpan.FromSeconds(4) };
     private int _autoConnecting;
-    private string _deviceStatus = "尚未绑定实体扫码枪。请先人工选择 COM、读取一次真实条码，再绑定该设备。";
+    private string _deviceStatus = "首次使用将自动查找唯一的 USB 串口设备；收到真实完整条码后记住该设备。";
     private ScanIdentityPolicy? _activeIdentityPolicy;
     private string _identityFormat = ScanIdentityPolicy.SerialOnly;
     private string _identitySeparator = "-";
@@ -169,14 +169,15 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
             DeviceStatus = "旧设备绑定无法读取：" + error.Message;
         }
         RefreshPorts();
-        // Only an explicitly bound, unique USB PnP instance may auto-connect.
+        // The station automatically reopens a previously bound USB device.
+        // On first use, only a single unambiguous USB serial candidate is
+        // listened to; physical START and FLASH remain separately gated.
         _deviceWatch.Tick += async (_, _) =>
         {
-            if (_boundDevice is not null && !IsConnected && !_disposed)
-                await TryAutoConnectAsync();
+            if (!IsConnected && !_disposed) await TryAutoConnectAsync();
         };
         _deviceWatch.Start();
-        if (_boundDevice is not null) _ = TryAutoConnectAsync();
+        _ = TryAutoConnectAsync();
     }
 
     public sealed record ScanFormatChoice(string Mode, string Label);
@@ -597,7 +598,7 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
                 }
             }
             else
-                DeviceStatus = "尚未绑定扫码枪；首次通过真实 COM 扫码验证后绑定，之后自动识别端口。";
+                DeviceStatus = "正在自动查找扫码枪；若有多个 USB 串口设备，首次需确认一次，之后按实体身份自动连接。";
             if (ports.Length == 0) SetStatus("未发现 COM 端口；请检查扫码枪 USB 串口驱动");
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or
@@ -652,7 +653,26 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
         try
         {
             await Task.Yield();
-            if (_boundDevice is null || IsConnected || _disposed) return;
+            if (IsConnected || _disposed) return;
+            if (_boundDevice is null)
+            {
+                // Never probe every COM device. One USB serial interface may be
+                // listened to without assuming its identity; a verified full
+                // barcode frame is required before persisting the binding.
+                var candidates = StationScannerDeviceBinding.DetectUsbSerialDevices();
+                if (candidates.Count != 1)
+                {
+                    DeviceStatus = candidates.Count == 0
+                        ? "尚未发现 USB 串口设备，请检查扫码枪及驱动。"
+                        : "发现多个 USB 串口设备，无法唯一判断扫码枪；请在设备设置中首次确认一次。";
+                    return;
+                }
+                SelectedPort = candidates[0].PortName;
+                DeviceStatus = "自动发现 " + SelectedPort +
+                    "；请扫描一次真实编号，软件将按 USB 实体身份记住扫码枪。";
+                await ConnectAsync();
+                return;
+            }
             var device = StationScannerDeviceBinding.Match(_boundDevice);
             if (device is null)
             {
@@ -782,6 +802,25 @@ public sealed class SerialScannerWorkbenchViewModel : BindableBase, IAsyncDispos
                     LastRaw = captured.Scan.Text;
                     LastHex = capturedHex;
                     SampleRaw = captured.Scan.Text;
+                    if (_boundDevice is null && !_disposed)
+                    {
+                        try
+                        {
+                            // Bind only after a complete accepted physical
+                            // barcode frame. This does not authorize clamp,
+                            // CAN, FLASH, or production START.
+                            _boundDevice = StationScannerDeviceBinding.Bind(ConnectedPort);
+                            DeviceStatus = "已自动识别并记住扫码枪实体设备；以后重插即自动连接当前 COM。";
+                        }
+                        catch (Exception error) when (error is IOException or
+                            InvalidDataException or UnauthorizedAccessException or
+                            ArgumentException or System.Security.SecurityException or
+                            System.ComponentModel.Win32Exception)
+                        {
+                            DeviceStatus = "已收到原始扫码，但未能自动绑定设备：" +
+                                error.Message + "；正式生产需先完成一次设备确认。";
+                        }
+                    }
                     var preview = release is null ? null :
                         ProductionIdentityResolver.Resolve(release, captured.Scan.Text);
                     LastModel = preview?.Model ?? "";
