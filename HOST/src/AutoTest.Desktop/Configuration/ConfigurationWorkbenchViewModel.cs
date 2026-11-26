@@ -551,10 +551,11 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
             AddField("reference", "关联原始波形证据（不是参考）", AssetNameFor(wave.EvidenceAssetId),
                 "可选。用于关联已验证的波形证据；正式参考波形需另行采集并明确保存。", AssetNames(ProjectWorkspaceService.WaveKind));
             AddField("mode", "正式波形判定类型",
-                wave.Comparison.InterpolationMode.ToString(),
-                "连续数值适用电压/电流；离散状态适用 KeyStat/Car_State 等枚举，" +
-                "按真实状态跳变持续时间判定。修改此项必须保存新的 WAVE 资源修订。",
-                Enum.GetNames<WaveInterpolationMode>());
+                wave.Comparison.InterpolationMode == WaveInterpolationMode.StepHold
+                    ? "离散状态（阶梯保持）" : "连续数值（线性插值）",
+                "连续数值适用电压/电流；离散状态适用 KeyStat/Car_State 等枚举。" +
+                "判定使用原始 CAN 时间序列，修改后需保存新的 WAVE 资源修订。",
+                new[] { "连续数值（线性插值）", "离散状态（阶梯保持）" });
             AddField("abs", "绝对容差", Format(wave.Comparison.AbsoluteTolerance));
             AddField("rel", "相对容差", Format(wave.Comparison.RelativeTolerance));
             AddField("coverage", "最小覆盖率（0~1）", Format(wave.Comparison.MinimumCoverage));
@@ -799,7 +800,12 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                         Number(F("ratio")) ?? 0, Number(F("shift")) ?? 0, Number(F("gap")) ?? 0,
                         Number(F("outside")) ?? 0, Number(F("duration")) ?? 0)
                     { RequireSynchronizedHardwareTime = Yes(F("sync")),
-                      InterpolationMode = Enum.Parse<WaveInterpolationMode>(F("mode"), true) }
+                      InterpolationMode = F("mode") switch
+                      {
+                          "连续数值（线性插值）" => WaveInterpolationMode.Linear,
+                          "离散状态（阶梯保持）" => WaveInterpolationMode.StepHold,
+                          _ => throw new InvalidDataException("波形判定类型无效；不可静默采用另一种算法。")
+                      } }
                 };
             }
             else if (_working is FlashSettingsDocument flash)
