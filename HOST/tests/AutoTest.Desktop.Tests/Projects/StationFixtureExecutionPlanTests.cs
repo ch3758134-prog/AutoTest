@@ -22,7 +22,7 @@ public sealed class StationFixtureExecutionPlanTests
     {
         var station = ProductionFixtureConfiguration.Draft with
         {
-            UseClamp1 = first, UseClamp2 = second
+            UseClamp1 = first, UseClamp2 = second, AutoClampEnabled = true
         };
         var plan = StationFixtureExecutionPlan.From(station);
         Assert.Equal(mask, plan.AllowedOutputMask);
@@ -38,7 +38,7 @@ public sealed class StationFixtureExecutionPlanTests
     {
         var station = ProductionFixtureConfiguration.Draft with
         {
-            UseClamp1 = true, UseClamp2 = true,
+            UseClamp1 = true, UseClamp2 = true, AutoClampEnabled = true,
             FirstClamp = first, MovementTimeoutMs = 6500
         };
         var plan = StationFixtureExecutionPlan.From(station);
@@ -62,7 +62,7 @@ public sealed class StationFixtureExecutionPlanTests
     {
         var config = ProductionFixtureConfiguration.Draft with
         {
-            UseClamp1 = true, Clamp1PressHigh = pressHigh,
+            UseClamp1 = true, AutoClampEnabled = true, Clamp1PressHigh = pressHigh,
             SettleDelayMs = 500
         };
         var plan = StationFixtureExecutionPlan.From(config);
@@ -76,7 +76,8 @@ public sealed class StationFixtureExecutionPlanTests
     {
         var plan = StationFixtureExecutionPlan.From(ProductionFixtureConfiguration.Draft with
         {
-            UseClamp2 = true, Clamp1PressHigh = true, Clamp2PressHigh = false
+            UseClamp2 = true, AutoClampEnabled = true,
+            Clamp1PressHigh = true, Clamp2PressHigh = false
         });
         Assert.False(plan.OutputLevelHigh(plan.Press.Single()));
         Assert.True(plan.OutputLevelHigh(plan.Release.Single()));
@@ -107,10 +108,23 @@ public sealed class StationFixtureExecutionPlanTests
     {
         var config = ProductionFixtureConfiguration.Draft with
         {
-            UseClamp1 = true, SettleDelayMs = 30001
+            UseClamp1 = true, AutoClampEnabled = true, SettleDelayMs = 30001
         };
         Assert.Throws<System.IO.InvalidDataException>(
             () => StationFixtureExecutionPlan.From(config));
+    }
+
+    [Fact]
+    public void AutoClampEnabledWithoutAnyOutputMustNotSilentlyRunUnclamped()
+    {
+        var invalid = ProductionFixtureConfiguration.Draft with
+        {
+            AutoClampEnabled = true,
+            UseClamp1 = false,
+            UseClamp2 = false
+        };
+        Assert.Throws<System.IO.InvalidDataException>(
+            () => StationFixtureExecutionPlan.From(invalid));
     }
 
     [Fact]
@@ -118,7 +132,7 @@ public sealed class StationFixtureExecutionPlanTests
     {
         var station = ProductionFixtureConfiguration.Draft with
         {
-            UseClamp1 = true, UseClamp2 = true
+            UseClamp1 = true, UseClamp2 = true, AutoClampEnabled = true
         };
         Assert.Throws<System.IO.InvalidDataException>(
             () => StationFixtureExecutionPlan.From(station));
