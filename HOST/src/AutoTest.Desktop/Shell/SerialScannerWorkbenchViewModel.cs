@@ -3,6 +3,7 @@ using System.IO;
 using System.Text.Json;
 using System.Threading;
 using System.Windows;
+using AutoTest.Contracts;
 using AutoTest.Desktop.Projects;
 using AutoTest.Specialists.Scan;
 using Prism.Commands;

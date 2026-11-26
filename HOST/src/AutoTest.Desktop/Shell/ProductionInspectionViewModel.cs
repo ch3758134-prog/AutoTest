@@ -84,14 +84,12 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
     private readonly Dictionary<StepId, List<ProductionInspectionNode>> _stepIndex = new();
     private readonly Dictionary<TestDocumentId, List<ProductionInspectionNode>> _caseIndex = new();
     private int _refreshGeneration;
-    private int _scanGeneration;
     private string? _lastProjectPath;
     private string _projectName = "未打开 ECU 工程";
     private string _setupIssue = "尚未配置有效的 ECU 测试工程";
     private bool _loadingCases;
     private bool _developerRunActive;
     private string _currentCaseName = "";
-    private string _modelCode = "—";
     private string _dutSerial = "等待扫码";
     private string _phase = "等待工程及扫码";
     private string _productionReadiness = "尚未完成自动测试配置检查";
@@ -134,7 +132,6 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
     public DelegateCommand RefreshCommand { get; }
     public DelegateCommand OpenScannerCommand { get; }
     public string ProjectName { get => _projectName; private set => SetProperty(ref _projectName, value); }
-    public string ModelCode { get => _modelCode; private set => SetProperty(ref _modelCode, value); }
     public string ScannerStatus => _scanner.IsConnected
         ? "扫码枪已连接 · " + _scanner.ConnectedPort
         : "扫码枪未连接 · 请在开发与调试中配置";
@@ -296,7 +293,6 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
                 _caseIndex.Clear();
                 Selected = null;
                 ProjectName = "未打开 ECU 工程";
-                ModelCode = "—";
                 _loadingCases = false;
                 _setupIssue = "尚未打开 ECU 工程";
                 ProductionReadiness = "请在开发与调试中打开 ECU 工程";
@@ -317,7 +313,6 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
                 _caseIndex.Clear();
                 Selected = null;
                 ProjectName = opened.Definition.Name;
-                ModelCode = opened.Definition.EcuModelCode ?? "—";
                 _loadingCases = false;
                 _setupIssue = "";
                 var caseIndex = 0;
@@ -360,7 +355,6 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
                 _caseIndex.Clear();
                 Selected = null;
                 ProjectName = opened.Definition.Name;
-                ModelCode = opened.Definition.EcuModelCode ?? "—";
                 _loadingCases = false;
                 _setupIssue = error.Message;
                 ProductionReadiness = "测试配置不可用：" + error.Message;
@@ -449,71 +443,15 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
                 RaisePropertyChanged(nameof(LastScannerRaw));
                 RaisePropertyChanged(nameof(LastScannerDiagnostic));
             });
-        if (e.PropertyName != nameof(SerialScannerWorkbenchViewModel.LastDecision)) return;
-        OnUi(() =>
-        {
-            var decision = _scanner.LastDecision;
-            if (string.IsNullOrWhiteSpace(decision)) return;
-            var serial = _scanner.LastSerial;
-            var model = _scanner.LastModel;
-            if (decision is not ("PRODUCTION_IDENTITY_RESOLVED" or "SCAN_MODEL_MATCHED") ||
-                string.IsNullOrWhiteSpace(serial))
+        // This viewer is read-only: a serial observation never claims a
+        // frozen production identity. The ONE authoritative inspection
+        // admission owner is AutomaticTestHomeViewModel.
+        if (e.PropertyName == nameof(SerialScannerWorkbenchViewModel.LastRaw))
+            OnUi(() =>
             {
-                // Rejected input does not replace the previously displayed DUT/result.
-                AddLog("扫码", "输入未接受：" + decision, model + " · " + serial);
-                return;
-            }
-            if (_realTest.IsRunning)
-            {
-                AddLog("扫码", "已忽略", "当前研发 TEST 正在运行；不能切换本次 ECU");
-                return;
-            }
-            DutSerial = serial;
-            Phase = "已识别 ECU，检查配置";
-            ProductionReadiness = "正在校验已发布烧录参数、固件与全部 Enabled 用例";
-            FlashState = "本次前置烧录尚未开始";
-            TestState = "本次自动测试尚未开始";
-            MonitorMode = "尚未启动本次自动测试";
-            LatestRunId = "—";
-            ReportPath = "";
-            ObservedStepCount = 0;
-            Logs.Clear();
-            _ = RefreshAsync();
-            AddLog("扫码", "型号与工程匹配", model + " · " + serial);
-            _ = InspectProductionConfigurationAsync(_workspace.Current, model, serial,
-                Interlocked.Increment(ref _scanGeneration));
-        });
-    }
-
-    private async Task InspectProductionConfigurationAsync(OpenProjectContext? opened,
-        string model, string serial, int generation)
-    {
-        if (opened is null) return;
-        var result = await ProductionPreparationService.PrepareAsync(opened, model, serial);
-        OnUi(() =>
-        {
-            if (generation != _scanGeneration ||
-                _workspace.Current?.ManifestPath != opened.ManifestPath) return;
-            if (result.ConfigurationReady)
-            {
-                ProductionReadiness = "配置预检通过 · " +
-                    result.Preparation!.OrderedEnabledCases.Count +
-                    " 个 Enabled 用例 · 烧录参数已冻结";
-                Phase = "自动测试执行尚未接通";
-                FlashState = "前置烧录尚未执行 · " +
-                    result.Preparation.EcuCanKbps + " kbit/s · Job " +
-                    result.Preparation.JobFingerprint[..12];
-                AddLog("自动测试配置", "只读预检通过",
-                    "配置指纹 " + result.Preparation.PreparationFingerprint[..12] +
-                    "；没有获得物理启动授权");
-            }
-            else
-            {
-                ProductionReadiness = result.Explanation;
-                Phase = "配置预检未通过";
-                AddLog("自动测试配置", "预检拒绝", result.Explanation);
-            }
-        });
+                if (!_realTest.IsRunning && !string.IsNullOrWhiteSpace(_scanner.LastRaw))
+                    AddLog("扫码", "原文已接收", _scanner.LastRaw);
+            });
     }
 
     private void OnDevelopmentRunStarted(TestDocumentId id, string name) => OnUi(() =>
