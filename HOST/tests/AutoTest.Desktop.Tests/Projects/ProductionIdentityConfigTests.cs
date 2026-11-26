@@ -56,6 +56,25 @@ public sealed class ProductionIdentityConfigTests
     }
 
     [Fact]
+    public void EmptyNegativeExampleIsNotConsideredPublicationValidation()
+    {
+        var pin = Pin("HYDEPB");
+        var invalid = ProductionBarcodeRule.NewSerial() with
+        {
+            Samples = [new ProductionBarcodeSample("EPB000127", true, "EPB000127"),
+                new ProductionBarcodeSample("", false)]
+        };
+        var config = StationProductionConfiguration.New() with
+        {
+            FixedModel = pin.ModelCode,
+            Products = [new(pin.ModelCode, "", pin.ManifestPath)],
+            Rules = [invalid]
+        };
+        Assert.Contains(StationProductionConfigurationStore.InspectRules(config),
+            issue => issue.Contains("不能留空"));
+    }
+
+    [Fact]
     public void ActualSerialSampleAndExplicitGeneratedRejectPassStaticParser()
     {
         var pin = Pin("HYDEPB");
