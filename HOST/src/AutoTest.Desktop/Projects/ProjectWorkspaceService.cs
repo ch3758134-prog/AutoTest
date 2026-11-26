@@ -109,38 +109,12 @@ public sealed partial class ProjectWorkspaceService
         string name, string parentDirectory, CancellationToken cancellationToken = default) =>
         CreateCoreAsync(name, parentDirectory, true, cancellationToken);
 
-    /// <summary>
-    /// New ECU projects need one genuine model identity for scanner matching.
-    /// The existing overload remains for non-interactive import/test callers.
-    /// </summary>
-    public Task<OpenProjectContext> CreateReadyToEditAsync(
-        string name, string parentDirectory, string ecuModelCode,
-        CancellationToken cancellationToken = default) =>
-        CreateCoreAsync(name, parentDirectory, true, cancellationToken, ecuModelCode);
-
-    public static string ValidateEcuModelCode(string? modelCode)
-    {
-        if (string.IsNullOrWhiteSpace(modelCode))
-            return "请输入 ECU 型号代码。";
-        return System.Text.RegularExpressions.Regex.IsMatch(modelCode.Trim().ToUpperInvariant(),
-            @"^[A-Z0-9]{2,16}$",
-            System.Text.RegularExpressions.RegexOptions.CultureInvariant,
-            TimeSpan.FromMilliseconds(100))
-            ? "" : "型号代码须为 2～16 位英文字母或数字。";
-    }
-
     private async Task<OpenProjectContext> CreateCoreAsync(
         string name, string parentDirectory, bool withInitialTest,
-        CancellationToken cancellationToken, string? ecuModelCode = null)
+        CancellationToken cancellationToken)
     {
         var error = ValidateInput(name, parentDirectory);
         if (error.Length > 0) throw new ArgumentException(error);
-        if (ecuModelCode is not null)
-        {
-            error = ValidateEcuModelCode(ecuModelCode);
-            if (error.Length > 0) throw new ArgumentException(error);
-            ecuModelCode = ecuModelCode.Trim().ToUpperInvariant();
-        }
 
         // ProjectRepository has an atomic FILE replace API. New PROJECT creation
         // must instead be non-overwriting. Build in a sibling staging directory,
@@ -160,24 +134,12 @@ public sealed partial class ProjectWorkspaceService
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var definition = ProjectDefinition.Create(name);
-                if (ecuModelCode is not null)
-                    definition = (definition with { EcuModelCode = ecuModelCode }).Validate();
                 if (withInitialTest)
                 {
-                // Normal desktop creation yields one TEST sequence and one
-                // blank editable case, with no simulated operations.
-                const string caseName = "测试用例 01";
-                const string sequenceName = "功能测试";
-                var caseBytes = Encoding.UTF8.GetBytes(
-                    TestDocumentCodec.Serialize(TestDocument.Create(caseName)));
-                var casePath = "assets/tests/" + Guid.NewGuid().ToString("N") +
-                    ".test.json";
-                var caseAsset = AssetEntry.Create(TestProgramKind, caseName,
-                    casePath, caseBytes);
+                // A new project contains one real empty TEST sequence.
+                // No fabricated test case and no extra plan selection.
+                const string sequenceName = "生产 TEST 项目";
                 var sequence = TestProjectDocument.Create(sequenceName);
-                sequence.Packages.Add(new TestProjectEntry(Guid.NewGuid(),
-                    caseAsset.Id.Value, caseAsset.Revision, caseAsset.Sha256,
-                    caseName, true));
                 var sequenceBytes = TestProjectCodec.Encode(sequence);
                 var sequencePath = "assets/projects/" +
                     Guid.NewGuid().ToString("N") + ".prj.json";
@@ -185,14 +147,10 @@ public sealed partial class ProjectWorkspaceService
                     sequenceName, sequencePath, sequenceBytes);
                 definition = (definition with
                 {
-                    Assets = definition.Assets.Add(sequenceAsset).Add(caseAsset)
+                    Assets = definition.Assets.Add(sequenceAsset)
                 }).WithRevision().Validate();
-                var caseFull = ProjectPathPolicy.Normalize(staging, casePath);
                 var sequenceFull = ProjectPathPolicy.Normalize(staging, sequencePath);
-                Directory.CreateDirectory(Path.GetDirectoryName(caseFull)!);
                 Directory.CreateDirectory(Path.GetDirectoryName(sequenceFull)!);
-                await File.WriteAllBytesAsync(caseFull, caseBytes, cancellationToken)
-                    .ConfigureAwait(false);
                 await File.WriteAllBytesAsync(sequenceFull, sequenceBytes,
                     cancellationToken).ConfigureAwait(false);
                 }
@@ -204,7 +162,7 @@ public sealed partial class ProjectWorkspaceService
                 var verified = await ProjectRepository.OpenDefinitionAsync(stagedManifest,
                     cancellationToken).ConfigureAwait(false);
                 if (verified.Id != definition.Id || verified.Name != name ||
-                    (withInitialTest && verified.Assets.Length != 2))
+                    (withInitialTest && verified.Assets.Length != 1))
                     throw new InvalidDataException("新建 ECU 工程的用例资源未通过保存检查。");
                 cancellationToken.ThrowIfCancellationRequested();
                 Directory.Move(staging, target); // refuses a pre-existing target
