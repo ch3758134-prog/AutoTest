@@ -50,10 +50,8 @@ public sealed class InspectionStationProcedureEditorViewModel : BindableBase
     public IReadOnlyList<ActionChoice> ActionOptions { get; } =
     [
         new("Wait", "仅等待"),
-        new("Clamp1Press", "夹具1 · 压紧"),
-        new("Clamp1Release", "夹具1 · 释放"),
-        new("Clamp2Press", "夹具2 · 压紧"),
-        new("Clamp2Release", "夹具2 · 释放"),
+        // Standard fixture control is station-owned and frozen at release.
+        // Do not offer conflicting Clamp1/2 actions in project-special stages.
         new("IgnOn", "IGN · ON"),
         new("IgnOff", "IGN · OFF")
     ];
