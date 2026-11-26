@@ -21,16 +21,17 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
 
     public sealed class ProductRow
     {
-        public string ModelCode { get; set; } = "";
+        public Guid ProjectId { get; set; }
+        public string ProductKey { get; set; } = "";
         public string HardwareCode { get; set; } = "";
         public string ManifestPath { get; set; } = "";
-        public ProductionProductBinding ToModel() => new(ModelCode.Trim(),
-            HardwareCode.Trim(), ManifestPath.Trim());
+        public ProductionProductBinding ToModel() => new(ProductKey.Trim(),
+            HardwareCode.Trim(), ManifestPath.Trim(), ProjectId);
     }
     public sealed class IdentityRow
     {
         public string Serial { get; set; } = "";
-        public string ModelCode { get; set; } = "";
+        public string ProductKey { get; set; } = "";
         public string HardwareCode { get; set; } = "";
         public string ExpiresUtc { get; set; } = "";
         public string Batch { get; set; } = "";
@@ -44,7 +45,7 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
                     throw new FormatException("编号 " + Serial + " 的截止时间无法解析。");
                 valid = parsed.ToUniversalTime();
             }
-            return new(Serial.Trim(), ModelCode.Trim(), HardwareCode.Trim(),
+            return new(Serial.Trim(), ProductKey.Trim(), HardwareCode.Trim(),
                 valid, Batch.Trim());
         }
     }
@@ -206,17 +207,11 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
         get => _identityMode;
         set { _identityMode = value; Changed(nameof(IdentityMode)); }
     }
-    private string _fixedModel = "";
-    public string FixedModel
+    private Guid _fixedProjectId;
+    public Guid FixedProjectId
     {
-        get => _fixedModel;
-        set { _fixedModel = value; Changed(nameof(FixedModel)); }
-    }
-    private string _fixedHardware = "";
-    public string FixedHardware
-    {
-        get => _fixedHardware;
-        set { _fixedHardware = value; Changed(nameof(FixedHardware)); }
+        get => _fixedProjectId;
+        private set { _fixedProjectId = value; Changed(nameof(FixedProjectId)); }
     }
     private FixtureRow _fixture = FixtureRow.From(ProductionFixtureConfiguration.Draft);
     public FixtureRow Fixture
@@ -370,23 +365,16 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
             _lastSaved = doc;
             _revision = doc.Revision;
             IdentityMode = doc.Mode;
-            FixedModel = doc.FixedModel;
-            FixedHardware = doc.FixedHardware;
+            FixedProjectId = doc.FixedProjectId;
             Fixture = FixtureRow.From(doc.Fixture);
             foreach (var rule in doc.Rules) Rules.Add(RuleRow.From(rule));
             foreach (var x in doc.Products) Products.Add(new ProductRow
-            { ModelCode = x.ModelCode, HardwareCode = x.HardwareCode, ManifestPath = x.ManifestPath });
+            { ProductKey = x.ProductKey, HardwareCode = x.HardwareCode, ManifestPath = x.ManifestPath, ProjectId = x.ProjectId });
             foreach (var x in doc.IdentityRows) IdentityRows.Add(new IdentityRow
             {
-                Serial = x.Serial, ModelCode = x.ModelCode, HardwareCode = x.HardwareCode,
+                Serial = x.Serial, ProductKey = x.ProductKey, HardwareCode = x.HardwareCode,
                 ExpiresUtc = x.ExpiresUtc?.ToString("O") ?? "", Batch = x.Batch
             });
-            if (string.IsNullOrEmpty(FixedModel) &&
-                _workspace.Current?.Definition.EcuModelCode is { } model)
-            {
-                FixedModel = model;
-                // The operator still explicitly binds the current engineering project.
-            }
             RulesGrid.SelectedIndex = Rules.Count > 0 ? 0 : -1;
             _ready = true;
             Status = "工位配置已加载";
@@ -412,8 +400,8 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
                 current = current with { Revision = Math.Max(saved.Revision + 1, r.Revision) };
             return current;
         }).ToArray();
-        return new(1, Math.Max(1, _revision + 1), IdentityMode,
-            FixedModel.Trim(), FixedHardware.Trim(), rules,
+        return new(StationProductionConfiguration.CurrentSchema,
+            Math.Max(1, _revision + 1), IdentityMode, FixedProjectId, rules,
             IdentityRows.Select(x => x.ToModel()).ToArray(),
             Products.Select(x => x.ToModel()).ToArray(), Fixture.ToModel());
     }
@@ -530,7 +518,7 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
               "\n编码形制：" + published.Configuration.Rules.Count(x => x.Enabled) +
               " 条 · 产品绑定：" + published.Projects.Count + " 型号/变型" +
               "\n" + string.Join("\n", published.Projects.Select(x =>
-                  x.ModelCode + (string.IsNullOrWhiteSpace(x.HardwareCode)
+                  x.ProductKey + (string.IsNullOrWhiteSpace(x.HardwareCode)
                       ? "" : " / " + x.HardwareCode) +
                   " → " + Path.GetFileName(x.ManifestPath) +
                   " · FLASH SHA " + x.FlashJobFingerprint[..12] +
@@ -551,7 +539,7 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
                     .Select(x => x.Name + " v" + x.Revision +
                         " [" + x.Format + "] → " +
                         (published.Configuration.Mode == StationProductionConfiguration.FixedStation
-                            ? published.Configuration.FixedModel :
+                            ? published.Configuration.FixedProjectId.ToString("N")[..10] :
                          published.Configuration.Mode == StationProductionConfiguration.BarcodeModel
                             ? "编码型号字段" : "受控编号映射表")));
             PublicationOverview += "\n工位：" + published.Configuration.Fixture.StationSlotId +
@@ -580,25 +568,48 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
     private void AddCurrentProject_Click(object sender, RoutedEventArgs e)
     {
         var opened = _workspace.Current;
-        if (opened?.Definition.EcuModelCode is not { Length: > 0 } code)
-        { Status = "请先打开具有正式型号的 ECU 工程。"; return; }
-        if (Products.Any(x => x.ModelCode == code && x.HardwareCode == FixedHardware))
-        { Status = "同型号/硬件版本已经绑定，请编辑已有记录。"; return; }
-        Products.Add(new ProductRow { ModelCode = code, HardwareCode = FixedHardware,
-            ManifestPath = opened.ManifestPath });
-        if (string.IsNullOrEmpty(FixedModel)) FixedModel = code;
+        if (opened is null) { Status = "请先打开 ECU 工程。"; return; }
+        if (IdentityMode == StationProductionConfiguration.FixedStation)
+        {
+            Products.Clear();
+            FixedProjectId = opened.Definition.Id.Value;
+        }
+        if (!Products.Any(x => x.ProjectId == opened.Definition.Id.Value))
+            Products.Add(new ProductRow
+            {
+                ProjectId = opened.Definition.Id.Value,
+                ManifestPath = opened.ManifestPath
+            });
         MarkDirty();
-        Status = "当前工程已加入候选；还须具有已发布原生 FLASH 及完整 TEST 后方能发布工位。";
+        Status = "已绑定工程：" + opened.Definition.Name;
     }
-    private void AddManifest_Click(object sender, RoutedEventArgs e)
+
+    private async void AddManifest_Click(object sender, RoutedEventArgs e)
     {
         var picker = new OpenFileDialog
         { Filter = "AutoTest ECU 工程 (*.json)|*.json", Title = "选择 ECU 工程清单" };
         if (picker.ShowDialog(this) != true) return;
-        Products.Add(new ProductRow { ModelCode = FixedModel, HardwareCode = FixedHardware,
-            ManifestPath = Path.GetFullPath(picker.FileName) });
-        MarkDirty();
+        try
+        {
+            var full = Path.GetFullPath(picker.FileName);
+            var definition = await ProjectRepository.OpenDefinitionAsync(full);
+            if (IdentityMode == StationProductionConfiguration.FixedStation)
+            {
+                Products.Clear();
+                FixedProjectId = definition.Id.Value;
+            }
+            if (!Products.Any(x => x.ProjectId == definition.Id.Value))
+                Products.Add(new ProductRow
+                {
+                    ProjectId = definition.Id.Value, ManifestPath = full
+                });
+            MarkDirty();
+            Status = "已绑定工程：" + definition.Name;
+        }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        { Status = "工程无效：" + error.Message; }
     }
+
     private void RemoveProject_Click(object sender, RoutedEventArgs e)
     {
         if (ProductsGrid.SelectedItem is ProductRow selected)
@@ -614,8 +625,7 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
             var publication = await StationProductionConfigurationStore.LoadPublishedAsync()
                 ?? throw new InvalidDataException("工位尚未发布产品配置。");
             var pin = publication.Projects.SingleOrDefault(x =>
-                x.ModelCode == selected.ModelCode &&
-                x.HardwareCode == selected.HardwareCode &&
+                x.ProjectId == selected.ProjectId &&
                 string.Equals(x.ManifestPath, selected.ManifestPath,
                     StringComparison.OrdinalIgnoreCase))
                 ?? throw new InvalidDataException("选中的工程没有对应的已发布固定版本。");
@@ -657,8 +667,8 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
         { rule.Samples.Add(new SampleRow { Raw = "", ShouldAccept = false }); MarkDirty(); }
     }
     private void AddIdentity_Click(object sender, RoutedEventArgs e)
-    { IdentityRows.Add(new IdentityRow { ModelCode = FixedModel,
-        HardwareCode = FixedHardware }); MarkDirty(); }
+    { IdentityRows.Add(new IdentityRow { ProductKey = FixedProjectId,
+        HardwareCode =  }); MarkDirty(); }
     private void RemoveIdentity_Click(object sender, RoutedEventArgs e)
     {
         if (IdentityGrid.SelectedItem is IdentityRow row)
@@ -709,7 +719,7 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
                     parts[0].Trim() == "唯一编号") continue;
                 rows.Add(new IdentityRow
                 {
-                    Serial = parts[0].Trim(), ModelCode = parts[1].Trim(),
+                    Serial = parts[0].Trim(), ProductKey = parts[1].Trim(),
                     HardwareCode = parts.Length > 2 ? parts[2].Trim() : "",
                     ExpiresUtc = parts.Length > 3 ? parts[3].Trim() : "",
                     Batch = parts.Length > 4 ? parts[4].Trim() : ""
@@ -744,7 +754,8 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
             foreach (var item in config.Products)
                 pins.Add(await StationProductionConfigurationStore.InspectProjectAsync(
                     item, CancellationToken.None));
-            var snapshot = new PublishedStationProductionConfiguration(1,
+            var snapshot = new PublishedStationProductionConfiguration(
+                StationProductionConfiguration.CurrentSchema,
                 StationProductionConfigurationStore.ConfigurationSha(config),
                 Guid.NewGuid(), DateTimeOffset.UtcNow, config, pins);
             foreach (var raw in inputs)
@@ -760,8 +771,8 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
                 PreviewResults.Add(
                     "✓ 原始编码：" + raw + "\n规则：" + match.RuleId +
                     " v" + match.RuleRevision + "\n唯一编号：" + match.Serial +
-                    " · 型号：" + match.Model + " · 硬件：" + match.Hardware +
-                    "\n型号来源：" + match.ModelBasis + "\n唯一工程：" +
+                    " · 型号：" + match.ProductKey + " · 硬件：" + match.Hardware +
+                    "\n型号来源：" + match.ProjectBasis + "\n唯一工程：" +
                     pin.ManifestPath + "\n工程 SHA：" + pin.ManifestSha256 +
                     "\n前置 FLASH 工艺：" + pin.NativeFlashSha256 +
                     "\n固件 SHA：" + pin.FirmwareSha256 +

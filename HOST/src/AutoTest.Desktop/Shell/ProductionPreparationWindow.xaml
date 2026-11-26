@@ -71,19 +71,10 @@
          SelectedValue="{Binding IdentityMode,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
          SelectionChanged="DraftSelectionChanged"/>
         <TextBlock Style="{StaticResource Help}" Margin="0,8,0,10"
-         Text="只扫唯一编号请选择固定型号工位；条码本身带型号请选择条码识别；混合生产且只扫编号时使用受控编号表。"/>
-        <WrapPanel>
-         <StackPanel Margin="0,0,12,10">
-          <TextBlock Text="固定工位型号" Foreground="#60758A"/>
-          <TextBox Width="210" Text="{Binding FixedModel,UpdateSourceTrigger=PropertyChanged}"
-           TextChanged="DraftChanged" ToolTip="例如 HYDEPB，不填写时无法发布固定型号工位"/>
-         </StackPanel>
-         <StackPanel Margin="0,0,12,10">
-          <TextBlock Text="固定硬件版本（可为空）" Foreground="#60758A"/>
-          <TextBox Width="210" Text="{Binding FixedHardware,UpdateSourceTrigger=PropertyChanged}"
-           TextChanged="DraftChanged"/>
-         </StackPanel>
-        </WrapPanel>
+         Text="只扫唯一编号请选择固定工程工位；条码本身带型号请选择条码识别；混合生产且只扫编号时使用受控编号表。"/>
+        <TextBlock Text="固定工位直接绑定当前工程，无需填写型号或硬件代码。"
+          FontSize="12" Foreground="#60758A" Margin="0,0,0,9"/>
+        
        </StackPanel>
       </Border>
       <Border Style="{StaticResource Panel}">
@@ -94,16 +85,16 @@
           Padding="12,7" Margin="0,0,7,0"/>
          <Button Content="添加工程文件" Click="AddManifest_Click" Padding="12,7" Margin="0,0,7,0"/>
          <Button Content="移除选中绑定" Click="RemoveProject_Click" Padding="12,7" Margin="0,0,7,0"/>
-         <Button Content="安全切换到选中型号" Click="ActivateProject_Click" Padding="12,7"
+         <Button Content="切换到选中工程" Click="ActivateProject_Click" Padding="12,7"
           ToolTip="工位空闲时校验已发布资源，切换活动型号并对 ECU CAN 码率进行真实回读；不断开 USB"/>
         </StackPanel>
-        <TextBlock Text="型号及硬件版本 → 一份已发布工程" FontWeight="SemiBold" VerticalAlignment="Center"/>
+        <TextBlock Text="可信产品识别码 → 唯一工程；固定工位无需填写" FontWeight="SemiBold" VerticalAlignment="Center"/>
        </DockPanel>
        <DataGrid x:Name="ProductsGrid" ItemsSource="{Binding Products}"
         AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
         Height="245" CellEditEnding="GridEditEnding">
         <DataGrid.Columns>
-         <DataGridTextColumn Header="产品型号" Binding="{Binding ModelCode,UpdateSourceTrigger=PropertyChanged}" Width="160"/>
+         <DataGridTextColumn Header="产品识别码（混线）" Binding="{Binding ProductKey,UpdateSourceTrigger=PropertyChanged}" Width="160"/>
          <DataGridTextColumn Header="硬件版本" Binding="{Binding HardwareCode,UpdateSourceTrigger=PropertyChanged}" Width="130"/>
          <DataGridTextColumn Header="工程清单绝对路径（只引用完整工程）"
           Binding="{Binding ManifestPath,UpdateSourceTrigger=PropertyChanged}" Width="*"/>
@@ -239,9 +230,9 @@
      <StackPanel>
       <TextBlock Text="唯一编号 → 产品身份登记表" Style="{StaticResource Section}"/>
       <TextBlock Style="{StaticResource Help}"
-       Text="固定型号工位不需要编号表；混合工位若编码不带可信型号，选 RegistryModel 并导入受控 CSV。重复编号、失效映射和型号冲突会阻断发布。"/>
+       Text="固定工程工位不需要编号表；混合工位若编码不带可信型号，选 RegistryModel 并导入受控 CSV。重复编号、失效映射和型号冲突会阻断发布。"/>
       <WrapPanel Margin="0,0,0,11">
-       <Button Content="导入 CSV（编号,型号,硬件版本,截止日期）" Click="ImportIdentityCsv_Click"
+       <Button Content="导入 CSV（编号,产品识别码,硬件版本,截止日期）" Click="ImportIdentityCsv_Click"
         Padding="12,8" Margin="0,0,8,0"/>
        <Button Content="添加一行" Click="AddIdentity_Click" Padding="12,8" Margin="0,0,8,0"/>
        <Button Content="移除选中" Click="RemoveIdentity_Click" Padding="12,8"/>
@@ -252,7 +243,7 @@
       CellEditEnding="GridEditEnding">
       <DataGrid.Columns>
        <DataGridTextColumn Header="唯一编号（大小写敏感）" Binding="{Binding Serial,UpdateSourceTrigger=PropertyChanged}" Width="*"/>
-       <DataGridTextColumn Header="产品型号" Binding="{Binding ModelCode,UpdateSourceTrigger=PropertyChanged}" Width="160"/>
+       <DataGridTextColumn Header="产品识别码（混线）" Binding="{Binding ProductKey,UpdateSourceTrigger=PropertyChanged}" Width="160"/>
        <DataGridTextColumn Header="硬件版本" Binding="{Binding HardwareCode,UpdateSourceTrigger=PropertyChanged}" Width="130"/>
        <DataGridTextColumn Header="截止日期 UTC（可为空）" Binding="{Binding ExpiresUtc,UpdateSourceTrigger=PropertyChanged}" Width="220"/>
        <DataGridTextColumn Header="批次" Binding="{Binding Batch,UpdateSourceTrigger=PropertyChanged}" Width="135"/>
@@ -343,7 +334,7 @@
      <StackPanel>
       <TextBlock Text="条码 → 身份 → 唯一已发布工程 → 完整生产任务" Style="{StaticResource Section}"/>
       <TextBlock Style="{StaticResource Help}"
-       Text="高级诊断：可批量试算编码并核对资源，不会启动夹具、FLASH 或 TEST。固定型号工位的工程发布不以扫码枪在线为前提。"/>
+       Text="高级诊断：可批量试算编码并核对资源，不会启动夹具、FLASH 或 TEST。固定工程工位的工程发布不以扫码枪在线为前提。"/>
       <TextBox x:Name="PreviewInput" TextWrapping="Wrap" AcceptsReturn="True"
        MinHeight="88" MaxHeight="135" VerticalScrollBarVisibility="Auto"/>
       <Border Background="#F3F7FB" CornerRadius="7" Padding="12"
