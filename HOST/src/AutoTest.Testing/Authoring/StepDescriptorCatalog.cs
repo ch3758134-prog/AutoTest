@@ -48,9 +48,9 @@ public sealed class StepDescriptorCatalog
         Add("Expect", false, [], ["left", "operator", "right"]);
         Add("WaveStart", false, [], ["target", "captureKey", "durationMs"]);
         Add("WaveStop", false, [], ["captureKey", "variable"]);
-        Add("WaveAnalyze", false, [], ["captureKey", "variable", "tolerance", "coverage"]);
+        Add("WaveAnalyze", false, [], ["captureKey", "variable", "profile"]);
         // Formal wave judgement uses a completed real capture and pinned reference/profile.
-        Add("WaveCompare", false, [], ["captureKey", "variable", "tolerance", "coverage"]);
+        Add("WaveCompare", false, [], ["captureKey", "variable", "profile"]);
         // Explicitly modeled future capabilities; never claim V1 runtime support.
         // FLASH uses the same TEST DSL. Physical execution remains disabled until wired.
         Add("Flash", false, [], ["programmingProfile", "firmwarePath",
