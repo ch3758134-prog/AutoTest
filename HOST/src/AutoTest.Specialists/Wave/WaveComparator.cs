@@ -131,33 +131,69 @@ public static class WaveComparator
         return best;
     }
 
+    /// <summary>
+    /// Linear signals must be checked at BOTH reference and actual observation
+    /// timestamps. Sampling only at reference knots can silently miss an
+    /// observed short spike between them. Use shared knots and conservative
+    /// interval exclusion if either endpoint exceeds the tolerance band.
+    /// Display downsampling is never used here.
+    /// </summary>
     private static Evaluation Evaluate(WaveSeries reference, double[] rt, WaveSeries actual,
         double[] at, double shift, WaveComparisonConfig config)
     {
+        var begin = Math.Max(rt[0], at[0] - shift);
+        var end = Math.Min(rt[^1], at[^1] - shift);
+        var referenceDuration = rt[^1] - rt[0];
+        if (end - begin <= 1e-12 || referenceDuration <= 0)
+            return new Evaluation(shift, 0, 0, 0, 0, 0, 0, 0);
+
+        var boundaries = new List<double>(rt.Length + at.Length + 2) { begin, end };
+        boundaries.AddRange(rt.Where(t => t > begin && t < end));
+        boundaries.AddRange(at.Select(t => t - shift)
+            .Where(t => t > begin && t < end));
+        boundaries.Sort();
         var count = 0;
         var passed = 0;
-        var squared = 0.0;
         var max = 0.0;
-        var outside = 0.0;
-        var coveredDuration = 0.0;
-        var previousCovered = -1;
-        for (var i = 0; i < rt.Length; i++)
+        var squaredSeconds = 0.0;
+        var coveredSeconds = 0.0;
+        var passingSeconds = 0.0;
+        var outsideSeconds = 0.0;
+        for (var i = 1; i < boundaries.Count; i++)
         {
-            if (!Interpolate(at, actual, rt[i] + shift, out var actualValue)) continue;
-            if (previousCovered == i - 1 && previousCovered >= 0)
-                coveredDuration += rt[i] - rt[i - 1];
-            previousCovered = i;
+            var from = boundaries[i - 1];
+            var to = boundaries[i];
+            var seconds = to - from;
+            if (seconds <= 1e-12) continue;
+            if (!Interpolate(rt, reference, from, out var refStart) ||
+                !Interpolate(rt, reference, to, out var refEnd) ||
+                !Interpolate(at, actual, from + shift, out var actStart) ||
+                !Interpolate(at, actual, to + shift, out var actEnd))
+                continue;
+            var d0 = actStart - refStart;
+            var d1 = actEnd - refEnd;
+            var tol0 = config.AbsoluteTolerance +
+                Math.Abs(refStart) * config.RelativeTolerance;
+            var tol1 = config.AbsoluteTolerance +
+                Math.Abs(refEnd) * config.RelativeTolerance;
+            coveredSeconds += seconds;
+            squaredSeconds += (d0 * d0 + d0 * d1 + d1 * d1) * seconds / 3;
+            max = Math.Max(max, Math.Max(Math.Abs(d0), Math.Abs(d1)));
             count++;
-            var referenceValue = reference.Samples[i].Sample.Value;
-            var delta = Math.Abs(actualValue - referenceValue);
-            var allowed = config.AbsoluteTolerance + Math.Abs(referenceValue) * config.RelativeTolerance;
-            squared += delta * delta;
-            max = Math.Max(max, delta);
-            if (delta <= allowed + 1e-12) passed++;
-            else if (i + 1 < rt.Length) outside += rt[i + 1] - rt[i];
+            // Conservative: an observed spike at either end means the whole
+            // interval needs explicit approval via duration/ratio limits;
+            // never allow a sampled spike to become an invisible PASS.
+            if (Math.Abs(d0) <= tol0 + 1e-12 &&
+                Math.Abs(d1) <= tol1 + 1e-12)
+            {
+                passed++;
+                passingSeconds += seconds;
+            }
+            else outsideSeconds += seconds;
         }
-        return new Evaluation(shift, count, passed, squared, max, outside, coveredDuration,
-            count / (double)rt.Length);
+        return new Evaluation(shift, count, passed, squaredSeconds, max,
+            outsideSeconds, coveredSeconds, coveredSeconds / referenceDuration,
+            coveredSeconds, passingSeconds);
     }
 
     /// <summary>
