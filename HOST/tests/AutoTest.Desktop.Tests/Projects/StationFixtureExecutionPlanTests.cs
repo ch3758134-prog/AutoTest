@@ -83,6 +83,26 @@ public sealed class StationFixtureExecutionPlanTests
     }
 
     [Fact]
+    public void DisableAndReenableKeepsVerifiedPhysicalOutputRouting()
+    {
+        var installed = ProductionFixtureConfiguration.Draft with
+        {
+            UseClamp1 = false, UseClamp2 = true,
+            Clamp2PressHigh = false, AutoClampEnabled = false
+        };
+        var disabled = StationFixtureExecutionPlan.From(installed);
+        Assert.Empty(disabled.Press);
+        Assert.Equal((byte)0, disabled.AllowedOutputMask);
+        var restored = StationFixtureExecutionPlan.From(installed with
+        {
+            AutoClampEnabled = true
+        });
+        Assert.Single(restored.Press);
+        Assert.Equal((byte)2, restored.AllowedOutputMask);
+        Assert.False(restored.OutputLevelHigh(restored.Press[0]));
+    }
+
+    [Fact]
     public void ExcessiveStabilizationDelayIsInvalidNotSilentlyClamped()
     {
         var config = ProductionFixtureConfiguration.Draft with
