@@ -153,7 +153,7 @@ public sealed partial class MainWindowViewModel
             _hardware.IsManualCanBatchApproved ||
             _hardware.IsManualKeyActionApproved)
             throw new InvalidOperationException(
-                "当前存在 CAN 周期任务、烧录、TEST 或其它实体动作；必须确认工位空闲后才能切换已发布型号。");
+                "当前有设备操作或测试正在进行，请先停止并确认设备状态，再切换工程。");
         await StationProductionConfigurationStore.VerifyProductAsync(pin);
         if (!await PrepareEditorsForCloseAsync())
             throw new IOException("工程编辑尚未保存，工位切换取消。");
@@ -202,7 +202,7 @@ public sealed partial class MainWindowViewModel
         if (_nativeFlashProfileWindow is { IsVisible: true } profileWindow &&
             !await profileWindow.PrepareForParentShutdownAsync())
         {
-            StatusMessage = "原生 FLASH 编辑尚未保存完成，生产确认已取消。";
+            StatusMessage = "烧录配置尚未保存，已取消启用。";
             return false;
         }
         var project = _workspace.Current;
@@ -215,25 +215,21 @@ public sealed partial class MainWindowViewModel
         {
             var draft = await NativeFlashProfileStore.LoadAsync(project.RootDirectory)
                 ?? throw new InvalidDataException("该 ECU 工程尚未保存原生烧录工艺。");
-            var job = NativeFlashJobBuilder.Freeze(draft.Profile, project.RootDirectory);
-            // The unified Apply button is already an explicit release decision.
-            // Publishing changes files only; physical clamp/FLASH still requires
-            // a separate real START and safety interlocks.
+            _ = NativeFlashJobBuilder.Freeze(draft.Profile, project.RootDirectory);
+            // "启用工位配置" is already an explicit choice. Only show an
+            // additional confirmation for other callers of this operation.
+            // This does not authorize any physical clamp or FLASH action.
             var decision = singleApply ? MessageBoxResult.Yes : MessageBox.Show(
                 global::System.Windows.Application.Current?.MainWindow,
-                "即将核对并冻结当前 ECU 工程作为本工位正式生产配置。\n" +
-                "无需创建第二套测试方案，正式检测仍执行工程内全部有序 TEST。\n\n" +
-                "工程 ID：" + project.Definition.Id.Value + "\n" +
-                "工程：" + project.Definition.Name + "\n" +
-                "FLASH 固件 SHA256：" + job.FirmwareSha256 + "\n" +
-                "原生工艺 SHA256：" + draft.ProfileSha256 + "\n\n" +
-                "确认不会操作实体主控或烧录 ECU。确认后任何工程、" +
-                "工艺或固件更改均需重新核对。",
-                "确认当前工程用于正式检测", MessageBoxButton.YesNo,
+                "检测工程：" + project.Definition.Name + "\n\n" +
+                "将把此工程当前保存的测试顺序及烧录配置用于本工位。" +
+                "工程内容或固件更新后，需要再次启用。" +
+                "\n\n启用配置不会立即操作夹具或烧录 ECU。是否启用？",
+                "启用检测工程", MessageBoxButton.YesNo,
                 MessageBoxImage.Question, MessageBoxResult.No);
             if (decision != MessageBoxResult.Yes)
             {
-                StatusMessage = "已取消本次 ECU 工程发布；工位绑定不变。";
+                StatusMessage = "已取消启用，现有工位配置不变。";
                 return false;
             }
             // Publish the exact observed draft, then bind the station to the
@@ -243,9 +239,8 @@ public sealed partial class MainWindowViewModel
             await NativeFlashPublicationStore.PublishAsync(
                 project.RootDirectory, draft.ProfileSha256);
             var deployed = await StationDeploymentStore.DeployAsync(project);
-            StatusMessage = "当前 ECU 工程已确认用于正式检测：" +
-                deployed.Project.Definition.Name +
-                "；下一步仅在真实扫码、实体 START 与生产 RECORD 均通过后允许启动。";
+            StatusMessage = "已启用检测工程：" + deployed.Project.Definition.Name +
+                "。正式检测需在启动按钮与记录功能接入并验证后才能开始。";
             await RefreshEngineeringSetupAsync();
             return true;
         }
@@ -254,7 +249,7 @@ public sealed partial class MainWindowViewModel
             AutoTest.Projects.Project.ProjectDataException or FormatException or
             NotSupportedException or System.Text.Json.JsonException)
         {
-            StatusMessage = "正式生产配置确认失败，没有取得新的生产执行许可：" +
+            StatusMessage = "无法启用检测工程：" +
                 error.Message;
             return false;
         }
