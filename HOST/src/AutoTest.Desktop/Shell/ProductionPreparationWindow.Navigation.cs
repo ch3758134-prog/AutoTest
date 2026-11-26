@@ -5,49 +5,71 @@ using System.Windows.Media;
 namespace AutoTest.Desktop.Shell;
 
 /// <summary>
-/// Task-first production preparation navigation. Preserve the exact existing
-/// editor controls as secondary views instead of duplicating their models or
-/// teaching first-time operators the underlying rule-table schema.
+/// Day-to-day station setup has one simple page. Detailed hardware,
+/// model/identity rule tables and immutable-version diagnostics stay in
+/// secondary tabs for installation and engineering, never the operator path.
 /// </summary>
 public partial class ProductionPreparationWindow
 {
+    private TabControl? _stationDetailTabs;
+
+    private void OpenStationDetail(int detailIndex)
+    {
+        if (_stationDetailTabs is null) return;
+        _stationDetailTabs.SelectedIndex = detailIndex;
+        PreparationTabs.SelectedIndex = 1;
+    }
+
     private void ConfigureProductPreparationWorkspace()
     {
         if (PreparationTabs.Items.Count != 5 ||
             PreparationTabs.Items.Cast<object>().Any(item => item is not TabItem))
             throw new InvalidOperationException(
-                "生产准备原生编辑器布局改变，禁止默默丢失配置页或发布入口。");
+                "工位配置编辑器布局改变，不能静默丢失硬件或版本配置。");
 
         var original = PreparationTabs.Items.Cast<TabItem>().ToArray();
         PreparationTabs.Items.Clear();
 
-        original[0].Header = "产品与工程绑定";
-        original[1].Header = "编号解析规则";
-        original[2].Header = "登记表匹配";
-        var advanced = new TabControl
+        var identityEditors = new TabControl
         {
             Background = Brushes.White,
             BorderBrush = new SolidColorBrush(Color.FromRgb(220, 230, 240)),
             Margin = new Thickness(7)
         };
+        original[0].Header = "型号与工程";
+        original[1].Header = "条码格式";
+        original[2].Header = "编号登记表";
         foreach (var item in original.Take(3))
-            advanced.Items.Add(item);
-        advanced.SelectedIndex = 0;
+            identityEditors.Items.Add(item);
+        identityEditors.SelectedIndex = 0;
+
+        _stationDetailTabs = new TabControl
+        {
+            Background = Brushes.White,
+            BorderBrush = new SolidColorBrush(Color.FromRgb(220, 230, 240)),
+            Margin = new Thickness(7)
+        };
+        original[3].Header = "扫码枪与夹具硬件";
+        _stationDetailTabs.Items.Add(original[3]);
+        _stationDetailTabs.Items.Add(new TabItem
+        {
+            Header = "高级型号 / 编号规则",
+            Content = identityEditors
+        });
+        original[4].Header = "版本与核验详情";
+        _stationDetailTabs.Items.Add(original[4]);
+        _stationDetailTabs.SelectedIndex = 0;
 
         PreparationTabs.Items.Add(new TabItem
         {
-            Header = "工位概览",
+            Header = "基本设置",
             Content = CreateGuidedOverview()
         });
-        original[3].Header = "扫码枪与硬件";
-        PreparationTabs.Items.Add(original[3]);
         PreparationTabs.Items.Add(new TabItem
         {
-            Header = "高级编号规则",
-            Content = advanced
+            Header = "高级设置",
+            Content = _stationDetailTabs
         });
-        original[4].Header = "核验与版本详情";
-        PreparationTabs.Items.Add(original[4]);
         PreparationTabs.SelectedIndex = 0;
     }
 }
