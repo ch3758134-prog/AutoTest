@@ -291,27 +291,9 @@ public partial class ProductionPreparationWindow : Window, INotifyPropertyChange
             PreviewInput.AppendText((PreviewInput.Text.Length > 0 &&
                 !PreviewInput.Text.EndsWith("\n", StringComparison.Ordinal) ? "\n" : "") +
                 raw + "\n");
-            // An actual scan is previewed in the same guided context. Do not
-            // jump the user to another page or treat it as physical START.
-            _lastRealBarcode = raw;
-            _lastRealBarcodePort = _scanner?.ConnectedPort ?? "";
-            _lastRealBarcodePnp = "";
-            try
-            {
-                var binding = StationScannerDeviceBinding.Load();
-                var device = binding is null ? null : StationScannerDeviceBinding.Match(binding);
-                if (device is not null &&
-                    string.Equals(device.PortName, _lastRealBarcodePort,
-                        StringComparison.OrdinalIgnoreCase))
-                    _lastRealBarcodePnp = device.PnpInstanceId;
-            }
-            catch (Exception error) when (error is not OutOfMemoryException)
-            {
-                // Preserve raw diagnostic input but not station-grade evidence.
-                Status = "原始扫码已读取，但设备身份未核实：" + error.Message;
-            }
-            _lastRealBarcodeUtc = DateTimeOffset.UtcNow;
-            if (_guidedManualInput is not null) _guidedManualInput.Text = raw;
+            // Physical scanner identity and admission remain owned by the
+            // formal operator scan gate. Preparation merely previews the
+            // barcode parser and never treats a scan as publication consent.
             _ = PreviewGuidedBarcodeAsync(raw, true);
         }));
     }
