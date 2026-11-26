@@ -116,6 +116,7 @@ public sealed partial class MainWindowViewModel
                   !_hardware.HasManualCanRowLeases &&
                   !_hardware.IsManualCanBatchApproved &&
                   !_hardware.IsManualKeyActionApproved,
+            () => IsEngineerWorkspace,
             () => _automaticTestHome.OnPublishedConfigurationChanged())
         { Owner = global::System.Windows.Application.Current?.MainWindow };
         _productionLibraryWindow = window;
