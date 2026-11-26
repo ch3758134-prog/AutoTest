@@ -583,6 +583,11 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
                 var project = _workspace.Current ??
                     throw new InvalidOperationException("工程已关闭，无法执行冻结的 TEST 范围。");
                 var resolved = await AutomaticTestResourceContract.ResolveAsync(project, token);
+                if (_projectSetup is not null && resolved.ProjectSetup is null ||
+                    _projectTeardown is not null && resolved.ProjectTeardown is null)
+                    throw new InvalidDataException("已配置的项目准备/收尾资源无法按固定修订解析；" +
+                        "不允许省略环境阶段后继续执行勾选用例：" +
+                        string.Join("；", resolved.Issues.Take(6)));
                 setupDocument = resolved.ProjectSetup?.Program;
                 teardownDocument = resolved.ProjectTeardown?.Program;
                 // The published project stages are not optional when entering
