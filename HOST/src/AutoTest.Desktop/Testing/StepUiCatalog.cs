@@ -111,7 +111,7 @@ public static class StepUiCatalog
         "targetLabel" => "目标 ECU 型号 / 身份",
         "settingsPath" => "可选 settings.json 文件",
         "binBaseAddress" => "BIN 起始地址（仅 BIN）",
-        "profile" => "波形分析配置（可选，来自工程 Mapping）",
+        "profile" => "已审核波形判定配置（必选，来自工程 Mapping）",
         "tolerance" => "比较绝对容差",
         "coverage" => "最低有效覆盖率（0-1）",
         _ => "内部参数"
