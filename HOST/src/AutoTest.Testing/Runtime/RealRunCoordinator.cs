@@ -736,7 +736,9 @@ public sealed class RealRunCoordinator
                                 double.Parse(Property(node, "coverage"), CultureInfo.InvariantCulture), ct);
                         }
                         variables[Property(node, "variable")] = new TestDatum(analysis.Value,
-                            analysis.Available ? TestSignalStatus.Valid : TestSignalStatus.DecodeError,
+                            analysis.Available ? TestSignalStatus.Valid :
+                                analysis.Code == "Inconclusive"
+                                    ? TestSignalStatus.NoFrame : TestSignalStatus.DecodeError,
                             DateTimeOffset.UtcNow, analysis.Evidence);
                         if (kind == "WaveCompare")
                         {
@@ -747,7 +749,7 @@ public sealed class RealRunCoordinator
                                 ? RealStepStatus.Completed
                                 : analysis.Available && analysis.Code == "Fail"
                                     ? RealStepStatus.ConditionFalse
-                                    : analysis.Available && analysis.Code == "Inconclusive"
+                                    : analysis.Code == "Inconclusive"
                                         ? RealStepStatus.NoData : RealStepStatus.InvalidData;
                             if (status is RealStepStatus.Completed or RealStepStatus.ConditionFalse)
                                 asserted = true;
@@ -765,7 +767,8 @@ public sealed class RealRunCoordinator
                             // Analysis only produces data; never an implicit verdict.
                             if (!analysis.Available) incomplete = true;
                             Fact(node, analysis.Available ? RealStepStatus.Completed :
-                                RealStepStatus.InvalidData, actual: analysis.Value ?? "",
+                                analysis.Code == "Inconclusive" ? RealStepStatus.NoData :
+                                    RealStepStatus.InvalidData, actual: analysis.Value ?? "",
                                 detail: analysis.Code + ": " + analysis.Detail,
                                 evidence: analysis.Evidence);
                         }
