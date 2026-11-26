@@ -52,12 +52,15 @@
    <DockPanel LastChildFill="True">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
      VerticalAlignment="Center" Margin="12,0,0,0">
-     <Button Content="1. 准备扫码" Command="{Binding ArmOperatorVerificationCommand}"
+     <Button Content="重新扫码" Command="{Binding ArmOperatorVerificationCommand}"
       Padding="12,7" Margin="0,0,7,0"
       ToolTip="撤销旧扫码，重新接收本台 ECU 的真实串口扫码身份；不执行 FLASH/TEST"/>
-     <Button Content="2. 开始真实整组实测" Command="{Binding StartOperatorVerificationCommand}"
+     <Button Content="开始整组实测" Command="{Binding StartOperatorVerificationCommand}"
       Style="{StaticResource AtPrimaryButton}" Padding="12,7" Margin="0,0,7,0"
       ToolTip="仅在接受本次扫码且所有项目/码率/硬件预检通过时启用；开始前再次确认真机 FLASH"/>
+     <Button Content="扫码枪设置" Command="{Binding OpenScannerSettingsCommand}"
+      Padding="12,7" Margin="0,0,7,0"
+      ToolTip="首次安装扫码设备时设置一次 COM，正常复测不需要反复进入生产准备"/>
      <Button Content="停止" Command="{Binding StopOperatorVerificationCommand}"
       Padding="12,7" Margin="0,0,7,0" ToolTip="请求停止并执行真实工位收尾，不擅自重试 FLASH"/>
      <Button Content="记录与报告" Click="OpenReports_Click" Padding="12,7" Margin="0,0,7,0"
@@ -66,8 +69,12 @@
     </StackPanel>
     <StackPanel>
      <TextBlock Text="工程整组实测" FontWeight="SemiBold" FontSize="18"/>
-     <TextBlock Text="仅工程验证 · 不计入正式生产 PASS 或数量"
-      FontSize="11" Foreground="#A05B18" Margin="0,3,0,0"/>
+     <TextBlock Text="连接设备 → 扫描 ECU → 开始整组实测 · 不计入正式生产 PASS"
+      FontSize="11" Foreground="#667F94" Margin="0,3,0,0"/>
+     <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+      <TextBlock Text="{Binding ControllerLabel}" Foreground="#41627D" FontSize="11" Margin="0,0,12,0"/>
+      <TextBlock Text="{Binding ScannerLabel}" Foreground="#41627D" FontSize="11"/>
+     </StackPanel>
     </StackPanel>
    </DockPanel>
   </Border>
