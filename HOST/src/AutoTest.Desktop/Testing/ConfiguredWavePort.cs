@@ -126,30 +126,6 @@ public sealed class ConfiguredWavePort : ITestWavePort
             "不能再用步骤临时容差与自由参考名绕过算法审查。"));
     }
 
-    private async Task<TestWaveResult> LegacyAdHocCompareNotForExecutionAsync(
-        string captureKey, string referenceKey,
-        double tolerance, double minimumCoverage, CancellationToken ct)
-    {
-        ct.ThrowIfCancellationRequested();
-        if (!double.IsFinite(tolerance) || tolerance < 0 ||
-            !double.IsFinite(minimumCoverage) ||
-            minimumCoverage < 0 || minimumCoverage > 1)
-            throw new ArgumentOutOfRangeException(nameof(tolerance), "Wave criteria invalid.");
-        if (!_completed.TryGetValue(captureKey, out var evidence))
-            return new(false, "CAPTURE_NOT_AVAILABLE", null, null, "Complete capture before analysis.");
-        var actual = _capture.ReadEvidence(evidence.Evidence).Actual;
-        var matches = _catalog.List().Where(e => e.Name == referenceKey &&
-            e.Signal == actual.Signal).ToArray();
-        if (matches.Length != 1)
-            return new(false, "REFERENCE_NOT_UNIQUE", null, evidence.Evidence.ToString(),
-                "Choose one existing named reference for this exact DBC signal revision.");
-        var evaluated = await _capture.CompareAsync(evidence, matches[0].Reference,
-            new CompareProfile(tolerance, minimumCoverage));
-        var available = evaluated.Verdict is Verdict.Pass or Verdict.Fail or Verdict.Inconclusive;
-        return new(available, evaluated.Verdict.ToString(), evaluated.Verdict.ToString(),
-            string.Join(",", evaluated.Evidence.Select(x => x.ToString())), evaluated.Reason);
-    }
-
     /// <summary>
     /// Evaluate using one pinned wave-settings resource from the active project.
     /// This produces a measurement result, never an implicit TEST verdict.
