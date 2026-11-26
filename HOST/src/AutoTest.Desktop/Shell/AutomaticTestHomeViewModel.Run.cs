@@ -597,6 +597,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
         var fixtureScopeGranted = false;
         var fixtureActuationAttempted = false;
         var fixturePressComplete = false;
+        var flashAttemptStarted = false;
         // Execution facts are independent of localized display messages.
         // These flags preserve the existing release and cancellation gates.
         var completedNormally = false;
@@ -821,6 +822,8 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
             RequireFrozenCanRate();
 
             OperatorRunState = "正在烧录 ECU";
+            // Record possible destructive activity before issuing the real job.
+            flashAttemptStarted = true;
             flashState = "烧录已启动 · 后续若中断 ECU 状态可能未知";
             OperatorFlashState = flashState;
             Snapshot();
@@ -833,6 +836,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
                 throw new InvalidDataException("FLASH 未完成 APP 复位与传输验证：" +
                     flash.Outcome);
             flashState = "烧录完成 · APP 诊断会话已确认（非固件版本验收）";
+            flashAttemptStarted = false;
             OperatorFlashState = flashState;
             Snapshot();
             AddOperatorEvent(flashState);
@@ -1009,7 +1013,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
         catch (OperationCanceledException)
         {
             operatorCancelled = true;
-            if (flashState.StartsWith("烧录已启动", StringComparison.Ordinal))
+            if (flashAttemptStarted)
                 OperatorFlashState = "烧录中断，ECU 状态待现场核查";
             outcome = "操作员停止；实体状态待核查";
             failure = "测试已取消；如曾进入烧录，须重新核实 ECU 状态。";
@@ -1018,7 +1022,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
         }
         catch (Exception error)
         {
-            if (flashState.StartsWith("烧录已启动", StringComparison.Ordinal))
+            if (flashAttemptStarted)
                 OperatorFlashState = "烧录未验证完成，ECU 状态未知";
             outcome = "真实执行中断";
             failure = error.Message;
