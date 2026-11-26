@@ -128,6 +128,98 @@ public sealed partial class AutomaticTestHomeViewModel
         Notify();
         try
         {
+            // Engineering verification uses the opened ECU project and
+            // a REAL COM observation. Publishing barcode rules is not a
+            // prerequisite. No physical action occurs without preflight
+            // and the existing explicit hardware confirmation.
+            if (!_isProductionWorkspace())
+            {
+                var model = plan.Project.Definition.EcuModelCode;
+                if (!_engineeringVerificationArmed ||
+                    string.IsNullOrWhiteSpace(model))
+                {
+                    Reject("扫码原文已显示；请进入工程实测并打开有效 ECU 工程。");
+                    return;
+                }
+                var stationDraft =
+                    await StationProductionConfigurationStore.LoadDraftAsync();
+                stationDraft.Fixture.Validate();
+                _ = StationFixtureExecutionPlan.From(stationDraft.Fixture);
+                var fixtureSha = FingerprintEngineeringFixture(stationDraft.Fixture);
+                var decision = await ProductionPreparationService.PrepareAsync(
+                    plan.Project, model, raw, requireProductionDeployment: false);
+                if (!decision.ConfigurationReady)
+                {
+                    Reject("本次工程实测配置未就绪：" + decision.Explanation);
+                    return;
+                }
+                if (revision != _scanRevision || !_engineeringVerificationArmed ||
+                    _isProductionWorkspace() || !_scanner.IsConnected ||
+                    !string.Equals(scannerPort, _scanner.ConnectedPort,
+                        StringComparison.OrdinalIgnoreCase) ||
+                    !ReferenceEquals(_plans.Current, plan))
+                    return;
+                if (_hardware.CurrentStationEpoch != initialStationEpoch ||
+                    _hardware.RequestedEcuCanBitrateKbps != initialCanTarget)
+                {
+                    Reject("扫码期间主控 USB/CAN 配置变化；请重新扫码。");
+                    return;
+                }
+                const string ruleJson = "ENGINEERING_RAW_SERIAL_V1";
+                var ruleSha = Convert.ToHexString(
+                    System.Security.Cryptography.SHA256.HashData(
+                        System.Text.Encoding.UTF8.GetBytes(ruleJson)));
+                var repeated = string.Equals(_lastIdentity, raw,
+                    StringComparison.Ordinal);
+                _lastIdentity = raw;
+                _dutSerial = raw;
+                _scanMappedFields = new Dictionary<string, string>(
+                    StringComparer.Ordinal)
+                {
+                    ["DutSerial"] = raw,
+                    ["ModelCode"] = model,
+                    ["ModelBasis"] = "OPENED_ENGINEERING_PROJECT"
+                };
+                _acceptedStationEpoch = initialStationEpoch;
+                _prepared = decision.Preparation! with
+                {
+                    AcceptedScannerObservation = new FrozenScanIdentity(
+                        Guid.NewGuid(), scannedAt, scannerPort, raw,
+                        ruleJson, ruleSha, model, raw, "",
+                        _scanMappedFields.ToDictionary(x => x.Key, x => x.Value,
+                            StringComparer.Ordinal))
+                    {
+                        BarcodeRuleId = "ENGINEERING_RAW_SERIAL",
+                        BarcodeRuleRevision = 1,
+                        ModelDecisionBasis = "OPENED_ENGINEERING_PROJECT",
+                        StationSlotId = stationDraft.Fixture.StationSlotId,
+                        EngineeringFixtureSha256 = fixtureSha
+                    }
+                };
+                _scanStatus = repeated
+                    ? "再次收到相同编号；不会计为新增 ECU。"
+                    : "编号已接收；当前工程 TEST/FLASH 已核验，无需发布生产扫码规则。";
+                _status = StationReadiness;
+                Notify();
+                if (_quickEngineeringStartOnScan && CanStartOperatorVerification)
+                {
+                    _quickEngineeringStartOnScan = false;
+                    StartRequestStatus =
+                        "扫码与工程资源通过；等待工程师确认夹具与烧录。";
+                    StartOperatorVerificationCommand.Execute();
+                }
+                else if (_quickEngineeringStartOnScan)
+                {
+                    StartRequestStatus = _scanStatus = !_hardware.IsConnected
+                        ? "编号已接收；请连接主控 USB 后重新扫码。"
+                        : !_hardware.IsEcuCanBitrateApplied
+                            ? "编号已接收；请确认 ECU CAN 码率后重新扫码。"
+                            : "编号已接收，但工程或硬件未准备好，请检查当前状态。";
+                    Notify();
+                }
+                return;
+            }
+
             // A production scan requires a real, current USB station epoch.
             // An offline parser observation cannot authorize a later session.
             if (_isProductionWorkspace() &&
@@ -289,4 +381,9 @@ public sealed partial class AutomaticTestHomeViewModel
             Notify();
         }
     }
+    private static string FingerprintEngineeringFixture(
+        ProductionFixtureConfiguration fixture) =>
+        Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+            System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(fixture)));
+
 }
