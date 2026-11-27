@@ -17,10 +17,6 @@ public partial class TestEditorView : UserControl
     private bool _inspectorInitialized;
     private bool _restoringStepRow;
     private IReadOnlyList<TestActionOption> _paletteActions = Array.Empty<TestActionOption>();
-    // These names MUST match TestStepInspector's authored action groups.
-    // A previous UI-only taxonomy made all non-favorite categories empty.
-    private static readonly string[] PaletteGroups =
-        ["常用步骤", "外部操作", "读取与观察", "分析与判断", "流程控制"];
     private bool _focusNameOnNextInspector;
     private bool _committingQuickValue;
     private StepRowProjection? _activeQuickRow;
@@ -36,7 +32,6 @@ public partial class TestEditorView : UserControl
         MainWindowViewModel? liveCanSource = null)
     {
         InitializeComponent();
-        PaletteCategories.ItemsSource = PaletteGroups;
         if (liveCanSource is not null)
         {
             // The shell already subscribes to the genuine USB CAN observation
@@ -252,6 +247,10 @@ public partial class TestEditorView : UserControl
             Math.Min(height - 85, SystemParameters.WorkArea.Height - 65), 280, 530);
         PaletteList.MaxHeight = Math.Max(165, PaletteSurface.MaxHeight - 175);
         _paletteActions = TestStepInspector.PaletteActions(caseOnly);
+        // Tabs are derived from exactly the actions offered by the editor:
+        // no parallel UI taxonomy can produce an empty or unrelated tab.
+        PaletteCategories.ItemsSource =
+            StepActionPaletteCatalog.Categories(_paletteActions);
         PaletteCategories.SelectedIndex = 0;
         var target = _viewModel.SelectedItem;
         PaletteHint.Text = caseOnly
@@ -289,20 +288,8 @@ public partial class TestEditorView : UserControl
     private void RefreshPaletteItems(string query)
     {
         var category = PaletteCategories?.SelectedItem as string ?? "常用步骤";
-        string[] favorites =
-            ["can", "stop-can", "key", "ign", "read", "assert-signal",
-             "wait", "if", "loop", "uds", "wave-start", "wave-analyze"];
-        var filtered = _paletteActions
-            .Where(x => _paletteActions.Count == 1 && x.Key == "case" ||
-                query.Length > 0
-                ? (x.Title + " " + x.Group + " " + x.Category + " " + x.Description)
-                    .Contains(query, StringComparison.CurrentCultureIgnoreCase)
-                : category == "常用步骤" ? favorites.Contains(x.Key)
-                : category == x.Category)
-            .OrderBy(x => query.Length == 0 && category == "常用步骤"
-                ? Array.IndexOf(favorites, x.Key) : 0)
-            .ThenBy(x => x.Title, StringComparer.CurrentCulture)
-            .ToArray();
+        var filtered = StepActionPaletteCatalog.Filter(
+            _paletteActions, category, query);
         PaletteList.ItemsSource = filtered;
         PaletteList.SelectedItem = filtered.FirstOrDefault();
         PaletteList.Visibility = filtered.Length == 0
