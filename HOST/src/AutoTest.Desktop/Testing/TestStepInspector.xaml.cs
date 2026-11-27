@@ -125,9 +125,6 @@ public partial class TestStepInspector : UserControl
     private uint _selectedMask;
     private readonly CheckBox[] _rawKeys = new CheckBox[20];
     private bool _updatingRawKeys;
-    private bool _convertedLegacy;
-    private string _legacySourceType = "";
-
 
      public ObservableCollection<MappingChoice> AvailableTargets { get; } = new();
     public ObservableCollection<TestStepInputField> ParameterFields { get; } = new();
@@ -197,60 +194,45 @@ public partial class TestStepInspector : UserControl
         // An applied raw mapping remains raw when reopening its inspector.
         _explicitRawCan = mapping?.Kind == TestTargetKind.RawCan &&
             mapping.Name.StartsWith("RAW-ECU-CAN-", StringComparison.OrdinalIgnoreCase);
-        _legacySourceType = editing.Type is "KeySet" or "CanSend" or "CanWait"
-            ? editing.Type : "";
-        _convertedLegacy = _legacySourceType.Length > 0;
-        var chosen = _legacySourceType switch
-        {
-            "KeySet" => Options.First(x => x.Key == "key"),
-            "CanSend" => Options.First(x => x.Key == "can"),
-            "CanWait" => Options.First(x => x.Key == "assert-signal"),
-            _ => null
-        };
-        chosen ??= Options.FirstOrDefault(a => a.Key == initialActionKey &&
-            a.StepType == editing.Type) ??
-            Options.FirstOrDefault(a => a.StepType == editing.Type &&
-            (editing.Type != "Write" || a.TargetCategory switch
-            {
-                "button" => targetKind is TestTargetKind.Button or TestTargetKind.RawKey,
-                "ign" => targetKind == TestTargetKind.Ignition,
-                "can" => targetKind is TestTargetKind.CanMessage or TestTargetKind.RawCan,
-                _ => false
-            })) ?? Options.FirstOrDefault(a => a.StepType == editing.Type);
+        var chosen = Options.FirstOrDefault(x =>
+            x.Key == initialActionKey && x.StepType == editing.Type) ??
+            Options.FirstOrDefault(x => x.StepType == editing.Type &&
+                (editing.Type != "Write" || x.TargetCategory switch
+                {
+                    "button" => targetKind is TestTargetKind.Button or TestTargetKind.RawKey,
+                    "ign" => targetKind == TestTargetKind.Ignition,
+                    "can" => targetKind is TestTargetKind.CanMessage or TestTargetKind.RawCan,
+                    _ => false
+                })) ??
+            Options.FirstOrDefault(x => x.StepType == editing.Type);
         if (chosen is null)
         {
-            TypeLabel.Text = editing.Type == "KeySet"
-                ? "旧版按键步骤（待转换）" : "暂不支持的步骤";
+            TypeLabel.Text = "未知步骤类型";
             ActionDescription.Visibility = Visibility.Visible;
-            ActionDescription.Text = editing.Type == "KeySet"
-                ? "这条旧按键动作没有接入真实按键执行流程。请使用“添加步骤 → 按键动作”重新选择 20 路电阻开关和动作方式；保留此旧步骤不会让它真正下发命令。"
-                : "此旧步骤当前只能保留原始数据，尚不能参与真实测试。请换用已支持的正式操作步骤。";
+            ActionDescription.Text = "当前 TEST 格式不支持此步骤类型。请删除该节点，并使用当前步骤目录重新创建。";
             NameInput.Text = editing.Name;
             StepCode.Text = editing.Id.ToString()[^5..];
             ConfirmButton.IsEnabled = false;
-            ErrorText.Text = "此步骤尚不支持编辑为可执行操作；原始数据已保留。";
+            ErrorText.Text = "未知步骤类型不能编辑或执行。";
         }
         else
         {
             _selected = chosen;
             TypeIcon.Text = chosen.StepType switch
             {
-                "Write" or "CanSend" or "Read" or "CanWait" or "AssertSignal" => "⇄",
-                "UdsRequest" or "Flash" => "◇",
+                "Write" or "Read" or "WaitUntil" or "AssertSignal" => "⇄",
                 "WaveStart" or "WaveStop" or "WaveAnalyze" or "WaveCompare" => "〰",
-                "If" or "Switch" or "Case" or "TryCatch" => "⑂",
+                "If" or "Switch" or "Case" => "⑂",
                 "Loop" => "⟳",
-                "Wait" or "When" => "◷",
+                "Wait" => "◷",
                 _ => "▣"
             };
-            TypeLabel.Text = _convertedLegacy
-                ? chosen.Title + " · 转换为正式步骤" : chosen.Title;
+            TypeLabel.Text = chosen.Title;
             StepCode.Text = editing.Id.ToString()[^5..];
             ActionDescription.Text = chosen.Description;
             if (chosen.StepType == "If")
                 ActionDescription.Text = "IF 只选择执行分支，不负责判定 ECU PASS/FAIL。变量必须由前面的读取、设置或计算步骤产生；数据无效时不进入 ELSE。";
-            ActionDescription.Visibility = _convertedLegacy ||
-                chosen.StepType is "If" or "CanSend" or "CanWait"
+            ActionDescription.Visibility = chosen.StepType is "If" or "Write"
                 ? Visibility.Visible : Visibility.Collapsed;
             TypeLabel.ToolTip = chosen.Description;
             NameInput.Text = editing.Name;
@@ -288,75 +270,32 @@ public partial class TestStepInspector : UserControl
     {
         ParameterFields.Clear();
         var node = _editing ?? throw new InvalidOperationException("步骤编辑器需要真实 StepId。");
-        // Ordinary TEST steps are judged by their formal parameters and resource
-        // mappings, not by metadata recording their source. Only genuinely
-        // unsupported StepNode types need an explicit conversion path.
-        var convertingUnsupportedType = _legacySourceType.Length > 0;
-        ImportWarning.Visibility = convertingUnsupportedType
-            ? Visibility.Visible : Visibility.Collapsed;
-        if (convertingUnsupportedType)
-            ImportWarning.Text = _legacySourceType switch
-            {
-                "CanWait" => "CanWait 当前不能直接运行。请确认 DBC 信号、期望值和超时；应用后转换为正式 CAN 信号判定。",
-                "KeySet" => "KeySet 当前不能直接运行。请确认 20 路 KEY 开关和保持时间；应用后转换为正式 KEY_SIM 操作。",
-                "CanSend" => "CanSend 当前不能直接运行。请确认 CAN ID、数据与周期；应用后转换为正式 CAN 发送。",
-                _ => "当前步骤类型无法执行，请转换为正式操作步骤。"
-            };
         foreach (var item in node.Properties.OrderBy(x => x.Key, StringComparer.Ordinal))
         {
-            if (action.StepType == "CallPublicFlow" &&
-                item.Key is "flowAssetId" or "flowRevision" or "flowSha") continue;
             if (!StepUiCatalog.IsOperatorProperty(item.Key) ||
                 (item.Key == "target" && !string.IsNullOrEmpty(action.TargetCategory)) ||
                 (item.Key == "value" && action.StepType == "Write") ||
                 (item.Key == "profile" && (action.StepType == "WaveAnalyze" ||
                     action.StepType == "WaveCompare"))) continue;
-            var label = item.Key == "target" && action.StepType == "CallSubroutine"
-                ? "要调用的子程序" : null;
-            ParameterFields.Add(new TestStepInputField(item.Key, item.Value, label, action.StepType));
+            ParameterFields.Add(new TestStepInputField(item.Key, item.Value,
+                stepType: action.StepType));
         }
-        if (_convertedLegacy && action.StepType == "AssertSignal")
-        {
-            string expected = node.Properties.GetValueOrDefault("expectation", "").Trim();
-            var operators = new[] { ">=", "<=", "!=", "==", ">", "<", "=" };
-            var selected = operators.FirstOrDefault(expected.StartsWith);
-            var compare = selected is null ? "==" : selected == "=" ? "==" : selected;
-            if (selected is not null) expected = expected[selected.Length..].Trim();
-            if (expected.Length == 0) expected = "";
-            var timeout = node.Properties.GetValueOrDefault("timeoutMs",
-                node.Properties.GetValueOrDefault("durationMs",
-                    node.Properties.GetValueOrDefault("conditionTimeoutMs", "5000")));
-            ParameterFields.Clear();
-            ParameterFields.Add(new TestStepInputField("operator", compare, stepType: "AssertSignal"));
-            ParameterFields.Add(new TestStepInputField("expected", expected, stepType: "AssertSignal"));
-            ParameterFields.Add(new TestStepInputField("timeoutMs", timeout, stepType: "AssertSignal"));
-        }
-        else
-        {
-            if (_legacySourceType is "KeySet" or "CanSend")
-                ParameterFields.Clear();
-            // Imported steps often lack the formally required parameters.
-            // Render them so the engineer can correct the TEST resource, not a raw JSON field.
-            var descriptor = StepDescriptorCatalog.Builtins().Lookup(action.StepType);
-            if (descriptor is not null)
-                foreach (var key in descriptor.RequiredProperties)
-                {
-                    if (action.StepType == "CallPublicFlow" &&
-                        key is "flowAssetId" or "flowRevision" or "flowSha") continue;
-                    if (key == "target" && !string.IsNullOrEmpty(action.TargetCategory)) continue;
-                    if (key == "value" && action.StepType == "Write") continue;
-                    if (ParameterFields.Any(f => f.Key == key)) continue;
-                    var defaultValue = StepUiCatalog.NewNode(action.StepType)
-                        .Properties.GetValueOrDefault(key, "");
-                    ParameterFields.Add(new TestStepInputField(key, defaultValue,
-                        stepType: action.StepType));
-                }
-            // CAN sending has a dedicated, task-oriented editor. Keep the
-            // canonical periodMs/durationMs properties but never expose them
-            // as opaque generic fields in the narrow inspector.
-            if (action.Key == "can")
-                ParameterFields.Clear();
-        }
+
+        var descriptor = StepDescriptorCatalog.Builtins().Lookup(action.StepType);
+        if (descriptor is not null)
+            foreach (var parameter in descriptor.Parameters)
+            {
+                if (parameter.Key == "target" && !string.IsNullOrEmpty(action.TargetCategory)) continue;
+                if (parameter.Key == "value" && action.StepType == "Write") continue;
+                if (parameter.Key == "profile" &&
+                    (action.StepType == "WaveAnalyze" || action.StepType == "WaveCompare")) continue;
+                if (ParameterFields.Any(field => field.Key == parameter.Key)) continue;
+                ParameterFields.Add(new TestStepInputField(parameter.Key,
+                    node.Properties.GetValueOrDefault(parameter.Key, parameter.DefaultValue),
+                    stepType: action.StepType));
+            }
+        if (action.Key == "can") ParameterFields.Clear();
+
         if (action.StepType == "If")
         {
             // A conditional has ONE recognizable left-to-right expression.
@@ -402,42 +341,6 @@ public partial class TestStepInspector : UserControl
         }
     }
 
-
-    private static bool TryLegacyMask(StepNode old, out uint mask)
-    {
-        foreach (var key in new[] { "outputMask", "keyMask", "mask", "legacy.outputMask", "legacy.keyMask" })
-        {
-            var text = old.Properties.GetValueOrDefault(key, "").Trim();
-            if (text.Length == 0) continue;
-            if (text.StartsWith("0x", StringComparison.OrdinalIgnoreCase) &&
-                uint.TryParse(text[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out mask))
-                return mask <= 0xFFFFF;
-            if (uint.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out mask))
-                return mask <= 0xFFFFF;
-        }
-        mask = 0;
-        return false;
-    }
-
-    private static bool TryLegacyCanId(StepNode old, out uint id)
-    {
-        var keys = new[] { "canId", "frameId", "id", "legacy.canId", "messageRef" };
-        foreach (var key in keys)
-        {
-            var text = old.Properties.GetValueOrDefault(key, "").Trim();
-            if (text.Length == 0) continue;
-            var match = System.Text.RegularExpressions.Regex.Match(text,
-                @"0[xX][0-9a-fA-F]+");
-            if (match.Success &&
-                uint.TryParse(match.Value[2..], NumberStyles.HexNumber,
-                    CultureInfo.InvariantCulture, out id))
-                return id <= 0x1FFFFFFF;
-            if (uint.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out id))
-                return id <= 0x1FFFFFFF;
-        }
-        id = 0;
-        return false;
-    }
 
     private void BuildPublicFlowPicker(TestActionOption action, StepNode node,
         IReadOnlyList<PublicFlowChoice> publicFlows)
@@ -621,8 +524,7 @@ public partial class TestStepInspector : UserControl
         if (preferred is null && IsCanSend && string.IsNullOrWhiteSpace(preferredName))
             preferred = AvailableTargets.FirstOrDefault(x =>
                 x.Mapping.Kind == TestTargetKind.RawCan);
-        // For a new KEY step, prefer direct 20-switch control; legacy
-        // asset-backed button mappings remain available to existing files.
+        // New KEY actions bind directly to the station's 20-switch interface.
         if (preferred is null && _selected?.TargetCategory == "button" &&
             string.IsNullOrWhiteSpace(preferredName) && query.Length == 0)
             preferred = AvailableTargets.FirstOrDefault(x =>
@@ -630,57 +532,11 @@ public partial class TestStepInspector : UserControl
         // Avoid silently binding the first DBC signal/message when a new
         // STEP has not explicitly chosen its operation object.
         // A unique IGN / raw-only option may be preselected for convenience.
-        if (_convertedLegacy && _editing is { } imported)
-        {
-            var rawId = imported.Properties.GetValueOrDefault("canId", "").Trim();
-            if (rawId.StartsWith("0x", StringComparison.OrdinalIgnoreCase)) rawId = rawId[2..];
-            if (uint.TryParse(rawId, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var id))
-            {
-                var legacySignalMatches = AvailableTargets.Where(x =>
-                    x.Mapping.Kind == TestTargetKind.Signal && x.Mapping.CanId == id).ToArray();
-                preferred = legacySignalMatches.Length == 1 ? legacySignalMatches[0] : null;
-            }
-            else preferred = null;
-        }
-        if (_legacySourceType == "KeySet")
-            preferred = AvailableTargets.FirstOrDefault(x => x.Mapping.Kind == TestTargetKind.RawKey);
-        else if (_legacySourceType == "CanSend" && _editing is { } oldCan)
-        {
-            var refName = oldCan.Properties.GetValueOrDefault("messageRef", "");
-            if (TryLegacyCanId(oldCan, out var frame))
-            {
-                var found = AvailableTargets.Where(x =>
-                    x.Mapping.Kind == TestTargetKind.CanMessage && x.Mapping.CanId == frame).ToArray();
-                if (found.Length == 1) preferred = found[0];
-                else preferred = AvailableTargets.FirstOrDefault(x =>
-                    x.Mapping.Kind == TestTargetKind.RawCan);
-            }
-            else if (refName.Length > 0)
-                preferred = AvailableTargets.FirstOrDefault(x =>
-                    x.Mapping.Kind == TestTargetKind.CanMessage &&
-                    (string.Equals(x.Message?.Name, refName, StringComparison.OrdinalIgnoreCase) ||
-                     x.Label.Contains(refName, StringComparison.OrdinalIgnoreCase)));
-        }
-        else if (_convertedLegacy && _selected?.StepType == "AssertSignal")
-        {
-            // Prefer exact old signal identity when a frame contains several signals.
-            if (_editing is { } old && TryLegacyCanId(old, out var frameId))
-            {
-                var signalName = old.Properties.GetValueOrDefault("signalName",
-                    old.Properties.GetValueOrDefault("databaseSignalName", ""));
-                var legacyAssertionMatches = AvailableTargets.Where(x =>
-                    x.Mapping.Kind == TestTargetKind.Signal && x.Mapping.CanId == frameId &&
-                    (signalName.Length == 0 ||
-                     string.Equals(x.Mapping.SignalName, signalName,
-                         StringComparison.OrdinalIgnoreCase))).ToArray();
-                preferred = legacyAssertionMatches.Length == 1 ? legacyAssertionMatches[0] : null;
-            }
-        }
         _filteringTargets = true;
         try
         {
             ActiveTargetPicker.SelectedItem = preferred ??
-                (_convertedLegacy ? null : AvailableTargets.Count == 1 ? AvailableTargets[0] : null);
+                (AvailableTargets.Count == 1 ? AvailableTargets[0] : null);
         }
         finally { _filteringTargets = false; }
         UpdateTarget();
@@ -747,8 +603,6 @@ public partial class TestStepInspector : UserControl
             var sameSaved = string.Equals(mapping.Name, savedTarget, StringComparison.OrdinalIgnoreCase);
             var stored = sameSaved
                 ? _editing?.Properties.GetValueOrDefault("value", "") ?? "" : "";
-            if (_legacySourceType == "CanSend" && sameSaved && _editing is { } legacy)
-                stored = legacy.Properties.GetValueOrDefault("dataHex", stored);
             var bytesText = "";
             var warning = "";
 
@@ -881,28 +735,19 @@ public partial class TestStepInspector : UserControl
                 ? Visibility.Visible : Visibility.Collapsed;
             var old = _editing?.Properties.GetValueOrDefault("value", "") ?? "";
             var parts = old.Split(':', StringSplitOptions.TrimEntries);
-            var operation = _legacySourceType == "KeySet" ? "Hold" :
-                parts[0] is "Hold" or "Release" or "Pulse" ? parts[0] :
-                mapping.Kind == TestTargetKind.RawKey ? "Hold" : "Pulse";
+            var operation = parts[0] is "Hold" or "Release" or "Wait"
+                ? parts[0] : "Hold";
             KeyActionInput.SelectedItem = KeyActionInput.Items.OfType<ComboBoxItem>()
                 .FirstOrDefault(x => (string?)x.Tag == operation);
             var selectedMask = mapping.Kind == TestTargetKind.RawKey && parts.Length > 1 &&
                 parts[1].StartsWith("0x", StringComparison.OrdinalIgnoreCase) &&
                 uint.TryParse(parts[1][2..], NumberStyles.HexNumber,
                     CultureInfo.InvariantCulture, out var mask) ? mask : 0;
-            if (_legacySourceType == "KeySet" && _editing is { } oldKey &&
-                TryLegacyMask(oldKey, out var legacyMask))
-                selectedMask = legacyMask;
             SetRawKeyMask(selectedMask);
-            KeyDurationInput.Text = _legacySourceType == "KeySet" && _editing is { } oldDuration
-                ? oldDuration.Properties.GetValueOrDefault("holdMs",
-                    oldDuration.Properties.GetValueOrDefault("durationMs", ""))
-                : operation == "Wait" && mapping.Kind == TestTargetKind.RawKey &&
-                parts.Length == 2 ? parts[1] :
-                operation is "Pulse" or "Hold" && mapping.Kind == TestTargetKind.RawKey &&
-                parts.Length == 3 ? parts[2] :
-                operation == "Pulse" && mapping.Kind == TestTargetKind.Button &&
-                parts.Length == 2 ? parts[1] : "1000";
+            KeyDurationInput.Text = operation == "Wait" &&
+                mapping.Kind == TestTargetKind.RawKey && parts.Length == 2 ? parts[1] :
+                operation == "Hold" && mapping.Kind == TestTargetKind.RawKey &&
+                parts.Length == 3 ? parts[2] : "1000";
             UpdateKeyTimingVisibility();
         }
         else if (mapping.Kind == TestTargetKind.Signal &&
@@ -1416,28 +1261,15 @@ public partial class TestStepInspector : UserControl
     {
         var operation = (KeyActionInput.SelectedItem as ComboBoxItem)?.Tag as string;
         var raw = _selectedTarget?.Mapping.Kind == TestTargetKind.RawKey;
-        // A KEY_SIM hold is explicitly persistent; operators must be able to
-        // switch to a no-write Wait or an intentional all-release without
-        // manufacturing a zero mask as an implicit wait.
         KeyActionInput.Visibility = Visibility.Visible;
-        // Pulse is a legacy press-and-release command, not the frozen
-        // persistent KEY_SIM semantics. Do not offer it for a new 20-Key step.
-        var legacyPulse = raw && _editing?.Properties.GetValueOrDefault("value", "")
-            .StartsWith("Pulse:", StringComparison.OrdinalIgnoreCase) == true;
         foreach (var item in KeyActionInput.Items.OfType<ComboBoxItem>())
-        {
             if ((string?)item.Tag == "Wait") item.IsEnabled = raw;
-            if ((string?)item.Tag == "Pulse")
-                item.Visibility = raw && !legacyPulse ? Visibility.Collapsed : Visibility.Visible;
-        }
+
         KeyDurationLabel.Text = operation == "Wait" ? "纯等待时间（ms）" : "保持时间（ms）";
-        KeyDurationPanel.Visibility =
-            ((operation is "Pulse" or "Hold" or "Wait") && raw) ||
-            operation == "Pulse"
-                ? Visibility.Visible : Visibility.Collapsed;
-        RawKeyMaskPanel.Visibility = raw &&
-            (operation is not ("Release" or "Wait"))
-                ? Visibility.Visible : Visibility.Collapsed;
+        KeyDurationPanel.Visibility = raw && operation is ("Hold" or "Wait")
+            ? Visibility.Visible : Visibility.Collapsed;
+        RawKeyMaskPanel.Visibility = raw && operation is not ("Release" or "Wait")
+            ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void BuildRawKeyGrid()
@@ -1575,7 +1407,7 @@ public partial class TestStepInspector : UserControl
                 else if (mapping?.Kind is TestTargetKind.Button or TestTargetKind.RawKey)
                 {
                     var operation = (KeyActionInput.SelectedItem as ComboBoxItem)?.Tag as string
-                        ?? throw new ArgumentException("请选择保持、释放、纯等待或短按。");
+                        ?? throw new ArgumentException("请选择保持、释放或纯等待。");
                     if (mapping.Kind == TestTargetKind.RawKey)
                     {
                         if (operation is "Hold" or "Wait")
@@ -1593,12 +1425,8 @@ public partial class TestStepInspector : UserControl
                             operation == "Wait"
                                 ? "Wait:" + KeyDurationInput.Text.Trim()
                                 : operation + ":0x" + _selectedMask.ToString("X5") +
-                                    ((operation == "Pulse" ||
-                                      !string.IsNullOrWhiteSpace(KeyDurationInput.Text))
-                                        ? ":" + KeyDurationInput.Text.Trim() : "");
-                        if (_legacySourceType == "KeySet" &&
-                            string.IsNullOrWhiteSpace(KeyDurationInput.Text))
-                            throw new ArgumentException("旧版按键步骤必须核对并填写保持时间。");
+                                (string.IsNullOrWhiteSpace(KeyDurationInput.Text)
+                                    ? "" : ":" + KeyDurationInput.Text.Trim());
                         _ = AutoTest.Devices.Station.RawKeyAction.Parse(value);
                         node = node.WithProperty("value", value);
                     }
@@ -1606,11 +1434,7 @@ public partial class TestStepInspector : UserControl
                     {
                         if (operation == "Wait")
                             throw new ArgumentException("功能按键请使用单独的“等待”步骤；只有原始 KEY_SIM 支持纯等待。");
-                        var suffix = operation == "Pulse" &&
-                            !string.IsNullOrWhiteSpace(KeyDurationInput.Text)
-                            ? ":" + ParseDuration(KeyDurationInput.Text).ToString(CultureInfo.InvariantCulture)
-                            : "";
-                        node = node.WithProperty("value", operation + suffix);
+                        node = node.WithProperty("value", operation);
                     }
                 }
                 else if (mapping?.Kind == TestTargetKind.Ignition)
@@ -1644,51 +1468,6 @@ public partial class TestStepInspector : UserControl
                     CultureInfo.InvariantCulture, out _) &&
                     !expectation.StartsWith("$", StringComparison.Ordinal))
                     throw new ArgumentException("期望状态必须是 DBC 枚举值对应的数值，或已定义的数值变量。请核对原始中文状态说明。");
-            }
-            if (_convertedLegacy && node.Type == "AssertSignal")
-            {
-                if (mapping is null || _editing is null)
-                    throw new ArgumentException("先选择与旧报文对应的 DBC 信号。");
-                if (TryLegacyCanId(_editing, out var originalId) &&
-                    mapping.CanId != originalId)
-                    throw new ArgumentException("所选 DBC 信号的 CAN ID 与旧文件不一致，请先核对。");
-                var sourceMessage = _selectedTarget?.Message;
-                var sourceSignal = sourceMessage?.Signals.FirstOrDefault(x =>
-                    x.Name == mapping.SignalName);
-                if (sourceSignal is null)
-                    throw new ArgumentException("未找到当前 DBC 中的原始信号定义。");
-                if (_editing.Properties.TryGetValue("bitLength", out var bits) &&
-                    int.TryParse(bits, out var originalBits) &&
-                    sourceSignal.BitLength != originalBits)
-                    throw new ArgumentException("旧文件位长与当前 DBC 不一致，不能直接确认重建。");
-                if (_editing.Properties.TryGetValue("bitOrder", out var order) &&
-                    !string.IsNullOrWhiteSpace(order) &&
-                    ((order.Equals("Intel", StringComparison.OrdinalIgnoreCase) && !sourceSignal.Intel) ||
-                     (order.Equals("Motorola", StringComparison.OrdinalIgnoreCase) && sourceSignal.Intel)))
-                    throw new ArgumentException("旧文件字节序与当前 DBC 不一致，不能直接确认重建。");
-                node = node.WithProperty("legacy.importStatus", "REBOUND_VALIDATED")
-                    .WithProperty("legacy.reboundTarget", mapping.Name);
-            }
-            if (_convertedLegacy && node.Type == "Write")
-            {
-                if (_legacySourceType == "CanSend" && _editing is { } sourceCan &&
-                    TryLegacyCanId(sourceCan, out var oldFrame) &&
-                    mapping?.CanId != oldFrame)
-                    throw new ArgumentException("当前所选 CAN 报文与旧文件的 CAN ID 不符，请核对后重新选择。");
-                if (_legacySourceType == "CanSend")
-                {
-                    var periodText = node.Properties.GetValueOrDefault("periodMs", "0");
-                    var durationText = node.Properties.GetValueOrDefault("durationMs", "0");
-                    if (!int.TryParse(periodText, NumberStyles.None,
-                            CultureInfo.InvariantCulture, out var period) ||
-                        period != 0 && period is < 20 or > 600000 ||
-                        !int.TryParse(durationText, NumberStyles.None,
-                            CultureInfo.InvariantCulture, out var duration) ||
-                        duration is < 0 or > 1800000)
-                        throw new ArgumentException("CAN 周期须为 0（单次）或 20～600000ms；持续时间须为 0～1800000ms。");
-                }
-                node = node.WithProperty("legacy.importStatus", "REBOUND_VALIDATED")
-                    .WithProperty("legacy.reboundTarget", mapping?.Name ?? "");
             }
             if (node.Type == "Write" && mapping is null)
                 throw new ArgumentException("请选择操作对象。");

@@ -25,12 +25,7 @@
     <!-- Editing existing StepId only. New action selection belongs exclusively to
          the central editor's grouped ActionPalette; no second type list here. -->
     <TextBlock x:Name="ActionDescription" TextWrapping="Wrap" Foreground="#64758C"
-     FontSize="13" Margin="0,0,0,6" Visibility="Collapsed"/>
-    <TextBlock x:Name="ImportWarning"
-     Text="此步骤尚不能执行，请检查类型或参数。"
-     TextWrapping="Wrap" Foreground="#9B6423" FontSize="13"
-     Margin="0,0,0,10" Visibility="Collapsed"/>
-    <DockPanel Margin="0,0,0,12" LastChildFill="True">
+     FontSize="13" Margin="0,0,0,6" Visibility="Collapsed"/><DockPanel Margin="0,0,0,12" LastChildFill="True">
       <CheckBox x:Name="StepEnabledInput" DockPanel.Dock="Right" Content="执行此步骤"
        Margin="10,14,0,0" VerticalAlignment="Top" IsChecked="True"
        ToolTip="取消后，本步骤不参与测试；如果是流程容器，其子步骤也会跳过。步骤配置仍保留。"/>
@@ -242,9 +237,7 @@
 
      <ComboBox x:Name="KeyActionInput" SelectionChanged="KeyAction_Changed"
       ToolTip="正常 KEY_SIM 为保持组合、明确释放或纯等待；不会因计时结束自动断开当前 Key"
-      MinHeight="34" Margin="0,0,0,8">
-      <ComboBoxItem Content="旧版短按后释放" Tag="Pulse"/>
-      <ComboBoxItem Content="设置并保持" Tag="Hold"/>
+      MinHeight="34" Margin="0,0,0,8"><ComboBoxItem Content="设置并保持" Tag="Hold"/>
       <ComboBoxItem Content="全部断开" Tag="Release"/>
       <ComboBoxItem Content="纯等待" Tag="Wait"/>
      </ComboBox>
