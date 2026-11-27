@@ -245,7 +245,13 @@ public partial class MainWindow : Window
     {
         if (e.PropertyName != nameof(MainWindowViewModel.ActiveEditorTab)) return;
         var current = _viewModel.ActiveEditorTab?.Editor as TestEditorViewModel;
-        if (ReferenceEquals(_activeRunFacts, current)) return;
+        if (ReferenceEquals(_activeRunFacts, current))
+        {
+            // Switching between non-TEST documents keeps the same null run
+            // editor, but MUST still recalculate full-width/inspector layout.
+            ApplyPanelLayout();
+            return;
+        }
         if (_activeRunFacts is not null)
             _activeRunFacts.RunFacts.CollectionChanged -= OnRunFactsChanged;
         _activeRunFacts = current;
