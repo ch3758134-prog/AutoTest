@@ -48,6 +48,7 @@ public static class TestDocumentCodec
     public static string Serialize(TestDocument doc)
     {
         ArgumentNullException.ThrowIfNull(doc);
+        _ = (doc.ReportSettings ?? throw new InvalidDataException("TEST 报告设置缺失。")).Validate();
         var issues = StepTreeValidator.ValidateTree(doc, StepDescriptorCatalog.Builtins(),
             allowIncompleteSteps: true);
         if (!issues.IsEmpty)

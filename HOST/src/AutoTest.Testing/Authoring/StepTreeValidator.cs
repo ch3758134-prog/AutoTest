@@ -18,6 +18,14 @@ public static class StepTreeValidator
         if (document.FormatVersion != TestDocument.CurrentFormat)
             errors.Add("TEST 文档版本不受支持，必须使用当前格式重新创建。");
         if (document.Id.Value == Guid.Empty) errors.Add("TEST 文档标识无效。");
+        if (string.IsNullOrWhiteSpace(document.Name))
+            errors.Add("TEST 用例名称不能为空。");
+        if (document.Phases.Count != Enum.GetValues<TestPhase>().Length ||
+            document.Phases.Keys.Any(phase => !Enum.IsDefined(phase)))
+            errors.Add("TEST 阶段集合无效。");
+        try { _ = document.ReportSettings.Validate(); }
+        catch (Exception error) when (error is ArgumentException or InvalidOperationException)
+        { errors.Add("TEST 报告设置无效：" + error.Message); }
 
         var ids = new HashSet<StepId>();
         var active = new HashSet<StepNode>(ReferenceEqualityComparer.Instance);
@@ -115,6 +123,17 @@ public static class StepTreeValidator
                         }
                     }
                 }
+            }
+
+            if (enabled && !allowIncompleteSteps &&
+                node.Type is "WaveAnalyze" or "WaveCompare")
+            {
+                var profileName = node.Properties.GetValueOrDefault("profile", "");
+                var profile = document.Mappings.FirstOrDefault(x =>
+                    x.Kind == TestTargetKind.WaveProfile &&
+                    string.Equals(x.Name, profileName, StringComparison.OrdinalIgnoreCase));
+                if (profile is null)
+                    errors.Add($"{location}: 波形分析必须绑定当前工程中已复核的波形配置。");
             }
 
             if (node.Type == "Case" && parent != "Switch")
