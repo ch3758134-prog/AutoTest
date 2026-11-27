@@ -434,6 +434,9 @@
         </Style>
        </ListBox.ItemContainerStyle>
       </ListBox>
+      <TextBlock x:Name="PaletteEmptyHint" DockPanel.Dock="Bottom"
+       Visibility="Collapsed" Text="当前分类没有可添加的步骤"
+       Padding="18,15" Foreground="#697D90" TextAlignment="Center"/>
       <ListBox x:Name="PaletteList" MinHeight="165" MaxHeight="390"
        MouseDoubleClick="PaletteList_DoubleClick" KeyDown="PaletteList_KeyDown"
        PreviewMouseLeftButtonUp="PaletteList_PreviewMouseLeftButtonUp"

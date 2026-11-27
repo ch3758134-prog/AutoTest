@@ -261,7 +261,7 @@ public partial class TestEditorView : UserControl
               " / " + target.Label;
         PaletteSearch.Text = "";
         RefreshPaletteItems("");
-        PaletteList.SelectedItem = _paletteActions.FirstOrDefault();
+        // Preserve the selected item from the currently visible category.
         ActionPalette.IsOpen = true;
         Dispatcher.BeginInvoke(new Action(() =>
         {
@@ -298,13 +298,17 @@ public partial class TestEditorView : UserControl
                 ? (x.Title + " " + x.Group + " " + x.Category + " " + x.Description)
                     .Contains(query, StringComparison.CurrentCultureIgnoreCase)
                 : category == "常用步骤" ? favorites.Contains(x.Key)
-                : category == x.Group)
+                : category == x.Category)
             .OrderBy(x => query.Length == 0 && category == "常用步骤"
                 ? Array.IndexOf(favorites, x.Key) : 0)
             .ThenBy(x => x.Title, StringComparer.CurrentCulture)
             .ToArray();
         PaletteList.ItemsSource = filtered;
         PaletteList.SelectedItem = filtered.FirstOrDefault();
+        PaletteList.Visibility = filtered.Length == 0
+            ? Visibility.Collapsed : Visibility.Visible;
+        PaletteEmptyHint.Visibility = filtered.Length == 0
+            ? Visibility.Visible : Visibility.Collapsed;
     }
 
     // HTML palette selects a type in one click; the optional confirm button

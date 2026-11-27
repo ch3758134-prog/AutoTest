@@ -164,12 +164,13 @@ public partial class TestStepInspector : UserControl
     ];
 
     public static IReadOnlyList<TestActionOption> PaletteActions(bool caseOnly) =>
-        Options.Where(option => caseOnly ? option.StepType == "Case" :
-            // "CanSend" is an obsolete alternate authoring entry. A real
-            // CAN sending operation already exists as Write + DBC/Raw CAN.
-            // Keep it readable for old resources, but do not offer engineers
-            // two misleading "send CAN" actions in the primary palette.
-            option.StepType != "Case" && option.Key != "can-send").ToArray();
+        Options.Where(option => caseOnly
+            ? option.StepType == "Case"
+            : option.StepType != "Case" &&
+              // Do not offer unusable or legacy execution nodes as new steps.
+              StepUiCatalog.Choices.Any(choice =>
+                  choice.Type == option.StepType && choice.Runnable) &&
+              option.Key is not ("can-send" or "can-wait" or "flash")).ToArray();
 
     private readonly StepNode? _editing;
     private readonly IReadOnlyList<TestStepFieldChoice> _ifVariables;
