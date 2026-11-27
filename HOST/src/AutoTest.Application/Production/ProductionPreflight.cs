@@ -12,22 +12,23 @@ public sealed record ProductionPreflightResult(bool Ready, ImmutableArray<string
 public sealed class ProductionPreflight
 {
     public ProductionPreflightResult ValidateMatch(MatchDecision match,
-        ProductionConfiguration config)
+        ProductionProjectExecution config)
     {
         var issues = ImmutableArray.CreateBuilder<string>();
         if (!match.Allowed || string.IsNullOrWhiteSpace(match.DutIdentity))
             issues.Add(match.RejectionCode ?? "IDENTITY_INVALID");
-        if (string.IsNullOrWhiteSpace(config.RecipeId) || config.RecipeVersion <= 0)
-            issues.Add("RECIPE_INVALID");
+        if (config.Project.Value == Guid.Empty || config.Revision.Value <= 0 ||
+            config.PackageFingerprint.Sha256 is not { Length: 64 })
+            issues.Add("PROJECT_VERSION_INVALID");
         if (config.Assets.IsDefaultOrEmpty || !match.MatchedAssets.SequenceEqual(config.Assets))
-            issues.Add("RECIPE_ASSETS_UNAVAILABLE");
+            issues.Add("PROJECT_ASSETS_UNAVAILABLE");
         if (config.Assets.Any(a => a.Id.Value == Guid.Empty || a.Revision.Value <= 0 ||
                 string.IsNullOrWhiteSpace(a.Fingerprint.Sha256)))
-            issues.Add("RECIPE_ASSET_INVALID");
+            issues.Add("PROJECT_ASSET_INVALID");
         return new(issues.Count == 0, issues.ToImmutable());
     }
 
-    public ProductionPreflightResult ValidateStation(ProductionConfiguration config,
+    public ProductionPreflightResult ValidateStation(ProductionProjectExecution config,
         ProductionStationReadiness station)
     {
         var issues = ImmutableArray.CreateBuilder<string>();
@@ -55,7 +56,7 @@ public sealed class ProductionPreflight
     }
 
     public ProductionPreflightResult Validate(ProductionSession session,
-        ProductionConfiguration configuration, ProductionStationReadiness station)
+        ProductionProjectExecution configuration, ProductionStationReadiness station)
     {
         var first = session.Match is null ? new(false, ImmutableArray.Create("MATCH_MISSING")) :
             ValidateMatch(session.Match, configuration);
