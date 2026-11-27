@@ -8,6 +8,24 @@ namespace AutoTest.Desktop.Tests.Projects;
 public sealed class NativeFlashProfileTests
 {
     [Fact]
+    public void FirmwareDisplayName_UsesOriginalNameAndNeverShowsInternalHash()
+    {
+        var hash = new string('7', 64);
+        var draft = NativeFlashProfileDocument.CreateDraft("HYDEPB") with
+        {
+            FirmwareRelativePath = "assets/flash/firmware/" + hash + ".hex",
+            FirmwareSha256 = hash
+        };
+        Assert.Equal("已导入 HEX（原始文件名未记录）", draft.GetFirmwareDisplayLabel());
+        var named = draft with { FirmwareDisplayName = "HydEPB_APP_V2.hex" };
+        Assert.Equal("HydEPB_APP_V2.hex", named.GetFirmwareDisplayLabel());
+        Assert.Equal("尚未选择 HEX", NativeFlashProfileDocument
+            .CreateDraft("HYDEPB").GetFirmwareDisplayLabel());
+        Assert.Equal(draft.FirmwareRelativePath, named.FirmwareRelativePath);
+        Assert.Equal(draft.FirmwareSha256, named.FirmwareSha256);
+    }
+
+    [Fact]
     public async Task AModelHasOneStableNativeProfileWithRevisionConflictProtection()
     {
         var root = Path.Combine(Path.GetTempPath(), "autotest-native-" + Guid.NewGuid().ToString("N"));

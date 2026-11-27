@@ -42,8 +42,6 @@
     <StackPanel>
      <TextBlock Text="工程资源" FontSize="23" FontWeight="SemiBold"
       Foreground="#1F3449"/>
-     <TextBlock Text="TEST 使用当前工程的 DBC、标准波形和公共流程；固件与烧录参数由 FLASH 工具管理。"
-      Style="{StaticResource ResourceHint}" Margin="0,5,12,0"/>
     </StackPanel>
    </DockPanel>
    <Grid>
@@ -94,8 +92,6 @@
         </DataTemplate>
        </ItemsControl.ItemTemplate>
       </ItemsControl>
-      <TextBlock Text="标准由真实信号采集建立；不通过新建文件来创建。"
-       Style="{StaticResource ResourceHint}" Margin="0,3,0,11"/>
       <Button Content="进入波形工作台" Command="{Binding OpenWaveWorkbenchCommand}"
        Style="{StaticResource ResourceAction}" HorizontalAlignment="Left"/>
      </StackPanel>
@@ -130,8 +126,6 @@
       <TextBlock Text="{Binding EngineeringFlashStatus}"
        FontSize="14" FontWeight="Medium" Margin="0,14,0,7"
        TextWrapping="Wrap"/>
-      <TextBlock Text="HEX 与 ECU CAN 参数只配置一次；安全文件由软件固定提供。"
-       Style="{StaticResource ResourceHint}" Margin="0,0,0,15"/>
       <WrapPanel>
        <Button Content="编辑烧录参数" Command="{Binding OpenNativeFlashProfileCommand}"
         Style="{StaticResource ResourceAction}"/>

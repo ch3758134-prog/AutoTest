@@ -44,8 +44,7 @@ public sealed partial class MainWindowViewModel
     }
 
     public string EngineeringDbcDescription => _workspace.Current is null
-        ? "打开 ECU 工程后选择 DBC"
-        : "整套 TEST 共用此数据库，步骤直接选择报文和信号";
+        ? "未打开工程" : "已绑定当前工程";
 
     public string EngineeringWaveStatus
     {
@@ -122,13 +121,13 @@ public sealed partial class MainWindowViewModel
             foreach (var standard in standards)
                 EngineeringWaveStandards.Add(standard);
             EngineeringWaveStatus = standards.Length == 0
-                ? "尚无标准波形；从真实采集结果建立标准"
-                : "已建立 " + standards.Length + " 项标准；在波形工作台查看和分析多路信号";
+                ? "尚无标准波形"
+                : standards.Length + " 项标准波形";
             EngineeringFlashStatus = flash is null
                 ? "尚未设置 HEX 与烧录参数"
                 : flash.Profile.FirmwareRelativePath is null
                     ? "烧录参数已保存，尚未选择 HEX"
-                    : (flash.Profile.FirmwareDisplayName ?? "已选择 HEX 固件") +
+                    : flash.Profile.GetFirmwareDisplayLabel() +
                       " · ECU CAN " + flash.Profile.EcuCanKbps + " kbit/s";
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or

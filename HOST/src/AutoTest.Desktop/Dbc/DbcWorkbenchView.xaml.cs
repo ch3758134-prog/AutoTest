@@ -232,6 +232,16 @@ public partial class DbcWorkbenchView : UserControl
         }
     }
 
+    private void CopyFilePath_Click(object sender, RoutedEventArgs e)
+    {
+        try { Clipboard.SetText(_viewModel.FilePath); }
+        catch (System.Runtime.InteropServices.ExternalException)
+        {
+            MessageBox.Show(Window.GetWindow(this), "无法复制文件位置，请检查剪贴板是否被占用。",
+                "复制失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
     private async void Save_Click(object sender, RoutedEventArgs e)
     {
         if (!TryFinishEditing()) return;

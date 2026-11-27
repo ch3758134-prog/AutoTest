@@ -370,7 +370,8 @@ public sealed class DbcWorkbenchViewModel : BindableBase
     public bool IsIndependentFile => _workspace is null;
     public string SourceDescription => IsIndependentFile
         ? "独立 DBC 文件" : "当前工程 DBC";
-    public string FileLocationDescription => FilePath;
+    public string FileLocationDescription => IsIndependentFile
+        ? "独立 DBC 文件" : "已绑定当前工程";
 
     public ObservableCollection<DbcMessageRow> Messages { get; } = new();
     public ObservableCollection<DbcSignalRow> Signals { get; } = new();

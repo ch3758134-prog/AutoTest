@@ -92,8 +92,7 @@ public partial class NativeFlashProfileWindow : Window
             DiagnosticsIdBox.Text = FormatOptional(_draft.ReferenceDiagnosticsCanId);
             BootFeatureBox.Text = _draft.ReferenceBootFeature ?? "";
             AppFeatureBox.Text = _draft.ReferenceAppFeature ?? "";
-            FirmwareLabel.Text = _draft.FirmwareDisplayName ??
-                (_draft.FirmwareRelativePath is null ? "尚未选择 HEX" : Path.GetFileName(_draft.FirmwareRelativePath));
+            FirmwareLabel.Text = _draft.GetFirmwareDisplayLabel();
             StatusLabel.Text = _draft.FirmwareRelativePath is null
                 ? "尚未选择 HEX" : "烧录参数已载入。";
         }

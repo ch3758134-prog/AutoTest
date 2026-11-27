@@ -38,6 +38,17 @@ public sealed record NativeFlashProfileDocument(
 {
     // Human-readable source filename. The stored firmware copy remains hashed.
     public string? FirmwareDisplayName { get; init; }
+
+    // Keep content-addressed firmware paths out of normal user-facing labels.
+    // Older projects without the original filename cannot reconstruct it.
+    public string GetFirmwareDisplayLabel()
+    {
+        if (string.IsNullOrWhiteSpace(FirmwareRelativePath)) return "尚未选择 HEX";
+        return string.IsNullOrWhiteSpace(FirmwareDisplayName)
+            ? "已导入 HEX（原始文件名未记录）"
+            : Path.GetFileName(FirmwareDisplayName);
+    }
+
     public const string VerifiedMethod = "CanTool-HydEPB-v1";
     public const int CurrentSchema = 1;
     public static NativeFlashProfileDocument CreateDraft(string ecuModelCode) =>

@@ -63,6 +63,7 @@
        <Separator/>
        <MenuItem Header="立即保存" Click="Save_Click" InputGestureText="Ctrl+S"/>
        <MenuItem Header="从文件重新加载" Click="Reload_Click" InputGestureText="F5"/>
+       <MenuItem Header="复制文件路径" Click="CopyFilePath_Click"/>
       </MenuItem>
      </Menu>
      
@@ -126,7 +127,7 @@
         </WrapPanel>
        </StackPanel>
       </DockPanel>
-      <TextBlock Text="{Binding SelectedMessageDefinition}" MaxHeight="36" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" Foreground="#62778D" FontSize="11" Margin="0,6,0,6" ToolTip="{Binding SelectedMessageDefinition}"/>
+      
       <DockPanel>
        <WrapPanel DockPanel.Dock="Right">
          <Button x:Name="AdvancedColumnsButton" Content="高级列" Click="ToggleAdvancedColumns_Click"
