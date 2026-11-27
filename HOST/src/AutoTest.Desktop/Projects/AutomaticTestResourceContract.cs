@@ -61,6 +61,11 @@ public static class AutomaticTestResourceContract
         OpenProjectContext project, CancellationToken ct = default)
     {
         var assets = project.Definition.Assets;
+        // No second "active DBC" switch exists in AutoTest. Detect legacy
+        // manifests with multiple databases before interpreting TEST mappings.
+        if (assets.Count(a => a.Kind == ProjectWorkspaceService.DbcKind) > 1)
+            throw new InvalidDataException(
+                "工程含多份 DBC。一个 ECU 工程只允许一份生效 DBC，请先整理后再执行。");
         var testProjects = assets.Where(a =>
             a.Kind == ProjectWorkspaceService.TestProjectKind).ToArray();
         if (testProjects.Length != 1)

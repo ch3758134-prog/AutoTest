@@ -187,6 +187,7 @@
       <Separator/>
       <MenuItem Header="UDS 诊断" Command="{Binding OpenUdsWorkbenchCommand}"/>
       <MenuItem Header="独立 ECU 烧录" Command="{Binding OpenFlashWorkbenchCommand}"/>
+      <MenuItem Header="导入／替换工程 DBC…" Command="{Binding ImportDbcCommand}"/>
       <Separator/>
       <MenuItem Header="波形采集与分析" Command="{Binding OpenWaveWorkbenchCommand}"/>
       <MenuItem Header="DBC 编辑器" Command="{Binding OpenDbcToolCommand}"/>

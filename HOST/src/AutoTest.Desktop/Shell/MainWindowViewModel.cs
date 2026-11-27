@@ -792,10 +792,15 @@ public sealed partial class MainWindowViewModel : BindableBase
         }
         if (!SelectedResourceIsDbc)
         {
-            var first = _workspace.Current.Definition.Assets
-                .FirstOrDefault(a => a.Kind == ProjectWorkspaceService.DbcKind);
-            if (first is null) { await ImportDbcAsync(); return; }
-            SelectAsset(first.Id);
+            var databases = _workspace.Current.Definition.Assets
+                .Where(a => a.Kind == ProjectWorkspaceService.DbcKind).ToArray();
+            if (databases.Length > 1)
+            {
+                StatusMessage = "旧工程存在多份 DBC。请检查工程并整理为唯一的 ECU 数据库，禁止自动猜测。";
+                return;
+            }
+            if (databases.Length == 0) { await ImportDbcAsync(); return; }
+            SelectAsset(databases[0].Id);
         }
         await OpenSelectedDbcAsync();
     }
@@ -1581,8 +1586,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         {
             var session = await _workspace.OpenTestProjectEditorAsync(project.Id);
             if (!ReferenceEquals(snapshot, _workspace.Current) ||
-                !AllNodes(ResourceNodes).Contains(node) ||
-                OpenEditors.Any(x => x.Key == "project|" + project.Id)) return;
+                !AllNodes(ResourceNodes).Contains(node)) return;
             node.Children.Clear();
             var order = 0;
             foreach (var entry in session.Document.Packages)
@@ -1937,6 +1941,28 @@ public sealed partial class MainWindowViewModel : BindableBase
     private async Task ImportDbcAsync()
     {
         if (!HasProject) return;
+        var currentDbcs = _workspace.Current!.Definition.Assets
+            .Where(a => a.Kind == ProjectWorkspaceService.DbcKind).ToArray();
+        if (currentDbcs.Length > 1)
+        {
+            StatusMessage = "旧工程存在多份 DBC，必须先明确保留哪一份；不能自动替换。";
+            return;
+        }
+        if (currentDbcs.Length == 1)
+        {
+            if (_dbcToolWindows.TryGetValue(currentDbcs[0].Id.Value, out var active) &&
+                active.Window.IsVisible)
+            {
+                StatusMessage = "请先完成保存并关闭当前 DBC 编辑窗口，再执行数据库替换。";
+                return;
+            }
+            if (MessageBox.Show(
+                    "将用新文件替换工程当前 DBC。已有用例与波形引用会因修订变化而要求重新核对，" +
+                    "不会自动采用新的信号定义。确定继续吗？",
+                    "替换当前工程 DBC", MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                return;
+        }
         var path = _fileDialogs.PickDbcFile(_workspace.Current?.RootDirectory);
         if (path is null) return;
         await RunOperationAsync(async () =>
@@ -1944,7 +1970,9 @@ public sealed partial class MainWindowViewModel : BindableBase
             var entry = await _workspace.ImportDbcAsync(path);
             SelectAsset(entry.Id);
             await ShowDbcWindowAsync(entry.Id, entry.Name);
-            StatusMessage = "DBC 已导入：" + entry.Name;
+            StatusMessage = currentDbcs.Length == 0
+                ? "工程 DBC 已建立：" + entry.Name
+                : "工程 DBC 已替换；旧 TEST / WAVE 引用需在工程检查中逐项确认。";
         });
     }
 
@@ -2411,6 +2439,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         NewProjectCommand?.RaiseCanExecuteChanged();
         OpenProjectCommand?.RaiseCanExecuteChanged();
         NewTestProgramCommand?.RaiseCanExecuteChanged();
+        NewPublicFlowCommand?.RaiseCanExecuteChanged();
         NewTestProjectCommand?.RaiseCanExecuteChanged();
         ImportDbcCommand?.RaiseCanExecuteChanged();
         ImportFirmwareCommand?.RaiseCanExecuteChanged();

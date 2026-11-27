@@ -412,7 +412,42 @@ public sealed partial class ProjectWorkspaceService
             var decoded = DbcSource.Load(bytes);
             _ = DbcWorkbenchDocument.Import(name, decoded.Text);
         }, ct);
-        return await AddAssetAsync(DbcKind, name, ".dbc", bytes, ct);
+        // Each ECU engineering project has ONE active DBC. Importing a new
+        // verified database replaces the bytes of that same asset, keeping its
+        // stable identity; the revision advances so existing TEST/WAVE pins
+        // must be explicitly reviewed instead of silently switching signals.
+        var before = Current ?? throw new InvalidOperationException("请先打开工程。");
+        var previous = before.Definition.Assets.Where(a => a.Kind == DbcKind).ToArray();
+        if (previous.Length > 1)
+            throw new InvalidDataException(
+                "该旧工程含多份 DBC，无法自动猜测哪份生效。请先整理为唯一 DBC。");
+        if (previous.Length == 0)
+            return await AddAssetAsync(DbcKind, name, ".dbc", bytes, ct);
+
+        await _writeLock.WaitAsync(ct);
+        try
+        {
+            var current = Current ?? throw new InvalidOperationException("工程已关闭。");
+            var selected = current.Definition.Assets.Where(a => a.Kind == DbcKind).ToArray();
+            if (selected.Length != 1 || selected[0].Id != previous[0].Id)
+                throw new ProjectDataException("DBC_PROJECT_CHANGED",
+                    "导入期间当前工程的 DBC 已改变，请重新选择文件。");
+            var context = await SaveEditedResourceAsync(
+                current, selected[0], bytes, selected[0].Sha256, ct);
+            // A failed manifest/file validation never exposes the replacement
+            // as the active engineering source.
+            var updated = context.Definition.Assets.Single(a => a.Id == selected[0].Id);
+            var persisted = ProjectPathPolicy.Normalize(context.RootDirectory, updated.RelativePath);
+            var document = await DbcDocumentStore.OpenAsync(persisted, CancellationToken.None);
+            if (!string.Equals(document.Receipt.Sha256, updated.Sha256,
+                    StringComparison.OrdinalIgnoreCase))
+                throw new ProjectDataException("DBC_IMPORT_VERIFY",
+                    "替换 DBC 后的文件与工程索引不一致。");
+            Current = context;
+            CurrentChanged?.Invoke(this, EventArgs.Empty);
+            return updated;
+        }
+        finally { _writeLock.Release(); }
     }
 
     /// <summary>Import and validate an Intel HEX or S-record image; never guess a BIN load address.</summary>
@@ -637,6 +672,9 @@ public sealed partial class ProjectWorkspaceService
                     x.Kind == TestProjectKind))
                     throw new InvalidDataException(
                         "一个 ECU 工程只能有一份完整 TEST 项目。请直接打开并编辑已有 TEST。");
+                if (kind == DbcKind && current.Definition.Assets.Any(x => x.Kind == DbcKind))
+                    throw new InvalidDataException(
+                        "一个 ECU 工程只允许一份当前生效 DBC。请使用替换 DBC 操作。");
                 if (current.Definition.Assets.Any(x =>
                     x.Kind.Equals(kind, StringComparison.OrdinalIgnoreCase) &&
                     x.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
