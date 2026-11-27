@@ -159,7 +159,7 @@
       <MenuItem Header="重命名当前工程" Command="{Binding RenameProjectCommand}"/>
       <MenuItem Header="保存修改" Command="{Binding SaveActiveCommand}" InputGestureText="Ctrl+S"/>
       <Separator/>
-      <MenuItem Header="打开检测流程" Command="{Binding OpenFirstTestProjectCommand}"/>
+      <MenuItem Header="调整测试顺序" Command="{Binding OpenFirstTestProjectCommand}"/>
       <MenuItem Header="新建测试用例" Command="{Binding NewTestProgramCommand}"/>
       <Separator/>
       <MenuItem Header="退出" Click="Exit_Click" InputGestureText="Alt+F4"/>
@@ -183,7 +183,7 @@
       <MenuItem Header="手动台架" Command="{Binding OpenManualBenchCommand}"/>
       <Separator/>
       <MenuItem Header="UDS 诊断" Command="{Binding OpenUdsWorkbenchCommand}"/>
-      <MenuItem Header="独立 ECU 烧录" Command="{Binding OpenFlashWorkbenchCommand}"/>
+      <MenuItem Header="独立烧录调试" Command="{Binding OpenFlashWorkbenchCommand}"/>
       <MenuItem Header="导入／替换工程 DBC…" Command="{Binding ImportDbcCommand}"/>
       <Separator/>
       <MenuItem Header="波形采集与分析" Command="{Binding OpenWaveWorkbenchCommand}"/>
@@ -209,9 +209,9 @@
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
      <Button Content="检查工程" Command="{Binding OpenProjectConfigurationOverviewCommand}"
       Style="{StaticResource AtQuietButton}" Margin="0,0,8,0" Padding="9,5"/>
-     <Button Content="用于生产…" Command="{Binding ConfirmProductionConfigurationCommand}"
+     <Button Content="更新生产工程…" Command="{Binding ConfirmProductionConfigurationCommand}"
       Style="{StaticResource AtPrimaryButton}" Padding="11,5"
-      ToolTip="核对当前工程的完整 TEST、DBC、波形和 FLASH 后固定生产版本"/>
+      ToolTip="保存当前工程 TEST、DBC、波形、HEX 和烧录参数供生产扫码使用；不启动检测"/>
     </StackPanel>
     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
      <Button Content="{Binding CurrentProjectName}" Command="{Binding RenameProjectCommand}"

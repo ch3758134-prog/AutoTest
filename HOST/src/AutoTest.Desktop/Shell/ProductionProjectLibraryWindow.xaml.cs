@@ -113,8 +113,7 @@ public partial class ProductionProjectLibraryWindow : Window
     {
         if (SelectedSummary is null) return;
         SelectedSummary.Text = Selection is { } p
-            ? "已选择 " + p.ProjectName + " · 修订 " + p.ProjectRevision +
-              "。输入一个固定标记，将它绑定到此工程版本。"
+            ? "已选择 " + p.ProjectName + "。输入扫码识别标记，保存对应关系。"
             : "选择一份生产工程版本。";
     }
 
@@ -215,7 +214,7 @@ public partial class ProductionProjectLibraryWindow : Window
             PreviewResult.Text = "完整 ECU 编号：" + route.FullBarcode +
                 " · 标记：" + route.Marker +
                 " · 工程：" + route.Package.ProjectName +
-                "（修订 " + route.Package.ProjectRevision + "）。" +
+                "。" +
                 "这里只检查配置，不会启动硬件。";
         }
         catch (Exception error) when (error is not OutOfMemoryException)

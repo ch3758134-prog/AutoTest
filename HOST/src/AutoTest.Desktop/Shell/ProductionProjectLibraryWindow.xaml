@@ -42,7 +42,7 @@
     Margin="8,0,0,0"/>
    <StackPanel>
     <TextBlock Text="生产工程库" FontSize="21" FontWeight="SemiBold"/>
-    <TextBlock Text="保存可用于生产的工程版本，为每个产品固定标记指定唯一版本。测试与烧录由工程自身定义。"
+    <TextBlock Text="选择检测工程，设置扫码识别标记。检测时自动使用该工程的测试与固件。"
      Foreground="#62788B" Margin="0,5,0,0" TextWrapping="Wrap"/>
    </StackPanel>
   </DockPanel>
@@ -52,7 +52,7 @@
     <WrapPanel>
      <TextBlock Text="查找生产工程" VerticalAlignment="Center" Margin="0,0,9,0"/>
      <TextBox x:Name="SearchBox" Width="270" VerticalAlignment="Center"
-      TextChanged="SearchChanged" ToolTip="按工程名称、修订或版本标识查找"/>
+      TextChanged="SearchChanged" ToolTip="按工程名称查找"/>
      <Button Content="刷新" Click="Refresh_Click" Margin="0,0,8,0"/>
     </WrapPanel>
     <Expander Header="跨电脑移交 · 导入 / 导出工程包" IsExpanded="False"
@@ -81,27 +81,24 @@
         SelectionChanged="CatalogSelectionChanged">
         <DataGrid.Columns>
          <DataGridTextColumn Header="工程名称" Binding="{Binding ProjectName}" Width="2*"/>
-         <DataGridTextColumn Header="修订" Binding="{Binding ProjectRevision}" Width="85"/>
-         <DataGridTextColumn Header="导入时间" Binding="{Binding InstalledAtUtc}" Width="175"/>
-         <DataGridTextColumn Header="版本标识（SHA-256）"
-          Binding="{Binding PackageSha256}" Width="*"/>
+         <DataGridTextColumn Header="保存时间" Binding="{Binding InstalledAtUtc}" Width="220"/>
         </DataGrid.Columns>
        </DataGrid>
        <TextBlock x:Name="EmptyCatalogHint"
-        Text="还没有生产工程。在“测试工程”中选择“用于生产”可直接加入；跨电脑移交可在上方导入。" FontSize="14"
+        Text="还没有可供扫码选择的工程。打开测试工程，点击“更新生产工程”即可添加。" FontSize="14"
         Foreground="#617A8E" TextWrapping="Wrap" TextAlignment="Center"
         HorizontalAlignment="Center" VerticalAlignment="Center"
         Margin="16" IsHitTestVisible="False"/>
       </Grid>
       <TextBlock x:Name="SelectedSummary"
-       Text="选择上方一份稳定版本，再为它关联固定扫码标记。不要在这里重复选择测试用例或烧录文件。" Foreground="#587389"
+       Text="选择上方工程，设置扫码识别标记。" Foreground="#587389"
        Margin="0,10,0,0" TextWrapping="Wrap"/>
      </StackPanel>
     </Border>
 
     <Border Style="{StaticResource Panel}">
      <StackPanel>
-      <TextBlock Text="产品识别 · 固定标记关联生产工程" Style="{StaticResource Section}"/>
+      <TextBlock Text="扫码识别标记" Style="{StaticResource Section}"/>
       <TextBlock Text="例如 HYDEP-00001234：识别标记为 HYDEP，完整编号原样保存。相同标记只对应一份生效工程版本。"
        TextWrapping="Wrap" Foreground="#61788D" Margin="0,0,0,13"/>
       <WrapPanel Margin="0,0,0,10">
@@ -118,8 +115,7 @@
        <DataGrid.Columns>
         <DataGridTextColumn Header="识别标记" Binding="{Binding Marker}" Width="155"/>
         <DataGridTextColumn Header="对应工程" Binding="{Binding ProjectName}" Width="*"/>
-        <DataGridTextColumn Header="工程修订" Binding="{Binding ProjectRevision}" Width="95"/>
-        <DataGridTextColumn Header="关联版本" Binding="{Binding Revision}" Width="90"/>
+
        </DataGrid.Columns>
       </DataGrid>
      </StackPanel>

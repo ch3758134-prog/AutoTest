@@ -298,13 +298,13 @@ public sealed partial class MainWindowViewModel
         if (_nativeFlashProfileWindow is { IsVisible: true } profileWindow &&
             !await profileWindow.PrepareForParentShutdownAsync())
         {
-            StatusMessage = "烧录配置尚未保存，已取消启用。";
+            StatusMessage = "烧录参数尚未保存，无法更新生产工程。";
             return false;
         }
         var project = _workspace.Current;
         if (project is null)
         {
-            StatusMessage = "没有打开 ECU 工程，无法确认生产配置。";
+            StatusMessage = "请先打开 ECU 测试工程。";
             return false;
         }
         try
@@ -312,22 +312,9 @@ public sealed partial class MainWindowViewModel
             var draft = await NativeFlashProfileStore.LoadAsync(project.RootDirectory)
                 ?? throw new InvalidDataException("该 ECU 工程尚未保存原生烧录工艺。");
             _ = NativeFlashJobBuilder.Freeze(draft.Profile, project.RootDirectory);
-            // "启用工位配置" is already an explicit choice. Only show an
-            // additional confirmation for other callers of this operation.
-            // This does not authorize any physical clamp or FLASH action.
-            var decision = singleApply ? MessageBoxResult.Yes : MessageBox.Show(
-                global::System.Windows.Application.Current?.MainWindow,
-                "检测工程：" + project.Definition.Name + "\n\n" +
-                "将把此工程当前保存的测试顺序及烧录配置用于本工位。" +
-                "工程内容或固件更新后，需要再次启用。" +
-                "\n\n启用配置不会立即操作夹具或烧录 ECU。是否启用？",
-                "启用检测工程", MessageBoxButton.YesNo,
-                MessageBoxImage.Question, MessageBoxResult.No);
-            if (decision != MessageBoxResult.Yes)
-            {
-                StatusMessage = "已取消启用，现有工位配置不变。";
-                return false;
-            }
+            // "更新生产工程" is the explicit operator choice. The operation
+            // only installs verified project content; it performs no physical
+            // clamp, CAN or FLASH action. Real production retains all gates.
             // Publish the exact observed draft, then bind the station to the
             // verified manifest + ordered TEST + firmware/seed/key fingerprints.
             // On failure the former station pin cannot silently accept a new
@@ -340,9 +327,8 @@ public sealed partial class MainWindowViewModel
             var installed = await _productionCatalog.InstallEngineeringProjectAsync(
                 project.ManifestPath);
             var deployed = await StationDeploymentStore.DeployAsync(project);
-            StatusMessage = "检测工程已保存为生产稳定版本：" +
-                installed.ProjectName + "。请关联固定扫码标记。" +
-                "实体 START、夹具及 FLASH 仍需真实硬件验收。";
+            StatusMessage = "已更新生产工程：" + installed.ProjectName +
+                "。请确认扫码识别标记。正式检测仍须通过实际工位验证。";
             await RefreshEngineeringSetupAsync();
             if (!singleApply)
             {
@@ -356,7 +342,7 @@ public sealed partial class MainWindowViewModel
             AutoTest.Projects.Project.ProjectDataException or FormatException or
             NotSupportedException or System.Text.Json.JsonException)
         {
-            StatusMessage = "无法启用检测工程：" +
+            StatusMessage = "生产工程更新失败：" +
                 error.Message;
             return false;
         }
