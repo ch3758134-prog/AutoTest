@@ -22,9 +22,9 @@ public sealed partial class MainWindowViewModel
     public ObservableCollection<ResourceDependencyGroup> SetupDependencyGroups { get; } = new();
     public int SetupRootCauseCount => SetupDependencyGroups.Count;
     public string SetupDependencySummary => SetupRootCauseCount == 0
-        ? "未发现当前正式 TEST 资源依赖阻断；这不代表真实 ECU 功能通过。"
-        : "按上游资源合并为 " + SetupRootCauseCount +
-          " 组问题。展开查看受影响用例，再进入原编辑器核对。";
+        ? "没有发现测试用例引用的资源缺失。是否通过检测，以实际执行结果为准。"
+        : "发现 " + SetupRootCauseCount +
+          " 组资源问题。展开查看受影响的用例。";
     private string _setupScanStatus = "尚未检查";
     private string _setupFlashStatus = "尚未检查";
     private string _setupStationStatus = "尚未检查";
@@ -342,7 +342,7 @@ public sealed partial class MainWindowViewModel
                     : string.Join(Environment.NewLine,
                         snapshot.Issues.Select((issue, i) => $"{i + 1}. {issue}"));
                 test = snapshot.CanExecute
-                    ? snapshot.Cases.Count + " 个正式用例的静态资源检查通过（仍需实体运行）"
+                    ? snapshot.Cases.Count + " 个用例的资源检查通过；实际结果需运行测试确认"
                     : snapshot.Cases.Count + " 个有效引用 · " +
                       snapshot.Issues.Count + " 项资源阻断；打开 TEST 项目检查引用与步骤。" +
                       "所需资源未齐备前不能执行完整测试。";
