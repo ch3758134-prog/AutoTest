@@ -31,6 +31,7 @@
  <Grid Margin="18,15,18,12">
   <Grid.RowDefinitions>
    <RowDefinition Height="Auto"/>
+   <RowDefinition Height="Auto"/>
    <RowDefinition Height="*"/>
    <RowDefinition Height="Auto"/>
   </Grid.RowDefinitions>
@@ -43,35 +44,53 @@
      FontSize="12" Foreground="#62778A" Margin="0,4,0,0"/>
    </StackPanel>
   </DockPanel>
-  <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+  <!-- Import and search are global catalog actions, never scrolled away. -->
+  <Border Grid.Row="1" Background="White" BorderBrush="#DAE3EB"
+   BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,10">
+   <DockPanel LastChildFill="False">
+    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+     VerticalAlignment="Center">
+     <Button Content="导入工程包…" Click="Import_Click" Background="#E6F0FA"
+      BorderBrush="#9ABFDF" FontWeight="SemiBold"/>
+     <Button x:Name="ExportButton" Content="导出当前工程…" Click="Export_Click"
+      ToolTip="仅在工程工作区使用，导出工程及所有生产依赖"/>
+     <Button Content="刷新" Click="Refresh_Click" Margin="0"/>
+    </StackPanel>
+    <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+     DockPanel.Dock="Left">
+     <TextBlock Text="搜索工程" VerticalAlignment="Center" Margin="0,0,9,0"/>
+     <TextBox x:Name="SearchBox" Width="250" VerticalAlignment="Center"
+      Margin="0" TextChanged="SearchChanged"
+      ToolTip="按工程名称、修订或版本标识查找"/>
+    </StackPanel>
+   </DockPanel>
+  </Border>
+  <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto"
    HorizontalScrollBarVisibility="Disabled">
    <StackPanel>
     <Border Style="{StaticResource Panel}">
      <StackPanel>
       <TextBlock Text="已安装的工程" Style="{StaticResource SectionLabel}"/>
-      <WrapPanel Margin="0,0,0,8">
-       <TextBlock Text="搜索" Margin="0,6,8,0"/>
-       <TextBox x:Name="SearchBox" Width="255"
-        TextChanged="SearchChanged" ToolTip="按工程名称、修订或版本指纹筛选"/>
-      </WrapPanel>
-      <WrapPanel Margin="0,0,0,8">
-       <Button Content="导入工程包…" Click="Import_Click" Background="#E6F0FA"
-        BorderBrush="#A6C7E5" FontWeight="SemiBold"/>
-       <Button x:Name="ExportButton" Content="从当前工程导出…" Click="Export_Click"
-        ToolTip="由工程开发人员导出，包含测试、烧录、固件、安全算法和资源"/>
-       <Button Content="刷新" Click="Refresh_Click"/>
-      </WrapPanel>
-      <DataGrid x:Name="CatalogTable" Height="230" AutoGenerateColumns="False"
-       CanUserAddRows="False" IsReadOnly="True" HeadersVisibility="Column"
-       GridLinesVisibility="Horizontal" SelectionMode="Single"
-       SelectionChanged="CatalogSelectionChanged">
+      <Grid>
+       <DataGrid x:Name="CatalogTable" Height="220" AutoGenerateColumns="False"
+        CanUserAddRows="False" IsReadOnly="True" HeadersVisibility="Column"
+        GridLinesVisibility="Horizontal" SelectionMode="Single"
+        ColumnHeaderHeight="34" RowHeight="39" HorizontalScrollBarVisibility="Auto"
+        SelectionChanged="CatalogSelectionChanged">
        <DataGrid.Columns>
         <DataGridTextColumn Header="工程名称" Binding="{Binding ProjectName}" Width="2*"/>
         <DataGridTextColumn Header="工程修订" Binding="{Binding ProjectRevision}" Width="95"/>
         <DataGridTextColumn Header="导入时间" Binding="{Binding InstalledAtUtc}" Width="175"/>
         <DataGridTextColumn Header="工程版本指纹" Binding="{Binding PackageSha256}" Width="*"/>
        </DataGrid.Columns>
-      </DataGrid>
+       </DataGrid>
+       <TextBlock x:Name="EmptyCatalogHint"
+        Text="还没有导入检测工程。请点击上方“导入工程包…”添加。"
+        FontSize="14" Foreground="#60788C" TextWrapping="Wrap"
+        TextAlignment="Center" HorizontalAlignment="Center"
+        VerticalAlignment="Center" Margin="18,35,18,0"
+        IsHitTestVisible="False"/>
+      </Grid>
       <TextBlock x:Name="SelectedSummary" Text="选择一份已导入的工程版本。"
        TextWrapping="Wrap" Foreground="#5B7184" Margin="0,9,0,0"/>
      </StackPanel>
@@ -151,7 +170,7 @@
     </Border>
    </StackPanel>
   </ScrollViewer>
-  <Border Grid.Row="2" Background="White" BorderBrush="#D7E3EC"
+  <Border Grid.Row="3" Background="White" BorderBrush="#D7E3EC"
    BorderThickness="1" CornerRadius="6" Padding="11" Margin="0,8,0,0">
    <TextBlock x:Name="Status" Text="正在读取工程库…" TextWrapping="Wrap"
     Foreground="#365A76"/>
