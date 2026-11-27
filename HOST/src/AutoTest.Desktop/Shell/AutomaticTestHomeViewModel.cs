@@ -353,7 +353,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         }
         _engineeringVerificationArmed = false;
         InvalidateScan("正式工程加载或更新后，需要重新核对本次 ECU 的真实扫码身份。");
-        StartRequestStatus = "当前工程已更新：请重新完成扫码与工位核对；正式执行器尚未接通。";
+        StartRequestStatus = "检测工程已更新，请扫描当前 ECU 编号后开始检测。";
         RebuildCases();
         UpdateConnection();
     });

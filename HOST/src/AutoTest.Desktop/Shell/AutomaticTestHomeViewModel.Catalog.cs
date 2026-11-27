@@ -71,9 +71,8 @@ public sealed partial class AutomaticTestHomeViewModel
                 return;
             }
 
-            // Identity routing is useful even before the station has its
-            // physical START and mechanical feedback connected. Present it,
-            // but do not create a formal run or claim admission.
+            // Show matched project and complete DUT barcode; physical actions
+            // begin only when a start event invokes the shared real runner.
             _dutSerial = routed.FullBarcode;
             _scanStatus = "已识别 ECU " + routed.FullBarcode +
                 " · 检测工程：" + routed.Package.ProjectName +
@@ -81,8 +80,8 @@ public sealed partial class AutomaticTestHomeViewModel
             _scanAlertRequired = false;
             Notify();
 
-            // Device configuration is independent of product mapping.
-            // It is checked here but cannot itself authorize formal START.
+            // Station configuration belongs to the equipment, not the ECU
+            // project; its fixed fixture commands are used by the real runner.
             var station = await StationDeviceConfigurationStore.LoadAsync();
             station.Fixture.Validate();
             _ = StationFixtureExecutionPlan.From(station.Fixture);

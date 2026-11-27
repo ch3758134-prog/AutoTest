@@ -138,7 +138,7 @@ public sealed partial class AutomaticTestHomeViewModel
     }
 
     internal void OnPublishedConfigurationChanged() => OnUi(() =>
-        InvalidateScan("生产编码与工位发布版本已改变；旧扫码冻结身份作废，请重新扫码。"));
+        InvalidateScan("扫码匹配规则或工位设备设置发生变化，请重新扫描当前 ECU。"));
 
     private void InvalidateScan(string reason, bool requiresAttention = true)
     {
