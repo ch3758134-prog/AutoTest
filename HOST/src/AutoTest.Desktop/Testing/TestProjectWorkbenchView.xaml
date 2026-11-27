@@ -113,6 +113,27 @@
             Background="Transparent" BorderThickness="0"
             Padding="3,2" ToolTip="打开此用例编辑步骤"
             Style="{StaticResource AtQuietButton}"/>
+          </StackPanel>
+          </DataTemplate>
+         </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTextColumn Header="步骤" Binding="{Binding StepCountLabel}"
+         IsReadOnly="True" Width="78"/>
+        <DataGridTemplateColumn Header="调整" Width="184">
+         <DataGridTemplateColumn.CellTemplate>
+          <DataTemplate>
+           <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="6,0,0,0">
+            <Button Content="↑" Tag="{Binding}" Click="MoveRowUp_Click"
+             Width="35" MinWidth="0" Height="31" MinHeight="0" Padding="0"
+             Margin="0,0,7,0" FontSize="15" ToolTip="上移此用例"/>
+            <Button Content="↓" Tag="{Binding}" Click="MoveRowDown_Click"
+             Width="35" MinWidth="0" Height="31" MinHeight="0" Padding="0"
+             Margin="0,0,7,0" FontSize="15" ToolTip="下移此用例"/>
+            <Button Content="移除" Tag="{Binding}" Click="RemoveRow_Click"
+             Width="64" MinWidth="0" Height="31" MinHeight="0" Padding="5,0"
+             FontSize="12" Foreground="#B73D46"
+             ToolTip="从当前 TEST 项目移除用例调用，不删除源用例"/>
+           </StackPanel>
           </DataTemplate>
          </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
