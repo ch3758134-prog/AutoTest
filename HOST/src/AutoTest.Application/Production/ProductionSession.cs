@@ -22,7 +22,7 @@ public sealed record ProductionProjectExecution(
 // Physical identity is locked to one attempt. A retry always creates a new RunId.
 public sealed record ProductionJobSnapshot(RunId Run, string DutIdentity, RawScan Scan,
     ProductionProjectExecution ProjectExecution, RuleRevision RuleRevision,
-    ProjectRevision ProjectRevision, StationId Station, bool IsMock);
+    ProjectRevision ProjectRevision, StationId Station);
 
 public sealed class ProductionSession
 {
@@ -71,7 +71,7 @@ public sealed class ProductionSession
     }
 
     public OperationResult<ProductionJobSnapshot> Confirm(ProductionProjectExecution execution,
-        RuleRevision ruleRevision, ProjectRevision projectRevision, StationId station, bool isMock)
+        RuleRevision ruleRevision, ProjectRevision projectRevision, StationId station)
     {
         lock (_sync)
         {
@@ -89,7 +89,7 @@ public sealed class ProductionSession
                 return OperationResult<ProductionJobSnapshot>.Rejected(
                     "PROJECT_ASSET_SNAPSHOT_MISMATCH", "Project assets changed after matching.");
             Job = new ProductionJobSnapshot(RunId.New(), Match.DutIdentity, CurrentScan,
-                execution, ruleRevision, projectRevision, station, isMock);
+                execution, ruleRevision, projectRevision, station);
             State = ProductionState.Ready;
             return OperationResult<ProductionJobSnapshot>.Accepted(Job);
         }
