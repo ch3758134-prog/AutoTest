@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Text.Json;
 using AutoTest.Contracts;
 using AutoTest.Core;
 
@@ -59,8 +60,24 @@ public sealed class ProductionWorkflow
                 return new(job.Run, ProductionState.Unknown, Verdict.Inconclusive,
                     false, false, "PRODUCTION_FLASH_REQUIRED");
             }
-            var request = await _records.AppendAsync(job, "PRODUCTION_STARTED:" + job.DutIdentity,
-                RunFactKind.Request, EvidenceQuality.HostObserved, ct).ConfigureAwait(false);
+            // Durable, exact run scope BEFORE physical fixture/FLASH.
+            // RECORD must associate the complete barcode with the precise
+            // installed project package, routing revision and USB session.
+            var frozenScope = JsonSerializer.Serialize(new
+            {
+                Schema = "AUTOTEST_PRODUCTION_SCOPE_V1",
+                FullBarcode = job.Scan.Text,
+                ProjectId = job.ProjectExecution.Project.ToString(),
+                ProjectRevision = job.ProjectExecution.Revision.Value,
+                PackageSha256 = job.ProjectExecution.PackageFingerprint.Sha256,
+                RuleSha256 = job.RuleRevision.Fingerprint.Sha256,
+                ScannerOrigin = job.Scan.Origin,
+                StationId = job.Station.ToString(),
+                ControllerEpoch = job.ControllerEpoch
+            });
+            var request = await _records.AppendAsync(job,
+                "PRODUCTION_SCOPE:" + frozenScope, RunFactKind.Request,
+                EvidenceQuality.HostObserved, ct).ConfigureAwait(false);
             if (request.Outcome != Outcome.Accepted)
             {
                 session.Mark(ProductionState.Unknown, "RECORD_APPEND_UNCERTAIN");
