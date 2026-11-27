@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using AutoTest.Core;
 
 namespace AutoTest.Testing.Authoring;
 
