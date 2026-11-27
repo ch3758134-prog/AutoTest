@@ -148,7 +148,8 @@ public sealed class RealRunCoordinator
     /// <summary>RunId must match an already begun RunRecord before any DUT write.</summary>
     public async Task<RealRunResult> StartAsync(PreparedTestPlan prepared, RunId run,
         IRealRunEventSink? events, CancellationToken external = default,
-        bool retainProjectActuation = false)
+        bool retainProjectActuation = false,
+        IDictionary<string, TestDatum>? projectVariables = null)
     {
         if (run.Value == Guid.Empty) throw new ArgumentException("Invalid RunId.", nameof(run));
         if (!prepared.ValidateFingerprint() || !prepared.Diagnostics.IsEmpty)
@@ -184,7 +185,10 @@ public sealed class RealRunCoordinator
         }
 
         var facts = ImmutableArray.CreateBuilder<RealStepFact>();
-        var variables = new Dictionary<string, TestDatum>(StringComparer.OrdinalIgnoreCase);
+        // A continuous TEST project owns the shared variable dictionary.
+        // Isolated test runs continue to use their own private variables.
+        var variables = projectVariables ??
+            new Dictionary<string, TestDatum>(StringComparer.OrdinalIgnoreCase);
         var verdict = RealTestVerdict.Inconclusive;
         bool asserted = false, failed = false, error = false, aborted = false, incomplete = false;
         bool preparing = false;

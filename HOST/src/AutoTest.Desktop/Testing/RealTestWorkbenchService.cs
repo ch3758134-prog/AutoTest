@@ -49,12 +49,14 @@ public sealed partial class RealTestWorkbenchService
     public event Action<TestDocumentId, RealRunResult>? DevelopmentRunCompleted;
     public event Action<TestDocumentId, string>? DevelopmentRunFailed;
 
-    public PreparedTestPlan Prepare(TestDocument document) =>
+    public PreparedTestPlan Prepare(TestDocument document,
+        IReadOnlyCollection<string>? inheritedVariables = null) =>
         // Preserve the authored DBC/WAVE/TEST mapping SHA and revision.
         // Runtime must execute exactly the resource closure approved by the
         // project and production preflight, never opportunistically rebind to
         // the newest workspace asset while preparing a physical run.
-        new PlanCompiler().Prepare(document, allowRealOperations: true);
+        new PlanCompiler().Prepare(document, allowRealOperations: true,
+            inheritedVariables: inheritedVariables);
 
     public static bool HasPhysicalWrites(TestDocument document) =>
         TestRunStepScope.RequiresPhysicalWrite(document);
@@ -81,7 +83,7 @@ public sealed partial class RealTestWorkbenchService
             if (!_hardware.IsConnected || openingEpoch <= 0)
                 throw new InvalidOperationException("真实测试要求 USB 主控已经连接并建立有效会话。");
             _hardware.RequireConfiguredEcuCanBitrate();
-            var plan = Prepare(document);
+            var plan = Prepare(document, projectSession?.GuaranteedVariables);
             projectSession?.ValidateCase(document, plan.Fingerprint, openingEpoch);
             if (!plan.Diagnostics.IsEmpty)
                 throw new InvalidOperationException(string.Join(Environment.NewLine, plan.Diagnostics));
@@ -159,7 +161,8 @@ public sealed partial class RealTestWorkbenchService
             catch { /* UI observer cannot veto execution after authorization. */ }
             var finished = await session.ExecuteAsync(run, plan,
                 Path.Combine(project.RootDirectory, "test-records", "reports"), ct,
-                retainProjectActuation: projectSession is not null);
+                retainProjectActuation: projectSession is not null,
+                projectVariables: projectSession?.SharedVariables);
             var summary = await reports.ExportSummaryAsync(finished.Result.Run, ct);
             var formalVerdict = summary.Header.Verdict switch
             {

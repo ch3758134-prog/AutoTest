@@ -98,7 +98,8 @@ public sealed class RealTestRecordSession : IRealRunEventSink
     /// </summary>
     public async Task<RealTestRecordOutcome> ExecuteAsync(RealRunCoordinator runner,
         PreparedTestPlan prepared, string reportDirectory, CancellationToken ct = default,
-        bool retainProjectActuation = false)
+        bool retainProjectActuation = false,
+        IDictionary<string, TestDatum>? projectVariables = null)
     {
         ArgumentNullException.ThrowIfNull(runner);
         ArgumentNullException.ThrowIfNull(prepared);
@@ -151,7 +152,7 @@ public sealed class RealTestRecordSession : IRealRunEventSink
                 }), EvidenceQuality.HostObserved, ImmutableArray<EvidenceRef>.Empty,
                 ct).ConfigureAwait(false);
             result = await runner.StartAsync(prepared, RunId, this, ct,
-                retainProjectActuation).ConfigureAwait(false);
+                retainProjectActuation, projectVariables).ConfigureAwait(false);
         }
         catch (Exception runtimeException)
         {

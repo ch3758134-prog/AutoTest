@@ -856,7 +856,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
                 OperatorRunState = "正在测试 · " + OperatorCurrentCase;
                 ChangeCaseState(i, "执行中");
                 AddOperatorEvent("用例开始 · " + item.Entry.DisplayName);
-                var prepared = _operatorEngine.Prepare(item.Program);
+                var prepared = projectScope.PrepareNextCase(item.Program);
                 if (!prepared.Diagnostics.IsEmpty)
                     throw new InvalidDataException("用例编译诊断：" +
                         string.Join("；", prepared.Diagnostics));

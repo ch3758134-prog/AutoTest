@@ -6,6 +6,7 @@ using AutoTest.Core;
 using AutoTest.Desktop.Projects;
 using AutoTest.Projects.Project;
 using AutoTest.Testing.Authoring;
+using AutoTest.Testing.Preparation;
 using AutoTest.Testing.Runtime;
 
 namespace AutoTest.Desktop.Testing;
@@ -78,11 +79,12 @@ public sealed partial class RealTestWorkbenchService
                 throw new IOException("整组 TEST 必须绑定已连接的真实主控 USB 会话。");
             _hardware.RequireConfiguredEcuCanBitrate();
             var pinned = new List<(TestDocumentId Id, string Sha)>();
+            var inheritedVariables = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             // Local mapping aliases are NOT global resource identities.
             var maps = new HashSet<TestTargetMapping>();
             foreach (var source in orderedCases)
             {
-                var plan = Prepare(source);
+                var plan = Prepare(source, inheritedVariables);
                 if (!plan.Diagnostics.IsEmpty)
                     throw new InvalidDataException(source.Name + " 的运行前检查失败：" +
                         string.Join("；", plan.Diagnostics));
@@ -90,6 +92,8 @@ public sealed partial class RealTestWorkbenchService
                 // The project may intentionally invoke one TEST asset more than once;
                 // separate CaseAttempt/RunIds still identify each invocation.
                 pinned.Add((doc.Id, plan.Fingerprint));
+                inheritedVariables.UnionWith(
+                    TestVariableFlowValidator.GuaranteedAfter(doc, inheritedVariables));
                 foreach (var mapping in TestRunStepScope.RequiredMappings(doc))
                 {
                     // The development subset is authoritative only for THIS
@@ -162,6 +166,14 @@ public sealed partial class RealTestWorkbenchService
         private readonly string _dut;
         private readonly (TestDocumentId Id, string Sha)[] _pinnedCases;
         private readonly bool _allowOrderedSubset;
+        private readonly Dictionary<string, TestDatum> _projectVariables =
+            new(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> _guaranteedVariables =
+            new(StringComparer.OrdinalIgnoreCase);
+        internal IDictionary<string, TestDatum> SharedVariables => _projectVariables;
+        internal IReadOnlyCollection<string> GuaranteedVariables => _guaranteedVariables;
+        public PreparedTestPlan PrepareNextCase(TestDocument document) =>
+            _owner.Prepare(document, _guaranteedVariables);
         public bool IsProduction { get; }
         public string? ScannerRuleSha256 { get; }
         private readonly List<ProjectCaseReceipt> _cases = new();
@@ -233,7 +245,11 @@ public sealed partial class RealTestWorkbenchService
         public async Task<RealRunResult> ExecuteCaseAsync(TestDocument doc,
             CancellationToken ct = default)
         {
-            ValidateCase(doc, _owner.Prepare(doc).Fingerprint,
+            var currentPlan = PrepareNextCase(doc);
+            if (!currentPlan.Diagnostics.IsEmpty)
+                throw new InvalidDataException("用例变量或步骤定义不完整：" +
+                    string.Join("；", currentPlan.Diagnostics));
+            ValidateCase(doc, currentPlan.Fingerprint,
                 _owner._hardware.CurrentStationEpoch);
             // Re-verify real on-disk project closure before each new case.
             // An out-of-process DBC/TEST edit must invalidate this session even
@@ -330,6 +346,8 @@ public sealed partial class RealTestWorkbenchService
                 result.PlanFingerprint, result.Verdict.ToString(),
                 result.EvidencePath, DateTimeOffset.UtcNow));
             _next++;
+            _guaranteedVariables.UnionWith(
+                TestVariableFlowValidator.GuaranteedAfter(doc, _guaranteedVariables));
             await PersistAsync("RUNNING", CancellationToken.None);
             return result;
         }
