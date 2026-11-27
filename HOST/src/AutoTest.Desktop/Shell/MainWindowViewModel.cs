@@ -180,7 +180,6 @@ public sealed partial class MainWindowViewModel : BindableBase
         OpenFirstTestProgramCommand = new DelegateCommand(async () => await OpenFirstAssetAsync(
             ProjectWorkspaceService.TestProgramKind, CreateTestProgramAsync));
         OpenProjectConfigurationOverviewCommand = new DelegateCommand(ShowProjectConfiguration);
-        OpenInspectionProcedureCommand = new DelegateCommand(async () => await OpenInspectionProcedureAsync());
         RefreshEngineeringSetupCommand = new DelegateCommand(async () => await RefreshEngineeringSetupAsync());
         ReadEngineeringClampGpioCommand = new DelegateCommand(async () => await ReadEngineeringClampGpioAsync());
         EngineeringClamp1PressCommand = new DelegateCommand(async () => await RunEngineeringClampAsync(1, true));
@@ -959,8 +958,6 @@ public sealed partial class MainWindowViewModel : BindableBase
         if (_nativeFlashProfileWindow is { IsVisible: true } flashEditor &&
             !await flashEditor.PrepareForParentShutdownAsync())
             return false;
-        if (!await CloseInspectionProcedureForProjectChangeAsync())
-            return false;
         if (_manualBenchWindow is { IsVisible: true } bench &&
             !await bench.PrepareForParentShutdownAsync())
             return false;
@@ -1204,7 +1201,7 @@ public sealed partial class MainWindowViewModel : BindableBase
     public int AssetCount => _workspace.Current?.Definition.Assets.Length ?? 0;
     public string SelectedConfigurationSummary =>
         "当前 ECU 工程：" + (_workspace.Current?.Definition.Name ?? "未打开") +
-        "。固定设备由工位统一管理；功能测试、烧录和工位动作直接使用工程配置。";
+        "。固定设备由工位统一管理；功能测试与烧录由工程定义，固定夹具由工位管理。";
     public bool HasSelectedResource => _selectedResource is not null && HasProject;
     public bool SelectedResourceIsAsset => _selectedResource?.Asset is not null;
     public bool SelectedResourceIsDbc => string.Equals(_selectedResource?.Asset?.Kind,
@@ -1636,15 +1633,13 @@ public sealed partial class MainWindowViewModel : BindableBase
             (ProjectWorkspaceService.DbcKind, "DBC 报文"),
             (ProjectWorkspaceService.WaveKind, "波形记录"),
             (ProjectWorkspaceService.WaveSettingsKind, "波形判定配置"),
-            (ProjectWorkspaceService.FirmwareKind, "固件资源"),
-            (ProjectWorkspaceService.InspectionKind, "检测前后工位动作")
+            (ProjectWorkspaceService.FirmwareKind, "固件资源")
         };
         // Show meaningful resource categories rather than empty placeholder
         // folders. Station procedure is edited only in Detection Setup;
         // the KEY library belongs to the real manual bench tool.
         foreach (var (kind, label) in categories)
         {
-            if (kind == ProjectWorkspaceService.InspectionKind) continue;
             var entries = assets.Where(x => x.Kind.Equals(kind, StringComparison.OrdinalIgnoreCase))
                 .OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase).ToArray();
             if (entries.Length == 0 && kind != ProjectWorkspaceService.DbcKind &&
@@ -1921,7 +1916,6 @@ public sealed partial class MainWindowViewModel : BindableBase
             ProjectWorkspaceService.WaveSettingsKind => CreateConfigurationAsync(ProjectWorkspaceService.WaveSettingsKind),
             ProjectWorkspaceService.FlashSettingsKind => Task.CompletedTask, // legacy read only
             ProjectWorkspaceService.ScanSettingsKind => Task.CompletedTask, // legacy read only
-            ProjectWorkspaceService.InspectionKind => OpenInspectionProcedureAsync(),
             _ => Task.CompletedTask
         };
     }
@@ -1935,7 +1929,6 @@ public sealed partial class MainWindowViewModel : BindableBase
             ProjectWorkspaceService.WaveSettingsKind => "波形判定配置",
             ProjectWorkspaceService.FlashSettingsKind => "烧录配置",
             ProjectWorkspaceService.ScanSettingsKind => "扫码匹配配置",
-            ProjectWorkspaceService.InspectionKind => "检测工位动作",
             _ => "工程配置"
         };
         var name = _fileDialogs.AskResourceName("新建" + display, "新建" + display);
@@ -1957,9 +1950,11 @@ public sealed partial class MainWindowViewModel : BindableBase
         if (!SelectedResourceIsConfiguration || _selectedResource?.Asset is not { } asset) return;
         if (asset.Kind == ProjectWorkspaceService.InspectionKind)
         {
-            // The read-only project overview no longer owns station-action editing.
-            // The dedicated editor already enforces a single inspection resource.
-            await OpenInspectionProcedureAsync();
+            // The project-station action resource was retired. Do not
+            // reopen an obsolete editor; the project cannot be exported until
+            // this asset is removed and product actions live in TEST.
+            StatusMessage = "旧版工程工位动作已停用，请删除该资源；" +
+                "固定夹具由工位控制，产品动作在 TEST 中编辑。";
             return;
         }
         if (IsAlreadyOpen("config|" + asset.Id)) return;
