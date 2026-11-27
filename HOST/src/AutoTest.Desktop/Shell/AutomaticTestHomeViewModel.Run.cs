@@ -151,7 +151,7 @@ public sealed partial class AutomaticTestHomeViewModel
         !_isProductionWorkspace() && _engineeringVerificationArmed &&
         _plans.Current is { ResourceReady: true } &&
         _prepared?.AcceptedScannerObservation is { } scan &&
-        !string.IsNullOrWhiteSpace(scan.DutSerial) &&
+        !string.IsNullOrWhiteSpace(scan.RawBarcode) &&
         _scanner.IsConnected &&
         _hardware.IsConnected && _hardware.IsEcuCanBitrateApplied &&
         _engineering.Current?.ManifestPath == _plans.Current.Project.ManifestPath &&
@@ -474,7 +474,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
         // One operation-specific confirmation. The physical interlocks,
         // project identity checks and execution authority are unchanged.
         if (MessageBox.Show(
-                "ECU 编号：" + scan.DutSerial + "\n" +
+                "ECU 编号：" + scan.RawBarcode + "\n" +
                 "测试用例：" + plan.Cases.Count + " 项\n" +
                 "夹具：" + fixtureDescription + "\n\n" +
                 "即将擦写 ECU 固件并执行整套测试。" +
@@ -563,7 +563,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
         RealOperatorRunReceipt CurrentReceipt() => new(
                 _operatorRunId, "ENGINEERING_VERIFICATION_NOT_PRODUCTION_RELEASE",
                 started, outcome == "执行中" ? null : DateTimeOffset.UtcNow,
-                scan.DutSerial, scan.ObservationId, scan.RuleSha256,
+                scan.RawBarcode, scan.ObservationId, scan.RuleSha256,
                 scan.ScannerPort, opened.ManifestPath, frozen.PreparationFingerprint,
                 frozen.FirmwareSha256, _hardware.ConnectedDeviceIdentity ?? "UNKNOWN",
                 sessionEpoch, flashState, results.ToArray(), outcome, failure,
@@ -596,8 +596,9 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
             currentDraft.Fixture.Validate();
             if (!string.Equals(FingerprintEngineeringFixture(currentDraft.Fixture),
                     scan.EngineeringFixtureSha256, StringComparison.OrdinalIgnoreCase) ||
-                scan.BarcodeRuleId != "ENGINEERING_RAW_SERIAL" ||
-                scan.RawBarcode != scan.DutSerial ||
+                scan.Source != FrozenScanSource.EngineeringRaw ||
+                !string.Equals(scan.RawBarcode, _lastObservedBarcode,
+                    StringComparison.Ordinal) ||
                 frozen.ProjectId != plan.Project.Definition.Id.Value)
                 throw new InvalidDataException(
                     "工程扫码身份或工位夹具设置已改变，不能复用原物理许可。");
@@ -622,7 +623,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
             // may deliberately use the saved draft rather than a published
             // production release. Production preflight defaults to published.
             var validated = await ProductionPreparationService.PrepareAsync(
-                plan.Project, scan.ProductKey, scan.DutSerial, ct,
+                plan.Project, scan.RecognitionMarker, scan.RawBarcode, ct,
                 requireProductionDeployment: false);
             if (!validated.ConfigurationReady ||
                 validated.Preparation?.PreparationFingerprint != frozen.PreparationFingerprint)
@@ -743,7 +744,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
             var anyFunctionalFail = false;
             await using (var projectScope = await _operatorEngine.OpenProjectSessionAsync(
                 programs.OrderedExecutions().Select(x => x.Program).ToArray(),
-                _operatorRunId, scan.DutSerial, ct))
+                _operatorRunId, scan.RawBarcode, ct))
             {
             AddOperatorEvent("连续整组 TEST 会话：项目准备 → 所有用例 → 项目收尾；" +
                 "周期 CAN 跨用例保持。所有动作使用真实步骤执行器。");
