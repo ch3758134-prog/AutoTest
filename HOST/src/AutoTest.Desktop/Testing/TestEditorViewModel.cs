@@ -635,6 +635,7 @@ public sealed class TestEditorViewModel : BindableBase
                 }
                 else
                     _transaction.ReplaceWithMapping(original.Id, result.Step, result.Mapping);
+                if (!ValidateLatestAuthoringMutation()) return false;
                 if (_newDraftId == original.Id)
                 {
                     _newDraftId = null;
@@ -655,6 +656,7 @@ public sealed class TestEditorViewModel : BindableBase
                 insertion.ValidateNode(result.Step);
                 _transaction.InsertWithMapping(insertion.Phase, insertion.ParentId,
                     insertion.Slot, insertion.Index, result.Step, result.Mapping);
+                if (!ValidateLatestAuthoringMutation()) return false;
                 RefreshMappings();
                 RefreshTree(result.Step.Id);
                 StatusMessage = "已添加步骤。";
@@ -669,6 +671,15 @@ public sealed class TestEditorViewModel : BindableBase
         finally { _applyingInspector = false; }
     }
 
+
+    private bool ValidateLatestAuthoringMutation()
+    {
+        var issues = _authoring.ValidateEditableDocument(_transaction.Current);
+        if (issues.IsEmpty) return true;
+        _transaction.Undo();
+        StatusMessage = "步骤定义未通过结构验证，本次修改已撤销：" + issues[0];
+        return false;
+    }
 
     public DelegateCommand AddChildCommand { get; }
     public DelegateCommand AddStepCommand { get; }

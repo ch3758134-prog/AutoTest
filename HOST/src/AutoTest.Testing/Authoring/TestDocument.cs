@@ -8,13 +8,9 @@ public enum TestPhase { Prepare, Test, Cleanup }
 /// <summary>Single persisted TEST step enable state; imported Enabled=false is respected.</summary>
 public static class StepExecutionPolicy
 {
-    public static bool IsEnabled(StepNode node)
-    {
-        var state = node.Properties.GetValueOrDefault("enabled",
-            node.Properties.GetValueOrDefault("Enabled",
-                node.Properties.GetValueOrDefault("legacy.enabled", "true"))).Trim();
-        return state is not ("false" or "False" or "FALSE" or "0" or "off" or "OFF");
-    }
+    public static bool IsEnabled(StepNode node) =>
+        !node.Properties.TryGetValue("enabled", out var state) ||
+        !string.Equals(state.Trim(), "false", StringComparison.OrdinalIgnoreCase);
 }
 
 /// <summary>Immutable editor node; ID survives edits and persistence. Slots own child sequences.</summary>
@@ -45,7 +41,7 @@ public sealed record TestDocument(TestDocumentId Id, string Name, int FormatVers
         ImmutableArray<TestTargetMapping>.Empty;
     /// <summary>Optional case-level report metadata; not a second TEST program model.</summary>
     public TestReportSettings ReportSettings { get; init; } = TestReportSettings.Default;
-    public const int CurrentFormat = 1;
+    public const int CurrentFormat = 2;
     public static TestDocument Create(string name) => new(TestDocumentId.New(), name, CurrentFormat,
         Enum.GetValues<TestPhase>().ToImmutableDictionary(p => p,
             _ => ImmutableArray<StepNode>.Empty));

@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using AutoTest.Core;
@@ -44,12 +45,22 @@ public static class TestDocumentCodec
         node.Type, node.Name, (node.Properties ?? throw new FormatException("Missing properties")).ToImmutableDictionary(),
         (node.Slots ?? throw new FormatException("Missing slots")).ToImmutableDictionary(s => s.Key,
             s => s.Value.Select(Decode).ToImmutableArray()));
-    public static string Serialize(TestDocument doc) => JsonSerializer.Serialize(new DocumentData(
-        doc.FormatVersion, doc.Id.ToString(), doc.Name,
-        Enum.GetValues<TestPhase>().ToDictionary(p => p.ToString(), p => doc.Get(p).Select(Encode).ToArray()),
-        doc.Mappings.IsDefault ? [] : doc.Mappings.Select(EncodeMapping).ToArray(),
-        doc.ReportSettings == TestReportSettings.Default ? null : doc.ReportSettings),
-        new JsonSerializerOptions { WriteIndented = true });
+    public static string Serialize(TestDocument doc)
+    {
+        ArgumentNullException.ThrowIfNull(doc);
+        var issues = StepTreeValidator.ValidateTree(doc, StepDescriptorCatalog.Builtins(),
+            allowIncompleteSteps: true);
+        if (!issues.IsEmpty)
+            throw new InvalidDataException("TEST 文档结构无效，不能保存：" +
+                string.Join("; ", issues));
+        return JsonSerializer.Serialize(new DocumentData(
+            doc.FormatVersion, doc.Id.ToString(), doc.Name,
+            Enum.GetValues<TestPhase>().ToDictionary(p => p.ToString(),
+                p => doc.Get(p).Select(Encode).ToArray()),
+            doc.Mappings.IsDefault ? [] : doc.Mappings.Select(EncodeMapping).ToArray(),
+            doc.ReportSettings == TestReportSettings.Default ? null : doc.ReportSettings),
+            new JsonSerializerOptions { WriteIndented = true });
+    }
     public static TestDocument Deserialize(string json)
     {
         var data = JsonSerializer.Deserialize<DocumentData>(json) ?? throw new FormatException("Empty document");
