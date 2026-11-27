@@ -177,6 +177,11 @@ void CDD_USB_SendFrame(uint16_t seq, uint8_t cmd, uint8_t status,
     frame[n++] = (uint8_t)(crc >> 8);
     frame[n++] = CDD_USB_FRAME_EOF;
 
+    /* KEY1~KEY3 的实体按钮变更应优先于高频 CAN 监视流上报；
+     * SEQ=0 仍是异步帧，CAN_RX_IND 继续走低优先级队列。
+     * 事件仍可能丢失，主机通过 sequence 与 0x45 状态读回补偿。
+     */
     EAL_USB_TxSendPrio(frame, n,
-                       (seq == 0U) ? EAL_USB_TX_PRIO_LOW : EAL_USB_TX_PRIO_HIGH);
+                       (seq != 0U || cmd == CDD_USB_CMD_KEY_INPUT_EVENT)
+                           ? EAL_USB_TX_PRIO_HIGH : EAL_USB_TX_PRIO_LOW);
 }
