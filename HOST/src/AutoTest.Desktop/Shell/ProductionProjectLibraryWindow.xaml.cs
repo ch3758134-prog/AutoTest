@@ -15,6 +15,7 @@ public partial class ProductionProjectLibraryWindow : Window
     private readonly Action _configurationChanged;
     private bool _busy;
     private bool _loading;
+    private string? _preferredPackageSha;
     private IReadOnlyList<InstalledProductionPackage> _loadedPackages =
         Array.Empty<InstalledProductionPackage>();
 
@@ -23,16 +24,27 @@ public partial class ProductionProjectLibraryWindow : Window
 
     public ProductionProjectLibraryWindow(ProductionProjectCatalog catalog,
         ProjectWorkspaceService workspace, Func<bool> canModify,
-        Func<bool> canExport, Action configurationChanged)
+        Func<bool> canExport, Action configurationChanged,
+        string? preferredPackageSha = null)
     {
         _catalog = catalog;
         _workspace = workspace;
         _canModify = canModify;
         _canExport = canExport;
         _configurationChanged = configurationChanged;
+        _preferredPackageSha = preferredPackageSha;
         InitializeComponent();
         ExportButton.Visibility = _canExport() ? Visibility.Visible : Visibility.Collapsed;
         Loaded += async (_, _) => await ReloadAsync();
+    }
+
+    /// <summary>Focus the exact immutable version just installed from
+    /// the engineering workbench; do not make the user find its SHA manually.</summary>
+    public void PreferPackage(string packageSha)
+    {
+        _preferredPackageSha = packageSha;
+        if (SearchBox is not null) SearchBox.Clear();
+        _ = ReloadAsync();
     }
 
     private InstalledProductionPackage? Selection =>
@@ -49,7 +61,18 @@ public partial class ProductionProjectLibraryWindow : Window
             var packages = await _catalog.ListAsync();
             var bindings = await _catalog.ListBindingsAsync();
             _loadedPackages = packages;
+            if (!string.IsNullOrEmpty(_preferredPackageSha) && SearchBox is not null)
+                SearchBox.Clear();
             ApplySearchFilter();
+            var preferred = packages.FirstOrDefault(p => string.Equals(
+                p.PackageSha256, _preferredPackageSha,
+                StringComparison.OrdinalIgnoreCase));
+            if (preferred is not null)
+            {
+                CatalogTable.SelectedItem = preferred;
+                CatalogTable.ScrollIntoView(preferred);
+            }
+            _preferredPackageSha = null;
             EmptyCatalogHint.Visibility = packages.Count == 0
                 ? Visibility.Visible : Visibility.Collapsed;
             BindingsTable.ItemsSource = bindings.Select(binding =>
@@ -60,7 +83,7 @@ public partial class ProductionProjectLibraryWindow : Window
                     package?.ProjectName ?? "已失效的工程",
                     package?.ProjectRevision ?? 0, binding.Revision);
             }).ToArray();
-            Say("已导入 " + packages.Count + " 份工程版本，" +
+            Say("本机有 " + packages.Count + " 份生产工程版本，"
                 bindings.Count + " 个固定扫码标记。");
         }
         catch (Exception error) when (error is not OutOfMemoryException)
@@ -92,7 +115,7 @@ public partial class ProductionProjectLibraryWindow : Window
         SelectedSummary.Text = Selection is { } p
             ? "已选择 " + p.ProjectName + " · 修订 " + p.ProjectRevision +
               "。输入一个固定标记，将它绑定到此工程版本。"
-            : "选择一份已导入的工程版本。";
+            : "选择一份生产工程版本。";
     }
 
     private async Task ModifyAsync(Func<Task> operation)
