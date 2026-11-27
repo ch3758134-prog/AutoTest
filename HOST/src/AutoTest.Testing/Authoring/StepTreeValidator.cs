@@ -99,14 +99,20 @@ public static class StepTreeValidator
                             mapping.Role != AutoTest.Contracts.BusRole.DutCan)
                             errors.Add($"{location}: DBC 报文必须绑定 ECU CAN。");
 
-                        var period = int.Parse(node.Properties.GetValueOrDefault("periodMs", "0"),
-                            System.Globalization.CultureInfo.InvariantCulture);
-                        var duration = int.Parse(node.Properties.GetValueOrDefault("durationMs", "0"),
-                            System.Globalization.CultureInfo.InvariantCulture);
-                        if (period > 0 && mapping.Kind is not (TestTargetKind.RawCan or TestTargetKind.CanMessage))
-                            errors.Add($"{location}: 只有 ECU CAN 报文允许周期发送。");
-                        if (period == 0 && duration > 0)
-                            errors.Add($"{location}: 设置周期持续时间前必须先设置 CAN 周期。");
+                        var periodValid = int.TryParse(
+                            node.Properties.GetValueOrDefault("periodMs", "0"),
+                            System.Globalization.CultureInfo.InvariantCulture, out var period);
+                        var durationValid = int.TryParse(
+                            node.Properties.GetValueOrDefault("durationMs", "0"),
+                            System.Globalization.CultureInfo.InvariantCulture, out var duration);
+                        if (periodValid && durationValid)
+                        {
+                            if (period > 0 && mapping.Kind is not
+                                (TestTargetKind.RawCan or TestTargetKind.CanMessage))
+                                errors.Add($"{location}: 只有 ECU CAN 报文允许周期发送。");
+                            if (period == 0 && duration > 0)
+                                errors.Add($"{location}: 设置周期持续时间前必须先设置 CAN 周期。");
+                        }
                     }
                 }
             }

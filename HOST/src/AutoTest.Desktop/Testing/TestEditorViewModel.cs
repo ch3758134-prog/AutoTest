@@ -676,7 +676,21 @@ public sealed class TestEditorViewModel : BindableBase
     {
         var issues = _authoring.ValidateEditableDocument(_transaction.Current);
         if (issues.IsEmpty) return true;
+
+        var selectedId = _selectedItem?.Step?.Id;
+        var wasNewDraft = selectedId is { } id && _newDraftId == id;
+        var parentId = _pendingInsertion?.ParentId;
         _transaction.Undo();
+        if (wasNewDraft)
+        {
+            _newDraftId = null;
+            _newDraftActionKey = null;
+            _cancelledDraftId = null;
+            _cancelledDraftActionKey = null;
+        }
+        _pendingInsertion = null;
+        RefreshMappings();
+        RefreshTree(wasNewDraft ? parentId : selectedId);
         StatusMessage = "步骤定义未通过结构验证，本次修改已撤销：" + issues[0];
         return false;
     }
