@@ -24,6 +24,30 @@ public sealed class DbcWorkbenchTests
         VAL_ 291 Speed 0 "Stopped" 100 "Moving" ;
         """;
     [Fact]
+    public void BlankDbcIsAnEditableFirstClassDocument()
+    {
+        var text = DbcParserAdapter.Export(DbcDatabase.Create("HydEPB"));
+        var document = DbcWorkbenchDocument.Import("HydEPB", text);
+        Assert.Empty(document.Model.Messages);
+        Assert.True(document.CanEdit);
+        Assert.False(document.IsSourcePreserving);
+
+        document.AddMessage(new DbcMessage(
+            0x701, "Debug_701", 8, "ECU",
+            System.Collections.Immutable.ImmutableArray<DbcSignal>.Empty));
+        var reloaded = DbcWorkbenchDocument.Import("HydEPB", document.ExportText());
+        Assert.Single(reloaded.Model.Messages);
+        Assert.Equal("Debug_701", reloaded.Model.Messages[0].Name);
+    }
+
+    [Fact]
+    public void NonsenseWithoutDbcHeaderStillCannotBeImportedAsBlankDatabase()
+    {
+        Assert.Throws<ProjectDataException>(() =>
+            DbcWorkbenchDocument.Import("bad", "this is not a DBC"));
+    }
+
+    [Fact]
     public void HistoricalDraftCanUndoAndRedoAcrossAnExportedRevisionWithoutDroppingOriginalComments()
     {
         var original = Basic + "\nCM_ SG_ 291 Speed \"原定义\";\n";
