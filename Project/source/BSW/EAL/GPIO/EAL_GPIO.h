@@ -91,9 +91,10 @@ extern "C" {
 #define U22_CH4_SPARE_PORT    MCAL_GPIO_C /* PTC11 → SOL12IN → U22 CH4 */
 #define U22_CH4_SPARE_PIN     11U
 
-/* 外部 KEY1~KEY3 输入，经电阻分压/RC/钳位后接 MCU。
- * 暂只定义物理绑定，不配置为 GPIO 输入，不启用 ADC/阈值判断。
- * KEY1=J1 C17; KEY2=J1 C18; KEY3=J1 C16。
+/* 主控板三路外部自复位按钮输入（不是 KEY_SIM K1~K20）。
+ * KEY1=J1 C17，KEY2=J1 C18，KEY3=J1 C16；
+ * 通过外部电阻分压、RC 与保护二极管接入 MCU，固件不使能内部上拉。
+ * 按下的电平极性暂未经过实测，故本层只给出 0/1 稳定电平变化。
  */
 #define KEY1_PORT MCAL_GPIO_C /* PTC7 / MCU_KEY1 */
 #define KEY1_PIN  7U
@@ -101,6 +102,22 @@ extern "C" {
 #define KEY2_PIN  6U
 #define KEY3_PORT MCAL_GPIO_C /* PTC5 / MCU_KEY3 */
 #define KEY3_PIN  5U
+
+#define EAL_GPIO_KEY_DEBOUNCE_MS  20U
+
+typedef struct {
+    uint8_t key;       /* 1..3；J1 C17/C18/C16 */
+    uint8_t level;     /* 事件后该输入的稳定 MCU GPIO 电平 0/1 */
+    uint8_t levels;    /* bit0..2 = KEY1..3 的稳定 MCU GPIO 电平 */
+    uint16_t sequence; /* 上电以来的稳定变化序号（自然回绕） */
+} EAL_GPIO_KeyEventType;
+
+/** @brief 主循环取一个经过 20ms 消抖的 KEY 电平变化；不会在 ISR 中进行 USB 操作。 */
+uint8_t EAL_GPIO_KeyPopEvent(EAL_GPIO_KeyEventType *event);
+/** @brief 三路输入的消抖稳定电平位图；不定义哪种电平是“按下”。 */
+uint8_t EAL_GPIO_KeyLevels(void);
+/** @brief 上电以来的稳定变化序号，用于查漏与 USB 查询。 */
+uint16_t EAL_GPIO_KeySequence(void);
 
 /**
  * @brief  Air_ALVE1：气阀功率输出 1。
@@ -128,7 +145,7 @@ extern "C" {
  * 2. 统一操作宏（不再增加信号枚举或 Port/Pin 查表）
  *
  * 用法：EAL_GPIO_WRITE(IGN, 1U);  EAL_GPIO_READ(AIR_ALVE1);
- * LED_RED/YELLOW/GREEN1/2 由 USB 业务使用；KEY1~KEY3 仍仅预留。
+ * LED_RED/YELLOW/GREEN1/2 由 USB 业务使用；KEY1~KEY3 由 PORTC 中断采集。
  * signal 只能传上述已定义的板级名称；level 表示 MCU GPIO 的
  * 0/1 电平，不是 12V/24V 负载状态。单个 level 参数只求值一次。
  * -------------------------------------------------------------------------- */
@@ -143,6 +160,7 @@ extern "C" {
  * @note   IGN、六路 LED_RED/YELLOW/GREEN1/2、Air1/2、HOUT9/10 及 U22 CH4 未分配控制输入
  *          全部 LOW；最后初始化内部 RL_DRV 为 HIGH（不暴露 USB）。
  *          PTC8/PTC9 作为 LED_GREEN2/LED_YELLOW2 控制脚，不作为旧供电控制。
+ *          外部 KEY1~3 单独配置为数字输入 + PORTC 双边沿中断。
  * @warning 初始化态不是外部电压或机械到位反馈。
  */
 void EAL_GPIO_Init(void);
