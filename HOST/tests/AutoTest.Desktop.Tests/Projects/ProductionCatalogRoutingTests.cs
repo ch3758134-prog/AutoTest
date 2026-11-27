@@ -4,57 +4,112 @@ using Xunit;
 
 namespace AutoTest.Desktop.Tests.Projects;
 
-/// <summary>
-/// Pure routing tests: synthetic catalog metadata has no real ECU firmware and
-/// is NEVER passed to package verification or a hardware executor.
-/// </summary>
+/// <summary>Pure routing tests; synthetic package rows never reach a physical ECU.</summary>
 public sealed class ProductionCatalogRoutingTests
 {
     [Fact]
-    public async Task ProductFieldSelectsExactlyTheConfiguredVersion()
+    public async Task ExactLeadingMarkerPicksCorrectWholeProjectAndPreservesRawCode()
     {
         var root = TempDirectory();
         try
         {
             var catalog = new ProductionProjectCatalog(root);
-            await catalog.GetSettingsAsync();
+            await catalog.ListAsync();
             var a = new string('A', 64);
             var b = new string('B', 64);
             await AddRoutingOnlyPackageAsync(root, a, "HydEPB-A");
             await AddRoutingOnlyPackageAsync(root, b, "HydEPB-B");
-            await catalog.BindAsync("EPB-A", "", a);
-            await catalog.BindAsync("EPB-B", "", b);
-            await catalog.SaveSettingsAsync(new(
-                ProductionRoutingSettings.Fields, "|", 1, 2, 0));
-            var first = await catalog.ResolveAsync("EPB-A|S123");
-            var second = await catalog.ResolveAsync("EPB-B|S123");
+            await catalog.BindMarkerAsync("EPB1", a);
+            await catalog.BindMarkerAsync("EPB10", b);
+            var first = await catalog.ResolveAsync("EPB1-000001");
+            var second = await catalog.ResolveAsync("EPB10-000001");
             Assert.True(first.Accepted);
             Assert.True(second.Accepted);
-            Assert.Equal("S123", first.Serial);
+            Assert.Equal("EPB1-000001", first.FullBarcode);
+            Assert.Equal("EPB1", first.Marker);
             Assert.Equal(a, first.Package!.PackageSha256);
             Assert.Equal(b, second.Package!.PackageSha256);
+            Assert.Equal("MARKER_UNBOUND",
+                (await catalog.ResolveAsync("UNLISTED-000001")).Code);
         }
         finally { Directory.Delete(root, recursive: true); }
     }
 
     [Fact]
-    public async Task SingleModeRequiresOneExplicitTargetWhenManyVersionsExist()
+    public async Task RebindingMarkerChoosesOneNewVersionAndIncrementsRevision()
     {
         var root = TempDirectory();
         try
         {
             var catalog = new ProductionProjectCatalog(root);
-            await catalog.GetSettingsAsync();
-            var a = new string('A', 64);
-            var b = new string('B', 64);
-            await AddRoutingOnlyPackageAsync(root, a, "ECU-A");
-            await AddRoutingOnlyPackageAsync(root, b, "ECU-B");
-            var noChoice = await catalog.ResolveAsync("S123");
-            Assert.False(noChoice.Accepted);
-            await catalog.BindAsync("SINGLE", "", b);
-            var selected = await catalog.ResolveAsync("S123");
-            Assert.True(selected.Accepted);
-            Assert.Equal(b, selected.Package!.PackageSha256);
+            await catalog.ListAsync();
+            var firstSha = new string('A', 64);
+            var newerSha = new string('B', 64);
+            await AddRoutingOnlyPackageAsync(root, firstSha, "HydEPB");
+            await AddRoutingOnlyPackageAsync(root, newerSha, "HydEPB");
+            await catalog.BindMarkerAsync("HYDEP", firstSha);
+            var older = await catalog.ResolveAsync("HYDEP-00001");
+            await catalog.BindMarkerAsync("HYDEP", newerSha);
+            var newer = await catalog.ResolveAsync("HYDEP-00001");
+            Assert.True(older.Accepted);
+            Assert.True(newer.Accepted);
+            Assert.Equal(1, older.RuleRevision);
+            Assert.Equal(2, newer.RuleRevision);
+            Assert.Equal(newerSha, newer.Package!.PackageSha256);
+            Assert.Equal("HYDEP-00001", newer.FullBarcode);
+            Assert.Single(await catalog.ListBindingsAsync());
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public async Task RemovingMarkerBlocksFutureScansButKeepsInstalledPackages()
+    {
+        var root = TempDirectory();
+        try
+        {
+            var catalog = new ProductionProjectCatalog(root);
+            await catalog.ListAsync();
+            var sha = new string('A', 64);
+            await AddRoutingOnlyPackageAsync(root, sha, "HydEPB");
+            await catalog.BindMarkerAsync("HYDEP", sha);
+            await catalog.RemoveMarkerAsync("HYDEP");
+            Assert.Equal("MARKER_UNBOUND",
+                (await catalog.ResolveAsync("HYDEP-0001")).Code);
+            Assert.Single(await catalog.ListAsync());
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public async Task OldScannerModesAreDestroyedWithoutDeletingInstalledPackages()
+    {
+        var root = TempDirectory();
+        try
+        {
+            var path = Path.Combine(root, "catalog.sqlite");
+            await using (var db = new SqliteConnection("Data Source=" + path))
+            {
+                await db.OpenAsync();
+                using var old = db.CreateCommand();
+                old.CommandText = """
+                    CREATE TABLE settings(id INTEGER PRIMARY KEY,mode TEXT);
+                    INSERT INTO settings VALUES(1,'Registry');
+                    CREATE TABLE serial_registry(serial TEXT PRIMARY KEY);
+                    CREATE TABLE routes(product_key TEXT,package_sha TEXT);
+                    """;
+                await old.ExecuteNonQueryAsync();
+            }
+            var catalog = new ProductionProjectCatalog(root);
+            Assert.Empty(await catalog.ListBindingsAsync());
+            await using var check = new SqliteConnection("Data Source=" + path);
+            await check.OpenAsync();
+            using var cmd = check.CreateCommand();
+            cmd.CommandText = """
+                SELECT COUNT(*) FROM sqlite_master
+                WHERE type='table' AND name IN ('settings','serial_registry','routes')
+                """;
+            Assert.Equal(0L, (long)(await cmd.ExecuteScalarAsync())!);
         }
         finally { Directory.Delete(root, recursive: true); }
     }
@@ -83,7 +138,7 @@ public sealed class ProductionCatalogRoutingTests
     private static string TempDirectory()
     {
         var root = Path.Combine(Path.GetTempPath(),
-            "autotest-routes-" + Guid.NewGuid().ToString("N"));
+            "autotest-marker-routing-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
         return root;
     }
