@@ -17,7 +17,7 @@ public sealed class IfFlowContractTests
     }
 
     [Fact]
-    public void IfAcceptsPreparedVariableAndLegacyEqualityWithoutOperator()
+    public void IfAcceptsPreparedVariableWithExplicitEquality()
     {
         var tx = new StepEditTransaction(TestDocument.Create("Prepared variable"));
         tx.Insert(TestPhase.Prepare, null, null, 0,
@@ -79,5 +79,6 @@ public sealed class IfFlowContractTests
 
     private static StepNode StepUiCatalogNotRequired() =>
         StepNode.Create("If", "条件判断").WithProperty("variable", "brakeState")
-            .WithProperty("equals", "1").WithSlot("then").WithSlot("else");
+            .WithProperty("operator", "==").WithProperty("equals", "1")
+            .WithSlot("then").WithSlot("else");
 }

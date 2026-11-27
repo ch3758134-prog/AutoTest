@@ -110,6 +110,7 @@ public sealed class SwitchFlowContractTests
             .WithSlot("cases", arms);
 
     private static StepNode RequiresResult() => StepNode.Create("If")
-        .WithProperty("variable", "result").WithProperty("equals", "1")
+        .WithProperty("variable", "result").WithProperty("operator", "==")
+        .WithProperty("equals", "1")
         .WithSlot("then", Wait()).WithSlot("else", Wait());
 }

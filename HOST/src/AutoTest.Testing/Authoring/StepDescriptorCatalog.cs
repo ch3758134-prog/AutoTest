@@ -144,9 +144,21 @@ public sealed class StepDescriptorCatalog
 
     public StepNode CreateNodeForType(string type, string? defaultTarget = null)
     {
-        var action = _actions.Values.FirstOrDefault(x => x.StepType == type) ??
-            throw new ArgumentException("该 TEST 节点没有可创建的用户操作：" + type, nameof(type));
-        return CreateNodeForAction(action.Key, defaultTarget);
+        var descriptor = Lookup(type) ??
+            throw new ArgumentException("未知 TEST 节点：" + type, nameof(type));
+        var node = StepNode.Create(type);
+        foreach (var slot in descriptor.RequiredSlots)
+            node = node.WithSlot(slot);
+        foreach (var parameter in descriptor.Parameters)
+            node = node.WithProperty(parameter.Key, parameter.DefaultValue);
+        if (!string.IsNullOrWhiteSpace(defaultTarget))
+        {
+            var targetProperty = descriptor.Parameters.Any(x => x.Key == "profile")
+                ? "profile" : "target";
+            if (descriptor.Parameters.Any(x => x.Key == targetProperty))
+                node = node.WithProperty(targetProperty, defaultTarget);
+        }
+        return node;
     }
 
     public ImmutableArray<string> ValidateParameters(

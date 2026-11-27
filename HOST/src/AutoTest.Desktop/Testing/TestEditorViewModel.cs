@@ -199,7 +199,7 @@ public sealed class TestEditorViewModel : BindableBase
     {
         var query = _stepFind.Trim();
         if (query.Length == 0 || item.Step is not { } node) return false;
-        return (node.Name + " " + StepUiCatalog.Label(node.Type) + " " +
+        return (node.Name + " " + StepUiCatalog.Label(node, _transaction.Current.Mappings) + " " +
             string.Join(" ", node.Properties.Where(x => StepUiCatalog.IsOperatorProperty(x.Key))
                 .Select(x => StepUiCatalog.PropertyLabel(x.Key) + " " + x.Value)))
             .Contains(query, StringComparison.CurrentCultureIgnoreCase);
@@ -365,7 +365,7 @@ public sealed class TestEditorViewModel : BindableBase
         SelectedItem?.Parent is { } p && SelectedItem.Index + 1 < p.Children.Count;
     public string SelectedTitle => _selectedItem?.Label ?? "选择一个阶段或步骤";
     public string SelectedTypeLabel => _selectedItem?.Step is { } n
-        ? StepUiCatalog.Label(n.Type) + " · " + n.Type
+        ? StepUiCatalog.Label(n, _transaction.Current.Mappings) + " · " + n.Type
         : _selectedItem?.Kind == StepTreeItemKind.Slot ? "子步骤容器" : "测试阶段";
     public string SelectedId => _selectedItem?.Step?.Id.ToString() ?? "";
     public string SelectedDescription => _selectedItem switch

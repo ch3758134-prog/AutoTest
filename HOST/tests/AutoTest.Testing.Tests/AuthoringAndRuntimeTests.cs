@@ -21,7 +21,7 @@ public sealed class AuthoringAndRuntimeTests
         var tx = new StepEditTransaction(TestDocument.Create("editor contract"));
         tx.Insert(TestPhase.Prepare, null, null, 0,
             N("SetVariable", ("variable", "mode"), ("value", "run")));
-        var condition = N("If", ("variable", "mode"), ("equals", "run"))
+        var condition = N("If", ("variable", "mode"), ("operator", "=="), ("equals", "run"))
             .WithSlot("then", Wait("50"))
             .WithSlot("else", N("SetVariable", ("variable", "mode"), ("value", "skip")));
         tx.Insert(TestPhase.Test, null, null, 0, condition);

@@ -13,6 +13,7 @@ public sealed class StepRowProjection : BindableBase
 {
     public StepTreeItem Item { get; }
     private readonly TestTargetKind? _targetKind;
+    private readonly IReadOnlyList<TestTargetMapping> _mappings;
     private readonly string? _draftActionKey;
     public int Depth { get; }
     public int Sequence { get; }
@@ -109,7 +110,7 @@ public sealed class StepRowProjection : BindableBase
         "cases" => "＋ 添加 CASE",
         _ => "＋ 添加子步骤"
     };
-    public string Kind => Item.Step is { } n ? StepUiCatalog.Label(n.Type) : "";
+    public string Kind => Item.Step is { } n ? StepUiCatalog.Label(n, _mappings) : "";
     public string Summary { get; }
     public bool IsCanSendRow { get; }
     public bool ShowNormalSummary => ShowQuickSummary && !IsCanSendRow;
@@ -145,6 +146,7 @@ public sealed class StepRowProjection : BindableBase
         RealStepFact? realFact = null, string? draftActionKey = null)
     {
         Item = item;
+        _mappings = mappings ?? Array.Empty<TestTargetMapping>();
         _draftActionKey = draftActionKey;
         IsCollapsed = collapsed;
         Depth = depth;
@@ -165,7 +167,7 @@ public sealed class StepRowProjection : BindableBase
         // Match the same fields as TestEditorViewModel.MatchesSearch so the
         // count, Enter navigation and yellow row highlight cannot disagree.
         IsSearchMatch = !string.IsNullOrWhiteSpace(search) && step is not null &&
-            (step.Name + " " + StepUiCatalog.Label(step.Type) + " " +
+            (step.Name + " " + StepUiCatalog.Label(step, _mappings) + " "
              string.Join(" ", step.Properties
                  .Where(x => StepUiCatalog.IsOperatorProperty(x.Key))
                  .Select(x => StepUiCatalog.PropertyLabel(x.Key) + " " + x.Value)))
