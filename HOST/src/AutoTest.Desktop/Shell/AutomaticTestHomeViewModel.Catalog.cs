@@ -145,24 +145,16 @@ public sealed partial class AutomaticTestHomeViewModel
             });
             var ruleHash = Convert.ToHexString(
                 SHA256.HashData(Encoding.UTF8.GetBytes(serialized)));
-            var observedFields = _scanMappedFields.ToDictionary(
-                x => x.Key, x => x.Value, StringComparer.Ordinal);
             _acceptedStationEpoch = stationEpoch;
             _lastIdentity = routed.FullBarcode;
             _prepared = prepared.Preparation with
             {
                 AcceptedScannerObservation = new FrozenScanIdentity(
-                    Guid.NewGuid(), observedAt, port, raw, serialized, ruleHash,
-                    routed.Marker, routed.FullBarcode, "", observedFields)
-                {
-                    PublishedConfigurationSha256 = "",
-                    PublicationId = Guid.Empty,
-                    BarcodeRuleId = "FIXED_MARKER_V1",
-                    BarcodeRuleRevision = routed.RuleRevision,
-                    ProjectDecisionBasis = "FIXED_MARKER",
-                    StationSlotId = station.Fixture.StationSlotId,
-                    ScannerPnpInstanceId = device.PnpInstanceId
-                }
+                    Guid.NewGuid(), observedAt, port, raw,
+                    FrozenScanSource.ProductionFixedMarker, serialized, ruleHash,
+                    routed.Marker, routed.RuleRevision,
+                    routed.Package.PackageSha256, station.Fixture.StationSlotId,
+                    device.PnpInstanceId, "")
             };
             _scanStatus = "ECU 编号：" + routed.FullBarcode + " · 工程：" +
                 routed.Package.ProjectName + "。等待工位启动条件。";
