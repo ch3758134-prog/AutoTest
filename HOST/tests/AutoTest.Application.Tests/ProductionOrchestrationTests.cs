@@ -11,18 +11,20 @@ public sealed class ProductionOrchestrationTests
     private readonly RevisionFingerprint _hash = RevisionFingerprint.FromBytes(new byte[] { 9 });
     private static RawScan Scan() => new("EPB-00001", "keyboard",
         TimePoint.FromSimulation(DateTimeOffset.UtcNow, 1), true);
-    private ProductionConfiguration Config(bool flash = false) => new("TEST", 1, flash,
-        "24V", ImmutableArray.Create(new AssetRef(AssetId.New(), AssetRevision.Create(1), _hash)));
+    private ProductionProjectExecution Config(bool flash = false) =>
+        new(ProjectId.New(), new ProjectRevision(1), _hash, flash,
+            "24V", ImmutableArray.Create(new AssetRef(
+                AssetId.New(), AssetRevision.Create(1), _hash)));
     private static ProductionStationReadiness Station(bool mock = true, AuthorizationScope? auth = null) =>
         new(StationId.Create("SIM"), StationConnectionState.Ready, "24V", true, mock,
             auth ?? (mock ? AuthorizationScope.MockOnly : AuthorizationScope.PhysicalCommand));
 
-    private static ProductionSession Matched(ProductionConfiguration config)
+    private static ProductionSession Matched(ProductionProjectExecution config)
     {
         var session = new ProductionSession();
         Assert.Equal(Outcome.Accepted, session.StartDraft(Scan()).Outcome);
         Assert.Equal(Outcome.Accepted, session.SetMatch(new MatchDecision(true,
-            "3:EPB5:00001", config.Assets, null)).Outcome);
+            "EPB-00001", config.Assets, null)).Outcome);
         return session;
     }
 
@@ -89,7 +91,7 @@ public sealed class ProductionOrchestrationTests
     }
 
     [Fact]
-    public void PhysicalInspectionCannotUseAnOldNoFlashRecipe()
+    public void PhysicalInspectionCannotSkipProjectFlash()
     {
         var config = Config(flash: false);
         var status = new ProductionPreflight().ValidateStation(config,
@@ -155,7 +157,7 @@ public sealed class ProductionOrchestrationTests
         var second = await handler.ScanAsync(new RawScan("EPB-99999", "keyboard", Scan().Time, true),
             Station(), true, CancellationToken.None);
         Assert.Equal("STATION_BUSY", second.Code);
-        Assert.Equal("3:EPB5:00001", session.Job!.DutIdentity);
+        Assert.Equal("EPB-00001", session.Job!.DutIdentity);
         executor.Finish();
         await first;
     }
@@ -566,7 +568,7 @@ public sealed class ProductionOrchestrationTests
         private readonly ImmutableArray<AssetRef> _assets;
         public FakeMatcher(ImmutableArray<AssetRef> assets) => _assets = assets;
         public MatchDecision Match(RawScan scan, RuleRevision rule, ProjectRevision project) =>
-            new(true, "3:EPB5:00001", _assets, null);
+            new(true, "EPB-00001", _assets, null);
     }
     private sealed class BlockingStageExecutor : IProductionStageExecutor
     {
