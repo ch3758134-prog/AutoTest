@@ -74,6 +74,11 @@ public static class AutomaticTestResourceContract
             details.Add(new(key, category, title, affected, reason, resource, occurrence));
         }
         var cases = new List<AutomaticTestCaseBinding>();
+        // TEST runs continuously across ordered cases; the static authoring
+        // analysis must see the same guaranteed upstream variable names as
+        // ProjectExecutionSession, or the UI will reject a valid project that
+        // the real shared executor is designed to run.
+        var inheritedVariables = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (tree.Packages.Count == 0)
             Flag("自动测试项目尚未添加测试用例。", "PROJECT:EMPTY",
                 "项目结构", "缺少有序测试用例", tree.Name,
@@ -98,7 +103,7 @@ public static class AutomaticTestResourceContract
                 // Compile first, but DO NOT replace a case's authoring tree or
                 // infer a successful test from absence of execution errors.
                 var prepared = new PlanCompiler().Prepare(program,
-                    allowRealOperations: true);
+                    allowRealOperations: true, inheritedVariables: inheritedVariables);
                 foreach (var error in prepared.Diagnostics)
                     Flag("用例「" + entry.DisplayName + "」：" + error,
                         "PLAN:" + entry.PackageAssetId.ToString("N"),
@@ -119,6 +124,12 @@ public static class AutomaticTestResourceContract
                             mapping.Asset.Value, entry.ItemId);
                     }
                 }
+                // Update only the definitely available names, not the entire
+                // set of variables that might be assigned on a branch.
+                // Invalid case diagnostics keep the project non-executable.
+                inheritedVariables.UnionWith(
+                    TestVariableFlowValidator.GuaranteedAfter(program,
+                        inheritedVariables));
                 cases.Add(new(entry, target, program, target.Sha256));
             }
             catch (Exception error) when (error is InvalidDataException or IOException or

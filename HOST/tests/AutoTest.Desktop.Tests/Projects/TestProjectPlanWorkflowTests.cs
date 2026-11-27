@@ -81,6 +81,53 @@ public sealed class TestProjectPlanWorkflowTests
     }
 
     [Fact]
+    public async Task ProductionResourceResolverHonorsGuaranteedVariablesAcrossOrderedCases()
+    {
+        var parent = Path.Combine(Path.GetTempPath(),
+            "at-continuous-resolution-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(parent);
+        try
+        {
+            var workspace = new ProjectWorkspaceService();
+            var created = await workspace.CreateAsync("Continuous", parent);
+            var setup = await workspace.CreateTestProgramAsync("准备");
+            var verify = await workspace.CreateTestProgramAsync("后续判定");
+            var first = await workspace.OpenTestEditorAsync(setup.Id);
+            var setter = StepUiCatalog.NewNode("SetVariable")
+                .WithProperty("variable", "projectState")
+                .WithProperty("value", "READY");
+            var firstTx = new StepEditTransaction(first.Document);
+            firstTx.Insert(TestPhase.Test, null, null, 0, setter);
+            await workspace.SaveTestEditorAsync(first, firstTx.Current);
+
+            var second = await workspace.OpenTestEditorAsync(verify.Id);
+            var predicate = StepUiCatalog.NewNode("Expect")
+                .WithProperty("left", "$projectState")
+                .WithProperty("right", "READY");
+            var secondTx = new StepEditTransaction(second.Document);
+            secondTx.Insert(TestPhase.Test, null, null, 0, predicate);
+            await workspace.SaveTestEditorAsync(second, secondTx.Current);
+
+            var project = await workspace.CreateTestProjectAsync("TEST");
+            var open = await workspace.OpenTestProjectEditorAsync(project.Id);
+            await workspace.SaveTestProjectEditorAsync(open, open.Document with
+            {
+                Packages =
+                [
+                    new TestProjectEntry(Guid.NewGuid(), setup.Id.Value, "准备"),
+                    new TestProjectEntry(Guid.NewGuid(), verify.Id.Value, "后续判定")
+                ]
+            });
+            var reopened = new ProjectWorkspaceService();
+            await reopened.OpenAsync(created.ManifestPath);
+            var snapshot = await AutomaticTestResourceContract.ResolveAsync(reopened.Current!);
+            Assert.True(snapshot.CanExecute, string.Join("; ", snapshot.Issues));
+            Assert.Equal(2, snapshot.Cases.Count);
+        }
+        finally { Directory.Delete(parent, recursive: true); }
+    }
+
+    [Fact]
     public async Task EditedCaseIsAutomaticallyResolvedByCurrentDefinitionWithoutAdoption()
     {
         var parent = Path.Combine(Path.GetTempPath(),
