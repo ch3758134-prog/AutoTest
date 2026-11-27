@@ -79,7 +79,7 @@
     <Border Style="{StaticResource Panel}">
      <StackPanel>
       <TextBlock Text="设置状态" Style="{StaticResource Section}"/>
-      <TextBlock Text="修改会自动保存。设置中填写的输入名称必须与实际硬件接线和固件支持一致。"
+      <TextBlock Text="本工位固定使用两路夹具；按键、CAN 与夹具的实际硬件状态可在设备调试中查看。"
        Foreground="#647B8D" TextWrapping="Wrap"/>
       <Button x:Name="ResetOldConfig" Content="重新设置工位"
        Click="ResetOld_Click" Visibility="Collapsed"

@@ -218,7 +218,7 @@ public sealed partial class MainWindowViewModel
             RaisePropertyChanged(nameof(SetupDependencySummary));
             UpdateSetupStatuses("请先打开 ECU 工程", "未打开工程",
                 "等待工程", "等待工程", "待连接",
-                "工程开发先编辑 TEST、DBC 和原生 FLASH；产品身份和工位发布在生产准备。");
+                "先创建 ECU 工程并编辑 TEST、DBC 和原生 FLASH；生产检测根据扫码直接选择工程。");
             return;
         }
         // Never claim a live result based on a resource file or USB ACK.
@@ -234,7 +234,7 @@ public sealed partial class MainWindowViewModel
         var station = _hardware.IsConnected
             ? "主控 USB 已连接；夹具机械状态和 START 尚未现场验证"
             : "主控未连接；可先编辑配置与测试用例";
-        var productionPin = "尚未确认本工位的生产版本";
+        var productionPin = "正在读取本机生产工程库";
         UpdateSetupStatuses(model, test, scan, flash, station,
             "读取正式工程与工位配置中；不会触发任何实体动作。");
 

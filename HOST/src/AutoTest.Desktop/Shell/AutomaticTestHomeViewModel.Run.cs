@@ -690,8 +690,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
             // Production uses the same physical execution with the installed
             // project snapshot; engineering uses its current saved draft.
             var validated = await ProductionPreparationService.PrepareAsync(
-                plan.Project, scan.RecognitionMarker, scan.RawBarcode, ct,
-                requireProductionDeployment: formalProduction);
+                plan.Project, scan.RecognitionMarker, scan.RawBarcode, ct);
             if (!validated.ConfigurationReady ||
                 validated.Preparation?.PreparationFingerprint != frozen.PreparationFingerprint)
                 throw new InvalidDataException(

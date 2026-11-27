@@ -221,8 +221,7 @@ public sealed partial class MainWindowViewModel
         var previousProject = _workspace.Current;
         try
         {
-            await _automaticTestPlans.RestoreAsync(context,
-                requireProductionDeployment: false);
+            await _automaticTestPlans.RestoreAsync(context);
             if (_automaticTestPlans.Current is null)
                 throw new InvalidDataException(_automaticTestPlans.Issue);
             // Scanner routing selects one active project context for DBC,
@@ -232,8 +231,7 @@ public sealed partial class MainWindowViewModel
         catch
         {
             if (previousPlan is not null)
-                await _automaticTestPlans.RestoreAsync(previousPlan,
-                    requireProductionDeployment: false);
+                await _automaticTestPlans.RestoreAsync(previousPlan);
             if (previousProject is not null)
                 await _workspace.OpenAsync(previousProject.ManifestPath);
             throw;

@@ -64,13 +64,10 @@ public sealed class AutomaticTestPlanService
     }
 
     public Task RestoreAsync(CancellationToken ct = default) =>
-        RestoreAsync(null, requireProductionDeployment: false, ct);
-
-    public Task RestoreAsync(OpenProjectContext? opened, CancellationToken ct = default) =>
-        RestoreAsync(opened, requireProductionDeployment: false, ct);
+        RestoreAsync(null, ct);
 
     public async Task RestoreAsync(OpenProjectContext? opened,
-        bool requireProductionDeployment, CancellationToken ct = default)
+        CancellationToken ct = default)
     {
         Current = null;
         ConfiguredPath = null;

@@ -55,13 +55,12 @@ public static class ProductionPreparationService
 {
     public static async Task<ProductionPreparationDecision> PrepareAsync(
         OpenProjectContext project, string recognitionMarker, string fullBarcode,
-        CancellationToken ct = default, bool requireProductionDeployment = true)
+        CancellationToken ct = default)
     {
         try
         {
             return new("PRODUCTION_CONFIG_PREPARED",
-                await FreezeAsync(project, recognitionMarker, fullBarcode, ct,
-                    requireProductionDeployment)
+                await FreezeAsync(project, recognitionMarker, fullBarcode, ct)
                     .ConfigureAwait(false),
                 "已加载当前 ECU 工程、固件及有序 TEST；实际设备状态由检测过程反馈。");
         }
@@ -72,17 +71,17 @@ public static class ProductionPreparationService
                                       UnauthorizedAccessException or JsonException)
         {
             return new("PRODUCTION_PREFLIGHT_REJECTED", null,
-                "生产配置预检未通过：" + error.Message);
+                "当前 ECU 工程内容无法用于检测：" + error.Message);
         }
     }
 
     private static async Task<FrozenProductionPreparation> FreezeAsync(
         OpenProjectContext opened, string recognitionMarker, string fullBarcode,
-        CancellationToken ct, bool requireProductionDeployment)
+        CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(fullBarcode))
             throw new InvalidDataException("缺少本次 ECU 完整扫码编号。");
-        if (fullBarcode.Length > 128 || fullBarcode.Any(char.IsControl))
+        if (fullBarcode.Length > 129 || fullBarcode.Any(char.IsControl))
             throw new InvalidDataException("外部唯一编号长度或控制字符无效。");
         var actual = await ProjectRepository.OpenDefinitionAsync(
             opened.ManifestPath, ct).ConfigureAwait(false);

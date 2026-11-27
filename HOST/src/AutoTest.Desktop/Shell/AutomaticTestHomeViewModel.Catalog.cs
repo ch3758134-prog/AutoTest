@@ -96,8 +96,7 @@ public sealed partial class AutomaticTestHomeViewModel
                     StringComparison.OrdinalIgnoreCase))
                 device = null;
             var prepared = await ProductionPreparationService.PrepareAsync(
-                plan.Project, routed.Marker, routed.FullBarcode,
-                requireProductionDeployment: true);
+                plan.Project, routed.Marker, routed.FullBarcode);
             if (!prepared.ConfigurationReady || prepared.Preparation is null)
             {
                 _scanStatus = "已选择检测工程，但资源检查未通过：" +

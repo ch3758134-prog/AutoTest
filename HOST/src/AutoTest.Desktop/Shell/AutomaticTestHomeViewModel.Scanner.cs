@@ -185,7 +185,7 @@ public sealed partial class AutomaticTestHomeViewModel
             _ = StationFixtureExecutionPlan.From(stationDraft.Fixture);
             var fixtureSha = FingerprintEngineeringFixture(stationDraft.Fixture);
             var engineeringDecision = await ProductionPreparationService.PrepareAsync(
-                plan.Project, "", raw, requireProductionDeployment: false);
+                plan.Project, "", raw);
             if (!engineeringDecision.ConfigurationReady)
             {
                 Reject("本次工程实测配置未就绪：" + engineeringDecision.Explanation);
