@@ -57,35 +57,25 @@ public static class EngineeringTestProjectPreviewReader
             var checkedScope = await AutomaticTestResourceContract.ResolveAsync(
                 project, ct).ConfigureAwait(false);
             var blockers = new List<string>(checkedScope.Issues);
-            // Read existing configuration, without creating a new recipe.
-            // This is a diagnosis of a draft, never a physical run admission.
-            if (string.IsNullOrWhiteSpace(project.Definition.EcuModelCode))
-                blockers.Add("工程尚未设置用于烧录匹配的 ECU 型号");
-            if (project.Definition.BarcodeExpectation is null)
-                blockers.Add("工程扫码期望尚未保存");
+            // Engineering TEST authoring does not own the station scanner,
+            // barcode marker, fixture outputs, physical START or RECORD gate.
+            // Those are checked by production when a real DUT is admitted.
+            // A draft may be edited or debugged before native FLASH is ready.
             var flash = await NativeFlashProfileStore.LoadAsync(project.RootDirectory, ct)
                 .ConfigureAwait(false);
             if (flash is null)
-                blockers.Add("当前工程的前置烧录尚未配置");
-            else if (!string.Equals(flash.Profile.EcuModelCode,
-                    project.Definition.EcuModelCode, StringComparison.Ordinal))
-                blockers.Add("烧录工艺型号与当前工程不一致");
+                blockers.Add("正式生产的前置 FLASH 尚未配置（不影响 TEST 编辑）。");
             else
-                _ = NativeFlashJobBuilder.Freeze(flash.Profile, project.RootDirectory);
-            var fixtures = project.Definition.Assets.Where(x =>
-                x.Kind == ProjectWorkspaceService.InspectionKind).ToArray();
-            if (fixtures.Length > 1)
-                blockers.Add("工程存在多份夹具工艺，无法确定本次应使用哪一份");
-            else if (fixtures.Length == 1)
             {
-                var data = await AutomaticTestResourceContract.ReadPinnedAsync(
-                    project, fixtures[0], ct).ConfigureAwait(false);
-                var fixture = (InspectionStationProcedureDocument)
-                    ProjectConfigurationCodec.Decode(fixtures[0].Kind, data);
-                fixture.Validate();
+                if (!string.IsNullOrWhiteSpace(project.Definition.EcuModelCode) &&
+                    !string.Equals(flash.Profile.EcuModelCode,
+                        project.Definition.EcuModelCode, StringComparison.Ordinal))
+                    blockers.Add("烧录工艺型号与工程产品身份不一致。");
+                else
+                    _ = NativeFlashJobBuilder.Freeze(flash.Profile, project.RootDirectory);
             }
             return new(project, displayed, blockers.Count == 0
-                ? "静态检测配置已核对；仍需真实工位连接及执行链验收。"
+                ? "工程 TEST 与产品资源已核对；正式生产仍需工位真实验收。"
                 : "配置有 " + blockers.Count + " 项未完成：" +
                   string.Join("；", blockers.Take(4)), blockers.Count);
         }
