@@ -83,7 +83,7 @@
      Style="{StaticResource AtPrimaryButton}" Padding="15,8" Margin="9,0,0,0"/>
     <Button DockPanel.Dock="Right" Content="刷新资源" Command="{Binding ReloadProfilesCommand}"
      Padding="12,7" Margin="9,0,0,0"/>
-    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+    <StackPanel x:Name="BenchBaudStatusPanel" DockPanel.Dock="Right" Orientation="Horizontal"
      VerticalAlignment="Center" Margin="12,0,12,0">
      <TextBlock Text="ECU CAN" VerticalAlignment="Center"
       Foreground="#334252" FontWeight="SemiBold" Margin="0,0,8,0"/>

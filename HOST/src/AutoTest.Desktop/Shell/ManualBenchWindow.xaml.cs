@@ -162,7 +162,7 @@ public partial class ManualBenchWindow : Window
         _benchLayoutMode = mode;
 
         BenchCompactNavigation.Visibility = mode == 2 ? Visibility.Visible : Visibility.Collapsed;
-        BenchBaudStatusText.Visibility = mode == 0 ? Visibility.Visible : Visibility.Collapsed;
+        BenchBaudStatusPanel.Visibility = mode == 0 ? Visibility.Visible : Visibility.Collapsed;
         BenchSendColumn.MinWidth = BenchKeyColumn.MinWidth = BenchMonitorColumn.MinWidth = 0;
 
         if (mode == 2)
