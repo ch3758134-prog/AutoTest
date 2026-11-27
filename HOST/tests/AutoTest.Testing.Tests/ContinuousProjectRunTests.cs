@@ -97,6 +97,46 @@ public sealed class ContinuousProjectRunTests
     }
 
     [Fact]
+    public async Task ContinuousProjectSharesVariablesButIsolatedCaseCannotInheritThem()
+    {
+        var first = new StepEditTransaction(TestDocument.Create("Environment"));
+        first.Insert(TestPhase.Test, null, null, 0,
+            StepNode.Create("SetVariable").WithProperty("variable", "projectState")
+                .WithProperty("value", "READY"));
+        var second = new StepEditTransaction(TestDocument.Create("Confirm"));
+        second.Insert(TestPhase.Test, null, null, 0,
+            StepNode.Create("Expect").WithProperty("left", "$projectState")
+                .WithProperty("operator", "==").WithProperty("right", "READY"));
+        var names = TestVariableFlowValidator.GuaranteedAfter(first.Current);
+        Assert.Contains("projectState", names);
+        var shared = new Dictionary<string, TestDatum>(StringComparer.OrdinalIgnoreCase);
+        var signals = new Signals();
+        var actions = new Actuation();
+        var waves = new Waves();
+
+        var environment = await new RealRunCoordinator(signals, actions, waves)
+            .StartAsync(new PlanCompiler().Prepare(first.Current,
+                    allowRealOperations: true),
+                RunId.New(), null, default,
+                retainProjectActuation: true, projectVariables: shared);
+        Assert.Equal(RealTestVerdict.CompletedNoAssertion, environment.Verdict);
+        Assert.Equal("READY", shared["projectState"].Value);
+
+        var confirmed = await new RealRunCoordinator(signals, actions, waves)
+            .StartAsync(new PlanCompiler().Prepare(second.Current,
+                    allowRealOperations: true, inheritedVariables: names),
+                RunId.New(), null, default,
+                retainProjectActuation: true, projectVariables: shared);
+        Assert.Equal(RealTestVerdict.Passed, confirmed.Verdict);
+
+        var isolated = await new RealRunCoordinator(signals, new Actuation(), new Waves())
+            .StartAsync(new PlanCompiler().Prepare(second.Current,
+                    allowRealOperations: true));
+        Assert.NotEqual(RealTestVerdict.Passed, isolated.Verdict);
+        await actions.CleanupAsync(default);
+    }
+
+    [Fact]
     public async Task IsolatedActionOnlyCaseKeepsInconclusiveAndReleasesScope()
     {
         var tx = new StepEditTransaction(TestDocument.Create("Single"));
