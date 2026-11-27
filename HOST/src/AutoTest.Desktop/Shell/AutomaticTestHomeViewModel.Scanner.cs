@@ -225,16 +225,9 @@ public sealed partial class AutomaticTestHomeViewModel
             {
                 AcceptedScannerObservation = new FrozenScanIdentity(
                     Guid.NewGuid(), scannedAt, scannerPort, raw,
-                    engineeringRuleJson, engineeringRuleSha, "", raw, "",
-                    _scanMappedFields.ToDictionary(x => x.Key, x => x.Value,
-                        StringComparer.Ordinal))
-                {
-                    BarcodeRuleId = "ENGINEERING_RAW_SERIAL",
-                    BarcodeRuleRevision = 1,
-                    ProjectDecisionBasis = "OPENED_ENGINEERING_PROJECT",
-                    StationSlotId = stationDraft.Fixture.StationSlotId,
-                    EngineeringFixtureSha256 = fixtureSha
-                }
+                    FrozenScanSource.EngineeringRaw, engineeringRuleJson,
+                    engineeringRuleSha, "", 1, "",
+                    stationDraft.Fixture.StationSlotId, "", fixtureSha)
             };
             _scanAlertRequired = false;
             _scanStatus = engineeringRepeated
