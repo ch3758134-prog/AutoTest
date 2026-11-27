@@ -116,8 +116,9 @@ public static class ProjectBundleContractAudit
                                 flow.Name, ProjectWorkspaceService.PublicFlowKind);
                         break;
                     case ProjectWorkspaceService.InspectionKind:
-                        _ = (InspectionStationProcedureDocument)ProjectConfigurationCodec.Decode(asset.Kind, bytes);
-                        break;
+                        throw new InvalidDataException(
+                            "工程仍包含旧版工位夹具/IGN 工艺资源。请移除该资源；" +
+                            "固定夹具动作由工位设备负责，产品专属 IGN 动作应作为 TEST 步骤编写。");
                     case ProjectWorkspaceService.WaveSettingsKind:
                         var wave = (WaveSettingsDocument)ProjectConfigurationCodec.Decode(asset.Kind, bytes);
                         if (wave.DbcAssetId is { } dbcId)
