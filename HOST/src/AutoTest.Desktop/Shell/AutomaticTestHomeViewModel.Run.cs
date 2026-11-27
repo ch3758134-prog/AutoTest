@@ -452,7 +452,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
             if (string.IsNullOrEmpty(scan.EngineeringFixtureSha256))
                 throw new InvalidDataException(
                     "本次扫码没有工程调试的工位设备快照，请重新扫码。");
-            var draft = await StationProductionConfigurationStore.LoadDraftAsync();
+            var draft = await StationDeviceConfigurationStore.LoadAsync();
             draft.Fixture.Validate();
             if (!string.Equals(FingerprintEngineeringFixture(draft.Fixture),
                     scan.EngineeringFixtureSha256, StringComparison.OrdinalIgnoreCase))
@@ -502,7 +502,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
         // station device configuration invalidates the original consent.
         try
         {
-            var latest = await StationProductionConfigurationStore.LoadDraftAsync();
+            var latest = await StationDeviceConfigurationStore.LoadAsync();
             latest.Fixture.Validate();
             if (!string.Equals(FingerprintEngineeringFixture(latest.Fixture),
                     scan.EngineeringFixtureSha256, StringComparison.OrdinalIgnoreCase))
@@ -592,7 +592,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
             // Engineering verification is tied only to the actual physical
             // scanner observation and the station fixture snapshot. Product
             // matching belongs exclusively to the production catalog.
-            var currentDraft = await StationProductionConfigurationStore.LoadDraftAsync(ct);
+            var currentDraft = await StationDeviceConfigurationStore.LoadAsync(ct);
             currentDraft.Fixture.Validate();
             if (!string.Equals(FingerprintEngineeringFixture(currentDraft.Fixture),
                     scan.EngineeringFixtureSha256, StringComparison.OrdinalIgnoreCase) ||
