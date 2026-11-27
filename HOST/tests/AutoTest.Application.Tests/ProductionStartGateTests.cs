@@ -7,35 +7,31 @@ namespace AutoTest.Application.Tests;
 public sealed class ProductionStartGateTests
 {
     [Fact]
-    public void SoftwareStartClaimsTheInspection_AndPhysicalCannotStartItAgain()
-    {
-        var gate = new ProductionStartGate();
-        var run = RunId.New();
-        gate.Arm(run);
-        Assert.False(gate.ObservePhysical(run, false).Accepted);
-        Assert.True(gate.RequestSoftware(run).Accepted);
-        Assert.False(gate.ObservePhysical(run, true).Accepted);
-        Assert.Equal("START_ALREADY_CLAIMED",
-            gate.RequestSoftware(run).Code);
-    }
-
-    [Fact]
-    public void PhysicalStartRequiresReleaseThenFreshPress_AndSuppressesHeldSignal()
+    public void UnknownOrHeldButtonCanNeverStartAUnit()
     {
         var gate = new ProductionStartGate();
         var run = RunId.New();
         gate.Arm(run);
         Assert.Equal("PHYSICAL_FRESH_EDGE_REQUIRED",
             gate.ObservePhysical(run, true).Code);
-        Assert.Equal("PHYSICAL_RELEASE_OBSERVED",
-            gate.ObservePhysical(run, false).Code);
-        Assert.True(gate.ObservePhysical(run, true).Accepted);
         Assert.False(gate.ObservePhysical(run, true).Accepted);
-        Assert.Equal("START_ALREADY_CLAIMED", gate.RequestSoftware(run).Code);
     }
 
     [Fact]
-    public void AnotherInspectionRequiresExplicitDisarmAndDistinctRun()
+    public void PhysicalStartRequiresReleaseThenOneFreshPress()
+    {
+        var gate = new ProductionStartGate();
+        var run = RunId.New();
+        gate.Arm(run);
+        Assert.Equal("PHYSICAL_RELEASE_OBSERVED",
+            gate.ObservePhysical(run, false).Code);
+        Assert.True(gate.ObservePhysical(run, true).Accepted);
+        Assert.Equal("START_ALREADY_CLAIMED",
+            gate.ObservePhysical(run, true).Code);
+    }
+
+    [Fact]
+    public void AnotherUnitNeedsExplicitDisarmAndDistinctRun()
     {
         var gate = new ProductionStartGate();
         var first = RunId.New();
@@ -43,30 +39,26 @@ public sealed class ProductionStartGateTests
         gate.Arm(first);
         Assert.Throws<InvalidOperationException>(() => gate.Arm(first));
         Assert.Throws<InvalidOperationException>(() => gate.Arm(second));
-        Assert.True(gate.RequestSoftware(first).Accepted);
+        gate.ObservePhysical(first, false);
+        Assert.True(gate.ObservePhysical(first, true).Accepted);
         gate.Disarm();
-        Assert.False(gate.RequestSoftware(first).Accepted);
+        Assert.False(gate.ObservePhysical(first, true).Accepted);
         gate.Arm(second);
         Assert.False(gate.ObservePhysical(second, true).Accepted);
-        Assert.False(gate.ObservePhysical(second, false).Accepted);
+        gate.ObservePhysical(second, false);
         Assert.True(gate.ObservePhysical(second, true).Accepted);
     }
 
     [Fact]
-    public void ConcurrentSoftwareAndPhysicalClaimsAcceptExactlyOne()
+    public void RepeatedConcurrentPressedSignalsCanClaimAtMostOneStart()
     {
         var gate = new ProductionStartGate();
         var run = RunId.New();
         gate.Arm(run);
         gate.ObservePhysical(run, false);
         var answers = new System.Collections.Concurrent.ConcurrentBag<bool>();
-        Parallel.For(0, 128, i =>
-        {
-            var decision = i % 2 == 0
-                ? gate.RequestSoftware(run)
-                : gate.ObservePhysical(run, true);
-            answers.Add(decision.Accepted);
-        });
+        Parallel.For(0, 128, _ =>
+            answers.Add(gate.ObservePhysical(run, true).Accepted));
         Assert.Equal(1, answers.Count(x => x));
     }
 }
