@@ -118,8 +118,9 @@ public static class TestTargetCatalog
                         }
                 }
             }
-            if (workspace.Current?.ManifestPath != context.ManifestPath ||
-                workspace.Current.ManifestSha256 != context.ManifestSha256)
+            var latest = workspace.Current;
+            if (latest is null || latest.ManifestPath != context.ManifestPath ||
+                latest.ManifestSha256 != context.ManifestSha256)
                 throw new ProjectDataException("PROJECT_CHANGED",
                     "加载测试对象期间 ECU 工程或资源修订发生变化。");
             return (IReadOnlyList<MappingChoice>)choices;
