@@ -60,28 +60,32 @@
    BorderThickness="1,1,1,2" Padding="16,12" Margin="0,0,0,10">
    <Grid>
     <Grid.ColumnDefinitions>
-     <ColumnDefinition Width="*"/>
-     <ColumnDefinition Width="226"/>
+     <ColumnDefinition Width="3*"/>
+     <ColumnDefinition Width="2*"/>
     </Grid.ColumnDefinitions>
-    <StackPanel Grid.Column="0" Margin="0,0,15,0">
-     <TextBlock Text="{Binding ProductionDisplayStage}" FontSize="12"
-      Foreground="#496C91" FontWeight="SemiBold" Margin="0,0,0,3"/>
-     <TextBlock Text="{Binding ProductionHeadline}" FontSize="23" FontWeight="SemiBold"
-      TextWrapping="Wrap" Foreground="#1F3449"/>
-     <TextBlock Text="{Binding ProductionGuidance}" FontSize="13"
-      Foreground="#60738A" TextWrapping="Wrap" Margin="0,5,0,0"/>
+    <StackPanel Grid.Column="0" Margin="0,0,20,0" VerticalAlignment="Center">
+     <!-- The complete physical barcode must remain visible even when routing
+          fails; a match is never substituted for what the scanner observed. -->
+     <TextBlock Text="当前扫码 · ECU 完整编号" Style="{StaticResource OperatorCaption}"
+      Margin="0,0,0,5"/>
+     <TextBlock Text="{Binding LastObservedBarcode}" FontSize="21"
+      FontFamily="Consolas,Microsoft YaHei" FontWeight="SemiBold"
+      Foreground="#1F4368" TextWrapping="Wrap"
+      ToolTip="{Binding LastObservedBarcode}" Margin="0,0,0,7"/>
+     <TextBlock Text="{Binding ProjectName,StringFormat='匹配工程：{0}'}"
+      Foreground="#52677D" FontSize="13" TextWrapping="Wrap"
+      ToolTip="{Binding ProjectName}"/>
     </StackPanel>
-    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-     <TextBlock Text="最近扫码" Style="{StaticResource OperatorCaption}"/>
-     <TextBlock Text="{Binding LastObservedBarcode}" FontSize="17" FontWeight="SemiBold"
-      Foreground="#235B8B" TextTrimming="CharacterEllipsis"
-      ToolTip="{Binding LastObservedBarcode}" Margin="0,3,0,3"/>
-     <TextBlock Text="{Binding DutSerial,StringFormat='识别编号：{0}'}"
-      Foreground="#52677D" FontSize="12" TextTrimming="CharacterEllipsis"
-      ToolTip="{Binding DutSerial}"/>
-     <TextBlock Text="{Binding ProjectName,StringFormat='工程：{0}'}"
-      Foreground="#52677D" FontSize="12" TextTrimming="CharacterEllipsis"/>
-    </StackPanel>
+    <Border Grid.Column="1" Background="#F4F8FC" CornerRadius="6" Padding="13,10">
+     <StackPanel VerticalAlignment="Center">
+      <TextBlock Text="{Binding ProductionDisplayStage}" FontSize="12"
+       Foreground="#496C91" FontWeight="SemiBold" Margin="0,0,0,3"/>
+      <TextBlock Text="{Binding ProductionHeadline}" FontSize="20"
+       FontWeight="SemiBold" TextWrapping="Wrap" Foreground="#1F3449"/>
+      <TextBlock Text="{Binding ProductionGuidance}" FontSize="12"
+       Foreground="#60738A" TextWrapping="Wrap" Margin="0,5,0,0"/>
+     </StackPanel>
+    </Border>
    </Grid>
   </Border>
 
@@ -112,7 +116,7 @@
        Content="跟随执行" IsChecked="True" VerticalAlignment="Center"
        Margin="0,0,15,0" FontSize="12"
        ToolTip="自动定位当前执行的测试步骤"/>
-      <TextBlock Text="测试用例与步骤" FontSize="16" FontWeight="SemiBold"
+      <TextBlock Text="检测流程 · 用例与步骤" FontSize="16" FontWeight="SemiBold"
        VerticalAlignment="Center"/>
      </DockPanel>
      <Border Grid.Row="1" BorderBrush="#DFE6ED" BorderThickness="0,1,0,1"
@@ -243,7 +247,7 @@
       <!-- Only a future real production StepOccurrence adapter may reveal
            current-step measurement details; engineering truth is isolated. -->
       <StackPanel Visibility="{Binding HasFormalExecutionFacts,Converter={StaticResource BoolToVisibility}}">
-      <TextBlock Text="当前检测步骤" FontSize="16" FontWeight="SemiBold"
+      <TextBlock Text="当前步骤与检测证据" FontSize="16" FontWeight="SemiBold"
        Margin="0,0,0,9"/>
       <Border Background="#F4F7FA" Padding="10" CornerRadius="5"
        Margin="0,0,0,11">
