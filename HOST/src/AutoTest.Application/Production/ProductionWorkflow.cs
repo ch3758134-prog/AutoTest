@@ -105,7 +105,7 @@ public sealed class ProductionWorkflow
                 fixture.ControllerEpoch != job.ControllerEpoch ||
                 !fixture.MechanicalClosureVerified ||
                 !fixture.SafetyInterlockVerified ||
-                string.IsNullOrWhiteSpace(fixture.EvidenceReference))
+                !IsValidPhysicalEvidenceReference(fixture.EvidenceReference))
             {
                 session.Mark(ProductionState.Unknown,
                     "MECHANICAL_FIXTURE_NOT_VERIFIED");
@@ -131,7 +131,7 @@ public sealed class ProductionWorkflow
             if (start.Run != job.Run || start.Station != job.Station ||
                 start.ControllerEpoch != job.ControllerEpoch ||
                 !start.FreshPhysicalEdgeVerified ||
-                string.IsNullOrWhiteSpace(start.EvidenceReference))
+                !IsValidPhysicalEvidenceReference(start.EvidenceReference))
             {
                 session.Mark(ProductionState.Unknown,
                     "PHYSICAL_START_NOT_VERIFIED");
@@ -276,6 +276,10 @@ public sealed class ProductionWorkflow
                 stageCode + " " + error);
         }
     }
+
+    private static bool IsValidPhysicalEvidenceReference(string? value) =>
+        value is { Length: > 0 and <= 256 } &&
+        !string.IsNullOrWhiteSpace(value) && !value.Any(char.IsControl);
 
     public ValueTask RequestStopAsync(RunId id, CancellationToken ct) => _executor.RequestStopAsync(id, ct);
 }
