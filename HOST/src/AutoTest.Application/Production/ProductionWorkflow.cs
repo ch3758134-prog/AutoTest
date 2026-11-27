@@ -17,9 +17,17 @@ public sealed class ProductionWorkflow
     private readonly IProductionStageExecutor _executor;
     private readonly ProductionResultCoordinator _records;
     private readonly ProductionPreflight _preflight;
+    private readonly IProductionPhysicalStation? _physicalStation;
+
     public ProductionWorkflow(IProductionStageExecutor executor,
-        ProductionResultCoordinator records, ProductionPreflight preflight)
-    { _executor = executor; _records = records; _preflight = preflight; }
+        ProductionResultCoordinator records, ProductionPreflight preflight,
+        IProductionPhysicalStation? physicalStation = null)
+    {
+        _executor = executor;
+        _records = records;
+        _preflight = preflight;
+        _physicalStation = physicalStation;
+    }
 
     public ProductionPreflightResult Prepare(ProductionSession session,
         ProductionConfiguration configuration, ProductionStationReadiness station) =>
@@ -28,6 +36,15 @@ public sealed class ProductionWorkflow
     public async ValueTask<ProductionRunResult> ExecuteAsync(ProductionSession session,
         CancellationToken ct)
     {
+        // Reject an unconnected physical station BEFORE entering Running,
+        // writing a record, moving a clamp or touching ECU FLASH.
+        if (session.Job is { IsMock: false } &&
+            _physicalStation is null)
+        {
+            var pending = session.Job;
+            return new(pending.Run, ProductionState.Ready, Verdict.Inconclusive,
+                false, false, "PHYSICAL_STATION_ADAPTER_NOT_CONNECTED");
+        }
         var begin = session.BeginExecution();
         if (begin.Outcome != Outcome.Accepted || session.Job is null)
             throw new InvalidOperationException("RUN_NOT_READY");
@@ -50,6 +67,74 @@ public sealed class ProductionWorkflow
                 session.Mark(ProductionState.Unknown, "RECORD_APPEND_UNCERTAIN");
                 return new(job.Run, ProductionState.Unknown, Verdict.Inconclusive, false,
                     false, "RECORD_APPEND_UNCERTAIN");
+            }
+            if (!job.IsMock)
+            {
+                stage = "FIXTURE";
+                // The fixture may move; persist intent before energizing any
+                // output. An ACK alone is never physical position proof.
+                var intent = await _records.AppendAsync(job,
+                    "FIXTURE_PRESS_INTENT_EFFECT_UNKNOWN",
+                    RunFactKind.Request, EvidenceQuality.HostObserved, ct)
+                    .ConfigureAwait(false);
+                if (intent.Outcome != Outcome.Accepted)
+                {
+                    session.Mark(ProductionState.Unknown,
+                        "FIXTURE_INTENT_NOT_DURABLE");
+                    return new(job.Run, ProductionState.Unknown,
+                        Verdict.Inconclusive, false, false,
+                        "FIXTURE_INTENT_NOT_DURABLE");
+                }
+                var fixture = await _physicalStation!.PressAndVerifyAsync(job, ct)
+                    .ConfigureAwait(false);
+                if (fixture.Run != job.Run || fixture.Station != job.Station ||
+                    !fixture.MechanicalClosureVerified ||
+                    !fixture.SafetyInterlockVerified ||
+                    string.IsNullOrWhiteSpace(fixture.EvidenceReference))
+                {
+                    session.Mark(ProductionState.Unknown,
+                        "MECHANICAL_FIXTURE_NOT_VERIFIED");
+                    return new(job.Run, ProductionState.Unknown,
+                        Verdict.Inconclusive, false, false,
+                        "MECHANICAL_FIXTURE_NOT_VERIFIED");
+                }
+                var fixtureFact = await _records.AppendAsync(job,
+                    "STATION_FIXTURE_VERIFIED:" + fixture.EvidenceReference,
+                    RunFactKind.CommandAck, EvidenceQuality.HostObserved, ct)
+                    .ConfigureAwait(false);
+                if (fixtureFact.Outcome != Outcome.Accepted)
+                {
+                    session.Mark(ProductionState.Unknown,
+                        "FIXTURE_PROOF_NOT_DURABLE");
+                    return new(job.Run, ProductionState.Unknown,
+                        Verdict.Inconclusive, false, false,
+                        "FIXTURE_PROOF_NOT_DURABLE");
+                }
+                stage = "PHYSICAL_START";
+                var start = await _physicalStation.WaitForStartAsync(
+                    job, fixture, ct).ConfigureAwait(false);
+                if (start.Run != job.Run || start.Station != job.Station ||
+                    !start.FreshPhysicalEdgeVerified ||
+                    string.IsNullOrWhiteSpace(start.EvidenceReference))
+                {
+                    session.Mark(ProductionState.Unknown,
+                        "PHYSICAL_START_NOT_VERIFIED");
+                    return new(job.Run, ProductionState.Unknown,
+                        Verdict.Inconclusive, false, false,
+                        "PHYSICAL_START_NOT_VERIFIED");
+                }
+                var startFact = await _records.AppendAsync(job,
+                    "STATION_PHYSICAL_START_VERIFIED:" + start.EvidenceReference,
+                    RunFactKind.CommandAck, EvidenceQuality.HostObserved, ct)
+                    .ConfigureAwait(false);
+                if (startFact.Outcome != Outcome.Accepted)
+                {
+                    session.Mark(ProductionState.Unknown,
+                        "PHYSICAL_START_FACT_NOT_DURABLE");
+                    return new(job.Run, ProductionState.Unknown,
+                        Verdict.Inconclusive, false, false,
+                        "PHYSICAL_START_FACT_NOT_DURABLE");
+                }
             }
             if (job.Configuration.RequiresFlash)
             {
