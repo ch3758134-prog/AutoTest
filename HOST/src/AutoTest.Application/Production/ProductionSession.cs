@@ -22,7 +22,7 @@ public sealed record ProductionProjectExecution(
 // Physical identity is locked to one attempt. A retry always creates a new RunId.
 public sealed record ProductionJobSnapshot(RunId Run, string DutIdentity, RawScan Scan,
     ProductionProjectExecution ProjectExecution, RuleRevision RuleRevision,
-    ProjectRevision ProjectRevision, StationId Station);
+    ProjectRevision ProjectRevision, StationId Station, long ControllerEpoch);
 
 public sealed class ProductionSession
 {
@@ -71,14 +71,16 @@ public sealed class ProductionSession
     }
 
     public OperationResult<ProductionJobSnapshot> Confirm(ProductionProjectExecution execution,
-        RuleRevision ruleRevision, ProjectRevision projectRevision, StationId station)
+        RuleRevision ruleRevision, ProjectRevision projectRevision,
+        ProductionStationReadiness station)
     {
         lock (_sync)
         {
             if (State != ProductionState.Matched || Match?.Allowed != true || CurrentScan is null ||
                 string.IsNullOrWhiteSpace(Match.DutIdentity))
                 return OperationResult<ProductionJobSnapshot>.Rejected("SESSION_NOT_MATCHED", "No valid candidate.");
-            if (execution.Project.Value == Guid.Empty ||
+            if (station.ControllerEpoch <= 0 ||
+                execution.Project.Value == Guid.Empty ||
                 execution.Revision.Value <= 0 ||
                 execution.Revision != projectRevision ||
                 execution.PackageFingerprint.Sha256 is not { Length: 64 })
@@ -89,7 +91,8 @@ public sealed class ProductionSession
                 return OperationResult<ProductionJobSnapshot>.Rejected(
                     "PROJECT_ASSET_SNAPSHOT_MISMATCH", "Project assets changed after matching.");
             Job = new ProductionJobSnapshot(RunId.New(), Match.DutIdentity, CurrentScan,
-                execution, ruleRevision, projectRevision, station);
+                execution, ruleRevision, projectRevision,
+                station.Station, station.ControllerEpoch);
             State = ProductionState.Ready;
             return OperationResult<ProductionJobSnapshot>.Accepted(Job);
         }
