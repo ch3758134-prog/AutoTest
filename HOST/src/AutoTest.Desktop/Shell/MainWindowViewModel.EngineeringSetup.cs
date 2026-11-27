@@ -254,6 +254,7 @@ public sealed partial class MainWindowViewModel
                     ? "未发现当前 TEST 项目的静态资源阻断。仍需在真实 ECU 上验证功能与数据质量。"
                     : string.Join(Environment.NewLine,
                         snapshot.Issues.Select((issue, i) => $"{i + 1}. {issue}"));
+                TestProjectRecoveryAvailable = false;
                 test = snapshot.CanExecute
                     ? snapshot.Cases.Count + " 个用例的资源检查通过；实际结果需运行测试确认"
                     : snapshot.Cases.Count + " 个有效引用 · " +
@@ -264,8 +265,11 @@ public sealed partial class MainWindowViewModel
                 ProjectDataException or ArgumentException or FormatException or
                 UnauthorizedAccessException or NotSupportedException)
             {
-                test = "TEST 未就绪：" + error.Message;
-                testDetails = "无法完成 TEST 资源解析：" + error.Message;
+                test = "TEST 项目需要处理：" + error.Message;
+                testDetails = "当前测试顺序暂时无法读取：" + error.Message;
+                TestProjectRecoveryAvailable =
+                    error is InvalidDataException &&
+                    error.Message.Contains("TEST 项目不是当前版本", StringComparison.Ordinal);
             }
 
             try

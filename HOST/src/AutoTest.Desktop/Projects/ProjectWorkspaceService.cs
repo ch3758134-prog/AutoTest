@@ -360,6 +360,44 @@ public sealed partial class ProjectWorkspaceService
             asset.Id, asset.Revision, asset.Name, path, hash, TestProjectCodec.Decode(bytes));
     }
 
+    /// <summary>
+    /// Explicitly recreate ONLY an unreadable TEST project definition using
+    /// the current schema. This is not compatibility or a silent migration:
+    /// existing independent TEST case resources remain untouched and the
+    /// invalid invocation list is preserved by the revision archive.
+    /// </summary>
+    public async Task ResetUnreadableTestProjectAsync(CancellationToken ct = default)
+    {
+        await _writeLock.WaitAsync(ct);
+        try
+        {
+            var current = Current ?? throw new InvalidOperationException("请先打开 ECU 工程。");
+            var asset = current.Definition.Assets.Single(a => a.Kind == TestProjectKind);
+            var path = ProjectPathPolicy.Normalize(current.RootDirectory, asset.RelativePath);
+            var previous = await File.ReadAllBytesAsync(path, ct);
+            if (!asset.VerifyHash(previous))
+                throw new InvalidDataException(
+                    "TEST 文件与工程记录不一致，请先检查文件完整性，不能覆盖未知外部修改。");
+            try
+            {
+                _ = TestProjectCodec.Decode(previous);
+            }
+            catch (InvalidDataException)
+            {
+                // Deliberately replace unreadable structure, not interpret it.
+                var replacement = TestProjectCodec.Encode(
+                    TestProjectDocument.Create("TEST 项目"));
+                var next = await SaveEditedResourceAsync(current, asset,
+                    replacement, asset.Sha256, ct);
+                Current = next;
+                NotifyCurrentChanged();
+                return;
+            }
+            throw new InvalidOperationException("TEST 项目已是有效格式，不需要重建。");
+        }
+        finally { _writeLock.Release(); }
+    }
+
     /// <summary>Transactional, content-hashed project-plan save without executing packages.</summary>
     public async Task<TestProjectEditorSession> SaveTestProjectEditorAsync(
         TestProjectEditorSession opened, TestProjectDocument document,

@@ -210,6 +210,7 @@ public sealed partial class MainWindowViewModel : BindableBase
             () => !_openingFlashLab && !_hardwareBusy);
         OpenNativeFlashProfileCommand = new DelegateCommand(OpenNativeFlashProfile);
         InitializeEngineeringResourceWorkbench();
+        InitializeEngineeringRecovery();
         // The ECU project itself is the authoring scope; no TCF/TBC
         // selection is required to begin configuring this fixed station.
         OpenFirstConfigurationCommand = new DelegateCommand(ShowProjectConfiguration);
@@ -428,8 +429,15 @@ public sealed partial class MainWindowViewModel : BindableBase
     /// information popup that hides the workspace and opens dead buttons.
     /// </summary>
     // A project root opens the actual work object. Resource review remains an
-    // optional secondary document, never a required setup screen.
-    public void ShowOverview() => _ = OpenDefaultEngineeringDocumentAsync();
+    // The real ECU engineering home is an ordinary non-blocking work surface.
+    // TEST, DBC, WAVE, FLOW and FLASH all navigate from the SAME project.
+    public void ShowOverview()
+    {
+        if (_workspace.Current is null) return;
+        ActivateEditor("project-overview",
+            new ProjectOverviewView { DataContext = this },
+            "ECU 工程 · " + CurrentProjectName, () => true);
+    }
 
     private async Task OpenDefaultEngineeringDocumentAsync()
     {
@@ -441,7 +449,7 @@ public sealed partial class MainWindowViewModel : BindableBase
             StatusMessage = TestProjectCount == 0
                 ? "工程没有正式 TEST 项目，请先建立测试程序。"
                 : "旧工程有多份 TEST 项目，必须先整理为唯一执行顺序。";
-            ShowProjectConfiguration();
+            ShowOverview();
             return;
         }
         try
@@ -479,9 +487,13 @@ public sealed partial class MainWindowViewModel : BindableBase
         {
             // A broken TEST definition should show an actionable engineering
             // problem, not escape through startup's async void UI event.
-            StatusMessage = "测试工程无法直接打开用例：" + error.Message;
+            StatusMessage = "当前 TEST 项目无法打开：" + error.Message +
+                "。工程内其他资源仍可在工程首页使用。";
+            if (error is InvalidDataException &&
+                error.Message.Contains("TEST 项目不是当前版本", StringComparison.Ordinal))
+                TestProjectRecoveryAvailable = true;
             System.Diagnostics.Trace.TraceWarning("Default TEST editor failed: " + error);
-            ShowProjectConfiguration();
+            ShowOverview();
         }
     }
 
@@ -1464,8 +1476,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         }
         if (lastKey is "config-overview" or "project-overview")
         {
-            // Old sessions must not force the obsolete engineering setup gate.
-            await OpenDefaultEngineeringDocumentAsync();
+            ShowOverview();
             return;
         }
         if (lastKey is null) return;
