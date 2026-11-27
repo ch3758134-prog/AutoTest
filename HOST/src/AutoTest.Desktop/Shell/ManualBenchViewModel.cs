@@ -885,16 +885,23 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
     // panels. Keep the physical channel order fixed for this TestCtr station:
     // press 1→2, release 2→1. Each command still uses the exact verified
     // hardware authorization and never claims mechanical travel from USB ACK.
-    public Task ApplyFixtureAsync(bool press) => Execute(
-        press ? "夹具压紧" : "夹具释放", async () =>
+    public Task ApplyFixtureAsync(bool press)
+    {
+        // Check the manual-I/O admission BEFORE Execute acquires IsBusy.
+        // Once executing, IsBusy is true by design and must not reject itself.
+        if (!CanInvokeManualIo)
         {
-            if (!CanInvokeManualIo)
-                throw new InvalidOperationException("主控未就绪或正在执行测试，禁止夹具动作。");
+            Status = "工位未就绪或已被真实测试占用，禁止夹具动作。";
+            return Task.CompletedTask;
+        }
+        return Execute(press ? "夹具压紧" : "夹具释放", async () =>
+        {
             foreach (var channel in press ? new byte[] { 1, 2 } : new byte[] { 2, 1 })
                 await SendClampCoreAsync(channel, press);
             Status = (press ? "压紧" : "释放") +
                 "：两路主控输出指令已执行。GPIO 读回不代表机械到位；请核对现场。";
         });
+    }
 
     private Task ApplyClampAsync() => Execute("夹具" + _selectedClamp,
         () => SendClampCoreAsync(_selectedClamp, _clampPress));
