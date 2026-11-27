@@ -97,6 +97,47 @@ public sealed class ProductionCommandHandler
     }
 
     /// <summary>
+    /// Begin the station-controlled production cycle, NOT a software START.
+    /// The workflow itself persists fixture intent, verifies real mechanical
+    /// closure, waits for a trusted physical START edge, and only then may
+    /// invoke destructive ECU FLASH. With no actual station adapter it will
+    /// return PHYSICAL_STATION_ADAPTER_NOT_CONNECTED without side effects.
+    /// </summary>
+    public async Task<ProductionCommandFeedback> BeginStationCycleAsync(
+        CancellationToken ct)
+    {
+        if (_session.Job is not { IsMock: false } ||
+            _session.State != ProductionState.Ready)
+            return Feedback("REAL_STATION_NOT_READY", Verdict.Inconclusive);
+        if (Interlocked.CompareExchange(ref _handling, 1, 0) != 0)
+            return Feedback("STATION_BUSY", Verdict.Inconclusive);
+        try
+        {
+            // Never call ProductionStartGate.RequestSoftware for a real DUT.
+            // The real verified START must come from IProductionPhysicalStation
+            // inside the production workflow after fixture closure.
+            return await ExecuteStationCycleInternalAsync(ct).ConfigureAwait(false);
+        }
+        finally { Interlocked.Exchange(ref _handling, 0); }
+    }
+
+    private async Task<ProductionCommandFeedback> ExecuteStationCycleInternalAsync(
+        CancellationToken ct)
+    {
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        lock (_sync) _runCancellation = linked;
+        try
+        {
+            var result = await _workflow.ExecuteAsync(_session, linked.Token)
+                .ConfigureAwait(false);
+            if (result.State != ProductionState.Ready)
+                LastStartSource = ProductionStartSource.PhysicalButton;
+            return Feedback(result.Code, result.Verdict);
+        }
+        finally { lock (_sync) _runCancellation = null; }
+    }
+
+    /// <summary>
     /// The eventual verified hardware adapter reports a debounced active
     /// level here. Releasing after Ready must be observed before a new press
     /// edge can claim this run. This is not connected to an MCU input yet.
