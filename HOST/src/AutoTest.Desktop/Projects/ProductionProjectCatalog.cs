@@ -48,6 +48,31 @@ public sealed class ProductionProjectCatalog
         await db.OpenAsync(ct);
         try
         {
+            // Destroy obsolete routing authority, not historical user data.
+            // Before the first schema cutover, preserve an independent
+            // SQLite snapshot. Failure to back up prevents any DROP.
+            using (var detect = db.CreateCommand())
+            {
+                detect.CommandText = """
+                    SELECT COUNT(*) FROM sqlite_master WHERE type='table'
+                    AND name IN ('routes','serial_registry','settings')
+                    """;
+                var legacy = Convert.ToInt64(await detect.ExecuteScalarAsync(ct));
+                if (legacy > 0)
+                {
+                    var backupPath = Path.Combine(_root, "catalog-before-marker-" +
+                        DateTimeOffset.UtcNow.ToString("yyyyMMddHHmmss") + "-" +
+                        Guid.NewGuid().ToString("N") + ".sqlite");
+                    await using var backup = new SqliteConnection(
+                        new SqliteConnectionStringBuilder
+                        {
+                            DataSource = backupPath,
+                            Mode = SqliteOpenMode.ReadWriteCreate
+                        }.ToString());
+                    await backup.OpenAsync(ct);
+                    db.BackupDatabase(backup);
+                }
+            }
             using var cmd = db.CreateCommand();
             cmd.CommandText = """
                 PRAGMA foreign_keys = ON;
