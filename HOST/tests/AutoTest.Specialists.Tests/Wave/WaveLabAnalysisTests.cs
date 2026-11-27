@@ -187,6 +187,16 @@ public sealed class WaveLabAnalysisTests
                 reopened.SaveStandard("invalid-duplicate", [one, one]));
             Assert.Single(reopened.ListStandards());
             Assert.Equal(4, one.Samples.Length);
+
+            // Historical independent per-channel references can share a
+            // human name, but MUST NOT be forged into one multi-signal capture.
+            reopened.Save("legacy-same-name", one);
+            reopened.Save("legacy-same-name", two);
+            var allGroups = reopened.ListStandards();
+            Assert.Equal(3, allGroups.Count);
+            Assert.Equal(2, allGroups.Count(x => x.Name == "legacy-same-name"));
+            Assert.Equal(2, allGroups.Single(x =>
+                x.Name == "静态驻车基准").Channels.Count);
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
     }
