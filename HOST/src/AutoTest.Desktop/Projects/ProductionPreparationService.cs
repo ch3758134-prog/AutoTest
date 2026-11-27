@@ -48,10 +48,8 @@ public sealed record ProductionPreparationDecision(
 }
 
 /// <summary>
-/// Stage A: immutable read-only preparation. No scanner match, project filename,
-/// output ACK, or TEST tree can authorize the physical FLASH operation.
-/// The equipment readiness / START edge / production consent / evidence are
-/// intentionally separate gates, NOT mocks implemented in this service.
+/// Freezes the actual saved ECU resource closure for one scanner observation.
+/// Hardware errors are handled by the real device and inspection execution.
 /// </summary>
 public static class ProductionPreparationService
 {
@@ -65,8 +63,7 @@ public static class ProductionPreparationService
                 await FreezeAsync(project, recognitionMarker, fullBarcode, ct,
                     requireProductionDeployment)
                     .ConfigureAwait(false),
-                "工程资源、原生 FLASH 方法、固件和完整 TEST 顺序已离线核对。" +
-                "实体夹具状态、START、新设备会话及运行授权仍未取得，不允许执行。");
+                "已加载当前 ECU 工程、固件及有序 TEST；实际设备状态由检测过程反馈。");
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception error) when (error is IOException or ArgumentException or
@@ -103,21 +100,6 @@ public static class ProductionPreparationService
         // external TEST/DBC/wave asset substitution without a saved project
         // revision. ReadPinnedAsync must reject every changed required asset.
         opened = opened with { Definition = actual };
-        StationDeploymentStore.Verified? deployed = null;
-        if (requireProductionDeployment)
-        {
-            deployed = await StationDeploymentStore.RestoreAsync(ct)
-                .ConfigureAwait(false)
-                ?? throw new InvalidDataException(
-                    "本工位尚未确认正式生产工程；请先在开发与调试中核对并确认。");
-            if (!string.Equals(deployed.Project.ManifestPath, opened.ManifestPath,
-                    StringComparison.OrdinalIgnoreCase) ||
-                !string.Equals(deployed.Project.ManifestSha256, manifestSha,
-                    StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException(
-                    "扫码冻结时工程版本与已确认的工位工程不符；禁止按草稿执行。");
-        }
-
         // Only required production resources may authorize execution;
         // old inactive draft assets cannot widen its real dependency set.
         // The operator list and the physical preparation MUST resolve the
@@ -139,33 +121,14 @@ public static class ProductionPreparationService
             throw new InvalidDataException(
                 "该工程包含旧工位动作资源，请删除并将产品专属动作改为 TEST 步骤。");
 
-        // Formal production requires a published immutable FLASH profile;
-        // engineering verification remains entitled to its saved draft.
-        var native = requireProductionDeployment
-            ? await NativeFlashPublicationStore.LoadPublishedAsync(opened.RootDirectory, ct)
-                .ConfigureAwait(false)
-            : null;
-        var draft = requireProductionDeployment ? null :
-            await NativeFlashProfileStore.LoadAsync(opened.RootDirectory, ct)
-                .ConfigureAwait(false);
-        if (native is null && draft is null)
-            throw new InvalidDataException(requireProductionDeployment
-                ? "本型号工程缺少已确认用于生产的原生 FLASH 工艺。"
-                : "该型号工程尚未保存烧录配置。");
-        var profile = native?.Profile ?? draft!.Profile;
-        var profileSha = native?.ProfileSha256 ?? draft!.ProfileSha256;
+        var draft = await NativeFlashProfileStore.LoadAsync(opened.RootDirectory, ct)
+            .ConfigureAwait(false)
+            ?? throw new InvalidDataException("当前工程没有保存原生 FLASH 配置。");
+        var profile = draft.Profile;
+        var profileSha = draft.ProfileSha256;
         var frozenJob = await Task.Run(() =>
-            native is not null
-                ? NativeFlashPublicationStore.FreezePublished(opened.RootDirectory, native)
-                : NativeFlashJobBuilder.Freeze(profile, opened.RootDirectory),
+            NativeFlashJobBuilder.Freeze(profile, opened.RootDirectory),
             ct).ConfigureAwait(false);
-        if (deployed is not null &&
-            (!string.Equals(deployed.Pin.NativeProfileSha256, profileSha,
-                StringComparison.OrdinalIgnoreCase) ||
-             !string.Equals(deployed.Pin.FlashJobFingerprint, frozenJob.Fingerprint,
-                StringComparison.OrdinalIgnoreCase)))
-            throw new InvalidDataException(
-                "当前 FLASH 工艺或固件与已确认的生产版本不同；必须重新核对并确认。");
         var pinned = string.Join("\n",
             "AUTOTEST-PRODUCTION-PREPARE-V2",
             recognitionMarker, fullBarcode, actual.Id.Value.ToString("D"), manifestSha,

@@ -96,25 +96,9 @@ public sealed class AutomaticTestPlanService
                 var project = new OpenProjectContext(definition, full,
                     Convert.ToHexString(SHA256.HashData(after)));
                 AutomaticTestResourceSnapshot test;
-                if (requireProductionDeployment)
-                {
-                    // Only the single project that was explicitly checked and
-                    // frozen for this station is visible as a production plan.
-                    // Never auto-promote an engineer's autosaved draft.
-                    var deployed = await StationDeploymentStore.RestoreAsync(ct)
-                        ?? throw new InvalidDataException(
-                            "本工位尚未确认正式检测工程；请在“开发与调试 → 检测准备 → 运行前检查”中确认当前工程。");
-                    if (!string.Equals(deployed.Project.ManifestPath, project.ManifestPath,
-                            StringComparison.OrdinalIgnoreCase) ||
-                        !string.Equals(deployed.Project.ManifestSha256, project.ManifestSha256,
-                            StringComparison.OrdinalIgnoreCase))
-                        throw new InvalidDataException(
-                            "本工位已确认的工程与当前工程不一致；请在开发与调试中重新核对并确认。");
-                    project = deployed.Project;
-                    test = deployed.Test;
-                }
-                else
-                    test = await AutomaticTestResourceContract.ResolveAsync(project, ct);
+                // The installed package is already complete; there is no
+                // additional station deployment choosing a TEST plan.
+                test = await AutomaticTestResourceContract.ResolveAsync(project, ct);
                 Current = Map(project, test);
                 ConfiguredPath = full;
                 Issue = string.Join("；", test.Issues.Take(4));

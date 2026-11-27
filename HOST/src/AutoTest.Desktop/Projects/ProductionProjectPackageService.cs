@@ -44,24 +44,17 @@ public static class ProductionProjectPackageService
         var root = Path.GetDirectoryName(manifestPath)!;
         var project = await ProjectRepository.OpenDefinitionAsync(manifestPath, ct);
         await ProjectBundleContractAudit.ValidateAsync(project, manifestPath, ct);
-        var flash = await NativeFlashPublicationStore.LoadPublishedAsync(root, ct)
-            ?? throw new InvalidDataException("工程缺少已保存并确认的烧录配置。");
-        var job = NativeFlashPublicationStore.FreezePublished(root, flash);
         var draft = await NativeFlashProfileStore.LoadAsync(root, ct)
-            ?? throw new InvalidDataException("工程烧录配置不存在。");
-        // Export must not quietly mix an edited draft with another approved job.
-        if (draft.ProfileSha256 != flash.ProfileSha256)
-            throw new InvalidDataException("烧录配置已修改，请重新检查并确认后导出。");
+            ?? throw new InvalidDataException("工程尚未保存原生 FLASH 参数。");
+        var job = NativeFlashJobBuilder.Freeze(draft.Profile, root);
 
         var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             ProjectManifestName,
-            NativeFlashProfileStore.RelativeProfilePath,
-            NativeFlashPublicationStore.CurrentRelativePath,
-            "assets/flash/published/" + flash.ProfileSha256 + ".profile.json"
+            NativeFlashProfileStore.RelativeProfilePath
         };
         foreach (var item in project.Assets) paths.Add(item.RelativePath.Replace('\\', '/'));
-        paths.Add(flash.Profile.FirmwareRelativePath
+        paths.Add(draft.Profile.FirmwareRelativePath
             ?? throw new InvalidDataException("缺少工程固件资源。"));
         // SafetyFile is embedded in AutoTest itself, not another asset selected
         // for each ECU project or included in the production engineering bundle.
@@ -209,9 +202,9 @@ public static class ProductionProjectPackageService
                 throw new InvalidDataException("工程包资源已损坏：" + file.RelativePath);
         }
         await ProjectBundleContractAudit.ValidateAsync(definition, manifestPath, ct);
-        var flash = await NativeFlashPublicationStore.LoadPublishedAsync(root, ct)
-            ?? throw new InvalidDataException("工程包缺少烧录配置。");
-        var job = NativeFlashPublicationStore.FreezePublished(root, flash);
+        var profile = await NativeFlashProfileStore.LoadAsync(root, ct)
+            ?? throw new InvalidDataException("工程包缺少原生 FLASH 配置。");
+        var job = NativeFlashJobBuilder.Freeze(profile.Profile, root);
         if (job.Fingerprint != expected.FlashJobFingerprint)
             throw new InvalidDataException("工程包烧录版本不一致。");
     }
