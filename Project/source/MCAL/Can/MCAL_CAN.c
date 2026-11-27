@@ -23,6 +23,12 @@
 #define MCAL_CAN_RX_MB_LAST   7U
 #define MCAL_CAN_TX_MB_MAX    2U
 
+/* The SDK defines kFLEXCAN_TxMbDataOrRemote=0xC in fsl_flexcan.c only
+ * (private to that translation unit). Mirror the hardware CODE value here
+ * for read-only TX mailbox busy inspection; do not depend on private symbols.
+ */
+#define MCAL_CAN_TX_MB_ACTIVE_CODE  0xCU
+
 static CAN_Type * const s_canBase[] = {
     CAN0,   /* MCAL_CAN_CH0 */
     CAN1,   /* MCAL_CAN_CH1 */
@@ -176,7 +182,7 @@ MCAL_CAN_RetType MCAL_CAN_SetBaudrate(MCAL_CAN_ChannelType channel, MCAL_CAN_Bau
     for (i = 0U; i < s_txMbCount[channel]; i++)
     {
         if ((base->MB[s_txMb[channel][i]].CS & CAN_CS_CODE_MASK) ==
-            CAN_CS_CODE(kFLEXCAN_TxMbDataOrRemote))
+            CAN_CS_CODE(MCAL_CAN_TX_MB_ACTIVE_CODE))
             return MCAL_CAN_BUSY;
     }
 
