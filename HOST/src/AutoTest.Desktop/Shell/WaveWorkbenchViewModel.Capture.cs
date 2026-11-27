@@ -65,6 +65,7 @@ public sealed partial class WaveWorkbenchViewModel
     public DelegateCommand StartCaptureCommand { get; private set; } = null!;
     public DelegateCommand StopCaptureCommand { get; private set; } = null!;
     public DelegateCommand SaveReferenceCommand { get; private set; } = null!;
+    public DelegateCommand SaveStandardCommand { get; private set; } = null!;
 
     public MappingChoice? SelectedSignal
     {
@@ -176,6 +177,10 @@ public sealed partial class WaveWorkbenchViewModel
             () => !_closed && !IsCapturing && !_savingReference && _series is not null &&
                 Selected is { IsReference: false, Kind: "Capture" } &&
                 !string.IsNullOrWhiteSpace(ReferenceName));
+        SaveStandardCommand = new DelegateCommand(async () => await SaveStandardAsync(),
+            () => !_closed && !IsCapturing && !_savingReference &&
+                SelectedSession is not null && _sessionSeries.Count > 0 &&
+                !string.IsNullOrWhiteSpace(ReferenceName));
         ReloadAvailableSignals();
     }
 
@@ -197,6 +202,7 @@ public sealed partial class WaveWorkbenchViewModel
         StartCaptureCommand?.RaiseCanExecuteChanged();
         StopCaptureCommand?.RaiseCanExecuteChanged();
         SaveReferenceCommand?.RaiseCanExecuteChanged();
+        SaveStandardCommand?.RaiseCanExecuteChanged();
     }
 
     private async Task ConnectToolUsbAsync()
@@ -521,6 +527,43 @@ public sealed partial class WaveWorkbenchViewModel
         {
             IsCapturing = false;
             _captureGate.Release();
+        }
+    }
+
+    private async Task SaveStandardAsync()
+    {
+        if (_closed || IsCapturing || _savingReference ||
+            SelectedSession is null || _sessionSeries.Count == 0 ||
+            string.IsNullOrWhiteSpace(ReferenceName) || WaveSourceRoot is null) return;
+        var selected = SelectedSession;
+        var sources = _sessionSeries.ToArray();
+        var name = ReferenceName.Trim();
+        var root = WaveSourceRoot;
+        var identity = WaveSourceIdentity;
+        _savingReference = true;
+        SaveStandardCommand.RaiseCanExecuteChanged();
+        Status = "正在检查本次采集的信号与时间质量…";
+        try
+        {
+            var standard = await Task.Run(() =>
+                new WaveReferenceCatalog(Path.Combine(root, "references"))
+                    .SaveStandard(name, sources));
+            if (_closed || WaveSourceIdentity != identity) return;
+            Status = "已建立标准“" + standard.Name + "” · " +
+                standard.Channels.Count + " 路信号，原始采集保持不变。";
+            if (SelectedSession == selected && ReferenceName.Trim() == name)
+                ReferenceName = "";
+            Refresh();
+        }
+        catch (Exception error) when (error is IOException or InvalidDataException or
+            ArgumentException or UnauthorizedAccessException)
+        {
+            if (!_closed) Status = "建立标准失败：" + error.Message;
+        }
+        finally
+        {
+            _savingReference = false;
+            SaveStandardCommand.RaiseCanExecuteChanged();
         }
     }
 

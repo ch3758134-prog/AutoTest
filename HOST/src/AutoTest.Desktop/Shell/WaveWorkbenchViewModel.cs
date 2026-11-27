@@ -136,6 +136,7 @@ public sealed partial class WaveWorkbenchViewModel : BindableBase
     {
         RaisePropertyChanged(nameof(EmptyWaveMessage));
         SaveReferenceCommand?.RaiseCanExecuteChanged();
+        SaveStandardCommand?.RaiseCanExecuteChanged();
         ChartChanged?.Invoke();
     }
 
@@ -170,6 +171,7 @@ public sealed partial class WaveWorkbenchViewModel : BindableBase
         Captures.Clear();
         Comparisons.Clear();
         References.Clear();
+        Standards.Clear();
         Sessions.Clear();
         _sessionSeries.Clear();
         _selectedSession = null;
@@ -236,7 +238,8 @@ public sealed partial class WaveWorkbenchViewModel : BindableBase
                         reference.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm"),
                         reference.Reference.Asset.Id.Value, true, reference, "Reference"));
                 }
-                return (Items: items, Sessions: ReadSessionIndex(root));
+                return (Items: items, Sessions: ReadSessionIndex(root),
+                    Standards: catalog.ListStandards());
             }, stop.Token);
             if (_closed || stop.IsCancellationRequested || !ReferenceEquals(_refreshStop, stop) ||
                 WaveSourceIdentity != manifest) return;
@@ -248,6 +251,7 @@ public sealed partial class WaveWorkbenchViewModel : BindableBase
                 else if (item.Kind == "Comparison") Comparisons.Add(item);
             }
             foreach (var group in collected.Sessions) Sessions.Add(group);
+            foreach (var standard in collected.Standards) Standards.Add(standard);
             EmptyListMessage = Items.Count == 0
                 ? "此目录没有有效波形证据或参考记录。" : "";
             Status = Items.Count == 0

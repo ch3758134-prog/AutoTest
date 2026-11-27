@@ -159,6 +159,7 @@ public sealed partial class WaveWorkbenchViewModel
     public ObservableCollection<WaveItem> Comparisons { get; } = new();
     public ObservableCollection<WaveItem> Captures { get; } = new();
     public ObservableCollection<WaveReferenceEntry> References { get; } = new();
+    public ObservableCollection<WaveStandardGroup> Standards { get; } = new();
     public IReadOnlyList<WaveTimeChoice> WindowChoices { get; } =
     [new(0, "全范围"), new(5, "5 秒"), new(10, "10 秒"),
      new(30, "30 秒"), new(60, "60 秒"), new(120, "120 秒")];
@@ -219,11 +220,16 @@ public sealed partial class WaveWorkbenchViewModel
         get => _selectedSession;
         set
         {
-            if (SetProperty(ref _selectedSession, value) && value is not null)
+            if (SetProperty(ref _selectedSession, value))
             {
-                Selected = null;
-                IsLiveView = false;
-                _ = LoadSessionAsync(value);
+                _sessionSeries.Clear();
+                SaveStandardCommand?.RaiseCanExecuteChanged();
+                if (value is not null)
+                {
+                    Selected = null;
+                    IsLiveView = false;
+                    _ = LoadSessionAsync(value);
+                }
             }
         }
     }
@@ -407,7 +413,9 @@ public sealed partial class WaveWorkbenchViewModel
             _series = null;
             _points = Array.Empty<WaveChartPoint>();
             Info = session.Title + " · 共享真实时间轴 · " + actual.Length + " 条信号";
-            Status = "已打开多信号历史记录。参考建立请在左侧选择其中一条原始证据。";
+            Status = "已打开 " + actual.Length +
+                " 路同次采集；可在“标准波形”中建立多信号标准。";
+            SaveStandardCommand?.RaiseCanExecuteChanged();
             NotifyChartChanged();
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or ArgumentException)
