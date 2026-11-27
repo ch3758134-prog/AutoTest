@@ -1,178 +1,142 @@
 <Window x:Class="AutoTest.Desktop.Shell.ProductionProjectLibraryWindow"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- Title="生产工程管理" Width="1110" Height="790" MinWidth="860" MinHeight="560"
- WindowStartupLocation="CenterOwner" Background="#F6F8FB" FontFamily="Microsoft YaHei"
- FontSize="13" Foreground="#263D52">
+ Title="生产工程管理" Width="1020" Height="740" MinWidth="780" MinHeight="550"
+ WindowStartupLocation="CenterOwner" FontFamily="Microsoft YaHei" FontSize="13"
+ Background="#F6F8FB" Foreground="#263D52">
  <Window.Resources>
   <Style TargetType="Button">
-   <Setter Property="Padding" Value="11,7"/>
-   <Setter Property="MinHeight" Value="32"/>
-   <Setter Property="Margin" Value="0,0,8,0"/>
+   <Setter Property="Padding" Value="12,7"/>
+   <Setter Property="MinHeight" Value="34"/>
+   <Setter Property="Margin" Value="0,0,9,0"/>
+   <Setter Property="MinWidth" Value="72"/>
   </Style>
   <Style x:Key="Panel" TargetType="Border">
    <Setter Property="Background" Value="White"/>
-   <Setter Property="BorderBrush" Value="#DAE3EB"/>
+   <Setter Property="BorderBrush" Value="#DCE5ED"/>
    <Setter Property="BorderThickness" Value="1"/>
-   <Setter Property="CornerRadius" Value="8"/>
-   <Setter Property="Padding" Value="15"/>
+   <Setter Property="CornerRadius" Value="9"/>
+   <Setter Property="Padding" Value="16"/>
+   <Setter Property="Margin" Value="0,0,0,12"/>
+  </Style>
+  <Style x:Key="Section" TargetType="TextBlock">
+   <Setter Property="FontWeight" Value="SemiBold"/>
+   <Setter Property="FontSize" Value="16"/>
    <Setter Property="Margin" Value="0,0,0,11"/>
   </Style>
-  <Style x:Key="SectionLabel" TargetType="TextBlock">
-   <Setter Property="FontSize" Value="16"/>
-   <Setter Property="FontWeight" Value="SemiBold"/>
-   <Setter Property="Margin" Value="0,0,0,10"/>
-  </Style>
   <Style TargetType="TextBox">
-   <Setter Property="Padding" Value="8,6"/>
-   <Setter Property="Margin" Value="0,0,9,8"/>
+   <Setter Property="Padding" Value="9,7"/>
+   <Setter Property="MinHeight" Value="34"/>
+   <Setter Property="Margin" Value="0,0,10,0"/>
   </Style>
  </Window.Resources>
- <Grid Margin="18,15,18,12">
+ <Grid Margin="18">
   <Grid.RowDefinitions>
    <RowDefinition Height="Auto"/>
    <RowDefinition Height="Auto"/>
    <RowDefinition Height="*"/>
    <RowDefinition Height="Auto"/>
   </Grid.RowDefinitions>
-  <DockPanel Margin="0,0,0,14">
-   <Button DockPanel.Dock="Right" Content="关闭" Click="Close_Click"
+  <DockPanel Margin="0,0,0,15">
+   <Button Content="关闭" DockPanel.Dock="Right" Click="Close_Click"
     Margin="8,0,0,0"/>
    <StackPanel>
-    <TextBlock Text="生产工程管理" FontSize="22" FontWeight="SemiBold"/>
-    <TextBlock Text="导入已完成的检测工程，并设置扫码编号与工程的对应关系。"
-     FontSize="12" Foreground="#62778A" Margin="0,4,0,0"/>
+    <TextBlock Text="生产工程管理" FontSize="21" FontWeight="SemiBold"/>
+    <TextBlock Text="导入完整检测工程，设置扫码标记。烧录和测试用例始终由工程自身决定。"
+     Foreground="#62788B" Margin="0,5,0,0" TextWrapping="Wrap"/>
    </StackPanel>
   </DockPanel>
-  <!-- Import and search are global catalog actions, never scrolled away. -->
-  <Border Grid.Row="1" Background="White" BorderBrush="#DAE3EB"
-   BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,10">
-   <DockPanel LastChildFill="False">
-    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
-     VerticalAlignment="Center">
-     <Button Content="导入工程包…" Click="Import_Click" Background="#E6F0FA"
-      BorderBrush="#9ABFDF" FontWeight="SemiBold"/>
-     <Button x:Name="ExportButton" Content="导出当前工程…" Click="Export_Click"
-      ToolTip="仅在工程工作区使用，导出工程及所有生产依赖"/>
-     <Button Content="刷新" Click="Refresh_Click" Margin="0"/>
-    </StackPanel>
-    <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
-     DockPanel.Dock="Left">
-     <TextBlock Text="搜索工程" VerticalAlignment="Center" Margin="0,0,9,0"/>
-     <TextBox x:Name="SearchBox" Width="250" VerticalAlignment="Center"
-      Margin="0" TextChanged="SearchChanged"
-      ToolTip="按工程名称、修订或版本标识查找"/>
-    </StackPanel>
-   </DockPanel>
+
+  <Border Grid.Row="1" Style="{StaticResource Panel}">
+   <WrapPanel>
+    <TextBlock Text="查找工程" VerticalAlignment="Center" Margin="0,0,9,0"/>
+    <TextBox x:Name="SearchBox" Width="210" VerticalAlignment="Center"
+     TextChanged="SearchChanged" ToolTip="按工程名称、版本或工程指纹搜索"/>
+    <Button Content="导入工程包…" Click="Import_Click" Background="#E8F2FA"
+     BorderBrush="#A7C9E5" FontWeight="SemiBold"/>
+    <Button x:Name="ExportButton" Content="导出当前工程…" Click="Export_Click"
+     ToolTip="仅工程工作区可导出完整工程"/>
+    <Button Content="刷新" Click="Refresh_Click"/>
+   </WrapPanel>
   </Border>
+
   <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto"
    HorizontalScrollBarVisibility="Disabled">
    <StackPanel>
     <Border Style="{StaticResource Panel}">
      <StackPanel>
-      <TextBlock Text="已安装的工程" Style="{StaticResource SectionLabel}"/>
+      <TextBlock Text="已导入的工程版本" Style="{StaticResource Section}"/>
       <Grid>
-       <DataGrid x:Name="CatalogTable" Height="220" AutoGenerateColumns="False"
-        CanUserAddRows="False" IsReadOnly="True" HeadersVisibility="Column"
-        GridLinesVisibility="Horizontal" SelectionMode="Single"
-        ColumnHeaderHeight="34" RowHeight="39" HorizontalScrollBarVisibility="Auto"
+       <DataGrid x:Name="CatalogTable" Height="226" AutoGenerateColumns="False"
+        IsReadOnly="True" CanUserAddRows="False" SelectionMode="Single"
+        HeadersVisibility="Column" ColumnHeaderHeight="36" RowHeight="40"
+        HorizontalScrollBarVisibility="Auto"
         SelectionChanged="CatalogSelectionChanged">
-       <DataGrid.Columns>
-        <DataGridTextColumn Header="工程名称" Binding="{Binding ProjectName}" Width="2*"/>
-        <DataGridTextColumn Header="工程修订" Binding="{Binding ProjectRevision}" Width="95"/>
-        <DataGridTextColumn Header="导入时间" Binding="{Binding InstalledAtUtc}" Width="175"/>
-        <DataGridTextColumn Header="工程版本指纹" Binding="{Binding PackageSha256}" Width="*"/>
-       </DataGrid.Columns>
+        <DataGrid.Columns>
+         <DataGridTextColumn Header="工程名称" Binding="{Binding ProjectName}" Width="2*"/>
+         <DataGridTextColumn Header="修订" Binding="{Binding ProjectRevision}" Width="85"/>
+         <DataGridTextColumn Header="导入时间" Binding="{Binding InstalledAtUtc}" Width="175"/>
+         <DataGridTextColumn Header="版本标识（SHA-256）"
+          Binding="{Binding PackageSha256}" Width="*"/>
+        </DataGrid.Columns>
        </DataGrid>
        <TextBlock x:Name="EmptyCatalogHint"
-        Text="还没有安装检测工程。请先在“工程”中导出工程包，再点击上方“导入工程包…”添加。"
-        FontSize="14" Foreground="#60788C" TextWrapping="Wrap"
-        TextAlignment="Center" HorizontalAlignment="Center"
-        VerticalAlignment="Center" Margin="18,35,18,0"
-        IsHitTestVisible="False"/>
+        Text="这里还没有工程。点击上方“导入工程包…”添加。" FontSize="14"
+        Foreground="#617A8E" TextWrapping="Wrap" TextAlignment="Center"
+        HorizontalAlignment="Center" VerticalAlignment="Center"
+        Margin="16" IsHitTestVisible="False"/>
       </Grid>
-      <TextBlock x:Name="SelectedSummary" Text="选择一份已导入的工程版本。"
-       TextWrapping="Wrap" Foreground="#5B7184" Margin="0,9,0,0"/>
+      <TextBlock x:Name="SelectedSummary"
+       Text="选择一份工程，再为它设置扫码识别标记。" Foreground="#587389"
+       Margin="0,10,0,0" TextWrapping="Wrap"/>
      </StackPanel>
     </Border>
+
     <Border Style="{StaticResource Panel}">
      <StackPanel>
-      <TextBlock Text="扫码如何选择工程" Style="{StaticResource SectionLabel}"/>
-      <TextBlock Text="一个工位只有一个工程时，选择“单工程”。多工程时按条码字段或编号登记表匹配。"
-       Foreground="#60768B" TextWrapping="Wrap" Margin="0,0,0,9"/>
-      <WrapPanel>
-       <ComboBox x:Name="ModeBox" Width="270" Margin="0,0,10,8">
-        <ComboBoxItem Content="单工程 · 整串就是 ECU 编号"/>
-        <ComboBoxItem Content="多工程 · 条码包含产品识别码"/>
-        <ComboBoxItem Content="多工程 · 编号登记表"/>
-       </ComboBox>
-       <Button Content="保存识别方式" Click="SaveSettings_Click"/>
-       <Button Content="将选中工程设为单工程" Click="UseSingle_Click"/>
+      <TextBlock Text="扫码识别标记 → 检测工程" Style="{StaticResource Section}"/>
+      <TextBlock Text="例如 HYDEP-00001234：识别标记为 HYDEP，完整编号原样保存。相同标记只对应一份生效工程版本。"
+       TextWrapping="Wrap" Foreground="#61788D" Margin="0,0,0,13"/>
+      <WrapPanel Margin="0,0,0,10">
+       <TextBlock Text="固定标记" VerticalAlignment="Center" Margin="0,0,9,0"/>
+       <TextBox x:Name="MarkerInput" Width="170" ToolTip="例如 HYDEP，不用输入连字符"/>
+       <Button Content="关联到选中工程" Click="Bind_Click"
+        Background="#E8F2FA" BorderBrush="#A7C9E5"/>
+       <Button Content="删除选中的关联" Click="RemoveBinding_Click"/>
       </WrapPanel>
-      <Expander Header="多工程条码字段（需要时设置）" Margin="0,4,0,7">
-       <StackPanel Margin="0,10,0,0">
-        <WrapPanel>
-         <TextBlock Text="分隔符" Margin="0,6,6,0"/>
-         <TextBox x:Name="SeparatorInput" Width="50" Text="|"/>
-         <TextBlock Text="产品字段" Margin="0,6,6,0"/>
-         <TextBox x:Name="ProductFieldInput" Width="48" Text="1"/>
-         <TextBlock Text="编号字段" Margin="0,6,6,0"/>
-         <TextBox x:Name="SerialFieldInput" Width="48" Text="2"/>
-         <TextBlock Text="硬件字段（0=无）" Margin="0,6,6,0"/>
-         <TextBox x:Name="HardwareFieldInput" Width="48" Text="0"/>
-        </WrapPanel>
-        <TextBlock Text="示例：EPB-A|000123；如编号不含产品信息，请使用编号登记表。"
-         Foreground="#667B8F" FontSize="12"/>
-       </StackPanel>
-      </Expander>
-      <TextBlock Text="把产品识别码关联到选中的工程版本" FontWeight="SemiBold"
-       Margin="0,6,0,9"/>
-      <WrapPanel>
-       <TextBox x:Name="ProductKeyInput" Width="170" ToolTip="例如 EPB-A"/>
-       <TextBox x:Name="HardwareInput" Width="130" ToolTip="硬件版本，可不填"/>
-       <Button Content="保存工程关联" Click="Bind_Click"/>
-      </WrapPanel>
-      <Button Content="删除选中的关联" Click="RemoveBinding_Click"
-       HorizontalAlignment="Left" Margin="0,0,0,8"/>
-      <DataGrid x:Name="BindingsTable" Height="115" AutoGenerateColumns="False"
-       CanUserAddRows="False" IsReadOnly="True" HeadersVisibility="Column">
+      <DataGrid x:Name="BindingsTable" Height="135" AutoGenerateColumns="False"
+       IsReadOnly="True" CanUserAddRows="False"
+       HeadersVisibility="Column" RowHeight="36" ColumnHeaderHeight="34"
+       HorizontalScrollBarVisibility="Auto" SelectionMode="Single">
        <DataGrid.Columns>
-        <DataGridTextColumn Header="产品识别码" Binding="{Binding Product}" Width="160"/>
-        <DataGridTextColumn Header="硬件版本" Binding="{Binding Hardware}" Width="120"/>
-        <DataGridTextColumn Header="对应工程版本" Binding="{Binding Version}" Width="*"/>
+        <DataGridTextColumn Header="识别标记" Binding="{Binding Marker}" Width="155"/>
+        <DataGridTextColumn Header="对应工程" Binding="{Binding ProjectName}" Width="*"/>
+        <DataGridTextColumn Header="工程修订" Binding="{Binding ProjectRevision}" Width="95"/>
+        <DataGridTextColumn Header="关联版本" Binding="{Binding Revision}" Width="90"/>
        </DataGrid.Columns>
       </DataGrid>
-      <Expander Header="仅编号的归属登记（按需使用）" Margin="0,10,0,0">
-       <StackPanel Margin="0,9,0,0">
-        <TextBlock Text="此编号应关联到上方填写的产品识别码与硬件版本。"
-         Foreground="#647A8D" Margin="0,0,0,8"/>
-        <WrapPanel>
-         <TextBox x:Name="SerialRegistryInput" Width="260"
-          ToolTip="ECU 唯一编号"/>
-         <Button Content="登记编号" Click="RegisterSerial_Click"/>
-         <Button Content="批量导入编号表…" Click="ImportRegistry_Click"/>
-        </WrapPanel>
-       </StackPanel>
-      </Expander>
      </StackPanel>
     </Border>
+
     <Border Style="{StaticResource Panel}">
      <StackPanel>
-      <TextBlock Text="检查扫码匹配" Style="{StaticResource SectionLabel}"/>
-      <WrapPanel>
+      <TextBlock Text="检查扫码匹配" Style="{StaticResource Section}"/>
+      <WrapPanel Margin="0,0,0,10">
        <TextBox x:Name="SampleBarcodeInput" Width="340"
-        ToolTip="输入编号，仅检查匹配，不向 ECU 发送任何指令"/>
-       <Button Content="测试匹配" Click="Preview_Click"/>
+        ToolTip="输入完整编号预览匹配，不会触发真实硬件"/>
+       <Button Content="检查匹配" Click="Preview_Click"/>
       </WrapPanel>
-      <TextBlock x:Name="PreviewResult" Text="输入编号以查看将选择哪份工程。"
-       TextWrapping="Wrap" Foreground="#345C79"/>
+      <TextBlock x:Name="PreviewResult"
+       Text="输入完整 ECU 编号，例如 HYDEP-00001234。" TextWrapping="Wrap"
+       Foreground="#315C79"/>
      </StackPanel>
     </Border>
    </StackPanel>
   </ScrollViewer>
-  <Border Grid.Row="3" Background="White" BorderBrush="#D7E3EC"
-   BorderThickness="1" CornerRadius="6" Padding="11" Margin="0,8,0,0">
-   <TextBlock x:Name="Status" Text="正在读取工程库…" TextWrapping="Wrap"
+
+  <Border Grid.Row="3" Background="White" BorderBrush="#DCE5ED"
+   BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,8,0,0">
+   <TextBlock x:Name="Status" Text="读取工程库…" TextWrapping="Wrap"
     Foreground="#365A76"/>
   </Border>
  </Grid>
