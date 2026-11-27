@@ -616,6 +616,8 @@ public partial class TestEditorView : UserControl
         menu.Items.Add(new Separator());
         Item("编辑步骤属性", _viewModel.EditParametersCommand);
         Item("复制步骤及子分支", _viewModel.DuplicateCommand);
+        if (target.Kind == StepTreeItemKind.Step)
+            Item("复制为公共流程…", _viewModel.CopyAsPublicFlowCommand);
         Item("复制到当前用例剪贴板（Ctrl+C）", _viewModel.CopyStepCommand);
         Item("粘贴到当前位置（Ctrl+V）", _viewModel.PasteStepCommand);
         Item("上移", _viewModel.MoveUpCommand);

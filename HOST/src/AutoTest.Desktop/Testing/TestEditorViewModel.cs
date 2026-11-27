@@ -129,6 +129,8 @@ public sealed class TestEditorViewModel : BindableBase
         ReloadCommand = new DelegateCommand(async () => await ReloadAsync(), () => !IsBusy);
         PreflightCommand = new DelegateCommand(PreflightOnly, () => !IsBusy);
         CopyStepCommand = new DelegateCommand(CopyToClipboard, () => CanEditSelectedStep);
+        CopyAsPublicFlowCommand = new DelegateCommand(
+            async () => await CopyAsPublicFlowAsync(), () => CanEditSelectedStep);
         PasteStepCommand = new DelegateCommand(PasteFromClipboard,
             () => !IsBusy && SelectedItem is not null && _clipboardStepId is not null);
         AddMappingCommand = new DelegateCommand(async () => await AddMappingAsync(), () => !IsBusy);
@@ -697,7 +699,60 @@ public sealed class TestEditorViewModel : BindableBase
     public DelegateCommand ReloadCommand { get; }
     public DelegateCommand PreflightCommand { get; }
     public DelegateCommand CopyStepCommand { get; }
+    public DelegateCommand CopyAsPublicFlowCommand { get; }
     public DelegateCommand PasteStepCommand { get; }
+    /// <summary>
+    /// Reuse an existing real TEST action by copying its validated step tree
+    /// into a reusable public flow. Source TEST remains unchanged: creating a
+    /// flow is never allowed to silently change the production execution
+    /// order. Users may explicitly insert CallPublicFlow afterwards.
+    /// </summary>
+    private async Task CopyAsPublicFlowAsync()
+    {
+        if (!CanEditSelectedStep || !CanProceed() || IsBusy ||
+            _selectedItem?.Step is not { } selected) return;
+        var savedStepId = selected.Id;
+        if (!await SaveForCloseAsync()) return;
+        var source = _transaction.Current.Walk().FirstOrDefault(x => x.Id == savedStepId);
+        if (source is null)
+        {
+            StatusMessage = "原步骤已变化，请重新选择后再复制为公共流程。";
+            return;
+        }
+        if (TestDocument.WalkNodes([source]).Any(x => x.Type == "CallPublicFlow"))
+        {
+            StatusMessage = "当前步骤包含其他公共流程调用；请先拆分调用，避免复制后形成未知循环引用。";
+            return;
+        }
+        var dialog = new ResourceNameDialog("复制为公共流程", source.Name + " · 公共流程");
+        if (global::System.Windows.Application.Current.MainWindow is { IsLoaded: true } owner)
+            dialog.Owner = owner;
+        if (dialog.ShowDialog() != true) return;
+        var flowName = dialog.ResourceName;
+        IsBusy = true;
+        try
+        {
+            var entry = await _workspace.CreatePublicFlowAsync(flowName);
+            var opened = await _workspace.OpenPublicFlowEditorAsync(entry.Id);
+            var flow = opened.Document with
+            {
+                Body = System.Collections.Immutable.ImmutableArray.Create(source.CloneNewIds()),
+                Mappings = _transaction.Current.Mappings
+            };
+            await _workspace.SavePublicFlowEditorAsync(opened, flow);
+            StatusMessage = "已创建公共流程“" + flowName + "”。" +
+                "原 TEST 步骤保留；需要复用时添加“调用公共流程”步骤。";
+        }
+        catch (Exception error) when (error is IOException or InvalidDataException or
+            UnauthorizedAccessException or ArgumentException or
+            ProjectDataException or FormatException or InvalidOperationException)
+        {
+            StatusMessage = "公共流程创建未完成：" + error.Message;
+            _dialogs.ShowError(StatusMessage);
+        }
+        finally { IsBusy = false; }
+    }
+
     private void CopyToClipboard()
     {
         if (_selectedItem?.Step is not { } step) return;
