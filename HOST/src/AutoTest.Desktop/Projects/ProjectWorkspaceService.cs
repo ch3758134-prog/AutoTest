@@ -49,7 +49,7 @@ public sealed partial class ProjectWorkspaceService
     /// </summary>
     private void NotifyCurrentChanged()
     {
-        var dispatcher = Application.Current?.Dispatcher;
+        var dispatcher = global::System.Windows.Application.Current?.Dispatcher;
         if (dispatcher is null || dispatcher.CheckAccess())
         {
             CurrentChanged?.Invoke(this, EventArgs.Empty);
