@@ -47,6 +47,7 @@ public sealed partial class ManualBenchViewModel
     private long _externalKeyEpoch;
     private ushort? _externalKeySequence;
     private bool _externalKeyRefreshBusy;
+    private int _externalKeyRefreshSerial;
     private string _externalKeyMonitorStatus = "USB 未连接";
     private string _lastExternalKeyEvent = "尚未收到实体 KEY 输入变化";
     public string ExternalKeyMonitorStatus
@@ -74,6 +75,8 @@ public sealed partial class ManualBenchViewModel
     {
         _externalKeyEpoch = epoch;
         _externalKeySequence = null;
+        _externalKeyRefreshSerial++; // Invalidate any old-connection async read.
+        _externalKeyRefreshBusy = false;
         Array.Fill(_externalKeyIdleBaseline, null);
         foreach (var key in ExternalKeyInputs) key.Reset();
         LastExternalKeyEvent = "尚未收到实体 KEY 输入变化";
@@ -91,6 +94,7 @@ public sealed partial class ManualBenchViewModel
         var epoch = _hardware.CurrentStationEpoch;
         if (epoch == 0) return;
         _externalKeyRefreshBusy = true;
+        int requestSerial = ++_externalKeyRefreshSerial;
         RefreshExternalKeyInputsCommand?.RaiseCanExecuteChanged();
         try
         {
@@ -127,8 +131,11 @@ public sealed partial class ManualBenchViewModel
         }
         finally
         {
-            _externalKeyRefreshBusy = false;
-            RefreshExternalKeyInputsCommand?.RaiseCanExecuteChanged();
+            if (requestSerial == _externalKeyRefreshSerial)
+            {
+                _externalKeyRefreshBusy = false;
+                RefreshExternalKeyInputsCommand?.RaiseCanExecuteChanged();
+            }
         }
     }
 
