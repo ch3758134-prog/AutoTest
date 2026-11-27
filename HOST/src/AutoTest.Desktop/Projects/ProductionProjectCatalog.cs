@@ -148,6 +148,46 @@ public sealed class ProductionProjectCatalog
         finally { _writeGate.Release(); }
     }
 
+    /// <summary>
+    /// Install the currently saved engineering project into an immutable local
+    /// production package without asking the operator to export and re-import a
+    /// file. The same strict bundle checks as external package import apply.
+    /// This does not bind a barcode marker or start any physical equipment.
+    /// </summary>
+    public async Task<InstalledProductionPackage> InstallEngineeringProjectAsync(
+        string manifestPath, CancellationToken ct = default)
+    {
+        // Keep the short-lived staging archive inside the station library,
+        // rather than exposing firmware/security assets in the user's temp folder.
+        var stageDirectory = Path.Combine(_root, ".staging");
+        Directory.CreateDirectory(stageDirectory);
+        var staged = Path.Combine(stageDirectory,
+            Guid.NewGuid().ToString("N") + ProductionProjectPackageService.Extension);
+        try
+        {
+            await ProductionProjectPackageService.ExportAsync(
+                manifestPath, staged, ct).ConfigureAwait(false);
+            return await ImportAsync(staged, ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            try
+            {
+                if (File.Exists(staged)) File.Delete(staged);
+            }
+            catch (IOException error)
+            {
+                System.Diagnostics.Trace.TraceWarning(
+                    "Temporary production package cleanup failed: " + error.Message);
+            }
+            catch (UnauthorizedAccessException error)
+            {
+                System.Diagnostics.Trace.TraceWarning(
+                    "Temporary production package cleanup denied: " + error.Message);
+            }
+        }
+    }
+
     public async Task<IReadOnlyList<ProductionMarkerBinding>> ListBindingsAsync(
         CancellationToken ct = default)
     {
