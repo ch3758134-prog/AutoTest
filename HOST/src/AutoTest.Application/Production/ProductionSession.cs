@@ -10,12 +10,18 @@ public enum ProductionState
     Failed, Aborted, Unknown
 }
 
-public sealed record ProductionConfiguration(string RecipeId, int RecipeVersion,
-    bool RequiresFlash, string ExpectedSupply, ImmutableArray<AssetRef> Assets);
+/// <summary>
+ /// One immutable imported project package owns its FLASH and ordered TEST.
+ /// The production station may select it, never assemble a separate recipe.
+ /// </summary>
+public sealed record ProductionProjectExecution(
+    ProjectId Project, ProjectRevision Revision,
+    RevisionFingerprint PackageFingerprint, bool RequiresFlash,
+    string ExpectedSupply, ImmutableArray<AssetRef> Assets);
 
 // Physical identity is locked to one attempt. A retry always creates a new RunId.
 public sealed record ProductionJobSnapshot(RunId Run, string DutIdentity, RawScan Scan,
-    ProductionConfiguration Configuration, RuleRevision RuleRevision,
+    ProductionProjectExecution ProjectExecution, RuleRevision RuleRevision,
     ProjectRevision ProjectRevision, StationId Station, bool IsMock);
 
 public sealed class ProductionSession
@@ -57,7 +63,7 @@ public sealed class ProductionSession
         }
     }
 
-    public OperationResult<ProductionJobSnapshot> Confirm(ProductionConfiguration configuration,
+    public OperationResult<ProductionJobSnapshot> Confirm(ProductionProjectExecution execution,
         RuleRevision ruleRevision, ProjectRevision projectRevision, StationId station, bool isMock)
     {
         lock (_sync)
@@ -65,11 +71,18 @@ public sealed class ProductionSession
             if (State != ProductionState.Matched || Match?.Allowed != true || CurrentScan is null ||
                 string.IsNullOrWhiteSpace(Match.DutIdentity))
                 return OperationResult<ProductionJobSnapshot>.Rejected("SESSION_NOT_MATCHED", "No valid candidate.");
-            if (configuration.Assets.IsDefaultOrEmpty ||
-                !configuration.Assets.SequenceEqual(Match.MatchedAssets))
-                return OperationResult<ProductionJobSnapshot>.Rejected("CONFIG_SNAPSHOT_MISMATCH", "Assets changed after matching.");
+            if (execution.Project.Value == Guid.Empty ||
+                execution.Revision.Value <= 0 ||
+                execution.Revision != projectRevision ||
+                execution.PackageFingerprint.Sha256 is not { Length: 64 })
+                return OperationResult<ProductionJobSnapshot>.Rejected(
+                    "PROJECT_VERSION_INVALID", "Installed project version is not frozen.");
+            if (execution.Assets.IsDefaultOrEmpty ||
+                !execution.Assets.SequenceEqual(Match.MatchedAssets))
+                return OperationResult<ProductionJobSnapshot>.Rejected(
+                    "PROJECT_ASSET_SNAPSHOT_MISMATCH", "Project assets changed after matching.");
             Job = new ProductionJobSnapshot(RunId.New(), Match.DutIdentity, CurrentScan,
-                configuration, ruleRevision, projectRevision, station, isMock);
+                execution, ruleRevision, projectRevision, station, isMock);
             State = ProductionState.Ready;
             return OperationResult<ProductionJobSnapshot>.Accepted(Job);
         }
