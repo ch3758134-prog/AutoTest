@@ -778,7 +778,8 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
             await using (var projectScope = await _operatorEngine.OpenProjectSessionAsync(
                 programs.OrderedExecutions().Select(x => x.Program).ToArray(),
                 _operatorRunId, scan.RawBarcode, ct,
-                productionRun: formalProduction))
+                productionRun: formalProduction,
+                scannerRuleSha256: formalProduction ? scan.RuleSha256 : null))
             {
             AddOperatorEvent("连续整组 TEST 会话：按工程顺序执行全部用例，周期 CAN 跨用例保持。");
             for (var i = 0; i < programs.Cases.Count; i++)

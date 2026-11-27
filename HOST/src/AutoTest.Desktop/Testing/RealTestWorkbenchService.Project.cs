@@ -56,8 +56,12 @@ public sealed partial class RealTestWorkbenchService
     public async Task<ProjectExecutionSession> OpenProjectSessionAsync(
         IReadOnlyList<TestDocument> orderedCases, Guid projectRunId,
         string dutIdentity, CancellationToken ct = default,
-        bool allowOrderedSubset = false, bool productionRun = false)
+        bool allowOrderedSubset = false, bool productionRun = false,
+        string? scannerRuleSha256 = null)
     {
+        if (productionRun && (scannerRuleSha256 is not { Length: 64 } ||
+            !scannerRuleSha256.All(Uri.IsHexDigit)))
+            throw new ArgumentException("正式生产必须使用本次真实扫码的规则指纹。");
         if (projectRunId == Guid.Empty || orderedCases.Count == 0 ||
             !allowOrderedSubset && string.IsNullOrWhiteSpace(dutIdentity))
             throw new ArgumentException("整组运行需要项目运行号、DUT 编号和有序 TEST 用例。");
@@ -113,7 +117,7 @@ public sealed partial class RealTestWorkbenchService
                 SHA256.HashData(Encoding.UTF8.GetBytes(grantMaterial)));
             var session = new ProjectExecutionSession(this, actions, project,
                 projectRunId, dutIdentity, epoch, fingerprint, pinned,
-                allowOrderedSubset, productionRun);
+                allowOrderedSubset, productionRun, scannerRuleSha256);
             pending = session;
             // Durable parent receipt before the first physical TEST write.
             await session.PersistAsync("PREPARED", CancellationToken.None);
@@ -159,6 +163,7 @@ public sealed partial class RealTestWorkbenchService
         private readonly (TestDocumentId Id, string Sha)[] _pinnedCases;
         private readonly bool _allowOrderedSubset;
         public bool IsProduction { get; }
+        public string? ScannerRuleSha256 { get; }
         private readonly List<ProjectCaseReceipt> _cases = new();
         private readonly SemaphoreSlim _persistGate = new(1, 1);
         private readonly RealRunEvidenceRecorder _projectTimeline;
@@ -195,13 +200,14 @@ public sealed partial class RealTestWorkbenchService
             ConfiguredStationActionPort actions, OpenProjectContext project,
             Guid projectRunId, string dut, long epoch, string fingerprint,
             IReadOnlyList<(TestDocumentId Id, string Sha)> pinnedCases,
-            bool allowOrderedSubset, bool productionRun)
+            bool allowOrderedSubset, bool productionRun, string? scannerRuleSha256)
         {
             if (productionRun && allowOrderedSubset)
                 throw new ArgumentException("正式生产必须运行完整有序 TEST 项目。");
             _owner = owner; Actions = actions; _project = project;
             _allowOrderedSubset = allowOrderedSubset;
             IsProduction = productionRun;
+            ScannerRuleSha256 = scannerRuleSha256;
             ProjectRunId = projectRunId; _dut = dut; _stationEpoch = epoch;
             ScopeFingerprint = fingerprint; _pinnedCases = pinnedCases.ToArray();
             _projectTimeline = new RealRunEvidenceRecorder(owner._hardware, owner._signals);
@@ -353,7 +359,8 @@ public sealed partial class RealTestWorkbenchService
                         : _allowOrderedSubset
                             ? "ENGINEERING_CONTINUOUS_SELECTED_SUBSET"
                             : "ENGINEERING_CONTINUOUS_PROJECT",
-                    ProjectRunId, DutSerial = _dut, StationEpoch = _stationEpoch,
+                    ProjectRunId, DutSerial = _dut,
+                    ScannerRuleSha256, StationEpoch = _stationEpoch,
                     ProjectId = _project.Definition.Id.Value,
                     _project.ManifestSha256, ScopeFingerprint, State = state,
                     CompletedCases = _next, PlannedCases = _pinnedCases.Length,

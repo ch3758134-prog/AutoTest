@@ -146,7 +146,8 @@ public sealed partial class RealTestWorkbenchService
                 "test-records", "artifacts"));
             var reports = new RunReportExporter(db, artifacts);
             var record = FreezeActualRunIdentity(project, plan.Fingerprint, dutIdentity,
-                isolatedStep, projectSession?.IsProduction == true);
+                isolatedStep, projectSession?.IsProduction == true,
+                projectSession?.ScannerRuleSha256);
             var capture = new RecordedRealRunEvidenceFinalizer(evidence, writer,
                 artifacts, project.RootDirectory);
             var session = new RealTestRecordSession(record, writer, reports, capture);
@@ -212,7 +213,7 @@ public sealed partial class RealTestWorkbenchService
 
     private RunRecord FreezeActualRunIdentity(OpenProjectContext project,
         string planFingerprint, string dutIdentity, bool isolatedStep,
-        bool productionRun)
+        bool productionRun, string? scannerRuleSha256)
     {
         var assets = project.Definition.Assets.Select(a => a.ToReference())
             .ToImmutableArray();
@@ -245,9 +246,9 @@ public sealed partial class RealTestWorkbenchService
                 RevisionFingerprint.FromBytes("R1_DIAGNOSTIC_NO_DUT_BINDING"u8).Sha256,
                 "UNBOUND_DIAGNOSTIC_NOT_A_REAL_DUT_ID")
             : new SessionIdentity(dutIdentity,
-                RevisionFingerprint.FromBytes(productionRun
-                    ? "R1_PRODUCTION_FIXED_MARKER_SCANNER_V1"u8
-                    : "R1_DEV_TYPED_IDENTITY_RULE_V1"u8).Sha256,
+                productionRun && scannerRuleSha256 is not null
+                    ? scannerRuleSha256
+                    : RevisionFingerprint.FromBytes("R1_DEV_TYPED_IDENTITY_RULE_V1"u8).Sha256,
                 productionRun ? "REAL_SERIAL_SCANNER_PROJECT_MATCH"
                     : "OPERATOR_OR_KEYBOARD_WEDGE_UNVERIFIED");
         var location = typeof(RealTestWorkbenchService).Assembly.Location;
