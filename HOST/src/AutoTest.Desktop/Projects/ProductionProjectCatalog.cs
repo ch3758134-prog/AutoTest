@@ -1,42 +1,22 @@
 using System.IO;
 using System.Text.Json;
-using System.Text.RegularExpressions;
-using Microsoft.Data.Sqlite;
+using AutoTest.Application.Production;
 using AutoTest.Projects.Project;
+using Microsoft.Data.Sqlite;
 
 namespace AutoTest.Desktop.Projects;
 
-public sealed record ProductionRoutingSettings(
-    string Mode, string Separator, int ProductField, int SerialField, int HardwareField)
-{
-    public const string Single = "Single";
-    public const string Fields = "Fields";
-    public const string Registry = "Registry";
-
-    public static ProductionRoutingSettings Default => new(Single, "|", 1, 2, 0);
-
-    public void Validate()
-    {
-        if (Mode is not (Single or Fields or Registry) ||
-            string.IsNullOrEmpty(Separator) || Separator.Length > 4 ||
-            Separator.Any(char.IsControl) ||
-            ProductField is < 1 or > 32 || SerialField is < 1 or > 32 ||
-            HardwareField is < 0 or > 32 ||
-            (Mode == Fields && (ProductField == SerialField ||
-                HardwareField > 0 && (HardwareField == ProductField ||
-                    HardwareField == SerialField))))
-            throw new InvalidDataException("扫码字段设置无效，请检查分隔符和字段位置。");
-    }
-}
-
 public sealed record ProductionCatalogRoute(
-    bool Accepted, string Code, string Message, string Raw, string Serial,
-    string ProductKey, string Hardware, InstalledProductionPackage? Package);
+    bool Accepted, string Code, string Message, string FullBarcode,
+    string Marker, InstalledProductionPackage? Package, int RuleRevision);
+
+public sealed record ProductionMarkerBinding(string Marker, string PackageSha256,
+    int Revision);
 
 /// <summary>
-/// Offline multi-project catalog. Importing a package does not authorize any
-/// physical test. Only explicitly bound, unambiguous routes can select a
-/// version; the current station and hardware remain separate concerns.
+/// Production alone owns installed package selection and one exact leading
+/// barcode marker -> one active package version. No TEST/FLASH authoring,
+/// per-serial registry, station fixture selection, or barcode parsing modes.
 /// </summary>
 public sealed class ProductionProjectCatalog
 {
@@ -59,13 +39,17 @@ public sealed class ProductionProjectCatalog
     private async Task<SqliteConnection> ConnectAsync(CancellationToken ct)
     {
         Directory.CreateDirectory(_root);
-        var connection = new SqliteConnection(
-            new SqliteConnectionStringBuilder { DataSource = DatabasePath }.ToString());
-        await connection.OpenAsync(ct);
+        var db = new SqliteConnection(
+            new SqliteConnectionStringBuilder
+            {
+                DataSource = DatabasePath,
+                Mode = SqliteOpenMode.ReadWriteCreate
+            }.ToString());
+        await db.OpenAsync(ct);
         try
         {
-            using var command = connection.CreateCommand();
-            command.CommandText = """
+            using var cmd = db.CreateCommand();
+            cmd.CommandText = """
                 PRAGMA foreign_keys = ON;
                 CREATE TABLE IF NOT EXISTS packages(
                     package_sha TEXT PRIMARY KEY,
@@ -77,30 +61,22 @@ public sealed class ProductionProjectCatalog
                 );
                 CREATE INDEX IF NOT EXISTS ix_packages_project
                     ON packages(project_id,revision);
-                CREATE TABLE IF NOT EXISTS routes(
-                    product_key TEXT NOT NULL,
-                    hardware TEXT NOT NULL,
+                CREATE TABLE IF NOT EXISTS marker_routes(
+                    marker TEXT PRIMARY KEY,
                     package_sha TEXT NOT NULL REFERENCES packages(package_sha),
-                    PRIMARY KEY(product_key,hardware)
+                    revision INTEGER NOT NULL CHECK(revision > 0)
                 );
-                CREATE TABLE IF NOT EXISTS serial_registry(
-                    serial TEXT PRIMARY KEY,
-                    product_key TEXT NOT NULL,
-                    hardware TEXT NOT NULL
-                );
-                CREATE TABLE IF NOT EXISTS settings(
-                    id INTEGER PRIMARY KEY CHECK (id = 1),
-                    mode TEXT NOT NULL,
-                    separator TEXT NOT NULL,
-                    product_field INTEGER NOT NULL,
-                    serial_field INTEGER NOT NULL,
-                    hardware_field INTEGER NOT NULL
-                );
+                -- Remove discarded R1 identity schemes. Old mappings cannot
+                -- silently select an ECU programming package.
+                DROP TABLE IF EXISTS routes;
+                DROP TABLE IF EXISTS serial_registry;
+                DROP TABLE IF EXISTS settings;
+                PRAGMA user_version = 3;
                 """;
-            await command.ExecuteNonQueryAsync(ct);
-            return connection;
+            await cmd.ExecuteNonQueryAsync(ct);
+            return db;
         }
-        catch { await connection.DisposeAsync(); throw; }
+        catch { await db.DisposeAsync(); throw; }
     }
 
     public async Task<IReadOnlyList<InstalledProductionPackage>> ListAsync(
@@ -108,11 +84,13 @@ public sealed class ProductionProjectCatalog
     {
         await using var db = await ConnectAsync(ct);
         using var cmd = db.CreateCommand();
-        cmd.CommandText = "SELECT package_sha,project_id,project_name,revision,manifest_path,installed_at " +
-                          "FROM packages ORDER BY project_name,revision DESC,installed_at DESC";
+        cmd.CommandText = """
+            SELECT package_sha,project_id,project_name,revision,manifest_path,installed_at
+            FROM packages ORDER BY project_name,revision DESC,installed_at DESC
+            """;
         var items = new List<InstalledProductionPackage>();
-        await using var reader = await cmd.ExecuteReaderAsync(ct);
-        while (await reader.ReadAsync(ct)) items.Add(ReadPackage(reader));
+        await using var rd = await cmd.ExecuteReaderAsync(ct);
+        while (await rd.ReadAsync(ct)) items.Add(ReadPackage(rd));
         return items;
     }
 
@@ -122,15 +100,15 @@ public sealed class ProductionProjectCatalog
         await _writeGate.WaitAsync(ct);
         try
         {
-            // Complete validation and immutable install occur before catalog
-            // registration. A failed import cannot select a partial package.
+            // Package integrity and complete TEST/FLASH closure are validated
+            // before it becomes an eligible production version.
             var installed = await ProductionProjectPackageService.InstallAsync(
                 archivePath, PackagesRoot, ct);
             await using var db = await ConnectAsync(ct);
             using var cmd = db.CreateCommand();
             cmd.CommandText = """
                 INSERT OR IGNORE INTO packages
-                 (package_sha,project_id,project_name,revision,manifest_path,installed_at)
+                  (package_sha,project_id,project_name,revision,manifest_path,installed_at)
                 VALUES ($sha,$id,$name,$revision,$manifest,$at)
                 """;
             cmd.Parameters.AddWithValue("$sha", installed.PackageSha256);
@@ -145,213 +123,63 @@ public sealed class ProductionProjectCatalog
         finally { _writeGate.Release(); }
     }
 
-    public async Task<ProductionRoutingSettings> GetSettingsAsync(
+    public async Task<IReadOnlyList<ProductionMarkerBinding>> ListBindingsAsync(
         CancellationToken ct = default)
-    {
-        await using var db = await ConnectAsync(ct);
-        return await ReadSettingsAsync(db, ct);
-    }
-
-    public async Task SaveSettingsAsync(ProductionRoutingSettings settings,
-        CancellationToken ct = default)
-    {
-        settings.Validate();
-        await _writeGate.WaitAsync(ct);
-        try
-        {
-            await using var db = await ConnectAsync(ct);
-            using var cmd = db.CreateCommand();
-            cmd.CommandText = """
-                INSERT INTO settings(id,mode,separator,product_field,serial_field,hardware_field)
-                VALUES (1,$mode,$sep,$product,$serial,$hardware)
-                ON CONFLICT(id) DO UPDATE SET
-                mode=excluded.mode,separator=excluded.separator,
-                product_field=excluded.product_field,serial_field=excluded.serial_field,
-                hardware_field=excluded.hardware_field
-                """;
-            cmd.Parameters.AddWithValue("$mode", settings.Mode);
-            cmd.Parameters.AddWithValue("$sep", settings.Separator);
-            cmd.Parameters.AddWithValue("$product", settings.ProductField);
-            cmd.Parameters.AddWithValue("$serial", settings.SerialField);
-            cmd.Parameters.AddWithValue("$hardware", settings.HardwareField);
-            await cmd.ExecuteNonQueryAsync(ct);
-        }
-        finally { _writeGate.Release(); }
-    }
-
-    public async Task BindAsync(string productKey, string hardware,
-        string packageSha, CancellationToken ct = default)
-    {
-        var product = NormalizeProduct(productKey);
-        var hw = NormalizeHardware(hardware);
-        if (!ValidHash(packageSha)) throw new InvalidDataException("请选择已导入的工程版本。");
-        await _writeGate.WaitAsync(ct);
-        try
-        {
-            await using var db = await ConnectAsync(ct);
-            using var cmd = db.CreateCommand();
-            cmd.CommandText = """
-                INSERT INTO routes(product_key,hardware,package_sha)
-                VALUES($product,$hardware,$sha)
-                ON CONFLICT(product_key,hardware) DO UPDATE
-                    SET package_sha=excluded.package_sha
-                """;
-            cmd.Parameters.AddWithValue("$product", product);
-            cmd.Parameters.AddWithValue("$hardware", hw);
-            cmd.Parameters.AddWithValue("$sha", packageSha);
-            try { await cmd.ExecuteNonQueryAsync(ct); }
-            catch (SqliteException error) when (error.SqliteErrorCode == 19)
-            { throw new InvalidDataException("请选择工程库中已安装的版本。", error); }
-        }
-        finally { _writeGate.Release(); }
-    }
-
-    public async Task<IReadOnlyList<(string Product, string Hardware, string PackageSha)>>
-        ListBindingsAsync(CancellationToken ct = default)
     {
         await using var db = await ConnectAsync(ct);
         using var cmd = db.CreateCommand();
-        cmd.CommandText = "SELECT product_key,hardware,package_sha FROM routes ORDER BY product_key,hardware";
-        var rows = new List<(string, string, string)>();
-        await using var reader = await cmd.ExecuteReaderAsync(ct);
-        while (await reader.ReadAsync(ct))
-            rows.Add((reader.GetString(0), reader.GetString(1), reader.GetString(2)));
-        return rows;
-    }
-
-    public async Task SetRegistryIdentityAsync(
-        string serial, string productKey, string hardware = "",
-        CancellationToken ct = default)
-    {
-        ValidateSerial(serial);
-        var product = NormalizeProduct(productKey);
-        var hw = NormalizeHardware(hardware);
-        await _writeGate.WaitAsync(ct);
-        try
-        {
-            await using var db = await ConnectAsync(ct);
-            using var cmd = db.CreateCommand();
-            cmd.CommandText = """
-                INSERT INTO serial_registry(serial,product_key,hardware)
-                VALUES($serial,$product,$hardware)
-                ON CONFLICT(serial) DO NOTHING
-                """;
-            cmd.Parameters.AddWithValue("$serial", serial);
-            cmd.Parameters.AddWithValue("$product", product);
-            cmd.Parameters.AddWithValue("$hardware", hw);
-            if (await cmd.ExecuteNonQueryAsync(ct) == 0)
-            {
-                using var verify = db.CreateCommand();
-                verify.CommandText = "SELECT product_key,hardware FROM serial_registry WHERE serial=$serial";
-                verify.Parameters.AddWithValue("$serial", serial);
-                await using var existing = await verify.ExecuteReaderAsync(ct);
-                if (!await existing.ReadAsync(ct) ||
-                    existing.GetString(0) != product || existing.GetString(1) != hw)
-                    throw new InvalidDataException(
-                        "该 ECU 编号已有其他产品归属，未覆盖原登记。");
-            }
-        }
-        finally { _writeGate.Release(); }
+        cmd.CommandText =
+            "SELECT marker,package_sha,revision FROM marker_routes ORDER BY marker";
+        var items = new List<ProductionMarkerBinding>();
+        await using var rd = await cmd.ExecuteReaderAsync(ct);
+        while (await rd.ReadAsync(ct))
+            items.Add(new(rd.GetString(0), rd.GetString(1), rd.GetInt32(2)));
+        return items;
     }
 
     /// <summary>
-    /// Transactional offline registry import for serial-only labels. A
-    /// duplicate number with conflicting ownership rejects the whole file.
-    /// UTF-8 CSV: Serial,ProductKey,Hardware (the third column is optional).
-    /// No imported row can silently replace an existing product identity.
+    /// Administrator explicitly binds one marker to an immutable installed
+    /// package version. Binding the same marker to a new version invalidates
+    /// existing pending barcode observations (via caller's change event).
     /// </summary>
-    public async Task<int> ImportRegistryCsvAsync(
-        string csvPath, CancellationToken ct = default)
+    public async Task BindMarkerAsync(string marker, string packageSha,
+        CancellationToken ct = default)
     {
-        var info = new FileInfo(csvPath);
-        if (!info.Exists || info.Length is <= 0 or > 16L * 1024 * 1024)
-            throw new InvalidDataException("编号表文件不存在或超过 16 MB。");
-        var rows = new List<(string Serial, string Product, string Hardware)>();
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-        using (var input = new StreamReader(csvPath,
-            new System.Text.UTF8Encoding(false, true),
-            detectEncodingFromByteOrderMarks: true))
-        {
-            var lineNumber = 0;
-            string? line;
-            while ((line = await input.ReadLineAsync(ct)) is not null)
-            {
-                lineNumber++;
-                if (lineNumber > 200001)
-                    throw new InvalidDataException("编号表超过 20 万行。");
-                if (string.IsNullOrWhiteSpace(line)) continue;
-                var cells = line.Split(',');
-                if (cells.Length is < 2 or > 3)
-                    throw new InvalidDataException("编号表第 " + lineNumber +
-                        " 行应包含编号、产品识别码和可选的硬件版本。");
-                if (lineNumber == 1 && cells[0].Trim() is
-                    "Serial" or "serial" or "唯一编号" or "ECU编号")
-                    continue;
-                var serial = cells[0].Trim();
-                try { ValidateSerial(serial); }
-                catch (InvalidDataException error)
-                { throw new InvalidDataException("第 " + lineNumber + " 行：" + error.Message); }
-                var product = NormalizeProduct(cells[1]);
-                var hw = NormalizeHardware(cells.Length == 3 ? cells[2] : "");
-                if (!seen.Add(serial))
-                    throw new InvalidDataException("编号表出现重复编号：" + serial);
-                rows.Add((serial, product, hw));
-            }
-        }
-        if (rows.Count == 0)
-            throw new InvalidDataException("编号表没有有效的归属记录。");
+        var normalized = FixedMarkerBarcode.NormalizeMarker(marker);
+        if (!ValidHash(packageSha))
+            throw new InvalidDataException("请选择已经导入的检测工程版本。");
         await _writeGate.WaitAsync(ct);
         try
         {
             await using var db = await ConnectAsync(ct);
-            await using var transaction = await db.BeginTransactionAsync(ct);
             using var cmd = db.CreateCommand();
-            cmd.Transaction = (SqliteTransaction)transaction;
             cmd.CommandText = """
-                INSERT INTO serial_registry(serial,product_key,hardware)
-                VALUES ($serial,$product,$hardware)
-                ON CONFLICT(serial) DO NOTHING
+                INSERT INTO marker_routes(marker,package_sha,revision)
+                VALUES($marker,$sha,1)
+                ON CONFLICT(marker) DO UPDATE SET
+                    package_sha=excluded.package_sha,
+                    revision=marker_routes.revision+1
                 """;
-            var sn = cmd.Parameters.Add("$serial", SqliteType.Text);
-            var pk = cmd.Parameters.Add("$product", SqliteType.Text);
-            var hw = cmd.Parameters.Add("$hardware", SqliteType.Text);
-            using var existing = db.CreateCommand();
-            existing.Transaction = (SqliteTransaction)transaction;
-            existing.CommandText =
-                "SELECT product_key,hardware FROM serial_registry WHERE serial=$serial";
-            var existingSerial = existing.Parameters.Add("$serial", SqliteType.Text);
-            foreach (var row in rows)
-            {
-                ct.ThrowIfCancellationRequested();
-                sn.Value = row.Serial;
-                pk.Value = row.Product;
-                hw.Value = row.Hardware;
-                if (await cmd.ExecuteNonQueryAsync(ct) != 0) continue;
-                existingSerial.Value = row.Serial;
-                await using var reader = await existing.ExecuteReaderAsync(ct);
-                if (!await reader.ReadAsync(ct) ||
-                    reader.GetString(0) != row.Product ||
-                    reader.GetString(1) != row.Hardware)
-                    throw new InvalidDataException(
-                        "编号 " + row.Serial + " 已归属其他产品，导入已取消。");
-            }
-            await transaction.CommitAsync(ct);
-            return rows.Count;
+            cmd.Parameters.AddWithValue("$marker", normalized);
+            cmd.Parameters.AddWithValue("$sha", packageSha);
+            try { await cmd.ExecuteNonQueryAsync(ct); }
+            catch (SqliteException error) when (error.SqliteErrorCode == 19)
+            { throw new InvalidDataException("工程版本不在已安装工程库中。", error); }
         }
         finally { _writeGate.Release(); }
     }
 
-    public async Task RemoveBindingAsync(string productKey, string hardware,
+    public async Task RemoveMarkerAsync(string marker,
         CancellationToken ct = default)
     {
+        var normalized = FixedMarkerBarcode.NormalizeMarker(marker);
         await _writeGate.WaitAsync(ct);
         try
         {
             await using var db = await ConnectAsync(ct);
             using var cmd = db.CreateCommand();
-            cmd.CommandText = "DELETE FROM routes WHERE product_key=$product AND hardware=$hardware";
-            cmd.Parameters.AddWithValue("$product", NormalizeProduct(productKey));
-            cmd.Parameters.AddWithValue("$hardware", NormalizeHardware(hardware));
+            cmd.CommandText = "DELETE FROM marker_routes WHERE marker=$marker";
+            cmd.Parameters.AddWithValue("$marker", normalized);
             await cmd.ExecuteNonQueryAsync(ct);
         }
         finally { _writeGate.Release(); }
@@ -361,105 +189,39 @@ public sealed class ProductionProjectCatalog
         string raw, CancellationToken ct = default)
     {
         ProductionCatalogRoute Reject(string code, string message) =>
-            new(false, code, message, raw, "", "", "", null);
-        if (string.IsNullOrEmpty(raw) || raw.Length > 256 ||
-            raw != raw.Trim() || raw.Any(char.IsControl))
-            return Reject("SCAN_INVALID", "编号为空、过长或含有不可见字符。");
+            new(false, code, message, raw ?? "", "", null, 0);
+
+        if (!FixedMarkerBarcode.TryParse(raw, out var barcode, out var failure) ||
+            barcode is null)
+            return Reject("BARCODE_INVALID", failure);
+
         await using var db = await ConnectAsync(ct);
-        var settings = await ReadSettingsAsync(db, ct);
-        settings.Validate();
-
-        string serial, product, hardware;
-        if (settings.Mode == ProductionRoutingSettings.Single)
-        {
-            serial = raw; product = ""; hardware = "";
-            using var count = db.CreateCommand();
-            count.CommandText = """
-                SELECT p.package_sha,p.project_id,p.project_name,p.revision,
-                    p.manifest_path,p.installed_at
-                FROM routes r JOIN packages p ON r.package_sha=p.package_sha
-                WHERE r.product_key='SINGLE' AND r.hardware=''
-                """;
-            var packages = new List<InstalledProductionPackage>();
-            await using (var reader = await count.ExecuteReaderAsync(ct))
-                while (await reader.ReadAsync(ct)) packages.Add(ReadPackage(reader));
-            if (packages.Count == 0)
-            {
-                // When exactly one package is installed, no setup step is
-                // needed. Once multiple versions exist, select explicitly.
-                using var only = db.CreateCommand();
-                only.CommandText = """
-                    SELECT package_sha,project_id,project_name,revision,
-                        manifest_path,installed_at FROM packages
-                    """;
-                await using var reader = await only.ExecuteReaderAsync(ct);
-                while (await reader.ReadAsync(ct)) packages.Add(ReadPackage(reader));
-            }
-            if (packages.Count != 1)
-                return Reject("SINGLE_NOT_UNIQUE",
-                    "请在工程管理中指定唯一一份当前检测工程。");
-            try { ValidateSerial(serial); }
-            catch (InvalidDataException) { return Reject("SERIAL_INVALID", "ECU 编号格式无效。"); }
-            return new(true, "MATCHED", "已找到对应工程。", raw,
-                serial, "", "", packages[0]);
-        }
-
-        if (settings.Mode == ProductionRoutingSettings.Fields)
-        {
-            var fields = raw.Split([settings.Separator], StringSplitOptions.None);
-            if (fields.Length < Math.Max(settings.ProductField,
-                    Math.Max(settings.SerialField, settings.HardwareField)))
-                return Reject("FIELDS_MISSING", "扫码内容缺少已设置的识别字段。");
-            serial = fields[settings.SerialField - 1];
-            product = fields[settings.ProductField - 1];
-            hardware = settings.HardwareField == 0 ? "" : fields[settings.HardwareField - 1];
-        }
-        else
-        {
-            serial = raw;
-            using var lookup = db.CreateCommand();
-            lookup.CommandText = "SELECT product_key,hardware FROM serial_registry WHERE serial=$serial";
-            lookup.Parameters.AddWithValue("$serial", serial);
-            await using var rd = await lookup.ExecuteReaderAsync(ct);
-            if (!await rd.ReadAsync(ct))
-                return Reject("SERIAL_UNREGISTERED",
-                    "此编号尚未登记产品归属，请检查编号表。");
-            product = rd.GetString(0);
-            hardware = rd.GetString(1);
-        }
-        try
-        {
-            ValidateSerial(serial);
-            product = NormalizeProduct(product);
-            hardware = NormalizeHardware(hardware);
-        }
-        catch (InvalidDataException)
-        { return Reject("FIELDS_INVALID", "扫码编号或产品识别字段格式无效。"); }
-
         using var cmd = db.CreateCommand();
         cmd.CommandText = """
             SELECT p.package_sha,p.project_id,p.project_name,p.revision,
-                p.manifest_path,p.installed_at
-            FROM routes r JOIN packages p ON r.package_sha=p.package_sha
-            WHERE r.product_key=$product AND r.hardware=$hardware
+                   p.manifest_path,p.installed_at,r.revision
+            FROM marker_routes r
+            INNER JOIN packages p ON p.package_sha=r.package_sha
+            WHERE r.marker=$marker
             """;
-        cmd.Parameters.AddWithValue("$product", product);
-        cmd.Parameters.AddWithValue("$hardware", hardware);
-        var matches = new List<InstalledProductionPackage>();
-        await using (var reader = await cmd.ExecuteReaderAsync(ct))
-            while (await reader.ReadAsync(ct)) matches.Add(ReadPackage(reader));
-        if (matches.Count != 1)
-            return Reject("PROJECT_NOT_MAPPED",
-                "未找到与此编号对应的检测工程，请检查工程关联。");
-        return new(true, "MATCHED", "已找到对应工程。", raw,
-            serial, product, hardware, matches[0]);
+        cmd.Parameters.AddWithValue("$marker", barcode.Marker);
+        await using var rd = await cmd.ExecuteReaderAsync(ct);
+        if (!await rd.ReadAsync(ct))
+            return Reject("MARKER_UNBOUND",
+                "识别标记 " + barcode.Marker + " 尚未关联检测工程。");
+        var selected = ReadPackage(rd);
+        var revision = rd.GetInt32(6);
+        // Database unique marker constraint makes ambiguous resolution
+        // impossible; do not order or guess among two active versions.
+        if (await rd.ReadAsync(ct))
+            return Reject("ROUTE_AMBIGUOUS", "同一识别标记关联多个检测工程，已拒绝运行。");
+        return new(true, "MATCHED", "已匹配检测工程。",
+            barcode.FullBarcode, barcode.Marker, selected, revision);
     }
 
     public async Task VerifySelectionAsync(
         InstalledProductionPackage selection, CancellationToken ct = default)
     {
-        // Data in the index is not executable authority. Reload and compare
-        // the version files immediately before adopting a new production scope.
         var dir = Path.GetFullPath(Path.GetDirectoryName(selection.ManifestPath)!);
         ProjectPathPolicy.ValidateInsideRoot(PackagesRoot, dir);
         if (!string.Equals(Path.GetFileName(Path.GetDirectoryName(dir)),
@@ -467,9 +229,9 @@ public sealed class ProductionProjectCatalog
             !string.Equals(Path.GetFileName(selection.ManifestPath),
                 ProductionProjectPackageService.ProjectManifestName,
                 StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException("工程库安装目录与身份不匹配。");
-        var metadataPath = Path.Combine(dir, ProductionProjectPackageService.MetadataEntry);
-        var bytes = await File.ReadAllBytesAsync(metadataPath, ct);
+            throw new InvalidDataException("工程库安装目录与工程身份不匹配。");
+        var metadata = Path.Combine(dir, ProductionProjectPackageService.MetadataEntry);
+        var bytes = await File.ReadAllBytesAsync(metadata, ct);
         var header = JsonSerializer.Deserialize<ProductionPackageManifest>(bytes, _json)
             ?? throw new InvalidDataException("已安装工程包信息无效。");
         if (header.ProjectId != selection.ProjectId ||
@@ -479,48 +241,13 @@ public sealed class ProductionProjectCatalog
         await ProductionProjectPackageService.ValidateInstalledAsync(dir, header, ct);
     }
 
-    private static async Task<ProductionRoutingSettings> ReadSettingsAsync(
-        SqliteConnection db, CancellationToken ct)
-    {
-        using var cmd = db.CreateCommand();
-        cmd.CommandText = "SELECT mode,separator,product_field,serial_field,hardware_field " +
-                          "FROM settings WHERE id=1";
-        await using var reader = await cmd.ExecuteReaderAsync(ct);
-        if (!await reader.ReadAsync(ct)) return ProductionRoutingSettings.Default;
-        return new(reader.GetString(0), reader.GetString(1), reader.GetInt32(2),
-            reader.GetInt32(3), reader.GetInt32(4));
-    }
-
-    private static InstalledProductionPackage ReadPackage(System.Data.Common.DbDataReader reader) =>
-        new(Guid.Parse(reader.GetString(1)), reader.GetString(2),
-            reader.GetInt32(3), reader.GetString(0), reader.GetString(4),
-            DateTimeOffset.Parse(reader.GetString(5),
+    private static InstalledProductionPackage ReadPackage(
+        System.Data.Common.DbDataReader rd) =>
+        new(Guid.Parse(rd.GetString(1)), rd.GetString(2),
+            rd.GetInt32(3), rd.GetString(0), rd.GetString(4),
+            DateTimeOffset.Parse(rd.GetString(5),
                 System.Globalization.CultureInfo.InvariantCulture));
 
-    private static string NormalizeProduct(string value)
-    {
-        var key = (value ?? "").Trim().ToUpperInvariant();
-        if (!Regex.IsMatch(key, @"\A[A-Z0-9_-]{1,64}\z",
-                RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)))
-            throw new InvalidDataException("产品识别码只能包含字母、数字、- 和 _。");
-        return key;
-    }
-
-    private static string NormalizeHardware(string value)
-    {
-        var code = (value ?? "").Trim().ToUpperInvariant();
-        if (code.Length != 0 && !Regex.IsMatch(code, @"\A[A-Z0-9_.-]{1,64}\z",
-                RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)))
-            throw new InvalidDataException("硬件版本格式不正确。");
-        return code;
-    }
-
-    private static void ValidateSerial(string value)
-    {
-        if (!Regex.IsMatch(value ?? "", @"\A[A-Za-z0-9][A-Za-z0-9_.-]{0,63}\z",
-                RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)))
-            throw new InvalidDataException("ECU 唯一编号格式无效。");
-    }
     private static bool ValidHash(string? hash) =>
         hash is { Length: 64 } && hash.All(Uri.IsHexDigit);
 }
