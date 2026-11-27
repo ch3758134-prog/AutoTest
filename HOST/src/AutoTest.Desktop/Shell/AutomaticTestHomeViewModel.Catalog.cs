@@ -89,14 +89,11 @@ public sealed partial class AutomaticTestHomeViewModel
                 var saved = StationScannerDeviceBinding.Load();
                 return saved is null ? null : StationScannerDeviceBinding.Match(saved);
             });
-            if (device is null || !string.Equals(device.PortName, port,
+            // A real connected COM scanner is sufficient: a prior manually
+            // saved PnP binding is optional and does not grant execution rights.
+            if (device is not null && !string.Equals(device.PortName, port,
                     StringComparison.OrdinalIgnoreCase))
-            {
-                _scanStatus += " 当前扫码枪尚未绑定到工位，请检查设备设置。";
-                _scanAlertRequired = true;
-                Notify();
-                return;
-            }
+                device = null;
             var prepared = await ProductionPreparationService.PrepareAsync(
                 plan.Project, routed.Marker, routed.FullBarcode,
                 requireProductionDeployment: true);
@@ -145,10 +142,10 @@ public sealed partial class AutomaticTestHomeViewModel
                     FrozenScanSource.ProductionFixedMarker, serialized, ruleHash,
                     routed.Marker, routed.RuleRevision,
                     routed.Package.PackageSha256, station.Fixture.StationSlotId,
-                    device.PnpInstanceId, "")
+                    device?.PnpInstanceId ?? "", FingerprintEngineeringFixture(station.Fixture))
             };
             _scanStatus = "ECU 编号：" + routed.FullBarcode + " · 工程：" +
-                routed.Package.ProjectName + "。等待工位启动条件。";
+                routed.Package.ProjectName + "。可以开始检测。";
             _scanAlertRequired = false;
             Notify();
         }

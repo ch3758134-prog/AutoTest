@@ -248,6 +248,9 @@ public sealed partial class MainWindowViewModel
                 await StationDeploymentStore.DeployAsync(context);
             await _automaticTestPlans.RestoreAsync(context,
                 requireProductionDeployment: true);
+            // All real TEST, DBC, WAVE and CAN services share this single
+            // active project context; a scan selects that very project.
+            await _workspace.OpenAsync(context.ManifestPath);
             if (_automaticTestPlans.Current is null)
                 throw new InvalidDataException(_automaticTestPlans.Issue);
         }

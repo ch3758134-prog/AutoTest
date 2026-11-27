@@ -25,6 +25,8 @@ public sealed partial class AutomaticTestHomeViewModel
     private RealTestWorkbenchService _operatorEngine = null!;
     private CancellationTokenSource? _operatorStop;
     private bool _operatorRunning;
+    private int _startRequestInFlight;
+    private string _productionVerdict = "等待检测结果";
     private string _operatorRunState = "尚未开始工程整组验证";
     private string _operatorCurrentCase = "—";
     private string _operatorCurrentStep = "—";
@@ -147,14 +149,18 @@ public sealed partial class AutomaticTestHomeViewModel
     }
 
     public bool CanStartOperatorVerification =>
-        !_operatorRunning && !_busy &&
-        !_isProductionWorkspace() && _engineeringVerificationArmed &&
+        !_operatorRunning && !_busy && Volatile.Read(ref _startRequestInFlight) == 0 &&
+        (_isProductionWorkspace() || _engineeringVerificationArmed) &&
         _plans.Current is { ResourceReady: true } &&
         _prepared?.AcceptedScannerObservation is { } scan &&
         !string.IsNullOrWhiteSpace(scan.RawBarcode) &&
-        _scanner.IsConnected &&
-        _hardware.IsConnected && _hardware.IsEcuCanBitrateApplied &&
+        scan.Source == (_isProductionWorkspace()
+            ? FrozenScanSource.ProductionFixedMarker : FrozenScanSource.EngineeringRaw) &&
+        _scanner.IsConnected && _hardware.IsConnected &&
+        _hardware.IsEcuCanBitrateApplied &&
+        _hardware.ConfirmedEcuCanBitrateKbps == _prepared.EcuCanKbps &&
         _engineering.Current?.ManifestPath == _plans.Current.Project.ManifestPath &&
+        _acceptedStationEpoch == _hardware.CurrentStationEpoch &&
         !_operatorEngine.IsRunning;
 
     private void InitializeOperatorExecution(RealTestWorkbenchService engine)
@@ -166,8 +172,18 @@ public sealed partial class AutomaticTestHomeViewModel
         StartOperatorVerificationCommand = new DelegateCommand(
             async () =>
             {
-                _operatorExecutionTask = StartOperatorVerificationAsync();
-                await _operatorExecutionTask;
+                if (Interlocked.CompareExchange(ref _startRequestInFlight, 1, 0) != 0)
+                    return;
+                try
+                {
+                    _operatorExecutionTask = StartOperatorVerificationAsync();
+                    await _operatorExecutionTask;
+                }
+                finally
+                {
+                    Interlocked.Exchange(ref _startRequestInFlight, 0);
+                    RefreshOperatorCommands();
+                }
             },
             () => CanStartOperatorVerification);
         StopOperatorVerificationCommand = new DelegateCommand(() =>
@@ -323,7 +339,8 @@ public sealed partial class AutomaticTestHomeViewModel
 
     private static void SaveOperatorReceipt(string root, RealOperatorRunReceipt receipt)
     {
-        var folder = Path.Combine(root, "test-records", "operator-verifications");
+        var folder = Path.Combine(root, "test-records",
+            receipt.Mode == "PRODUCTION" ? "inspections" : "operator-verifications");
         Directory.CreateDirectory(folder);
         var file = Path.Combine(folder, receipt.VerificationId.ToString("N") + ".json");
         var temp = file + "." + Guid.NewGuid().ToString("N") + ".tmp";
@@ -354,7 +371,8 @@ public sealed partial class AutomaticTestHomeViewModel
     private static string SaveOperatorHtmlReceipt(
         string root, RealOperatorRunReceipt receipt)
     {
-        var folder = Path.Combine(root, "test-records", "operator-verifications");
+        var folder = Path.Combine(root, "test-records",
+            receipt.Mode == "PRODUCTION" ? "inspections" : "operator-verifications");
         Directory.CreateDirectory(folder);
         var path = Path.Combine(folder, receipt.VerificationId.ToString("N") + ".html");
         Func<string, string> e = value =>
@@ -363,7 +381,7 @@ public sealed partial class AutomaticTestHomeViewModel
         html.Append("""
 <!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AutoTest 工程验证报告</title>
+<title>AutoTest ECU 检测报告</title>
 <style>
 body{font:14px/1.65 "Microsoft YaHei","Segoe UI",sans-serif;margin:0;background:#f5f7f9;color:#22384b}
 main{max-width:1050px;margin:30px auto;padding:28px 34px;background:white;border:1px solid #dfe8ef;border-radius:12px}
@@ -379,8 +397,13 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
 """);
         void Pair(string label, string value) => html.Append("<dt>")
             .Append(e(label)).Append("</dt><dd>").Append(e(value)).Append("</dd>");
+        if (receipt.Mode == "PRODUCTION")
+            html.Replace("ECU 整组工程验证报告", "ECU 出厂检测报告")
+                .Replace("非正式生产记录。</strong> 本报告仅汇总真实工程验证事实，不构成出厂 PASS 或工位放行许可；没有实测的数据不作推断。",
+                    "正式检测记录。</strong> 结果基于真实 FLASH、TEST 和归档事实，机械安全由实际工位设施独立保证。");
         html.Append("<h2>本台 ECU 与运行事实</h2><dl>");
-        Pair("工程验证 ID", receipt.VerificationId.ToString("D"));
+        Pair(receipt.Mode == "PRODUCTION" ? "检测 ID" : "工程验证 ID",
+            receipt.VerificationId.ToString("D"));
         Pair("ECU 编号", receipt.DutSerial);
         Pair("开始 UTC", receipt.StartedUtc.ToString("O"));
         Pair("结束 UTC", receipt.EndedUtc?.ToString("O") ?? "尚未结束");
@@ -439,13 +462,16 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
     private async Task StartOperatorVerificationAsync()
     {
         if (!CanStartOperatorVerification || _prepared?.AcceptedScannerObservation is not { } scan ||
-            _plans.Current is not { } plan || _engineering.Current is not { } opened)
+            _plans.Current is not { } plan || _engineering.Current is not { } opened ||
+            !string.Equals(opened.ManifestPath, plan.Project.ManifestPath,
+                StringComparison.OrdinalIgnoreCase))
         {
             StartRequestStatus = "暂不能开始测试，请检查工程、设备连接和 ECU 编号。";
             return;
         }
-        // Engineering verification uses the saved station device setup;
-        // formal production has a separate physical START gate.
+        // One real fixture/FLASH/TEST cycle; the selected scan source determines
+        // whether its report belongs to production or engineering diagnostics.
+        var formalProduction = _isProductionWorkspace();
         StationFixtureExecutionPlan fixturePlan;
         try
         {
@@ -473,7 +499,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
               "压紧后等待 ECU CAN 通信就绪反馈；这不是机械位置传感器。";
         // One operation-specific confirmation. The physical interlocks,
         // project identity checks and execution authority are unchanged.
-        if (MessageBox.Show(
+        if (!formalProduction && MessageBox.Show(
                 "ECU 编号：" + scan.RawBarcode + "\n" +
                 "测试用例：" + plan.Cases.Count + " 项\n" +
                 "夹具：" + fixtureDescription + "\n\n" +
@@ -561,7 +587,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
         int activeCaseIndex = -1;
 
         RealOperatorRunReceipt CurrentReceipt() => new(
-                _operatorRunId, "ENGINEERING_VERIFICATION_NOT_PRODUCTION_RELEASE",
+                _operatorRunId, formalProduction ? "PRODUCTION" : "ENGINEERING_VERIFICATION",
                 started, outcome == "执行中" ? null : DateTimeOffset.UtcNow,
                 scan.RawBarcode, scan.ObservationId, scan.RuleSha256,
                 scan.ScannerPort, opened.ManifestPath, frozen.PreparationFingerprint,
@@ -588,7 +614,9 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
             outcome = "执行中";
             Snapshot();
             OperatorRecordState = "已创建工程验证过程记录";
-            AddOperatorEvent("软件 START 已明确确认；本次结果不会作为生产放行");
+            AddOperatorEvent(formalProduction
+                ? "已接受本台 ECU 的软件 START，执行真实装夹、烧录及完整 TEST"
+                : "工程实测软件 START 已确认；本次不计入生产结果");
             // Engineering verification is tied only to the actual physical
             // scanner observation and the station fixture snapshot. Product
             // matching belongs exclusively to the production catalog.
@@ -596,7 +624,8 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
             currentDraft.Fixture.Validate();
             if (!string.Equals(FingerprintEngineeringFixture(currentDraft.Fixture),
                     scan.EngineeringFixtureSha256, StringComparison.OrdinalIgnoreCase) ||
-                scan.Source != FrozenScanSource.EngineeringRaw ||
+                scan.Source != (formalProduction
+                    ? FrozenScanSource.ProductionFixedMarker : FrozenScanSource.EngineeringRaw) ||
                 !string.Equals(scan.RawBarcode, _lastObservedBarcode,
                     StringComparison.Ordinal) ||
                 frozen.ProjectId != plan.Project.Definition.Id.Value)
@@ -619,12 +648,11 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
                     throw new InvalidDataException(
                         "本次扫码来源的物理 USB 扫码枪已变化，不能沿用旧冻结身份。");
             }
-            // Only this engineer-only, explicitly armed software verification
-            // may deliberately use the saved draft rather than a published
-            // production release. Production preflight defaults to published.
+            // Production uses the same physical execution with the installed
+            // project snapshot; engineering uses its current saved draft.
             var validated = await ProductionPreparationService.PrepareAsync(
                 plan.Project, scan.RecognitionMarker, scan.RawBarcode, ct,
-                requireProductionDeployment: false);
+                requireProductionDeployment: formalProduction);
             if (!validated.ConfigurationReady ||
                 validated.Preparation?.PreparationFingerprint != frozen.PreparationFingerprint)
                 throw new InvalidDataException(
@@ -742,9 +770,11 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
             // All ordered invocations use one physical TEST scope and preserve
             // cross-case periodic CAN tasks; each case retains its own evidence.
             var anyFunctionalFail = false;
+            var hasFunctionalPass = false;
             await using (var projectScope = await _operatorEngine.OpenProjectSessionAsync(
                 programs.OrderedExecutions().Select(x => x.Program).ToArray(),
-                _operatorRunId, scan.RawBarcode, ct))
+                _operatorRunId, scan.RawBarcode, ct,
+                productionRun: formalProduction))
             {
             AddOperatorEvent("连续整组 TEST 会话：按工程顺序执行全部用例，周期 CAN 跨用例保持。");
             for (var i = 0; i < programs.Cases.Count; i++)
@@ -804,6 +834,8 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
                 Snapshot();
                 AddOperatorEvent("用例完成 · " + item.Entry.DisplayName +
                     " · " + run.Verdict + " · Record " + run.Run.Value.ToString("N")[..8]);
+                if (run.Verdict == RealTestVerdict.Passed)
+                    hasFunctionalPass = true;
                 if (run.Verdict == RealTestVerdict.Failed)
                 {
                     // A failed PREPARE gate or failed scripted CLEANUP is a
@@ -849,14 +881,19 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
                 AddOperatorEvent("项目周期 CAN · " + OperatorPeriodicStatus +
                     "（ACK 不是 ECU 接收证据）");
             }
+            if (formalProduction && !anyFunctionalFail && !hasFunctionalPass)
+                throw new InvalidDataException(
+                    "完整 TEST 没有任何已核实的功能判定，不能生成生产 PASS。");
             projectScope.MarkCompleted();
             } // One project-level disposal stops senders/revokes the fence.
             completedNormally = true;
             periodicSessionClosed = true;
             OperatorPeriodicStatus = "测试已结束，周期 CAN 发送已停止";
-            outcome = anyFunctionalFail
-                ? "工程整组完成 · 存在功能 FAIL（不构成生产放行）"
-                : "工程整组真实实测完成（不构成生产放行）";
+            outcome = formalProduction
+                ? anyFunctionalFail ? "生产检测 FAIL" : "生产检测 PASS"
+                : anyFunctionalFail
+                    ? "工程整组完成 · 存在功能 FAIL"
+                    : "工程整组真实实测完成";
             OperatorRunState = anyFunctionalFail
                 ? "测试完成 · 部分用例失败" : "测试完成";
             AddOperatorEvent(outcome);
@@ -966,11 +1003,17 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
                 jsonSaved = true;
                 var htmlReport = SaveOperatorHtmlReceipt(opened.RootDirectory, CurrentReceipt());
                 OperatorHtmlReportPath = htmlReport;
-                OperatorRecordState = "工程测试记录与报告已保存";
-                OperatorRunEvidence = "工程验证报告：" + htmlReport +
+                OperatorRecordState = formalProduction
+                    ? "生产检测记录与报告已保存" : "工程测试记录与报告已保存";
+                if (formalProduction)
+                    _productionVerdict = outcome == "生产检测 PASS" ? "PASS" :
+                        outcome == "生产检测 FAIL" ? "FAIL" : "检测未完成";
+                OperatorRunEvidence = (formalProduction
+                    ? "生产检测报告：" : "工程验证报告：") + htmlReport +
                     "\n真实原始记录：" +
                     Path.Combine(opened.RootDirectory, "test-records",
-                        "operator-verifications", _operatorRunId.ToString("N") + ".json");
+                        formalProduction ? "inspections" : "operator-verifications",
+                        _operatorRunId.ToString("N") + ".json");
             }
             catch (Exception error)
             {
@@ -980,12 +1023,14 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
                         error.Message;
                     OperatorRunEvidence = "原始 JSON：" +
                         Path.Combine(opened.RootDirectory, "test-records",
-                            "operator-verifications", _operatorRunId.ToString("N") + ".json");
+                            formalProduction ? "inspections" : "operator-verifications",
+                            _operatorRunId.ToString("N") + ".json");
                     AddOperatorEvent("工程报告生成失败；原始记录仍可查看：" + error.Message);
                 }
                 else
                 {
                     OperatorRunState = "记录保存失败；结果不可放行";
+                    if (formalProduction) _productionVerdict = "记录失败";
                     OperatorRecordState = "测试记录保存失败：" + error.Message;
                     AddOperatorEvent("本次真实运行汇总未能归档：" + error.Message);
                 }
@@ -993,11 +1038,14 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
             _operatorStop?.Dispose();
             _operatorStop = null;
             _engineeringVerificationArmed = false;
+            if (formalProduction)
+                InvalidateScan("本台 ECU 检测已完成；请扫描下一台。", requiresAttention: false);
             _operatorActiveCaseIndex = -1;
             _operatorActiveStepId = null;
             IsOperatorRunning = false;
             RefreshOperatorCommands();
             StartRequestStatus = OperatorRunState;
+            Notify();
         }
     }
 
