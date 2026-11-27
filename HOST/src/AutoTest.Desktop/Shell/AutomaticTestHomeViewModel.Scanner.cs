@@ -182,7 +182,7 @@ public sealed partial class AutomaticTestHomeViewModel
                 return;
             }
             var stationDraft =
-                await StationProductionConfigurationStore.LoadDraftAsync();
+                await StationDeviceConfigurationStore.LoadAsync();
             stationDraft.Fixture.Validate();
             _ = StationFixtureExecutionPlan.From(stationDraft.Fixture);
             var fixtureSha = FingerprintEngineeringFixture(stationDraft.Fixture);
