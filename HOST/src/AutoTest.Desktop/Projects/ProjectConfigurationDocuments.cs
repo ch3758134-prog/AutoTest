@@ -296,8 +296,6 @@ public static class ProjectConfigurationCodec
     public const string WaveSettingsKind = "wave-settings";
     public const string FlashSettingsKind = "flash-settings";
     public const string ScanSettingsKind = "scan-rules";
-    public const string TestConfigurationKind = "test-configuration";
-    public const string BenchConfigurationKind = "bench-configuration";
     public const string InspectionKind = "inspection-station";
     private static readonly JsonSerializerOptions Json = new()
     {
@@ -308,7 +306,7 @@ public static class ProjectConfigurationCodec
         revision is > 0 && sha is { Length: 64 } && sha.All(Uri.IsHexDigit);
     public static bool IsConfiguration(string kind) => kind is
         ControllerKind or WaveSettingsKind or FlashSettingsKind or ScanSettingsKind or
-        TestConfigurationKind or BenchConfigurationKind or InspectionKind;
+        InspectionKind;
 
     public static byte[] Create(string kind, string name) => Encode(kind, kind switch
     {
@@ -316,8 +314,6 @@ public static class ProjectConfigurationCodec
         WaveSettingsKind => WaveSettingsDocument.Create(name),
         FlashSettingsKind => FlashSettingsDocument.Create(name),
         ScanSettingsKind => ScanMatchSettingsDocument.Create(name),
-        TestConfigurationKind => TestSystemConfigurationDocument.Create(name),
-        BenchConfigurationKind => TestBenchConfigurationDocument.Create(name),
         InspectionKind => InspectionStationProcedureDocument.Create(name),
         _ => throw new ArgumentException("不支持的配置类型：" + kind)
     });
@@ -337,10 +333,6 @@ public static class ProjectConfigurationCodec
                     ?? throw new ProjectDataException("CONFIG_JSON", "空烧录配置。"),
                 ScanSettingsKind => JsonSerializer.Deserialize<ScanMatchSettingsDocument>(bytes, Json)
                     ?? throw new ProjectDataException("CONFIG_JSON", "空扫码配置。"),
-                TestConfigurationKind => JsonSerializer.Deserialize<TestSystemConfigurationDocument>(bytes, Json)
-                    ?? throw new ProjectDataException("CONFIG_JSON", "空 TCF。"),
-                BenchConfigurationKind => JsonSerializer.Deserialize<TestBenchConfigurationDocument>(bytes, Json)
-                    ?? throw new ProjectDataException("CONFIG_JSON", "空 TBC。"),
                 InspectionKind => JsonSerializer.Deserialize<InspectionStationProcedureDocument>(bytes, Json)
                     ?? throw new ProjectDataException("CONFIG_JSON", "空工位动作配置。"),
                 _ => throw new ArgumentException("不支持的配置资源：" + kind)
@@ -370,8 +362,6 @@ public static class ProjectConfigurationCodec
             case WaveSettingsKind: ((WaveSettingsDocument)document).Validate(); break;
             case FlashSettingsKind: ((FlashSettingsDocument)document).Validate(); break;
             case ScanSettingsKind: ((ScanMatchSettingsDocument)document).Validate(); break;
-            case TestConfigurationKind: ((TestSystemConfigurationDocument)document).Validate(); break;
-            case BenchConfigurationKind: ((TestBenchConfigurationDocument)document).Validate(); break;
             case InspectionKind: ((InspectionStationProcedureDocument)document).Validate(); break;
             default: throw new ArgumentException("不支持的配置资源：" + kind);
         }

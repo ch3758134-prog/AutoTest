@@ -127,8 +127,6 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
         _working = session.Document;
         SaveCommand = new DelegateCommand(async () => await SaveAsync(), () => !IsBusy);
         ReloadCommand = new DelegateCommand(async () => await ReloadAsync(), () => !IsBusy);
-        SelectConfigurationCommand = new DelegateCommand(async () => await SelectConfigurationAsync(),
-            () => (IsTcf || IsTbc) && !IsBusy);
         ApplyCommand = new DelegateCommand(() => ApplyFields(), () => !IsBusy);
         AddControllerCommand = new DelegateCommand(AddController, () => IsController && !IsBusy);
         AddButtonActionCommand = new DelegateCommand(AddButtonAction, () => IsController && !IsBusy);
@@ -223,16 +221,12 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
     public bool IsScan => _session.Kind == ProjectConfigurationCodec.ScanSettingsKind;
     public bool IsWave => _session.Kind == ProjectConfigurationCodec.WaveSettingsKind;
     public bool IsFlash => _session.Kind == ProjectConfigurationCodec.FlashSettingsKind;
-    public bool IsTcf => _session.Kind == ProjectConfigurationCodec.TestConfigurationKind;
-    public bool IsTbc => _session.Kind == ProjectConfigurationCodec.BenchConfigurationKind;
     public string TypeLabel => _session.Kind switch
     {
         ProjectConfigurationCodec.ControllerKind => "旧控制器资源（仅兼容既有工程）",
         ProjectConfigurationCodec.WaveSettingsKind => "波形判定配置",
         ProjectConfigurationCodec.FlashSettingsKind => "烧录配置",
         ProjectConfigurationCodec.ScanSettingsKind => "扫码匹配配置",
-        ProjectConfigurationCodec.TestConfigurationKind => "被测 ECU 配置（TCF）",
-        ProjectConfigurationCodec.BenchConfigurationKind => "固定台架配置（TBC）",
         _ => "工程配置"
     };
     public string ExecutionBoundary => _session.Kind switch
@@ -245,10 +239,6 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
             "这里只保存 ECU/UDS/固件与安全参数，不执行烧录；真实 UDS/Flash 现场执行需另行接通验证。",
         ProjectConfigurationCodec.ScanSettingsKind =>
             "只有已发布且校验通过的规则和配方才会参与扫码匹配；匹配不自动触发测试或烧录。",
-        ProjectConfigurationCodec.TestConfigurationKind =>
-            "选择当前 ECU 的 DBC；既有按键资源引用保留在工程内部，不会自动改写。",
-        ProjectConfigurationCodec.BenchConfigurationKind =>
-            "固定台架：ECU CAN 接 A1/A12，KEY CAN 接 B1/B11；选择配置不会连接硬件。",
         _ => ""
     };
     public bool IsBusy
@@ -303,7 +293,6 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
     }
     public DelegateCommand SaveCommand { get; }
     public DelegateCommand ReloadCommand { get; }
-    public DelegateCommand SelectConfigurationCommand { get; }
     public DelegateCommand ApplyCommand { get; }
     public DelegateCommand AddControllerCommand { get; }
     public DelegateCommand AddButtonActionCommand { get; }
@@ -512,27 +501,6 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                     AddField("max" + ch, "CH" + ch + " 识别上限 V", Format(window?.MaximumVolts));
                 }
             }
-        }
-        else if (_working is TestSystemConfigurationDocument tcf)
-        {
-            AddField("name", "被测 ECU 配置名称", tcf.Name);
-            AddField("ecu", "被测 ECU 型号", tcf.EcuModel,
-                "用于识别本测试配置，不必与其他型号共用一个工作空间。");
-            AddField("hardware", "ECU 硬件版本", tcf.HardwareRevision);
-            AddField("dbc", "当前 ECU 通信数据库", AssetNameFor(tcf.DbcAssetId),
-                "选用工程中已导入的 DBC；将锁定当前资源修订。",
-                AssetNames(ProjectWorkspaceService.DbcKind));
-        }
-        else if (_working is TestBenchConfigurationDocument tbc)
-        {
-            AddField("name", "台架配置名称", tbc.Name);
-            AddField("station", "台架名称", tbc.StationLabel);
-            AddField("notes", "台架使用备注", tbc.Notes);
-            AddField("host", "物理主机", "本地 Windows PC", readOnly: true);
-            AddField("usb", "主控设备类型", TestBenchConfigurationDocument.StationType,
-                readOnly: true);
-            AddField("keyport", "KEY CAN 接口", "B1 / B11（KEY_SIM）", readOnly: true);
-            AddField("dutport", "ECU CAN 接口", "A1 / A12（ECU）", readOnly: true);
         }
         else if (_working is WaveSettingsDocument wave)
         {
@@ -777,21 +745,6 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                     };
                 }
             }
-            else if (_working is TestSystemConfigurationDocument tcf)
-            {
-                var dbc = ResolvePinnedAsset(F("dbc"), ProjectWorkspaceService.DbcKind);
-                next = tcf with
-                {
-                    Name = F("name"), EcuModel = F("ecu"), HardwareRevision = F("hardware"),
-                    DbcAssetId = dbc.Id, DbcRevision = dbc.Revision,
-                    DbcFingerprint = dbc.Sha256
-                    // Preserve legacy pinned button resources invisibly.
-                    // New UI edits the actual KEY_SIM mask in the TEST step / bench.
-                };
-            }
-            else if (_working is TestBenchConfigurationDocument tbc)
-                next = tbc with
-                { Name = F("name"), StationLabel = F("station"), Notes = F("notes") };
             else if (_working is WaveSettingsDocument wave)
             {
                 var dbc = ResolvePinnedAsset(F("dbc"), ProjectWorkspaceService.DbcKind);
@@ -1213,29 +1166,6 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
         return !IsBusy && !IsDirty && Revision > previousRevision;
     }
 
-    private async Task SelectConfigurationAsync()
-    {
-        if ((!IsTcf && !IsTbc) || IsBusy || !ApplyFields()) return;
-        if (IsDirty)
-        {
-            await SaveAsync();
-            if (IsDirty) return;
-        }
-        try
-        {
-            await _workspace.SelectConfigurationAsync(_session.AssetId);
-            StatusMessage = (IsTcf ? "已选择 TCF 编辑上下文：" :
-                "已选择固定台架 TBC：") + AssetName +
-                "。此操作没有连接 USB，也没有进行物理输出。";
-        }
-        catch (Exception error) when (error is IOException or ProjectDataException or
-                                      ArgumentException or InvalidOperationException)
-        {
-            StatusMessage = "配置选择失败：" + error.Message;
-            _dialogs.ShowError(StatusMessage);
-        }
-    }
-
     private async Task SaveAsync()
     {
         if (!ApplyFields() || IsBusy) return;
@@ -1290,7 +1220,6 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
     {
         SaveCommand.RaiseCanExecuteChanged();
         ReloadCommand.RaiseCanExecuteChanged();
-        SelectConfigurationCommand.RaiseCanExecuteChanged();
         ApplyCommand.RaiseCanExecuteChanged();
         AddControllerCommand.RaiseCanExecuteChanged();
         AddButtonActionCommand.RaiseCanExecuteChanged();

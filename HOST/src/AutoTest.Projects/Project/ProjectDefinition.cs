@@ -34,6 +34,9 @@ public sealed record ProjectDefinition(ProjectId Id, int SchemaVersion, int Revi
         if (Assets.Count(a => a.Kind == Resources.ProjectResourceKinds.Dbc) > 1)
             throw new ProjectDataException("DBC_UNIQUE",
                 "一个 ECU 工程只能绑定一份有效 DBC。");
+        if (Assets.Any(a => a.Kind is "test-configuration" or "bench-configuration"))
+            throw new ProjectDataException("RETIRED_CONFIGURATION",
+                "不支持旧式 TCF/TBC 资源；工程直接绑定测试、DBC 与波形。");
         Resources.ReferenceValidator.RejectDangling(this);
         return this;
     }

@@ -65,8 +65,7 @@ public sealed class ResourceTreeNode : INotifyPropertyChanged
         ProjectWorkspaceService.DbcKind or ProjectWorkspaceService.ControllerKind or
         ProjectWorkspaceService.WaveSettingsKind or ProjectWorkspaceService.WaveKind or
         ProjectWorkspaceService.FlashSettingsKind or ProjectWorkspaceService.FirmwareKind or
-        ProjectWorkspaceService.ScanSettingsKind or ProjectWorkspaceService.TestConfigurationKind or
-        ProjectWorkspaceService.BenchConfigurationKind);
+        ProjectWorkspaceService.ScanSettingsKind);
     public string IconPath => Role switch
     {
         "Root" => "M3 3 H21 V21 H3 Z M3 9 H21 M9 9 V21",
