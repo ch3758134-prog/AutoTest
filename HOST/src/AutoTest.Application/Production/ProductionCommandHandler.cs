@@ -48,8 +48,11 @@ public sealed class ProductionCommandHandler
             if (_session.State is ProductionState.Ready or ProductionState.Running or
                 ProductionState.AwaitingCommit)
                 return Feedback("STATION_BUSY", Verdict.Inconclusive);
+            if (!FixedMarkerBarcode.TryParse(scan.Text, out _, out _))
+                return Feedback("BARCODE_INVALID", Verdict.Inconclusive);
             var accepted = _session.StartDraft(scan);
-            if (accepted.Outcome != Outcome.Accepted) return Feedback(accepted.FailureCode!, Verdict.Inconclusive);
+            if (accepted.Outcome != Outcome.Accepted)
+                return Feedback(accepted.FailureCode!, Verdict.Inconclusive);
             var match = _matcher.Match(scan, _ruleRevision, _projectRevision);
             var matched = _session.SetMatch(match);
             if (matched.Outcome != Outcome.Accepted) return Feedback(matched.FailureCode!, Verdict.Inconclusive);
