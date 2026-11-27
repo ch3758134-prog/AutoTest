@@ -1652,6 +1652,7 @@ public sealed class TestEditorViewModel : BindableBase
         ReloadCommand?.RaiseCanExecuteChanged();
         PreflightCommand?.RaiseCanExecuteChanged();
         CopyStepCommand?.RaiseCanExecuteChanged();
+        CopyAsPublicFlowCommand?.RaiseCanExecuteChanged();
         PasteStepCommand?.RaiseCanExecuteChanged();
         AddMappingCommand?.RaiseCanExecuteChanged();
         RemoveMappingCommand?.RaiseCanExecuteChanged();
