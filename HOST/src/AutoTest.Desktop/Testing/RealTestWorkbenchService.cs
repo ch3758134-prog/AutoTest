@@ -146,7 +146,7 @@ public sealed partial class RealTestWorkbenchService
                 "test-records", "artifacts"));
             var reports = new RunReportExporter(db, artifacts);
             var record = FreezeActualRunIdentity(project, plan.Fingerprint, dutIdentity,
-                isolatedStep);
+                isolatedStep, projectSession?.IsProduction == true);
             var capture = new RecordedRealRunEvidenceFinalizer(evidence, writer,
                 artifacts, project.RootDirectory);
             var session = new RealTestRecordSession(record, writer, reports, capture);
@@ -211,7 +211,8 @@ public sealed partial class RealTestWorkbenchService
     }
 
     private RunRecord FreezeActualRunIdentity(OpenProjectContext project,
-        string planFingerprint, string dutIdentity, bool isolatedStep)
+        string planFingerprint, string dutIdentity, bool isolatedStep,
+        bool productionRun)
     {
         var assets = project.Definition.Assets.Select(a => a.ToReference())
             .ToImmutableArray();
@@ -244,14 +245,18 @@ public sealed partial class RealTestWorkbenchService
                 RevisionFingerprint.FromBytes("R1_DIAGNOSTIC_NO_DUT_BINDING"u8).Sha256,
                 "UNBOUND_DIAGNOSTIC_NOT_A_REAL_DUT_ID")
             : new SessionIdentity(dutIdentity,
-                RevisionFingerprint.FromBytes("R1_DEV_TYPED_IDENTITY_RULE_V1"u8).Sha256,
-                "OPERATOR_OR_KEYBOARD_WEDGE_UNVERIFIED");
+                RevisionFingerprint.FromBytes(productionRun
+                    ? "R1_PRODUCTION_FIXED_MARKER_SCANNER_V1"u8
+                    : "R1_DEV_TYPED_IDENTITY_RULE_V1"u8).Sha256,
+                productionRun ? "REAL_SERIAL_SCANNER_PROJECT_MATCH"
+                    : "OPERATOR_OR_KEYBOARD_WEDGE_UNVERIFIED");
         var location = typeof(RealTestWorkbenchService).Assembly.Location;
         var build = File.Exists(location)
             ? Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(location)))
             : typeof(RealTestWorkbenchService).Assembly.FullName ?? "HOST_BUILD_UNKNOWN";
         return RunRecord.CreateFromSnapshot(snapshot, identity,
-            unboundDut || isolatedStep ? RecordRunMode.Diagnostic : RecordRunMode.Development,
+            unboundDut || isolatedStep ? RecordRunMode.Diagnostic :
+                productionRun ? RecordRunMode.Production : RecordRunMode.Development,
             DateTimeOffset.UtcNow, build);
     }
 

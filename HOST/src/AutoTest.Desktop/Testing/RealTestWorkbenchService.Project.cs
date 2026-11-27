@@ -56,7 +56,7 @@ public sealed partial class RealTestWorkbenchService
     public async Task<ProjectExecutionSession> OpenProjectSessionAsync(
         IReadOnlyList<TestDocument> orderedCases, Guid projectRunId,
         string dutIdentity, CancellationToken ct = default,
-        bool allowOrderedSubset = false)
+        bool allowOrderedSubset = false, bool productionRun = false)
     {
         if (projectRunId == Guid.Empty || orderedCases.Count == 0 ||
             !allowOrderedSubset && string.IsNullOrWhiteSpace(dutIdentity))
@@ -113,7 +113,7 @@ public sealed partial class RealTestWorkbenchService
                 SHA256.HashData(Encoding.UTF8.GetBytes(grantMaterial)));
             var session = new ProjectExecutionSession(this, actions, project,
                 projectRunId, dutIdentity, epoch, fingerprint, pinned,
-                allowOrderedSubset);
+                allowOrderedSubset, productionRun);
             pending = session;
             // Durable parent receipt before the first physical TEST write.
             await session.PersistAsync("PREPARED", CancellationToken.None);
@@ -158,6 +158,7 @@ public sealed partial class RealTestWorkbenchService
         private readonly string _dut;
         private readonly (TestDocumentId Id, string Sha)[] _pinnedCases;
         private readonly bool _allowOrderedSubset;
+        public bool IsProduction { get; }
         private readonly List<ProjectCaseReceipt> _cases = new();
         private readonly SemaphoreSlim _persistGate = new(1, 1);
         private readonly RealRunEvidenceRecorder _projectTimeline;
@@ -194,10 +195,13 @@ public sealed partial class RealTestWorkbenchService
             ConfiguredStationActionPort actions, OpenProjectContext project,
             Guid projectRunId, string dut, long epoch, string fingerprint,
             IReadOnlyList<(TestDocumentId Id, string Sha)> pinnedCases,
-            bool allowOrderedSubset)
+            bool allowOrderedSubset, bool productionRun)
         {
+            if (productionRun && allowOrderedSubset)
+                throw new ArgumentException("正式生产必须运行完整有序 TEST 项目。");
             _owner = owner; Actions = actions; _project = project;
             _allowOrderedSubset = allowOrderedSubset;
+            IsProduction = productionRun;
             ProjectRunId = projectRunId; _dut = dut; _stationEpoch = epoch;
             ScopeFingerprint = fingerprint; _pinnedCases = pinnedCases.ToArray();
             _projectTimeline = new RealRunEvidenceRecorder(owner._hardware, owner._signals);
@@ -344,9 +348,11 @@ public sealed partial class RealTestWorkbenchService
                 var bytes = JsonSerializer.SerializeToUtf8Bytes(new
                 {
                     SchemaVersion = 1,
-                    Mode = _allowOrderedSubset
-                        ? "ENGINEERING_CONTINUOUS_SELECTED_SUBSET_NOT_PRODUCTION"
-                        : "ENGINEERING_CONTINUOUS_PROJECT_NOT_PRODUCTION_RELEASE",
+                    Mode = IsProduction
+                        ? "PRODUCTION_CONTINUOUS_PROJECT"
+                        : _allowOrderedSubset
+                            ? "ENGINEERING_CONTINUOUS_SELECTED_SUBSET"
+                            : "ENGINEERING_CONTINUOUS_PROJECT",
                     ProjectRunId, DutSerial = _dut, StationEpoch = _stationEpoch,
                     ProjectId = _project.Definition.Id.Value,
                     _project.ManifestSha256, ScopeFingerprint, State = state,
@@ -411,7 +417,9 @@ public sealed partial class RealTestWorkbenchService
                 _markedComplete
                     ? _cases.Any(x => x.Verdict == nameof(RealTestVerdict.Failed))
                         ? "FINISHED_WITH_FUNCTIONAL_FAILURE"
-                        : "EXECUTED_NOT_PRODUCTION_RELEASE"
+                        : IsProduction
+                            ? "PRODUCTION_TEST_EXECUTED"
+                            : "ENGINEERING_TEST_EXECUTED"
                     : "INTERRUPTED",
                 CancellationToken.None);
             if (cleanupError is not null)
