@@ -242,22 +242,48 @@
         </DataTemplate></ListBox.ItemTemplate>
        </ListBox>
       </TabItem>
-      <TabItem Header="参考波形">
-       <ListBox ItemsSource="{Binding References}"
-        SelectedItem="{Binding SelectedReference,Mode=TwoWay}" BorderThickness="0"
-        ScrollViewer.VerticalScrollBarVisibility="Auto">
-        <ListBox.ItemTemplate><DataTemplate>
-         <StackPanel Margin="6,8">
-          <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13"/>
-          <TextBlock Text="{Binding Signal.SignalName}" FontSize="12"
-           Foreground="#52677D" Margin="0,3,0,4"/>
-          <Button Content="查看波形" Padding="6,4" FontSize="12"
-           Command="{Binding DataContext.ViewReferenceCommand,RelativeSource={RelativeSource AncestorType=Window}}"
-           CommandParameter="{Binding}"
-           ToolTip="打开此参考波形；选择实际记录后可进行叠加比较"/>
-         </StackPanel>
-        </DataTemplate></ListBox.ItemTemplate>
-       </ListBox>
+      <TabItem Header="标准波形">
+       <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="9,9,9,12">
+         <TextBlock Text="先在“同次采集”中选择一组真实记录，再建立标准。"
+          FontSize="12" Foreground="#62788E" Margin="0,0,0,9"
+          TextWrapping="Wrap"/>
+         <TextBox Style="{StaticResource WaveInput}"
+          Text="{Binding ReferenceName,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+          ToolTip="标准名称，同次采集中的全部信号共享这一名称"/>
+         <Button Content="将所选采集设为标准"
+          Command="{Binding SaveStandardCommand}"
+          Style="{StaticResource WaveButton}" Margin="0,8,0,13"
+          ToolTip="先验证全部采集信号质量，再保存一项多路标准；原始数据不修改"/>
+         <ItemsControl ItemsSource="{Binding Standards}">
+          <ItemsControl.ItemTemplate>
+           <DataTemplate>
+            <Expander Margin="0,0,0,7" Background="#F9FBFD"
+             BorderThickness="1" BorderBrush="#E1E8EF" Padding="7">
+             <Expander.Header>
+              <StackPanel>
+               <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+               <TextBlock Text="{Binding Description}" FontSize="11"
+                TextWrapping="Wrap" Foreground="#60778C" Margin="0,3,0,0"/>
+              </StackPanel>
+             </Expander.Header>
+             <ItemsControl ItemsSource="{Binding Channels}">
+              <ItemsControl.ItemTemplate><DataTemplate>
+               <DockPanel Margin="0,4,0,4">
+                <Button DockPanel.Dock="Right" Content="查看" Padding="7,4"
+                 Command="{Binding DataContext.ViewReferenceCommand,RelativeSource={RelativeSource AncestorType=Window}}"
+                 CommandParameter="{Binding}"/>
+                <TextBlock Text="{Binding Signal.SignalName}"
+                 VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+               </DockPanel>
+              </DataTemplate></ItemsControl.ItemTemplate>
+             </ItemsControl>
+            </Expander>
+           </DataTemplate>
+          </ItemsControl.ItemTemplate>
+         </ItemsControl>
+        </StackPanel>
+       </ScrollViewer>
       </TabItem>
      </TabControl>
     </Grid>
@@ -311,17 +337,12 @@
         Margin="0,0,0,5" TextWrapping="Wrap"/>
        <TextBlock Text="{Binding DataQuality}" FontSize="12"
         Foreground="#52677D" Margin="0,0,0,9" TextWrapping="Wrap"/>
-       <Expander Header="参考波形与比较参数" IsExpanded="False"
+       <Expander Header="比较分析参数" IsExpanded="False"
         Foreground="#35536F" FontSize="12" Margin="0,0,0,6"
-        ToolTip="展开后采集标准参考或调整离线比较容差；不影响实时观察与记录">
+        ToolTip="人工比较的容差与采样类型，不修改原始测量及标准">
         <StackPanel Margin="0,7,0,2">
-       <WrapPanel VerticalAlignment="Center" Margin="0,0,0,8">
-        <TextBlock Text="参考名称" Style="{StaticResource WaveLabel}" Margin="0,0,7,0"/>
-        <TextBox Text="{Binding ReferenceName,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-         Style="{StaticResource WaveInput}" Width="194" Margin="0,0,8,0"/>
-        <Button Content="将当前记录存为参考" Command="{Binding SaveReferenceCommand}"
-         Style="{StaticResource WaveButton}" ToolTip="将有效采样保存为参考；测试判定条件仍需单独设置"/>
-       </WrapPanel>
+       <TextBlock Text="在左侧“标准波形”页建立多路参考；这里调整人工比较参数。"
+        FontSize="11" Foreground="#63798D" Margin="0,0,0,8"/>
        <WrapPanel VerticalAlignment="Center" Margin="0,0,0,8">
         <TextBlock Text="比较类型" Style="{StaticResource WaveLabel}" Margin="0,0,6,0"/>
         <ComboBox Width="204" Height="31" ItemsSource="{Binding CompareModes}"

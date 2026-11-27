@@ -20,7 +20,7 @@ public sealed partial class MainWindowViewModel
     public DelegateCommand NewEngineeringDbcCommand { get; private set; } = null!;
     public DelegateCommand<ResourceTreeNode> OpenEngineeringFlowCommand { get; private set; } = null!;
 
-    public ObservableCollection<WaveReferenceEntry> EngineeringWaveStandards { get; } = new();
+    public ObservableCollection<WaveStandardGroup> EngineeringWaveStandards { get; } = new();
     private string _engineeringWaveStatus = "打开工程后查看标准波形";
     private string _engineeringFlashStatus = "打开工程后查看烧录设置";
 
@@ -108,17 +108,17 @@ public sealed partial class MainWindowViewModel
         try
         {
             var root = project.RootDirectory;
-            var references = await Task.Run(() =>
+            var standards = await Task.Run(() =>
                 new WaveReferenceCatalog(Path.Combine(root, "wave-records", "references"))
-                    .List().ToArray());
+                    .ListStandards().ToArray());
             var flash = await NativeFlashProfileStore.LoadAsync(root);
             if (_workspace.Current?.ManifestPath != project.ManifestPath) return;
             EngineeringWaveStandards.Clear();
-            foreach (var reference in references.OrderBy(x => x.Name))
-                EngineeringWaveStandards.Add(reference);
-            EngineeringWaveStatus = references.Length == 0
+            foreach (var standard in standards)
+                EngineeringWaveStandards.Add(standard);
+            EngineeringWaveStatus = standards.Length == 0
                 ? "尚无标准波形；从真实采集结果建立标准"
-                : "已建立 " + references.Length + " 条信号参考；通过波形工作台采集、比较与管理";
+                : "已建立 " + standards.Length + " 项标准；在波形工作台查看和分析多路信号";
             EngineeringFlashStatus = flash is null
                 ? "尚未设置 HEX 与烧录参数"
                 : flash.Profile.FirmwareRelativePath is null

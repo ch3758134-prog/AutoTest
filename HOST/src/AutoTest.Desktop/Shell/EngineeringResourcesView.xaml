@@ -84,8 +84,9 @@
        <ItemsControl.ItemTemplate>
         <DataTemplate>
          <DockPanel Margin="0,0,0,7">
-          <TextBlock Text="{Binding Signal.SignalName}" DockPanel.Dock="Right"
-           Foreground="#71869A" FontSize="11" Margin="8,0,0,0"/>
+          <TextBlock Text="{Binding Description}" DockPanel.Dock="Right"
+           Foreground="#71869A" FontSize="11" Margin="8,0,0,0"
+           TextTrimming="CharacterEllipsis" MaxWidth="210"/>
           <TextBlock Text="{Binding Name}" FontWeight="Medium"
            TextTrimming="CharacterEllipsis"/>
          </DockPanel>
