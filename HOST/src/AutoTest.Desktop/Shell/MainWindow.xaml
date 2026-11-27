@@ -211,9 +211,6 @@
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
      <Button Content="检查工程" Command="{Binding OpenProjectConfigurationOverviewCommand}"
       Style="{StaticResource AtQuietButton}" Margin="0,0,8,0" Padding="9,5"/>
-     <Button Content="更新生产工程…" Command="{Binding ConfirmProductionConfigurationCommand}"
-      Style="{StaticResource AtPrimaryButton}" Padding="11,5"
-      ToolTip="保存当前工程 TEST、DBC、波形、HEX 和烧录参数供生产扫码使用；不启动检测"/>
     </StackPanel>
     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
      <Button Content="{Binding CurrentProjectName}" Command="{Binding RenameProjectCommand}"

@@ -327,8 +327,7 @@ public sealed partial class MainWindowViewModel
             var installed = await _productionCatalog.InstallEngineeringProjectAsync(
                 project.ManifestPath);
             var deployed = await StationDeploymentStore.DeployAsync(project);
-            StatusMessage = "已更新生产工程：" + installed.ProjectName +
-                "。请确认扫码识别标记。正式检测仍须通过实际工位验证。";
+            StatusMessage = "工程已准备就绪：" + installed.ProjectName + "。";
             await RefreshEngineeringSetupAsync();
             if (!singleApply)
             {
@@ -481,11 +480,23 @@ public sealed partial class MainWindowViewModel
             return;
         }
         if (!await PrepareEditorsForCloseAsync()) return;
+        // A normal switch to production synchronizes the current saved ECU
+        // project. Internal FLASH freeze, package verification and deployment
+        // are not a separate operator wizard or another TEST configuration.
+        // No fixture, IGN, CAN transmit or FLASH command is performed here.
+        string? preparationError = null;
+        if (IsEngineerWorkspace && _workspace.Current is not null &&
+            !await ConfirmProductionConfigurationAsync(singleApply: true))
+            preparationError = StatusMessage;
+
         _automaticTestHome.DisarmEngineeringVerification();
         CloseEngineeringVerificationMonitor();
         SetWorkspaceMode(true);
-        // Use the same saved ECU project as the engineering workspace.
+        // The production runner reopens only verified installed resources.
         await _automaticTestHome.RestoreAsync();
+        // Show the actual unmet condition; entering the production page remains
+        // possible so a scanned barcode can still be displayed and diagnosed.
+        if (preparationError is not null) StatusMessage = preparationError;
     }
 
     private void SetWorkspaceMode(bool automaticTest)
@@ -503,7 +514,7 @@ public sealed partial class MainWindowViewModel
         OpenProductionPreparationCommand?.RaiseCanExecuteChanged();
         NavigateProductionPreparationCommand?.RaiseCanExecuteChanged();
         StatusMessage = automaticTest
-            ? "自动测试使用当前保存的 ECU 工程。"
-            : "开发与调试工作区：可独立打开、编辑 ECU 工程。";
+            ? "生产检测"
+            : "工程开发与调试";
     }
 }
