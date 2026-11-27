@@ -10,7 +10,7 @@ public sealed record ProductionCommandFeedback(string Code, ProductionState Stat
 public sealed class ProductionCommandHandler
 {
     private readonly IIdentityMatcher _matcher;
-    private readonly Func<MatchDecision, ProductionConfiguration?> _recipeResolver;
+    private readonly Func<MatchDecision, ProductionProjectExecution?> _projectResolver;
     private readonly ProductionSession _session;
     private readonly ProductionWorkflow _workflow;
     private readonly RuleRevision _ruleRevision;
@@ -29,11 +29,11 @@ public sealed class ProductionCommandHandler
     public ProductionSession Session => _session;
 
     public ProductionCommandHandler(IIdentityMatcher matcher,
-        Func<MatchDecision, ProductionConfiguration?> recipeResolver,
+        Func<MatchDecision, ProductionProjectExecution?> projectResolver,
         ProductionSession session, ProductionWorkflow workflow,
         RuleRevision ruleRevision, ProjectRevision projectRevision)
     {
-        _matcher = matcher; _recipeResolver = recipeResolver;
+        _matcher = matcher; _projectResolver = projectResolver;
         _session = session; _workflow = workflow;
         _ruleRevision = ruleRevision; _projectRevision = projectRevision;
     }
@@ -53,11 +53,12 @@ public sealed class ProductionCommandHandler
             var match = _matcher.Match(scan, _ruleRevision, _projectRevision);
             var matched = _session.SetMatch(match);
             if (matched.Outcome != Outcome.Accepted) return Feedback(matched.FailureCode!, Verdict.Inconclusive);
-            var recipe = _recipeResolver(match);
-            if (recipe is null) return Feedback("RECIPE_NOT_RESOLVED", Verdict.Inconclusive);
-            var preflight = _workflow.Prepare(_session, recipe, station);
+            var projectExecution = _projectResolver(match);
+            if (projectExecution is null)
+                return Feedback("PROJECT_EXECUTION_NOT_RESOLVED", Verdict.Inconclusive);
+            var preflight = _workflow.Prepare(_session, projectExecution, station);
             if (!preflight.Ready) return Feedback(string.Join(";", preflight.Blockers), Verdict.Inconclusive);
-            var confirmed = _session.Confirm(recipe, _ruleRevision, _projectRevision,
+            var confirmed = _session.Confirm(projectExecution, _ruleRevision, _projectRevision,
                 station.Station, station.IsMockEnvironment);
             if (confirmed.Outcome != Outcome.Accepted) return Feedback(confirmed.FailureCode!, Verdict.Inconclusive);
             _startGate.Arm(confirmed.Value!.Run);
