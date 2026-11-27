@@ -402,12 +402,7 @@
    Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}">
    <DockPanel Margin="11,0">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-      <Button Content="扫码枪" Command="{Binding OpenSerialScannerCommand}"
-      ToolTip="连接扫码枪并查看收到的 ECU 编号"
-      MinHeight="26" Height="26" Padding="8,0" Margin="0,0,6,0"/>
-     <TextBlock Text="{Binding ScanStatus}" Width="175" FontSize="13"
-      TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
-      Foreground="#64758C" Margin="0,0,8,0"/>
+
      <Button Content="日志" Click="ToggleBottom_Click"
       Foreground="{StaticResource Ink}" Background="Transparent" BorderThickness="0"
       MinWidth="44" MinHeight="26" Height="26" Padding="2,0" FontSize="12" Margin="0,0,3,0"/>

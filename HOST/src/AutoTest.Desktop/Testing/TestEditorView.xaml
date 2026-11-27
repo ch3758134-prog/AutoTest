@@ -7,7 +7,7 @@
   <Grid.ColumnDefinitions>
    <ColumnDefinition Width="*" MinWidth="400"/>
    <ColumnDefinition x:Name="MonitorDividerColumn" Width="5"/>
-   <ColumnDefinition x:Name="MonitorColumn" Width="420" MinWidth="0"/>
+   <ColumnDefinition x:Name="MonitorColumn" Width="350" MinWidth="0"/>
   </Grid.ColumnDefinitions>
   <Grid Grid.Column="0">
   <Grid.RowDefinitions><RowDefinition Height="54"/><RowDefinition Height="Auto"/>
@@ -51,7 +51,7 @@
      <Button Content="检查用例" Command="{Binding PreflightCommand}" Margin="0,0,6,0"/>
      <Button x:Name="ToggleCanMonitorButton" Content="隐藏 CAN 监视" Click="ToggleCanMonitor_Click"
       Margin="0,0,6,0" Padding="8,5" ToolTip="右侧固定显示真实 CAN RX，拖动分隔线可调整宽度"/>
-     <TextBlock Text="自动保存" Foreground="#627C70" FontSize="12" VerticalAlignment="Center" ToolTip="修改完成后自动保存，Ctrl+S 可手动保存"/>
+
     </StackPanel>
     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
      <TextBlock Text="{Binding DocumentName}" FontSize="14" FontWeight="SemiBold"
@@ -89,7 +89,7 @@
      <Button Content="运行用例" Command="{Binding RunCommand}"
       Style="{StaticResource AtPrimaryButton}" Foreground="White" MinHeight="34"
       Margin="0,0,6,0" Padding="11,5"
-      ToolTip="检查本次运行所需配置并启动用例；开发调试无需扫码，若包含烧录步骤仍须单独授权"/>
+      ToolTip="执行当前完整用例；开发调试不需要扫码，正式生产才执行前置 FLASH 和全部用例"/>
      <Button Content="运行步骤" Command="{Binding RunSelectedStepCommand}"
       Margin="0,0,6,0" Padding="10,5"
       ToolTip="选中某个步骤；确认后仅执行该步骤及其子步骤，保留实体安全清理与独立诊断记录"/>
@@ -100,13 +100,13 @@
      VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
      ToolTip="{Binding RunSummary}"/>
    </DockPanel>
-   <Expander Grid.Row="1" Header="运行身份与 FLASH 授权" IsExpanded="False"
+   <Expander Grid.Row="1" Header="调试记录信息（可选）" IsExpanded="False"
     Foreground="#42566C" FontSize="12" Margin="0,6,0,0">
    <Grid Margin="0,7,0,2">
     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
    <Grid Grid.Row="0" Margin="0,0,0,0">
     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="200"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-    <TextBlock Grid.Column="0" Text="ECU 编号（可留空）" FontWeight="SemiBold"
+    <TextBlock Grid.Column="0" Text="调试 ECU 编号（可留空）" FontWeight="SemiBold"
      Margin="0,0,8,0" VerticalAlignment="Center"/>
     <TextBox Grid.Column="1" Height="28" VerticalContentAlignment="Center"
      Text="{Binding DutIdentity,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
@@ -119,12 +119,12 @@
       <Setter Property="Visibility" Value="Collapsed"/>
      </DataTrigger></Style.Triggers>
     </Style></StackPanel.Style>
-    <TextBlock Text="烧录确认：" FontWeight="SemiBold"
+    <TextBlock Text="旧 FLASH 步骤授权：" FontWeight="SemiBold"
      Margin="0,0,7,0" VerticalAlignment="Center"/>
     <TextBox Width="370" Height="28" VerticalContentAlignment="Center"
      Text="{Binding FlashApproval,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
      ToolTip="现场人员手动输入完整 AUTHORIZE ECU FLASH + SHA256；不会保存到工程"/>
-    <TextBlock Text="请完整输入：" Margin="10,0,5,0" VerticalAlignment="Center"/>
+    <TextBlock Text="授权内容：" Margin="10,0,5,0" VerticalAlignment="Center"/>
     <TextBlock Text="{Binding ExpectedFlashApproval}" MaxWidth="280"
      ToolTip="{Binding ExpectedFlashApproval}" TextTrimming="CharacterEllipsis"
      Foreground="#385F88" VerticalAlignment="Center"/>
