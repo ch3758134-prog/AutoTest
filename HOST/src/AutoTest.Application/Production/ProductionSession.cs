@@ -54,10 +54,17 @@ public sealed class ProductionSession
         {
             if (State != ProductionState.Scanned)
                 return OperationResult.Rejected("SESSION_NOT_SCANNED", "No editable draft.");
+            // A matcher selects a complete project, not a replacement or
+            // rewritten DUT serial. The physical barcode is the sole identity.
             Match = result;
-            State = result.Allowed && !string.IsNullOrWhiteSpace(result.DutIdentity)
-                ? ProductionState.Matched : ProductionState.Blocked;
-            FailureCode = State == ProductionState.Blocked ? result.RejectionCode ?? "INVALID_IDENTITY" : null;
+            var unchanged = result.Allowed &&
+                string.Equals(result.DutIdentity, CurrentScan?.Text,
+                    StringComparison.Ordinal);
+            State = unchanged ? ProductionState.Matched : ProductionState.Blocked;
+            FailureCode = State == ProductionState.Blocked
+                ? result.RejectionCode ??
+                  (result.Allowed ? "SCAN_IDENTITY_CHANGED" : "INVALID_IDENTITY")
+                : null;
             return State == ProductionState.Matched ? OperationResult.Accepted() :
                 OperationResult.Rejected(FailureCode!, "Identity match blocked.");
         }
