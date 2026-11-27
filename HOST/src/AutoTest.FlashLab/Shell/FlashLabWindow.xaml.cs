@@ -365,7 +365,7 @@ public partial class FlashLabWindow : Window
                 : "烧录参数已保存，尚未选择 HEX";
             _vm.Status = "烧录参数已更新；开始前会重新检查实际数据。";
             InvalidateFlashPreview();
-            AddLog("原生 Profile 已载入：" + current.FullPath +
+            AddLog("烧录参数已读取：" + current.FullPath +
                 "；当前只是离线配置，不执行 ECU 操作。");
         }
         catch (Exception error)
@@ -379,10 +379,10 @@ public partial class FlashLabWindow : Window
         var root = _nativeProfileRoot ??
             throw new InvalidOperationException("没有选中的原生烧录配置。");
         var latest = NativeFlashProfileStore.LoadAsync(root).GetAwaiter().GetResult()
-            ?? throw new IOException("原生 Profile 文件已删除，请重新载入。");
+            ?? throw new IOException("烧录参数文件不存在，请重新打开设置。");
         if (!string.Equals(latest.ProfileSha256, _nativeProfileSha,
                 StringComparison.OrdinalIgnoreCase))
-            throw new IOException("原生 Profile 保存后发生修改，请重新载入确认。");
+            throw new IOException("烧录参数刚刚发生修改，请重新检查。");
         var job = NativeFlashJobBuilder.Freeze(latest.Profile, root);
         _previewFlash = job;
         _vm.ResetStages();
@@ -396,7 +396,7 @@ public partial class FlashLabWindow : Window
             $"ECU CAN={job.ConfiguredBitrate}\n" +
             $"擦除范围=0x{job.FlashStart:X8}..0x{job.FlashEndInclusive:X8}\n" +
             $"实际下载={job.Blocks.Length} 块 / {job.PlannedBytes:N0} 字节";
-        FlashStageLabel.Text = "已从原生配置冻结真实 CanTool Job；尚未发送 CAN。";
+        FlashStageLabel.Text = "烧录参数与固件已校验，尚未向 ECU 发送指令。";
         WorkflowStatusLabel.Text = "请核对实际 ECU 供电、固件及擦除地址，再单独授权开始。";
         _vm.Status = "烧录配置检查通过，可继续确认烧录。";
         return job;
@@ -430,7 +430,7 @@ public partial class FlashLabWindow : Window
                 throw new IOException("烧录参数已修改，请重新打开配置并重新确认。");
             var fresh = NativeFlashJobBuilder.Freeze(latest.Profile, root);
             if(!string.Equals(frozen.Fingerprint,fresh.Fingerprint,StringComparison.Ordinal))
-                throw new InvalidOperationException("配置、固件或安全文件已改变；请重新点击开始烧录。");
+                throw new InvalidOperationException("烧录参数或 HEX 已改变，请重新检查后开始。");
             // The operator needs a decision, not a technical audit printout.
             // Complete hashes, source identity, CAN IDs, alignment and signature
             // remain in the read-only plan and diagnostics, not this modal.
@@ -515,7 +515,7 @@ public partial class FlashLabWindow : Window
             if(!physicalCallStarted)
             {
                 FlashStageLabel.Text="烧录准备失败（尚未开始 CAN 烧录请求）："+ex.Message;
-                WorkflowStatusLabel.Text="准备阶段失败：检查配置、固件和安全文件。";
+                WorkflowStatusLabel.Text="烧录准备失败：请检查 HEX、CAN 参数和 FLASH 范围。";
                 Error("烧录准备",ex);
             }
             else

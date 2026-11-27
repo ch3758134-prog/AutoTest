@@ -156,7 +156,7 @@ public partial class NativeFlashProfileWindow : Window
     private void QueueAutoSave()
     {
         if (_initializing || _loadFailure || _closing) return;
-        JobDetailsLabel.Text = "参数已变更，请重新校验实际烧录 Job。";
+        JobDetailsLabel.Text = "参数已修改，请重新检查烧录计划。";
         _idleSave.Stop();
         _idleSave.Start();
     }
@@ -275,7 +275,7 @@ public partial class NativeFlashProfileWindow : Window
             // cannot silently invalidate the displayed frozen firmware plan.
             if (!await SaveAsync()) return;
             var source = await NativeFlashProfileStore.LoadAsync(_root)
-                ?? throw new InvalidDataException("原生烧录配置尚未保存，无法生成冻结 Job。");
+                ?? throw new InvalidDataException("请先保存烧录参数和 HEX。");
             if (_saved is null || !string.Equals(source.ProfileSha256,
                     _saved.ProfileSha256, StringComparison.OrdinalIgnoreCase))
                 throw new IOException("烧录配置在冻结前被外部修改；请重新打开配置进行核对。");
@@ -289,7 +289,7 @@ public partial class NativeFlashProfileWindow : Window
                                       or NotSupportedException or UnauthorizedAccessException or
                                       JsonException or ArgumentException)
         {
-            JobDetailsLabel.Text = "未获得有效的冻结 Job：" + error.Message;
+            JobDetailsLabel.Text = "无法生成烧录计划：" + error.Message;
             StatusLabel.Text = "原生烧录预检拒绝：" + error.Message;
         }
         finally
@@ -335,7 +335,7 @@ public partial class NativeFlashProfileWindow : Window
         e.Cancel = true;
         if (_importBusy || _previewBusy || _initializing)
         {
-            StatusLabel.Text = "配置仍在加载、导入或校验实际烧录 Job；请在操作结束后关闭窗口。";
+            StatusLabel.Text = "正在保存或检查烧录参数，请先完成当前操作。";
             return;
         }
         if (_closing) return;
