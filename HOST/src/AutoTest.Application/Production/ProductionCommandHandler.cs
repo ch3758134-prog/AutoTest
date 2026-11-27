@@ -147,7 +147,7 @@ public sealed class ProductionCommandHandler
     {
         var job = _session.Job;
         return new(code, _session.State,
-            job?.DutIdentity ?? _session.Match?.DutIdentity,
+            job?.DutIdentity ?? _session.CurrentScan?.Text,
             job?.Run, verdict, false);
     }
 }
