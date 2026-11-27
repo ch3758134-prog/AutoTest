@@ -64,15 +64,17 @@
     <StackPanel Grid.Column="0" Margin="0,0,20,0" VerticalAlignment="Center">
      <!-- The complete physical barcode must remain visible even when routing
           fails; a match is never substituted for what the scanner observed. -->
-     <TextBlock Text="当前扫码 · ECU 完整编号" Style="{StaticResource OperatorCaption}"
+     <TextBlock Text="本次 ECU 完整编号" Style="{StaticResource OperatorCaption}"
       Margin="0,0,0,5"/>
-     <TextBlock Text="{Binding LastObservedBarcode}" FontSize="21"
+     <TextBlock Text="{Binding CurrentInspectionBarcode}" FontSize="21"
       FontFamily="Consolas,Microsoft YaHei" FontWeight="SemiBold"
       Foreground="#1F4368" TextWrapping="Wrap"
-      ToolTip="{Binding LastObservedBarcode}" Margin="0,0,0,7"/>
+      ToolTip="{Binding CurrentInspectionBarcode}" Margin="0,0,0,7"/>
      <TextBlock Text="{Binding ProjectName,StringFormat='匹配工程：{0}'}"
       Foreground="#52677D" FontSize="13" TextWrapping="Wrap"
       ToolTip="{Binding ProjectName}"/>
+     <TextBlock Text="{Binding LastObservedBarcode,StringFormat='最新扫码：{0}'}"
+      Foreground="#65788B" FontSize="11" TextWrapping="Wrap" Margin="0,7,0,0"/>
      <TextBlock Text="{Binding ProductionBatchToday}"
       Foreground="#52677D" FontSize="12" Margin="0,9,0,0"/>
     </StackPanel>
