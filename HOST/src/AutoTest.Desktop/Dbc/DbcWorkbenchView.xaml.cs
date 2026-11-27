@@ -258,7 +258,6 @@ public partial class DbcWorkbenchView : UserControl
         OverlayTitle.Text = title;
         NotesPanel.Visibility = kind == "notes" ? Visibility.Visible : Visibility.Collapsed;
         EnumsPanel.Visibility = kind == "enums" ? Visibility.Visible : Visibility.Collapsed;
-        PolicyText.Visibility = kind == "policy" ? Visibility.Visible : Visibility.Collapsed;
         OverlayError.Text = "";
         _viewModel.HasOpenEditor = true;
         PropertyOverlay.Visibility = Visibility.Visible;
@@ -291,15 +290,6 @@ public partial class DbcWorkbenchView : UserControl
         ShowOverlay("enums", s.Name + " · 枚举值");
     }
 
-    private void ShowPolicy_Click(object sender, RoutedEventArgs e)
-    {
-        if (!FinishGrid()) return;
-        PolicyText.Text = _viewModel.StateDescription + "\n\n" +
-            (_viewModel.CanChangeStructure ? "支持报文与信号的新增、删除和枚举修改。" : _viewModel.UnsupportedDescription) +
-            "\n\n保存执行严格结构校验与原文回读，并更新工程资源修订；引用旧修订的 TEST 和波形配置需核对更新。";
-        ShowOverlay("policy", "DBC 编辑能力与保存");
-    }
-
     private void AddEnum_Click(object sender, RoutedEventArgs e)
     {
         if (!_viewModel.CanChangeStructure) return;
@@ -314,12 +304,12 @@ public partial class DbcWorkbenchView : UserControl
 
     private void Overlay_Backdrop(object sender, MouseButtonEventArgs e)
     {
-        if (!ReferenceEquals(e.OriginalSource, PropertyOverlay)) return;
-        // Commit valid notes/enumeration edits on outside click; invalid input
-        // stays visible with an inline error and never reaches the DBC file.
-        FinishOverlay();
-        e.Handled = true;
+        // Clicking outside never applies or discards an in-progress edit.
+        // The user must explicitly choose 完成 or 取消.
+        if (ReferenceEquals(e.OriginalSource, PropertyOverlay))
+            e.Handled = true;
     }
+
     private void FinishOverlay_Click(object sender, RoutedEventArgs e) => FinishOverlay();
     private void CancelOverlay_Click(object sender, RoutedEventArgs e) => CloseOverlay();
 

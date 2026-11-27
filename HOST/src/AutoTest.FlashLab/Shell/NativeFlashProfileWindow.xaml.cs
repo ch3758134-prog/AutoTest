@@ -93,10 +93,9 @@ public partial class NativeFlashProfileWindow : Window
             BootFeatureBox.Text = _draft.ReferenceBootFeature ?? "";
             AppFeatureBox.Text = _draft.ReferenceAppFeature ?? "";
             FirmwareLabel.Text = _draft.FirmwareDisplayName ??
-                (_draft.FirmwareRelativePath is null ? "尚未选择 HEX" : "已选择 HEX 固件");
+                (_draft.FirmwareRelativePath is null ? "尚未选择 HEX" : Path.GetFileName(_draft.FirmwareRelativePath));
             StatusLabel.Text = _draft.FirmwareRelativePath is null
-                ? "请选择 HEX 固件；烧录参数会自动保存。"
-                : "烧录参数已就绪，可校验烧录计划。";
+                ? "尚未选择 HEX" : "烧录参数已载入。";
         }
         catch (Exception error) when (error is IOException or FormatException or InvalidDataException
                                      or UnauthorizedAccessException or NotSupportedException or JsonException)

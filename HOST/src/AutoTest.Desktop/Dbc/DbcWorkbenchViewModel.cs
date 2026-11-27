@@ -207,7 +207,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         {
             _session.Document.Model.Validate();
             _ = _session.Document.ExportText();
-            StatusMessage = "DBC 结构校验通过；自动保存继续核对文件与工程资源修订。";
+            StatusMessage = "DBC 检查通过。";
         }
         catch (Exception error) when (error is ProjectDataException or ArgumentException or FormatException)
         { StatusMessage = "DBC 检查失败：" + error.Message; }
@@ -365,11 +365,8 @@ public sealed class DbcWorkbenchViewModel : BindableBase
 
     public bool IsIndependentFile => _workspace is null;
     public string SourceDescription => IsIndependentFile
-        ? "独立 DBC 文件 · 自动保存"
-        : "当前工程 DBC · 自动保存，全部 TEST 共用";
-    public string FileLocationDescription => IsIndependentFile
-        ? FilePath
-        : "当前工程中的 DBC；从文件菜单可导出到任意位置";
+        ? "独立 DBC 文件" : "当前工程 DBC";
+    public string FileLocationDescription => FilePath;
 
     public ObservableCollection<DbcMessageRow> Messages { get; } = new();
     public ObservableCollection<DbcSignalRow> Signals { get; } = new();
@@ -414,10 +411,10 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         }
     }
     public string StateDescription => _session.Document.IsSourcePreserving
-        ? "原文保护模式"
-        : _session.Document.CanEdit ? "结构可编辑" : "原始结构只读";
+        ? "部分结构操作不可用"
+        : _session.Document.CanEdit ? "可编辑" : "只读";
     public string UnsupportedDescription => _session.Document.IsSourcePreserving
-        ? "保留其他属性、枚举值和原文；允许编辑原始 CM_ 注释，CAN ID 和原始信号名称受保护。"
+        ? "此文件包含附加属性或引用；当前不能安全地新增、删除报文或信号。"
         : _session.Document.CanEdit ? ""
         : "原始 DBC 存在不支持的结构；只允许安全修改中文别名和可识别 CM_ 注释。原因：" +
           string.Join("、", _session.Document.UnsupportedDirectives.Take(12));
@@ -998,12 +995,12 @@ public sealed class DbcWorkbenchViewModel : BindableBase
                     Document = verified.Document, FileReceipt = verified.Receipt,
                     AssetRevision = verified.Receipt.Revision
                 };
-                StatusMessage = "已保存独立 DBC 文件；未修改当前工程资源。";
+                StatusMessage = "已保存。";
             }
             else
             {
                 _session = await _workspace.SaveDbcEditorAsync(_session);
-                StatusMessage = "DBC 已保存、重新读取并更新工程资源修订 " + AssetRevision;
+                StatusMessage = "已保存。";
             }
             if (silent)
             {

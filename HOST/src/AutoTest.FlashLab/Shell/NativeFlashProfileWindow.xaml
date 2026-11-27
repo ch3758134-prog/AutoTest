@@ -12,10 +12,7 @@
   </Grid.RowDefinitions>
   <StackPanel Grid.Row="0" Margin="0,0,0,14">
    <TextBlock Text="ECU 烧录配置" FontSize="22" FontWeight="SemiBold" Foreground="#20364A"/>
-   <TextBlock Text="选择 HEX，设置 ECU 通信与擦写参数。安全算法由软件固定提供。"
-              FontSize="12" Foreground="#62798D" Margin="0,5,0,0"/>
-   <TextBlock Text="当前支持已验证的 HydEPB 烧录方法；其他型号必须先完成真实验证。"
-               Foreground="#8D621F" FontSize="12" Margin="0,6,0,0"/>
+   
   </StackPanel>
   <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
                 HorizontalScrollBarVisibility="Disabled">
@@ -32,8 +29,7 @@
         <TextBlock x:Name="FirmwareLabel" Text="尚未导入固件"
                    TextTrimming="CharacterEllipsis" Foreground="#325574"
                    ToolTip="{Binding Text,RelativeSource={RelativeSource Self}}"/>
-        <TextBlock Text="保存到当前工程；更换后可直接校验烧录范围"
-                   Foreground="#75889B" FontSize="11" Margin="0,5,0,0"/>
+        
        </StackPanel>
       </DockPanel>
      </StackPanel>
@@ -43,8 +39,7 @@
      <StackPanel>
       <TextBlock Text="烧录参数" FontSize="15" FontWeight="SemiBold"
                  Foreground="#20364A" Margin="0,0,0,4"/>
-      <TextBlock Text="修改有效参数后自动保存"
-                 Foreground="#65798C" FontSize="11" Margin="0,0,0,13"/>
+      
       <TextBlock Text="诊断 CAN ID（十六进制）" FontWeight="SemiBold"
                  Foreground="#354E66" Margin="0,0,0,7"/>
       <UniformGrid Columns="4">
@@ -65,7 +60,7 @@
         <TextBox x:Name="BootRxBox" Padding="8,6" Margin="0,5,0,0" TextChanged="EditorChanged"/>
        </StackPanel>
       </UniformGrid>
-      <Expander Header="参考字段（仅兼容原始参数）" IsExpanded="False"
+      <Expander Header="扩展诊断参数" IsExpanded="False"
                 Foreground="#637E94" Margin="0,2,0,10">
         <StackPanel Margin="0,8,0,0">
       <UniformGrid Columns="4">
@@ -108,16 +103,6 @@
         </ComboBox>
        </StackPanel>
       </UniformGrid>
-      <Border Background="#FFF4DF" BorderBrush="#EED6A3" BorderThickness="1"
-              CornerRadius="6" Padding="11" Margin="0,13,0,0">
-       <StackPanel>
-        <TextBlock Text="烧录镜像提醒 · 已验证的 HydEPB 特殊工艺"
-                   FontWeight="SemiBold" Foreground="#8B5817"/>
-        <TextBlock Text="可能覆盖 HEX 末尾 4 字节；校验时必须查看实际烧录计划。"
-                   ToolTip="当已验证的 HydEPB 工艺命中 512 字节块长、APP/Boot ID 和地址范围时，计划可能在 0x1006FFFC～0x1006FFFF 写入 12 34 56 78，并增加末尾块；与原始 HEX 的差异必须核对。"
-                   Foreground="#765722" TextWrapping="Wrap" FontSize="12" Margin="0,5,0,0"/>
-       </StackPanel>
-      </Border>
       <TextBlock Text="烧录计划" FontWeight="SemiBold"
                  Foreground="#354E66" Margin="0,15,0,6"/>
       <TextBox x:Name="JobDetailsLabel" Text="尚未完成离线 Job 校验"
@@ -133,8 +118,7 @@
    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
     <Button Content="校验配置" Click="Preview_Click" Padding="12,8" Margin="0,0,8,0"/>
     <Button Content="完成" Click="Close_Click" Padding="15,8"/>
-    <TextBlock Text="有效参数自动保存" Foreground="#567766" FontSize="12"
-     VerticalAlignment="Center" Margin="10,0,4,0"/>
+    
    </StackPanel>
    <TextBlock x:Name="StatusLabel" Text="工程配置待读取" Foreground="#375B73"
               TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,14,0"

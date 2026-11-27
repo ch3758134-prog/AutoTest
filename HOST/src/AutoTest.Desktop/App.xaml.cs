@@ -37,16 +37,14 @@ public partial class App : PrismApplication
         Interlocked.Exchange(ref _nextUiErrorDialogAt, Environment.TickCount64 + 30_000);
         try
         {
-            var message = "界面操作发生异常：" + e.Exception.Message +
-                (log is null ? "\n未能写入错误日志。" :
-                    "\n已记录完整异常堆栈：" + log);
-            var answer = MessageBox.Show(message +
-                "\n\n是否将异常类型、完整调用堆栈和日志路径复制到剪贴板？",
-                "AutoTest · 界面错误", MessageBoxButton.YesNo, MessageBoxImage.Error);
-            if (answer == MessageBoxResult.Yes)
-                Clipboard.SetText("AutoTest · UI 诊断\n" +
-                    DateTimeOffset.Now.ToString("O") + "\n" +
-                    e.Exception + (log is null ? "" : "\n日志：" + log));
+            // Unexpected WPF faults are logged automatically, not shown as
+            // technical stack dumps or clipboard questions to an operator.
+            MessageBox.Show(
+                "当前操作未完成，请检查编辑内容是否已保存。" +
+                (log is null
+                    ? "\n错误日志写入失败。"
+                    : "\n技术诊断已自动记录；重复出现时请向维护人员提供日志。"),
+                "AutoTest · 操作失败", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         catch (Exception displayError)
         {

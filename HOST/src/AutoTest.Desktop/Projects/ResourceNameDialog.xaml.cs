@@ -12,6 +12,8 @@ public partial class ResourceNameDialog : Window
         Loaded += (_, _) => AutoTest.Desktop.Shell.DesktopWindowSizing.FitToVisibleWorkspace(this);
         Title = title;
         Prompt.Text = title;
+        ResourceNameCaption.Text = title.Contains("工程", StringComparison.Ordinal) ? "工程名称" :
+            title.Contains("DBC", StringComparison.OrdinalIgnoreCase) ? "DBC 名称" : "名称";
         ResourceNameInput.Text = initialName;
         Loaded += (_, _) => { ResourceNameInput.Focus(); ResourceNameInput.SelectAll(); };
     }
@@ -23,7 +25,7 @@ public partial class ResourceNameDialog : Window
         if (string.IsNullOrWhiteSpace(text) || text != text.Trim() ||
             text.Length > 100 || text.IndexOfAny(System.IO.Path.GetInvalidFileNameChars()) >= 0)
         {
-            ErrorText.Text = "请输入有效的资源名称，不能包含 Windows 文件名非法字符。";
+            ErrorText.Text = "请输入有效名称，不能包含 Windows 文件名非法字符。";
             return;
         }
         DialogResult = true;
