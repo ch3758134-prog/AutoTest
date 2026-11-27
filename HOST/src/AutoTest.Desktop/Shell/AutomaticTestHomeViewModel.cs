@@ -209,6 +209,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
                     _hardware.ConfirmedEcuCanBitrateKbps == prepared.EcuCanKbps &&
                     _hardware.RequestedEcuCanBitrateKbps == prepared.EcuCanKbps,
                 TrustedPhysicalStartConnected: false,
+                TrustedFixtureAndInterlockReady: false,
                 VerifiedInspectionWriterConnected: false));
         }
     }
