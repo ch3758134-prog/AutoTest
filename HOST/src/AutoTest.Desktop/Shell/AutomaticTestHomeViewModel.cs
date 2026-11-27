@@ -199,7 +199,14 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
                 _hardware.IsConnected && _hardware.CurrentStationEpoch > 0,
                 _hardware.IsEcuCanBitrateApplied,
                 _scanner.IsConnected,
-                observed is not null,
+                observed is
+                    { Source: FrozenScanSource.ProductionFixedMarker,
+                      RuleRevision: > 0 } &&
+                    observed.PackageSha256.Length == 64 &&
+                    string.Equals(observed.RawBarcode, _lastObservedBarcode,
+                        StringComparison.Ordinal) &&
+                    string.Equals(observed.RawBarcode, _lastIdentity,
+                        StringComparison.Ordinal),
                 projectSame,
                 prepared is not null && _acceptedStationEpoch > 0 &&
                     _acceptedStationEpoch == _hardware.CurrentStationEpoch,
@@ -300,6 +307,13 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         (_prepared is null ||
          _hardware.ConfirmedEcuCanBitrateKbps == _prepared.EcuCanKbps);
     public bool IdentityAccepted => _prepared?.AcceptedScannerObservation is { } observed &&
+        (_isProductionWorkspace()
+            ? observed.Source == FrozenScanSource.ProductionFixedMarker &&
+              observed.PackageSha256.Length == 64 &&
+              observed.RuleRevision > 0
+            : observed.Source == FrozenScanSource.EngineeringRaw) &&
+        string.Equals(observed.RawBarcode, _lastObservedBarcode,
+            StringComparison.Ordinal) &&
         _scanner.IsConnected &&
         _hardware.IsConnected && _acceptedStationEpoch > 0 &&
         _hardware.CurrentStationEpoch == _acceptedStationEpoch &&
