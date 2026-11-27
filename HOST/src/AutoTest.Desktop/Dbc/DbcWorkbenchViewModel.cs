@@ -88,6 +88,8 @@ public sealed class DbcSignalRow : BindableBase, IEditableObject
 /// <summary>Signal parameter form draft. Validate all fields in one transaction.</summary>
 public sealed class DbcSignalEditState : BindableBase
 {
+    private string _name = "";
+    public string Name { get => _name; set => SetProperty(ref _name, value ?? ""); }
     private string _startBit = "";
     public string StartBit { get => _startBit; set => SetProperty(ref _startBit, value); }
     private string _bitLength = "";
@@ -128,6 +130,7 @@ public sealed class DbcSignalEditState : BindableBase
 
     public static DbcSignalEditState FromSignal(DbcSignal signal) => new()
     {
+        Name = signal.Name,
         StartBit = signal.StartBit.ToString(CultureInfo.InvariantCulture),
         BitLength = signal.BitLength.ToString(CultureInfo.InvariantCulture),
         Factor = DisplayDouble(signal.Factor),
@@ -139,6 +142,7 @@ public sealed class DbcSignalEditState : BindableBase
     };
 
     public bool Matches(DbcSignal signal) =>
+        Name == signal.Name &&
         StartBit == signal.StartBit.ToString(CultureInfo.InvariantCulture) &&
         BitLength == signal.BitLength.ToString(CultureInfo.InvariantCulture) &&
         Factor == DisplayDouble(signal.Factor) &&
@@ -755,8 +759,15 @@ public sealed class DbcWorkbenchViewModel : BindableBase
                 int.TryParse(input, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
                     ? value : throw new FormatException(label + "须是有效整数。");
             var original = row.Signal;
+            var editedName = draft.Name.Trim();
+            if (!System.Text.RegularExpressions.Regex.IsMatch(editedName,
+                    @"^[A-Za-z_][A-Za-z0-9_]*$",
+                    System.Text.RegularExpressions.RegexOptions.CultureInvariant,
+                    TimeSpan.FromMilliseconds(100)))
+                throw new FormatException("信号技术名称只能使用英文字母、数字和下划线，不能以数字开头。");
             var updated = original with
             {
+                Name = editedName,
                 StartBit = Integer(draft.StartBit, "起始位"), BitLength = Integer(draft.BitLength, "位长"),
                 Intel = draft.Intel, Signed = draft.Signed,
                 Factor = DbcSignalEditState.ResolveEditedNumber(draft.Factor, original.Factor, "因子"),
@@ -784,7 +795,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
                     }
                     if (row.HasAliasDraft)
                         _session.Document.SetSignalAlias(
-                            message.Message.Id, original.Name, row.Alias);
+                            message.Message.Id, updated.Name, row.Alias);
                 }
                 catch
                 {

@@ -124,7 +124,7 @@ public partial class DbcWorkbenchView : UserControl
         if (Ancestor<DataGridRow>(e.OriginalSource as DependencyObject) is { } row && FinishGrid())
         {
             MessageGrid.SelectedItem = row.Item;
-            OpenNotes(true); e.Handled = true;
+            _viewModel.EditMessage(); e.Handled = true;
         }
     }
 
@@ -166,7 +166,7 @@ public partial class DbcWorkbenchView : UserControl
             _viewModel.UndoEdit(e.Key == Key.Y); e.Handled = true; return;
         }
         if (e.Key == Key.F2 && MessageGrid.IsKeyboardFocusWithin)
-        { OpenNotes(true); e.Handled = true; }
+        { _viewModel.EditMessage(); e.Handled = true; }
         else if (e.Key == Key.F2 && SignalGrid.IsKeyboardFocusWithin &&
                  SignalGrid.CurrentColumn?.IsReadOnly == true)
         { OpenNotes(false); e.Handled = true; }

@@ -35,18 +35,18 @@
   <Border Background="White" BorderBrush="#DFE6EE" BorderThickness="0,0,0,1" Padding="14,10">
    <DockPanel>
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-     <TextBlock Text="{Binding AssetRevision,StringFormat='修订 {0}'}" Foreground="#526B84" Margin="0,0,12,0"/>
      <TextBlock Text="未保存" Foreground="#9B6423" Visibility="{Binding IsDirty,Converter={StaticResource BoolToVisibility}}"/>
     </StackPanel>
-    <StackPanel><TextBlock Text="DBC 信号编辑" FontSize="19" FontWeight="SemiBold"/>
-     <TextBlock Text="{Binding AssetName}" Foreground="#62778D" TextTrimming="CharacterEllipsis" ToolTip="{Binding FilePath}" Margin="0,4,0,0"/>
-     <TextBlock Text="{Binding SourceDescription}" Foreground="#62778D" FontSize="11" Margin="0,3,0,0"/>
+    <StackPanel><TextBlock Text="{Binding AssetName}" FontSize="19" FontWeight="SemiBold"
+      TextTrimming="CharacterEllipsis" ToolTip="{Binding FilePath}"/>
+     <TextBlock Text="DBC · 报文与信号" Foreground="#62778D" FontSize="12" Margin="0,4,0,0"/>
     </StackPanel>
    </DockPanel>
   </Border>
   <Border Grid.Row="1" Background="White" BorderBrush="#DFE6EE" BorderThickness="0,0,0,1" Padding="10,5">
    <DockPanel>
-    <Button DockPanel.Dock="Right" Content="{Binding StateDescription}" Click="ShowPolicy_Click" ToolTip="查看实际可编辑范围" Margin="8,0,0,0"/>
+    <Button DockPanel.Dock="Right" Content="编辑限制" Click="ShowPolicy_Click"
+      ToolTip="{Binding StateDescription}" Margin="8,0,0,0"/>
     <WrapPanel VerticalAlignment="Center">
      <TextBlock Text="自动保存" Foreground="#567766" VerticalAlignment="Center" Margin="0,0,9,0" ToolTip="合法编辑自动保存；Ctrl+S 可立即保存"/>
      <Button Content="撤销" Click="Undo_Click" IsEnabled="{Binding CanUndo}" Margin="0,0,4,0"/>
@@ -71,7 +71,7 @@
      </StackPanel>
      <DataGrid x:Name="MessageGrid" Grid.Row="1" Style="{StaticResource Matrix}" ItemsSource="{Binding Messages}" SelectedItem="{Binding SelectedMessage,Mode=TwoWay}" IsReadOnly="True" SelectionUnit="FullRow" MouseDoubleClick="Message_DoubleClick" RowHeight="42">
       <DataGrid.ContextMenu><ContextMenu>
-       <MenuItem Header="编辑报文参数" Click="EditMessage_Click"/><MenuItem Header="名称与注释" Click="MessageNotes_Click"/>
+       <MenuItem Header="编辑报文（含名称）" Click="EditMessage_Click"/><MenuItem Header="名称与注释" Click="MessageNotes_Click"/>
        <MenuItem Header="删除报文" Click="DeleteMessage_Click"/>
       </ContextMenu></DataGrid.ContextMenu>
       <DataGrid.Columns>
@@ -94,7 +94,8 @@
      <StackPanel Margin="12,10,12,8">
       <DockPanel>
        <WrapPanel DockPanel.Dock="Right" VerticalAlignment="Center">
-        <Button Content="报文属性" Click="EditMessage_Click" IsEnabled="{Binding CanEdit}" Margin="0,0,5,0"/>
+        <Button Content="编辑报文" Click="EditMessage_Click" IsEnabled="{Binding CanEdit}" Margin="0,0,5,0"
+         ToolTip="修改报文技术名称、CAN ID、DLC、发送节点"/>
         <Button Content="名称与注释" Click="MessageNotes_Click"/>
        </WrapPanel>
        <StackPanel>
@@ -127,7 +128,9 @@
        <MenuItem Header="名称与注释" Click="SignalNotes_Click"/><MenuItem Header="完整参数" Click="EditSignal_Click"/><MenuItem Header="枚举值" Click="Enums_Click"/><MenuItem Header="删除信号" Click="DeleteSignal_Click"/>
       </ContextMenu></DataGrid.ContextMenu>
       <DataGrid.Columns>
-       <DataGridTextColumn Header="信号名称" Binding="{Binding Name}" IsReadOnly="True" Width="142"/>
+       <DataGridTextColumn Header="信号名称"
+         Binding="{Binding Draft.Name,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+         Width="142"/>
        <DataGridTextColumn Header="中文别名" Binding="{Binding Alias,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
          Width="128" SortMemberPath="Alias"/>
        <DataGridTextColumn Header="起始位" Width="65" Binding="{Binding Draft.StartBit,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" SortMemberPath="StartBit"/>
