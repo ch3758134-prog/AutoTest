@@ -264,22 +264,20 @@ public sealed partial class MainWindowViewModel
 
             try
             {
-                var published = await StationProductionConfigurationStore.LoadPublishedAsync();
-                var draft = await StationProductionConfigurationStore.LoadDraftAsync();
-                scan = published is null
-                    ? "工位编码配置草稿：" + draft.Rules.Count + " 条规则；尚未发布。" +
-                      "请在“生产准备”中绑定型号与工程、批量试扫并发布。"
-                    : "已发布工位编码规则 " +
-                      published.Configuration.Rules.Count(x => x.Enabled) +
-                      " 条，关联完整工程 " + published.Projects.Count + " 个；" +
-                      (_scannerWorkbench.IsConnected ? "真实 COM 已连接" :
-                       "COM 未连接（不妨碍离线试扫）。");
+                // Production routing is independent of the opened engineering
+                // project. No station barcode release/configuration in PROJECT.
+                var installed = await _productionCatalog.ListAsync();
+                var routes = await _productionCatalog.ListBindingsAsync();
+                scan = installed.Count + " 个已安装生产工程版本、" +
+                    routes.Count + " 条固定标记关联；" +
+                    (_scannerWorkbench.IsConnected ? "扫码枪 COM 已连接。" :
+                        "扫码枪 COM 未连接。");
             }
             catch (Exception error) when (error is IOException or InvalidDataException or
                 UnauthorizedAccessException or ArgumentException or FormatException or
-                System.Text.Json.JsonException or ProjectDataException)
+                System.Text.Json.JsonException)
             {
-                scan = "扫码配置需要修复：" + error.Message;
+                scan = "生产工程库需要检查：" + error.Message;
             }
 
             try
