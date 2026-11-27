@@ -293,7 +293,7 @@
      <Button x:Name="ConfirmButton" Content="完成"
       Style="{StaticResource AtPrimaryButton}" Click="Confirm_Click" MinWidth="92"/>
      </StackPanel>
-     <TextBlock Text="修改完成后直接切换步骤或点击外部；无效字段保留并提示" Foreground="#43566B" FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,10,0"/>
+     <TextBlock Text="修改完成点击“完成”；“取消”放弃本次编辑。外部点击不会关闭窗口" Foreground="#43566B" FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,10,0"/>
     </DockPanel>
    </StackPanel>
   </Border>
