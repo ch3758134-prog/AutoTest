@@ -23,7 +23,7 @@ public sealed class ProductionOrchestrationTests
     private static ProductionStationReadiness Station(
         AuthorizationScope auth = AuthorizationScope.Programming) =>
         new(StationId.Create("STATION-1"), StationConnectionState.Ready,
-            "24V", true, auth);
+            "24V", true, 101, auth);
 
     private ProductionSession Ready(ProductionProjectExecution project)
     {
@@ -34,7 +34,7 @@ public sealed class ProductionOrchestrationTests
                 project.Assets, null)).Outcome);
         Assert.Equal(Outcome.Accepted, session.Confirm(project,
             new RuleRevision(_hash), new ProjectRevision(1),
-            Station().Station).Outcome);
+            Station()).Outcome);
         return session;
     }
 
@@ -305,7 +305,7 @@ public sealed class ProductionOrchestrationTests
             project.Assets, null));
         var next = session.Confirm(project,
             new RuleRevision(_hash), new ProjectRevision(1),
-            Station().Station).Value!;
+            Station()).Value!;
         Assert.NotEqual(original.Run, next.Run);
         Assert.Equal(original.DutIdentity, next.DutIdentity);
     }
@@ -361,7 +361,7 @@ public sealed class ProductionOrchestrationTests
         {
             PressRequests++;
             return ValueTask.FromResult(new FixtureAdmissionEvidence(
-                job.Run, job.Station, closed, interlock,
+                job.Run, job.Station, job.ControllerEpoch, closed, interlock,
                 closed && interlock ? "TEST_FIXTURE" : ""));
         }
         public ValueTask<PhysicalStartEvidence> WaitForStartAsync(
@@ -370,7 +370,7 @@ public sealed class ProductionOrchestrationTests
         {
             StartRequests++;
             return ValueTask.FromResult(new PhysicalStartEvidence(
-                job.Run, job.Station, start,
+                job.Run, job.Station, job.ControllerEpoch, start,
                 start ? "TEST_EDGE" : ""));
         }
     }
