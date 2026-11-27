@@ -1,7 +1,7 @@
 # AutoTest 主控板 ↔ Windows 上位机 USB 外部接口说明
 
 > **文档类型：主控板对外通信接口 / 上位机开发交接**  
-> **接口修订：2026-11-20（新增 ECU CAN 码率 USB 设置/查询；保留 GPIO、CAN 透传与 KEY CAN 既有协议；待 Keil 编译和真实台架验证）**  
+> **接口修订：2026-11-26（新增实体 KEY1～KEY3 双边沿中断和只读 USB 0x44/0x45；待 Keil 编译与实物验证）**  
 > **源码基线：ch3758134-prog/AutoTest，Main_Control ECU CAN 波特率配置候选**  
 > **约束：本文描述源码当前行为，不等同于实物验证通过；“目标需求/建议”不得冒充已实现协议。**
 
@@ -14,6 +14,7 @@
 | USB PING/版本查询 | 已实现 | 上电设备识别仍需实测 |
 | KEY CAN / ECU CAN 透传 | 已实现，两路启动均为500kbit/s | KEY CAN=J1 B11/B1（MCU CAN0），固定500k；ECU CAN=J1 A12/A1（MCU CAN1），支持 USB 0x42 调码率/0x43 查询 |
 | ECU CAN 周期广播 | 旧功能仍存在 0x50~0x53 | 是否长期保留作为业务功能未另行批准 |
+| 实体 KEY1～KEY3 输入 | 0x44 异步事件、0x45 查询 | PTC7/PTC6/PTC5、PORTC 双边沿中断及20ms消抖；仅 MCU GPIO 电平，不是 KEY_SIM K1～K20 |
 | IGN/HOUT1/PTC1/J1 C10 | 0x12/0x13设置/查询 | 保留，查询为MCU GPIO电平 |
 | LED1~LED6/HOUT2~HOUT7 | 0x1A单路设置、0x1B六路查询、0x1C位图设置 | 新增；GPIO上电默认LOW |
 | 夹具1/PTB1、J1 B5 | 0x18/0x19，独立控制 | 1=压紧，0=释放 |
@@ -104,6 +105,8 @@
 | 0x41 CAN_RX_IND | 板→主机（主动） | 无请求 | 固定15字节，见下 | SEQ=0；可随时与普通应答交错 |
 | 0x42 SET_ECU_CAN_BAUD | 主机→板 | 1字节 baud_code，0..7 | 空 | 仅 ECU CAN 运行时切换；忙时拒绝 |
 | 0x43 GET_ECU_CAN_BAUD | 主机→板 | 空 | 1字节 baud_code | 查询最近一次成功配置的 ECU CAN 码率 |
+| 0x44 KEY_INPUT_EVENT | 板→主机（主动） | 无请求 | 5字节，见下 | SEQ=0，外部实体 KEY 稳定电平变化 |
+| 0x45 GET_KEY_INPUTS | 主机→板 | 空 | 3字节，见下 | 三路 KEY 当前消抖电平、事件序号 |
 | 0x50 SET_BROADCAST | 主机→板 | 1+16*N 字节，见下 | 空 | 装填 ECU CAN 周期发送表 |
 | 0x51 BROADCAST_START | 主机→板 | 空 | 空 | 启动发送表；无帧表时当前实现也可能返回 OK |
 | 0x52 BROADCAST_STOP | 主机→板 | 空 | 空 | 停止发送，保留帧表 |
@@ -158,7 +161,23 @@
 - 推荐上位机启动测试前按 DUT 工程配置执行 `0x42`，再用 `0x43` 确认，并在重启/重连后重新读取、按需设置。正在进行 UDS/烧录/周期发送时不应修改码率。
 - 底层利用现有 `FLEXCAN_SetTimingConfig` 的 Freeze→寄存器更新→退出流程，不重新初始化整个 CAN 模块；Keil 编译和不同速率的实际通讯/忙状态仍需实测。
 
-### 4.3 ECU CAN 周期广播（0x50~0x53）
+### 4.3 实体 KEY1～KEY3 输入事件与查询（0x44 / 0x45）
+
+三路外部自复位按钮仅接主控板输入：KEY1=PTC7/J1 C17，KEY2=PTC6/J1 C18，KEY3=PTC5/J1 C16。与 KEY_SIM 的20个按键模拟通道完全独立；本功能不发送 CAN、不驱动夹具/IGN、不启动测试。
+
+| CMD | 方向 | Payload | 约束 |
+|---|---|---|---|
+| `0x44 KEY_INPUT_EVENT` | MCU→Host，`SEQ=0` | 5B `[key,level,levels,seq_lo,seq_hi]` | key=1..3；level=0/1；levels 的 bit0..2 分别代表 KEY1..3 消抖稳定电平 |
+| `0x45 GET_KEY_INPUTS` | Host→MCU，非零 SEQ | 请求为空，响应3B `[levels,seq_lo,seq_hi]` | 请求长度非0返回 `0x02 ERR_FMT` |
+
+- KEY1～3 设置为 PORTC GPIO 输入、双边沿外部中断；ISR 仅记录变化标志和 MCU 时刻。主循环等待该输入连续稳定20ms后接受变化，并由 `0x44` 上报。
+- `sequence` 是主控 MCU 启动以来每次被确认的稳定电平变化计数（16bit，低字节先发，自然回绕）；主机可比较序号间隔发现事件跳跃。USB 异步队列仍可能丢事件，不可将其宣称为无损。
+- 刚连接时应请求 `0x45` 获取初始电平并设置会话基线。0x45 返回**消抖稳定电平**，不是外部输入端子的实测电压，也不证明哪种电平代表按下；实际按钮极性在现场验证前未定。
+- 每个按下并自动弹起的完整动作，期望产生两次稳定电平变化；按住不反复上报，抖动不产生有效事件。短于消抖时间的脉冲可能被忽略。
+- 上电、断连后重新连接的会话只能重新读回当前 GPIO；断连不能解释成按钮松开。旧固件可能对 `0x45` 返回 `0x03 ERR_CMD`，上位机应明确显示不支持，禁止模拟假事件。
+- 上报只走 USB 0xA5 帧，不进入 `0x40/0x41` CAN 通道；实际物理输入通路、触点极性与消抖稳定性尚待真实按键实测。
+
+### 4.4 ECU CAN 周期广播（0x50~0x53）
 
 0x50 请求：
 - PAYLOAD[0] = count，范围 1~8。
@@ -288,6 +307,7 @@
 - R08：CAN_SEND目前未在ASW层完整校验ide/id范围，需Host主动校验。
 - R09：WinUSB WCID免驱枚举在Windows各机型上仍需现场确认，识别到EPB_Host不表示PING成功。
 - R10：0x42/0x43 ECU CAN 码率指令已写入源码，尚未完成 Keil 编译、125k/250k/500k/1M 现场收发、广播忙拒绝、TX 邮箱忙拒绝、复位回默认速率等验证；SDK Freeze 期间可能短暂停止 CAN 接收。
+- R11：外部 KEY1～3 的 0x44/0x45 已实现；按钮触点极性、接线、双边沿中断、电平稳定及实物 USB 上报尚未验证。不得自动绑定开始/停止业务。
 
 ## 9. 上位机与固件双方最小联调清单
 
@@ -298,6 +318,8 @@
 - [ ] 非法码率/长度返回 ERR_FMT；广播运行中和 TX 邮箱未空时返回 ERR_BUSY，停止/发送完成后可再次设置。
 - [ ] MCU 复位后 ECU CAN 0x43 回 05；检查发送、收帧、UDS、波特率切换前后过滤器状态。
 - [ ] CAN_RX_IND(SEQ=0)与正常响应交错、USB拆包/连包及64B尾填充。
+- [ ] GPIO KEY1/PTC7/J1 C17、KEY2/PTC6/J1 C18、KEY3/PTC5/J1 C16 分别按下、按住、松开，核实0x44事件 key、level、levels、seq。
+- [ ] 0x45 在上电/重连后的三路稳定状态查询；多键同时触发、20ms消抖、非法请求ERR_FMT、事件丢失计数及无USB后状态重新同步。
 - [ ] 首先确认上电无 USB 指令时外部高边输出请求 GPIO 均为 LOW（含 HOUT9/10、U22 CH4），内部 RL_DRV 初始化为 HIGH；检查 J1 的上电瞬态和实际负载。
 - [ ] IGN=0/1 和 GET，核对 J1 C10 真实电平；确认所有 USB IO 命令均不改变 RL_DRV。
 - [ ] LED1~LED6 分别设置、读取、整组位图 0x00/0x3F/交替、非法参数ERR_FMT、上电LOW 和 J1 输出实测。
@@ -316,7 +338,7 @@
 - CAN 码率底层：Project/source/BSW/EAL/Can/EAL_CAN.c、Project/source/MCAL/Can/MCAL_CAN.c
 - CAN1 广播：Project/source/ASW/EcuEmu/ASW_EcuEmu.c
 - IGN、夹具与六路 LED：Project/source/ASW/IoCtrl/ASW_IoCtrl.c
-- 真实 GPIO 宏及初始化：Project/source/BSW/EAL/GPIO/EAL_GPIO.h、EAL_GPIO.c
+- 真实 GPIO 宏、初始化、PORTC 中断与20ms消抖：Project/source/BSW/EAL/GPIO/EAL_GPIO.h、EAL_GPIO.c
 - 固件启动：Project/source/main.c
 
 **变更规则：** 固件若改变 VID/PID/GUID、端点、帧格式、CMD、PAYLOAD、极性或错误码，必须同步更新本文并通知上位机。本文与固件本次修订同步，但未取得Keil编译和真实台架验证证据。
