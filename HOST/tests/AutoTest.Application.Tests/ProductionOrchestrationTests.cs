@@ -292,6 +292,32 @@ public sealed class ProductionOrchestrationTests
     }
 
     [Fact]
+    public async Task StationCycleCannotUseSoftwareStartOrRunWithoutPhysicalAdapter()
+    {
+        var config = Config(flash: true);
+        var executor = new CountingProductionStageExecutor();
+        var session = new ProductionSession();
+        var workflow = new ProductionWorkflow(executor,
+            new ProductionResultCoordinator(new CapturingFactSink()),
+            new ProductionPreflight());
+        var handler = new ProductionCommandHandler(new FakeMatcher(config.Assets),
+            _ => config, session, workflow,
+            new RuleRevision(_hash), new ProjectRevision(1));
+        var admitted = await handler.ScanAsync(Scan(),
+            Station(mock: false, auth: AuthorizationScope.Programming),
+            autoStart: false, CancellationToken.None);
+        Assert.Equal("READY_FOR_START", admitted.Code);
+        var cycle = await handler.BeginStationCycleAsync(CancellationToken.None);
+        Assert.Equal("PHYSICAL_STATION_ADAPTER_NOT_CONNECTED", cycle.Code);
+        Assert.Equal(ProductionState.Ready, cycle.State);
+        Assert.Equal(0, executor.Commands);
+        Assert.Null(handler.LastStartSource);
+        var cancel = handler.RetryWithNewRun();
+        Assert.Equal(Outcome.Accepted, cancel.Outcome);
+        Assert.Equal(ProductionState.Empty, session.State);
+    }
+
+    [Fact]
     public async Task RealRunCannotTouchFixtureOrFlashWithoutTrustedStationPort()
     {
         var configuration = Config(flash: true);
