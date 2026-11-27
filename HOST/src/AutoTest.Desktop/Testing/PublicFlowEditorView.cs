@@ -24,6 +24,7 @@ public sealed class PublicFlowEditorView : UserControl
     private StepEditTransaction _transaction;
     private readonly TreeView _tree = new();
     private readonly TextBlock _status = new();
+    private readonly TextBlock _flowHeading = new();
     private TestStepInspector? _inspector;
     private bool _refreshing, _dirty, _busy;
     private StepId? _newStepId;
@@ -67,13 +68,14 @@ public sealed class PublicFlowEditorView : UserControl
 
         var toolbar = new StackPanel { Orientation = Orientation.Horizontal,
             Margin = new Thickness(12, 10, 12, 10) };
-        toolbar.Children.Add(new TextBlock
-        {
-            Text = "公共流程 · " + session.AssetName,
-            FontSize = 15, FontWeight = FontWeights.SemiBold,
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, 0, 16, 0)
-        });
+        _flowHeading.Text = "公共流程 · " + session.AssetName;
+        _flowHeading.FontSize = 15;
+        _flowHeading.FontWeight = FontWeights.SemiBold;
+        _flowHeading.VerticalAlignment = VerticalAlignment.Center;
+        _flowHeading.Margin = new Thickness(0, 0, 16, 0);
+        toolbar.Children.Add(_flowHeading);
+        toolbar.Children.Add(MakeButton("重命名", async (_, _) => await RenameFlowAsync()));
+        toolbar.Children.Add(MakeButton("查看引用", async (_, _) => await ShowUsagesAsync()));
         toolbar.Children.Add(MakeButton("＋ 添加步骤", (s, _) => ShowPalette(s as Button)));
         toolbar.Children.Add(MakeButton("编辑步骤", (_, _) => EditSelected()));
         toolbar.Children.Add(MakeButton("删除", (_, _) => DeleteSelected()));
@@ -93,15 +95,18 @@ public sealed class PublicFlowEditorView : UserControl
         layout.Children.Add(_tree);
 
         Grid.SetRow(_status, 2);
-        _status.Text = "公共流程为连续步骤树；双击或点击编辑步骤打开属性浮窗。运行由调用它的测试用例负责。";
+        _status.Text = "双击编辑步骤 · 公共流程使用与 TEST 相同的步骤定义和执行器。";
         _status.Padding = new Thickness(14, 6, 14, 6);
         _status.Foreground = new SolidColorBrush(Color.FromRgb(86, 111, 143));
         layout.Children.Add(_status);
         var cardLayout = new DockPanel();
         var header = new DockPanel { Margin = new Thickness(14, 8, 14, 4) };
-        var close = MakeButton("关闭", (_, _) => TryDismissPropertyEditor());
+        var close = MakeButton("完成", (_, _) => TryDismissPropertyEditor());
+        var cancel = MakeButton("取消", (_, _) => CancelPropertyEditor());
         DockPanel.SetDock(close, Dock.Right);
         header.Children.Add(close);
+        DockPanel.SetDock(cancel, Dock.Right);
+        header.Children.Add(cancel);
         header.Children.Add(new TextBlock { Text = "步骤属性", FontSize = 17, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
         DockPanel.SetDock(header, Dock.Top);
         cardLayout.Children.Add(header);
@@ -111,8 +116,9 @@ public sealed class PublicFlowEditorView : UserControl
         _propertyOverlay.MouseLeftButtonDown += (_, args) =>
         {
             if (!ReferenceEquals(args.OriginalSource, _propertyOverlay)) return;
+            // Clicking the surrounding dimmed surface never applies or
+            // discards step edits. Only explicit 完成/取消 can leave the editor.
             args.Handled = true;
-            TryDismissPropertyEditor();
         };
         Grid.SetRowSpan(_propertyOverlay, 3);
         Panel.SetZIndex(_propertyOverlay, 100);
@@ -128,11 +134,80 @@ public sealed class PublicFlowEditorView : UserControl
 
     private static Button MakeButton(string title, RoutedEventHandler handler)
     {
-        var button = new Button { Content = title, MinHeight = 29,
-            Margin = new Thickness(0, 0, 6, 0), Padding = new Thickness(9, 3, 9, 3) };
+        var button = new Button { Content = title, MinHeight = 33,
+            Margin = new Thickness(0, 0, 7, 0), Padding = new Thickness(11, 5, 11, 5),
+            Background = Brushes.White, BorderBrush = new SolidColorBrush(
+                Color.FromRgb(217, 229, 239)), Foreground = new SolidColorBrush(
+                Color.FromRgb(39, 67, 90)) };
         button.Click += handler;
         return button;
     }
+
+    private async Task RenameFlowAsync()
+    {
+        if (_busy || !TryFinishInspector() || !await SaveForCloseAsync()) return;
+        var nameDialog = new ResourceNameDialog("重命名公共流程", _session.AssetName);
+        if (Window.GetWindow(this) is { } owner) nameDialog.Owner = owner;
+        if (nameDialog.ShowDialog() != true) return;
+        var name = nameDialog.ResourceName;
+        if (name == _session.AssetName) return;
+        _busy = true;
+        try
+        {
+            // Rename only the user-visible resource, not its body, StepIds or
+            // content fingerprint. Existing TEST calls remain valid.
+            await _workspace.RenameAssetAsync(_session.AssetId, name);
+            _session = await _workspace.OpenPublicFlowEditorAsync(_session.AssetId);
+            _flowHeading.Text = "公共流程 · " + _session.AssetName;
+            _status.Text = "已重命名公共流程；已有用例调用保持不变。";
+        }
+        catch (Exception error)
+        {
+            _status.Text = "重命名失败：" + error.Message;
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task ShowUsagesAsync()
+    {
+        if (_busy || !TryFinishInspector()) return;
+        _busy = true;
+        try
+        {
+            var context = _workspace.Current;
+            if (context is null) return;
+            var usages = new List<string>();
+            foreach (var asset in context.Definition.Assets)
+            {
+                bool used = false;
+                if (asset.Kind == ProjectWorkspaceService.TestProgramKind)
+                {
+                    var opened = await _workspace.OpenTestEditorAsync(asset.Id);
+                    used = opened.Document.Walk().Any(CallsThisFlow);
+                }
+                else if (asset.Kind == ProjectWorkspaceService.PublicFlowKind &&
+                         asset.Id != _session.AssetId)
+                {
+                    var opened = await _workspace.OpenPublicFlowEditorAsync(asset.Id);
+                    used = opened.Document.Walk().Any(CallsThisFlow);
+                }
+                if (used) usages.Add(asset.Name);
+            }
+            _status.Text = usages.Count == 0
+                ? "当前工程还没有调用这个公共流程。"
+                : "当前调用位置：" + string.Join("、", usages);
+        }
+        catch (Exception error)
+        {
+            _status.Text = "引用检查失败：" + error.Message;
+        }
+        finally { _busy = false; }
+    }
+
+    private bool CallsThisFlow(StepNode node) =>
+        node.Type == "CallPublicFlow" &&
+        Guid.TryParse(node.Properties.GetValueOrDefault("flowAssetId", ""), out var id) &&
+        id == _session.AssetId.Value;
 
     private Selection CurrentSelection()
     {
@@ -348,7 +423,7 @@ public sealed class PublicFlowEditorView : UserControl
                 _newActionKey = null;
                 _dirty = true;
                 RefreshTree(node.Id);
-                _status.Text = "已更新当前流程步骤，保存后更新工程资源修订。";
+                _status.Text = "已更新当前流程步骤，修改将自动保存。";
                 return true;
             }
             catch (Exception error)
@@ -485,7 +560,7 @@ public sealed class PublicFlowEditorView : UserControl
             };
             _session = await _workspace.SavePublicFlowEditorAsync(_session, next);
             _dirty = false;
-            _status.Text = "公共流程已保存 · 修订 " + _session.AssetRevision;
+            _status.Text = "公共流程已保存";
             return true;
         }
         catch (Exception ex)
