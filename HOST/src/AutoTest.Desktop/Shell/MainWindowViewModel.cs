@@ -1585,7 +1585,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         // and a separate categorized asset section. Do not nest the latter under root.
         ResourceNodes.Add(new ResourceTreeNode(current.Definition.Name, "", current.ManifestPath,
             role: "Root"));
-        ResourceNodes.Add(new ResourceTreeNode("测试项目与用例", "",
+        ResourceNodes.Add(new ResourceTreeNode("检测流程", "",
             "工程中按顺序执行的测试用例",
             ProjectWorkspaceService.TestProjectKind, role: "Section"));
         var assets = current.Definition.Assets;
@@ -1606,15 +1606,19 @@ public sealed partial class MainWindowViewModel : BindableBase
         // business entities; case links refer to the exact same AssetId.
         var allCases = assets.Where(x => x.Kind == ProjectWorkspaceService.TestProgramKind)
             .OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase).ToArray();
-        if (allCases.Length > 0 && projects.Length == 0)
-        {
-            var unused = new ResourceTreeNode("未加入项目的用例", "", "尚未加入测试顺序的用例",
-                role: "Folder", count: allCases.Length.ToString());
-            foreach (var entry in allCases)
-                unused.Children.Add(new ResourceTreeNode(entry.Name, "", entry.RelativePath,
-                    entry.Kind, entry, role: "Case"));
-            ResourceNodes.Add(unused);
-        }
+        // The ordered project is an execution plan. The case library is the
+        // editable definitions list: a case may be called by more than one
+        // ordered flow without duplicating its underlying AssetId.
+        // Keep this secondary tree section collapsed rather than repeating
+        // every case inside the main flow on initial entry.
+        var caseLibrary = new ResourceTreeNode("用例库", "",
+            "已保存的 TEST 用例定义；检测顺序由上方检测流程决定",
+            ProjectWorkspaceService.TestProgramKind, role: "Advanced",
+            count: allCases.Length.ToString());
+        foreach (var entry in allCases)
+            caseLibrary.Children.Add(new ResourceTreeNode(entry.Name, "",
+                entry.RelativePath, entry.Kind, entry, role: "Case"));
+        ResourceNodes.Add(caseLibrary);
         // Dependency review is secondary to the runnable project itself.
         ResourceNodes.Add(new ResourceTreeNode("工程检查", "",
             "检查测试用例、烧录、DBC 与波形资源",
