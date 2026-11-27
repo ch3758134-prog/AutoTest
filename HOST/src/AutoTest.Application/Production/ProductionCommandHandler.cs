@@ -76,7 +76,7 @@ public sealed class ProductionCommandHandler
                 return Task.FromResult(Feedback(string.Join(";", preflight.Blockers),
                     Verdict.Inconclusive));
             var ready = _session.Confirm(execution, _ruleRevision, _projectRevision,
-                station.Station);
+                station);
             if (ready.Outcome != Outcome.Accepted)
                 return Task.FromResult(Feedback(ready.FailureCode!, Verdict.Inconclusive));
             // No automatic start or executable stage is invoked by the scan.
