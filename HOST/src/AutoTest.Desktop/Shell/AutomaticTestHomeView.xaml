@@ -48,9 +48,7 @@
   </Style>
  </UserControl.Resources>
 
- <!-- No COM settings, ECU CAN setup, TEST edit, or software start on this
-      production surface. Formal START/inspection are still blocked by the
-      existing product contract and are never represented as successful. -->
+ <!-- Production shares the physical FLASH and TEST engine with engineering. -->
  <Grid Margin="12,10,12,12">
   <Grid.RowDefinitions>
    <RowDefinition Height="Auto"/>
@@ -76,16 +74,29 @@
       Foreground="#52677D" FontSize="13" TextWrapping="Wrap"
       ToolTip="{Binding ProjectName}"/>
     </StackPanel>
-    <Border Grid.Column="1" Background="#F4F8FC" CornerRadius="6" Padding="13,10">
-     <StackPanel VerticalAlignment="Center">
-      <TextBlock Text="{Binding ProductionDisplayStage}" FontSize="12"
-       Foreground="#496C91" FontWeight="SemiBold" Margin="0,0,0,3"/>
-      <TextBlock Text="{Binding ProductionHeadline}" FontSize="20"
-       FontWeight="SemiBold" TextWrapping="Wrap" Foreground="#1F3449"/>
-      <TextBlock Text="{Binding ProductionGuidance}" FontSize="12"
-       Foreground="#60738A" TextWrapping="Wrap" Margin="0,5,0,0"/>
+    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+     <Border Background="#F4F8FC" CornerRadius="6" Padding="13,10">
+      <StackPanel>
+       <TextBlock Text="{Binding ProductionDisplayStage}" FontSize="12"
+        Foreground="#496C91" FontWeight="SemiBold" Margin="0,0,0,3"/>
+       <TextBlock Text="{Binding ProductionHeadline}" FontSize="20"
+        FontWeight="SemiBold" TextWrapping="Wrap" Foreground="#1F3449"/>
+       <TextBlock Text="{Binding ProductionGuidance}" FontSize="12"
+        Foreground="#60738A" TextWrapping="Wrap" Margin="0,5,0,0"/>
+      </StackPanel>
+     </Border>
+     <StackPanel Orientation="Horizontal" Margin="0,9,0,0">
+      <Button Content="开始检测" Command="{Binding RequestSoftwareStartCommand}"
+       MinWidth="116" Height="34" Background="#196DB0" Foreground="White"
+       FontWeight="SemiBold" BorderThickness="0" Margin="0,0,8,0"
+       IsEnabled="{Binding CanStartOperatorVerification}"/>
+      <Button Content="停止" Command="{Binding StopOperatorVerificationCommand}"
+       MinWidth="72" Height="34" Background="White" BorderBrush="#C7D4DF"
+       Foreground="#A1382B"/>
      </StackPanel>
-    </Border>
+     <TextBlock Text="{Binding StartRequestStatus}" FontSize="11"
+      Foreground="#65788B" TextWrapping="Wrap" Margin="0,5,0,0"/>
+    </StackPanel>
    </Grid>
   </Border>
 
@@ -244,8 +255,7 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto"
      HorizontalScrollBarVisibility="Disabled">
      <StackPanel Margin="15,12,15,16">
-      <!-- Only a future real production StepOccurrence adapter may reveal
-           current-step measurement details; engineering truth is isolated. -->
+      <!-- Values below are projected only from actual physical TEST events. -->
       <StackPanel Visibility="{Binding HasFormalExecutionFacts,Converter={StaticResource BoolToVisibility}}">
       <TextBlock Text="当前步骤与检测证据" FontSize="16" FontWeight="SemiBold"
        Margin="0,0,0,9"/>
@@ -296,7 +306,7 @@
        <TextBlock Grid.Row="1" Text="设备" Style="{StaticResource OperatorCaption}" Margin="0,0,0,7"/>
        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding StationReadiness}"
         Style="{StaticResource OperatorFact}" FontSize="12" Margin="0,0,0,7"/>
-       <TextBlock Grid.Row="2" Text="启动按钮" Style="{StaticResource OperatorCaption}" Margin="0,0,0,7"/>
+       <TextBlock Grid.Row="2" Text="启动方式" Style="{StaticResource OperatorCaption}" Margin="0,0,0,7"/>
        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding PhysicalStartStatus}"
         Foreground="#A3651D" TextWrapping="Wrap" Margin="0,0,0,7"/>
        <TextBlock Grid.Row="3" Text="烧录" Style="{StaticResource OperatorCaption}" Margin="0,0,0,7"/>
