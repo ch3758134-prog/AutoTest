@@ -27,12 +27,13 @@ public sealed class PlanCompiler
     };
 
     public PreparedTestPlan Prepare(TestDocument document, ISet<string>? availableAssets = null,
-        bool allowRealOperations = false)
+        bool allowRealOperations = false,
+        IReadOnlyCollection<string>? inheritedVariables = null)
     {
         var errors = StepTreeValidator.ValidateTree(document, _catalog, availableAssets).ToBuilder();
         // A branch must not authorize downstream physical operations using
         // a variable that no preceding execution path could have created.
-        errors.AddRange(TestVariableFlowValidator.Validate(document));
+        errors.AddRange(TestVariableFlowValidator.Validate(document, inheritedVariables));
         try { _ = document.ReportSettings.Validate(); }
         catch (FormatException e) { errors.Add("Test report: " + e.Message); }
         void CheckEnabledNodes(IEnumerable<StepNode> steps)

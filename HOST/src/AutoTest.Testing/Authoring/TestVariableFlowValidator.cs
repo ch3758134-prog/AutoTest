@@ -12,10 +12,12 @@ public static class TestVariableFlowValidator
 {
     public sealed record AvailableVariable(string Name, string Source);
 
-    public static ImmutableArray<string> Validate(TestDocument document)
+    public static ImmutableArray<string> Validate(TestDocument document,
+        IEnumerable<string>? inheritedVariables = null)
     {
         var issues = ImmutableArray.CreateBuilder<string>();
         var prepare = NewEnvironment();
+        SeedInherited(prepare, inheritedVariables);
         Walk(document.Get(TestPhase.Prepare), prepare, null, issues);
         var test = Copy(prepare);
         Walk(document.Get(TestPhase.Test), test, null, issues);
@@ -24,6 +26,26 @@ public static class TestVariableFlowValidator
         var cleanup = Copy(prepare);
         Walk(document.Get(TestPhase.Cleanup), cleanup, null, issues);
         return issues.ToImmutable();
+    }
+
+    /// <summary>
+    /// Variables definitely present at the end of a successfully completed
+    /// case. Conditional branches and zero-iteration loops are conservative;
+    /// the next case may rely only on names guaranteed on every branch.
+    /// Runtime still verifies each value's validity/quality before use.
+    /// </summary>
+    public static IReadOnlyCollection<string> GuaranteedAfter(TestDocument document,
+        IEnumerable<string>? inheritedVariables = null)
+    {
+        var prepare = NewEnvironment();
+        SeedInherited(prepare, inheritedVariables);
+        Walk(document.Get(TestPhase.Prepare), prepare, null, null);
+        var test = Copy(prepare);
+        Walk(document.Get(TestPhase.Test), test, null, null);
+        var cleanup = Copy(prepare);
+        Walk(document.Get(TestPhase.Cleanup), cleanup, null, null);
+        return test.Keys.Union(cleanup.Keys, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
     }
 
     /// <summary>Only definitely available earlier variables are offered by
@@ -48,6 +70,14 @@ public static class TestVariableFlowValidator
 
     private static Dictionary<string, string> NewEnvironment() =>
         new(StringComparer.OrdinalIgnoreCase);
+
+    private static void SeedInherited(Dictionary<string, string> environment,
+        IEnumerable<string>? inheritedVariables)
+    {
+        if (inheritedVariables is null) return;
+        foreach (var name in inheritedVariables.Where(x => !string.IsNullOrWhiteSpace(x)))
+            environment[name] = "上一个 TEST 用例";
+    }
 
     private static Dictionary<string, string> Copy(Dictionary<string, string> source) =>
         new(source, StringComparer.OrdinalIgnoreCase);
