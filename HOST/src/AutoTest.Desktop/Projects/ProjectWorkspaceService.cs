@@ -709,7 +709,11 @@ public sealed partial class ProjectWorkspaceService
                     ScanSettingsKind => "scan",
                     _ => throw new ArgumentException("不支持的工程资源类型：" + kind)
                 };
-                var relative = "assets/" + folder + "/" + Guid.NewGuid().ToString("N") + extension;
+                // DBC is a real user-managed database file, not a GUID-named
+                // opaque asset. Other internal definitions keep stable paths.
+                var relative = kind == DbcKind
+                    ? "assets/dbc/" + name + ".dbc"
+                    : "assets/" + folder + "/" + Guid.NewGuid().ToString("N") + extension;
                 var editor = new ResourceEditService(current.Definition);
                 var added = editor.Add(kind, name, relative, bytes);
                 var path = ProjectPathPolicy.Normalize(current.RootDirectory, relative);
@@ -776,10 +780,82 @@ public sealed partial class ProjectWorkspaceService
         finally { _writeLock.Release(); }
     }
 
-    public Task RenameAssetAsync(AssetId id, string name, CancellationToken ct = default)
+    public async Task RenameAssetAsync(AssetId id, string name,
+        CancellationToken ct = default)
     {
         ValidateResourceName(name);
-        return EditDefinitionAsync(editor => editor.Rename(id, name), ct);
+        var target = Current?.Definition.Assets.FirstOrDefault(a => a.Id == id);
+        if (target?.Kind != DbcKind)
+        {
+            await EditDefinitionAsync(editor => editor.Rename(id, name), ct);
+            return;
+        }
+
+        // For DBC, rename the actual .dbc file as well as its display name.
+        // Its stable AssetId, content revision and fingerprint do not change:
+        // no TEST signal interpretation changes because of a filename.
+        var stem = name.EndsWith(".dbc", StringComparison.OrdinalIgnoreCase)
+            ? name[..^4] : name;
+        ValidateResourceName(stem);
+        await _writeLock.WaitAsync(ct);
+        try
+        {
+            var current = Current ??
+                throw new InvalidOperationException("工程已经关闭。");
+            var index = Array.FindIndex(current.Definition.Assets.ToArray(), a => a.Id == id);
+            if (index < 0 || current.Definition.Assets[index].Kind != DbcKind)
+                throw new ProjectDataException("DBC_NOT_FOUND",
+                    "当前工程 DBC 已变化，请重新打开。");
+            var asset = current.Definition.Assets[index];
+            var updatedRel = "assets/dbc/" + stem + ".dbc";
+            if (asset.Name == stem &&
+                string.Equals(asset.RelativePath, updatedRel, StringComparison.Ordinal))
+                return;
+
+            await EnsureManifestUnchangedAsync(current, ct).ConfigureAwait(false);
+            var previousPath = ProjectPathPolicy.Normalize(current.RootDirectory, asset.RelativePath);
+            var nextPath = ProjectPathPolicy.Normalize(current.RootDirectory, updatedRel);
+            var moved = !string.Equals(previousPath, nextPath,
+                StringComparison.OrdinalIgnoreCase);
+            if (moved && File.Exists(nextPath))
+                throw new IOException("工程中已经存在同名 DBC 文件，不能覆盖。");
+            if (!File.Exists(previousPath))
+                throw new FileNotFoundException("原 DBC 文件不存在，无法重命名。", previousPath);
+
+            var nextAsset = asset with
+            {
+                Name = stem,
+                RelativePath = updatedRel
+            };
+            var definition = (current.Definition with
+            {
+                Assets = current.Definition.Assets.SetItem(index, nextAsset)
+            }).WithRevision().Validate();
+
+            var committed = false;
+            try
+            {
+                if (moved) File.Move(previousPath, nextPath);
+                await ProjectRepository.SaveDefinitionAsync(definition,
+                    current.ManifestPath, ct).ConfigureAwait(false);
+                committed = true;
+                var reopened = await ProjectRepository.OpenDefinitionAsync(current.ManifestPath,
+                    CancellationToken.None).ConfigureAwait(false);
+                var hash = await HashFileAsync(current.ManifestPath, CancellationToken.None)
+                    .ConfigureAwait(false);
+                Current = new OpenProjectContext(reopened, current.ManifestPath, hash);
+            }
+            catch
+            {
+                // Only roll back if the manifest itself was not committed.
+                if (!committed && moved && File.Exists(nextPath) &&
+                    !File.Exists(previousPath))
+                    File.Move(nextPath, previousPath);
+                throw;
+            }
+            CurrentChanged?.Invoke(this, EventArgs.Empty);
+        }
+        finally { _writeLock.Release(); }
     }
 
     /// <summary>Removes the manifest reference, NEVER deletes the underlying file.</summary>
