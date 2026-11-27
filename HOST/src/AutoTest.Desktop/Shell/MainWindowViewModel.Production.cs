@@ -269,47 +269,6 @@ public sealed partial class MainWindowViewModel
         return true;
     }
 
-    /// <summary>Switch only an explicitly published exact product at an IDLE
-    /// engineering station. Changing ECU bitrate requires actual USB readback;
-    /// no implicit project/firmware fallback and no controller disconnect.</summary>
-    private async Task<string> ActivatePublishedProjectAsync(ProductionPublishedProduct pin)
-    {
-        if (!IsEngineerWorkspace || _hardwareBusy || _ecuCanBaudApplying ||
-            _realTest.IsRunning || _automaticTestHome.IsOperatorRunning ||
-            _hardware.IsTestRunApproved ||
-            _hardware.HasManualCanRowLeases ||
-            _hardware.IsFlashSecuritySensitive ||
-            _hardware.IsManualCanBatchApproved ||
-            _hardware.IsManualKeyActionApproved)
-            throw new InvalidOperationException(
-                "当前有设备操作或测试正在进行，请先停止并确认设备状态，再切换工程。");
-        await StationProductionConfigurationStore.VerifyProductAsync(pin);
-        if (!await PrepareEditorsForCloseAsync())
-            throw new IOException("工程编辑尚未保存，工位切换取消。");
-        if (!await PrepareDbcWindowsForCloseAsync(exitingApplication: false))
-            throw new IOException("DBC 编辑器仍有待完成修改。");
-        if (_hardware.IsConnected)
-        {
-            _hardware.SelectRequestedEcuCanBitrate(pin.EcuCanKbps);
-            var confirmed = await _hardware.ApplyRequestedEcuCanBitrateAsync();
-            if (confirmed != pin.EcuCanKbps)
-                throw new IOException("ECU CAN 实际回读码率与目标已发布版本不符。");
-        }
-        await _workspace.OpenAsync(pin.ManifestPath);
-        var project = _workspace.Current ?? throw new IOException("目标工程未打开。");
-        if (project.Definition.Id.Value != pin.ProjectId ||
-            !string.Equals(project.ManifestSha256, pin.ManifestSha256,
-                StringComparison.OrdinalIgnoreCase))
-            throw new IOException("目标工程的发布身份/内容指纹已改变。");
-        var deployed = await StationDeploymentStore.DeployAsync(project);
-        _automaticTestHome.OnPublishedConfigurationChanged();
-        await _automaticTestHome.RestoreAsync();
-        return "工位已切换到工程：" + project.Definition.Name +
-            " · TEST " + deployed.Test.Cases.Count + " 个；" +
-            (_hardware.IsConnected ? "ECU CAN 已真实回读确认 " + pin.EcuCanKbps + " kbit/s。" :
-                "主控当前未连接，后续连接必须重新应用并回读 CAN 码率。");
-    }
-
     /// <summary>
     /// One explicit acceptance of THIS saved ECU project and its immutable
     /// FLASH release. Not another test plan and never a physical START.
