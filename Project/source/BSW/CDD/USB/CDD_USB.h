@@ -79,6 +79,17 @@ extern "C" {
  */
 #define CDD_USB_CMD_SET_ECU_CAN_BAUD 0x42U
 #define CDD_USB_CMD_GET_ECU_CAN_BAUD 0x43U
+/*
+ * 主控板外部瞬时按钮输入，独立于 KEY_SIM 20 路 CAN 模拟按键。
+ * 0x44 KEY_INPUT_EVENT：SEQ=0 的异步上报，5B:
+ * [key=1..3, stable_level=0/1, stable_levels_bitmap(bit0..2), sequence_lo, sequence_hi]。
+ * 0x45 GET_KEY_INPUTS：无请求 Payload，响应3B:
+ * [stable_levels_bitmap, sequence_lo, sequence_hi]。
+ * sequence 是主控板上电以来的 16bit 稳定变化计数（回绕）；不能证明 USB 上报无丢失。
+ * 按下极性尚待实体确认，故 USB 仅传 MCU 逻辑电平，不预设按下/松开。
+ */
+#define CDD_USB_CMD_KEY_INPUT_EVENT  0x44U
+#define CDD_USB_CMD_GET_KEY_INPUTS   0x45U
 /* 整车环境广播（0x50~0x53，固定由 ECU_CAN_PORT 发往 ECU） */
 #define CDD_USB_CMD_SET_BROADCAST     0x50U
 #define CDD_USB_CMD_BROADCAST_START   0x51U
