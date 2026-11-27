@@ -100,6 +100,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         _scanner.RawBarcodeObserved += OnRawBarcodeObserved;
         _scanner.IncompleteBarcodeObserved += OnIncompleteBarcodeObserved;
         _engineering.CurrentChanged += OnEngineeringProjectChanged;
+        _ = RefreshProductionBatchAsync();
     }
 
     public ObservableCollection<AutomaticTestCase> Cases { get; } = new();
@@ -158,8 +159,10 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         _scanAlertRequired ? _scanStatus :
         _productionVerdict is "检测未完成" or "记录失败" ? OperatorFailure : "";
     public string ProductionResultLabel => _productionVerdict;
-    public string PhysicalStartStatus => "软件 START 可用；实体 START 待固件事件接通";
-    public string StartInputHint => "实体与界面 START 共用执行入口。";
+    public string PhysicalStartStatus =>
+        IsOperatorRunning ? "本次检测已启动" :
+        _prepared is null ? "等待扫码" : "等待开始检测";
+    public string StartInputHint => "开始检测";
 
     private void RequestSoftwareStart()
     {

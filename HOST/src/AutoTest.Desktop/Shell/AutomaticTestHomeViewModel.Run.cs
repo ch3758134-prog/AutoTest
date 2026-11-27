@@ -27,6 +27,27 @@ public sealed partial class AutomaticTestHomeViewModel
     private bool _operatorRunning;
     private int _startRequestInFlight;
     private string _productionVerdict = "等待检测结果";
+    private string _productionBatchToday = "今日检测数据正在读取";
+    public string ProductionBatchToday
+    {
+        get => _productionBatchToday;
+        private set => SetProperty(ref _productionBatchToday, value);
+    }
+
+    private async Task RefreshProductionBatchAsync()
+    {
+        try
+        {
+            var summary = await Task.Run(() =>
+                ProductionInspectionArchive.ReadDay().Display).ConfigureAwait(false);
+            OnUi(() => ProductionBatchToday = summary);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or
+                                      System.Text.Json.JsonException)
+        {
+            OnUi(() => ProductionBatchToday = "今日统计不可读取：" + error.Message);
+        }
+    }
     private string _operatorRunState = "尚未开始工程整组验证";
     private string _operatorCurrentCase = "—";
     private string _operatorCurrentStep = "—";
@@ -377,8 +398,9 @@ public sealed partial class AutomaticTestHomeViewModel
 
     private static void SaveOperatorReceipt(string root, RealOperatorRunReceipt receipt)
     {
-        var folder = Path.Combine(root, "test-records",
-            receipt.Mode == "PRODUCTION" ? "inspections" : "operator-verifications");
+        var folder = receipt.Mode == "PRODUCTION"
+            ? ProductionInspectionArchive.FolderFor(receipt.StartedUtc)
+            : Path.Combine(root, "test-records", "operator-verifications");
         Directory.CreateDirectory(folder);
         var file = Path.Combine(folder, receipt.VerificationId.ToString("N") + ".json");
         var temp = file + "." + Guid.NewGuid().ToString("N") + ".tmp";
@@ -409,8 +431,9 @@ public sealed partial class AutomaticTestHomeViewModel
     private static string SaveOperatorHtmlReceipt(
         string root, RealOperatorRunReceipt receipt)
     {
-        var folder = Path.Combine(root, "test-records",
-            receipt.Mode == "PRODUCTION" ? "inspections" : "operator-verifications");
+        var folder = receipt.Mode == "PRODUCTION"
+            ? ProductionInspectionArchive.FolderFor(receipt.StartedUtc)
+            : Path.Combine(root, "test-records", "operator-verifications");
         Directory.CreateDirectory(folder);
         var path = Path.Combine(folder, receipt.VerificationId.ToString("N") + ".html");
         Func<string, string> e = value =>
@@ -1066,8 +1089,9 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
                 OperatorRunEvidence = (formalProduction
                     ? "生产检测报告：" : "工程验证报告：") + htmlReport +
                     "\n真实原始记录：" +
-                    Path.Combine(opened.RootDirectory, "test-records",
-                        formalProduction ? "inspections" : "operator-verifications",
+                    Path.Combine(formalProduction
+                            ? ProductionInspectionArchive.FolderFor(started)
+                            : Path.Combine(opened.RootDirectory, "test-records", "operator-verifications"),
                         _operatorRunId.ToString("N") + ".json");
             }
             catch (Exception error)
@@ -1080,8 +1104,9 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
                     OperatorRecordState = "测试记录已保存，但报告生成失败：" +
                         error.Message;
                     OperatorRunEvidence = "原始 JSON：" +
-                        Path.Combine(opened.RootDirectory, "test-records",
-                            formalProduction ? "inspections" : "operator-verifications",
+                        Path.Combine(formalProduction
+                                ? ProductionInspectionArchive.FolderFor(started)
+                                : Path.Combine(opened.RootDirectory, "test-records", "operator-verifications"),
                             _operatorRunId.ToString("N") + ".json");
                     AddOperatorEvent("工程报告生成失败；原始记录仍可查看：" + error.Message);
                 }
@@ -1103,6 +1128,8 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
             IsOperatorRunning = false;
             RefreshOperatorCommands();
             StartRequestStatus = OperatorRunState;
+            if (formalProduction)
+                await RefreshProductionBatchAsync();
             Notify();
         }
     }
