@@ -54,6 +54,7 @@ public sealed partial class MainWindowViewModel
     private ProductionProjectLibraryWindow? _productionLibraryWindow;
     private string? _preferredProductionVersionSha;
     private readonly ProductionProjectCatalog _productionCatalog = new();
+    private string? _engineeringProjectBeforeProduction;
     public DelegateCommand OpenProductionProjectLibraryCommand { get; private set; } = null!;
 
     private void InitializeProductionWorkspace()
@@ -459,6 +460,12 @@ public sealed partial class MainWindowViewModel
             return;
         }
         SetWorkspaceMode(false);
+        if (!string.IsNullOrWhiteSpace(_engineeringProjectBeforeProduction) &&
+            File.Exists(_engineeringProjectBeforeProduction) &&
+            !string.Equals(_workspace.Current?.ManifestPath,
+                _engineeringProjectBeforeProduction, StringComparison.OrdinalIgnoreCase))
+            await _workspace.OpenAsync(_engineeringProjectBeforeProduction);
+        _engineeringProjectBeforeProduction = null;
         if (!_developerRestored)
         {
             _developerRestored = true;
@@ -492,6 +499,8 @@ public sealed partial class MainWindowViewModel
             !await ConfirmProductionConfigurationAsync(singleApply: true))
             preparationError = StatusMessage;
 
+        if (IsEngineerWorkspace && _workspace.Current is { } engineeringProject)
+            _engineeringProjectBeforeProduction = engineeringProject.ManifestPath;
         _automaticTestHome.DisarmEngineeringVerification();
         CloseEngineeringVerificationMonitor();
         SetWorkspaceMode(true);

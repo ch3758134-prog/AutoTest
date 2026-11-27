@@ -74,6 +74,8 @@ public sealed partial class AutomaticTestHomeViewModel
             RaisePropertyChanged(nameof(ProductionHeadline));
             RaisePropertyChanged(nameof(ProductionGuidance));
             RaisePropertyChanged(nameof(ProductionDisplayStage));
+            RaisePropertyChanged(nameof(HasFormalExecutionFacts));
+            RaisePropertyChanged(nameof(ProductionResultLabel));
             RefreshOperatorCommands();
             RaisePropertyChanged(nameof(EngineeringNextAction));
         }
@@ -94,17 +96,41 @@ public sealed partial class AutomaticTestHomeViewModel
     public string OperatorCurrentCase
     {
         get => _operatorCurrentCase;
-        private set => SetProperty(ref _operatorCurrentCase, value);
+        private set
+        {
+            if (SetProperty(ref _operatorCurrentCase, value))
+                RaisePropertyChanged(nameof(ProductionCurrentCase));
+        }
     }
     public string OperatorCurrentStep
     {
         get => _operatorCurrentStep;
-        private set => SetProperty(ref _operatorCurrentStep, value);
+        private set
+        {
+            if (SetProperty(ref _operatorCurrentStep, value))
+                RaisePropertyChanged(nameof(ProductionCurrentStep));
+        }
     }
-    public string OperatorStepStatus { get => _operatorStepStatus; private set => SetProperty(ref _operatorStepStatus, value); }
-    public string OperatorActual { get => _operatorActual; private set => SetProperty(ref _operatorActual, value); }
-    public string OperatorExpected { get => _operatorExpected; private set => SetProperty(ref _operatorExpected, value); }
-    public string OperatorFailure { get => _operatorFailure; private set => SetProperty(ref _operatorFailure, value); }
+    public string OperatorStepStatus { get => _operatorStepStatus; private set
+        {
+            if (SetProperty(ref _operatorStepStatus, value))
+                RaisePropertyChanged(nameof(ProductionStepStatus));
+        } }
+    public string OperatorActual { get => _operatorActual; private set
+        {
+            if (SetProperty(ref _operatorActual, value))
+                RaisePropertyChanged(nameof(ProductionMeasuredValue));
+        } }
+    public string OperatorExpected { get => _operatorExpected; private set
+        {
+            if (SetProperty(ref _operatorExpected, value))
+                RaisePropertyChanged(nameof(ProductionExpectedValue));
+        } }
+    public string OperatorFailure { get => _operatorFailure; private set
+        {
+            if (SetProperty(ref _operatorFailure, value))
+                RaisePropertyChanged(nameof(ProductionFailure));
+        } }
 
     public string OperatorRunEvidence
     {
@@ -115,12 +141,20 @@ public sealed partial class AutomaticTestHomeViewModel
     public string OperatorFlashState
     {
         get => _operatorFlashState;
-        private set => SetProperty(ref _operatorFlashState, value);
+        private set
+        {
+            if (SetProperty(ref _operatorFlashState, value))
+                RaisePropertyChanged(nameof(ProductionFlashState));
+        }
     }
     public string OperatorRecordState
     {
         get => _operatorRecordState;
-        private set => SetProperty(ref _operatorRecordState, value);
+        private set
+        {
+            if (SetProperty(ref _operatorRecordState, value))
+                RaisePropertyChanged(nameof(ProductionRecordState));
+        }
     }
     /// <summary>
     /// Engineer-only explicit arming of the existing full-project real
@@ -445,7 +479,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
             .Append(" 条；下方只显示收据中保留的事件。</p><pre>");
         foreach (var item in receipt.ObservedEvents)
             html.Append(e(item)).Append('\n');
-        html.Append("</pre><p class=\"muted\">本 HTML 与原始 JSON 位于同一目录。工程验证记录不参与生产合格品统计。</p></main></body></html>");
+        html.Append("</pre><p class=\"muted\">本 HTML 与原始 JSON 位于同一目录。请按报告模式识别正式检测或工程调试记录。</p></main></body></html>");
         var tmp = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
@@ -573,7 +607,8 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
         OperatorRunEvidence = "记录号 " + _operatorRunId.ToString("N");
         OperatorFlashState = "尚未开始";
         OperatorPeriodicStatus = "准备整组共享 CAN 发送会话";
-        OperatorRecordState = "准备记录工程验证事实";
+        OperatorRecordState = formalProduction
+            ? "正在建立生产检测记录" : "准备记录工程验证事实";
         OperatorCurrentStep = "—";
         OperatorCurrentCase = "—";
         OperatorStepStatus = "未执行";
@@ -1024,6 +1059,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
             {
                 if (jsonSaved)
                 {
+                    if (formalProduction) _productionVerdict = "记录失败";
                     OperatorRecordState = "测试记录已保存，但报告生成失败：" +
                         error.Message;
                     OperatorRunEvidence = "原始 JSON：" +
