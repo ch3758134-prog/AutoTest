@@ -6,7 +6,7 @@ namespace AutoTest.Application.Production;
 
 public sealed record ProductionStationReadiness(StationId Station,
     StationConnectionState Connection, string VerifiedSupply, bool ResourceLockAvailable,
-    bool IsMockEnvironment, AuthorizationScope Permission);
+    AuthorizationScope Permission);
 public sealed record ProductionPreflightResult(bool Ready, ImmutableArray<string> Blockers);
 
 public sealed class ProductionPreflight
@@ -35,22 +35,16 @@ public sealed class ProductionPreflight
         if (string.IsNullOrWhiteSpace(station.Station.Value)) issues.Add("STATION_ID_MISSING");
         if (station.Connection != StationConnectionState.Ready) issues.Add("STATION_NOT_READY");
         if (!station.ResourceLockAvailable) issues.Add("STATION_BUSY");
-        if (!station.IsMockEnvironment &&
-            (string.IsNullOrWhiteSpace(station.VerifiedSupply) ||
-                station.VerifiedSupply.Equals("UNKNOWN", StringComparison.OrdinalIgnoreCase)))
+        if (string.IsNullOrWhiteSpace(station.VerifiedSupply) ||
+            station.VerifiedSupply.Equals("UNKNOWN", StringComparison.OrdinalIgnoreCase))
             issues.Add("SUPPLY_UNVERIFIED");
         if (!string.IsNullOrWhiteSpace(config.ExpectedSupply) &&
-            !config.ExpectedSupply.Equals(station.VerifiedSupply, StringComparison.OrdinalIgnoreCase))
+            !config.ExpectedSupply.Equals(station.VerifiedSupply,
+                StringComparison.OrdinalIgnoreCase))
             issues.Add("SUPPLY_MISMATCH");
-        if (station.IsMockEnvironment && station.Permission != AuthorizationScope.MockOnly)
-            issues.Add("MOCK_AUTH_REQUIRED");
-        if (!station.IsMockEnvironment && station.Permission != AuthorizationScope.PhysicalCommand &&
-            station.Permission != AuthorizationScope.Programming)
-            issues.Add("PHYSICAL_AUTH_REQUIRED");
-        if (!config.RequiresFlash && !station.IsMockEnvironment)
+        if (!config.RequiresFlash)
             issues.Add("PRODUCTION_FLASH_REQUIRED");
-        if (config.RequiresFlash && !station.IsMockEnvironment &&
-            station.Permission != AuthorizationScope.Programming)
+        if (station.Permission != AuthorizationScope.Programming)
             issues.Add("FLASH_AUTH_REQUIRED");
         return new(issues.Count == 0, issues.ToImmutable());
     }
