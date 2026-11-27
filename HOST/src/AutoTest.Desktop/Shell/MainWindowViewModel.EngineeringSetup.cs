@@ -207,6 +207,12 @@ public sealed partial class MainWindowViewModel
 
     public async Task RefreshEngineeringSetupAsync()
     {
+        var uiDispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (uiDispatcher is not null && !uiDispatcher.CheckAccess())
+        {
+            await await uiDispatcher.InvokeAsync(() => RefreshEngineeringSetupAsync());
+            return;
+        }
         var version = ++_setupRefreshId;
         var project = _workspace.Current;
         if (project is null)

@@ -1,4 +1,5 @@
 using System.IO;
+using System.Windows;
 using AutoTest.Projects.Project;
 using AutoTest.Projects.Resources;
 using AutoTest.Projects.Dbc.Editing;
@@ -39,6 +40,25 @@ public sealed partial class ProjectWorkspaceService
     public string SuggestedDirectory => Current?.RootDirectory ?? AppContext.BaseDirectory;
     public OpenProjectContext? Current { get; private set; }
     public event EventHandler? CurrentChanged;
+
+    /// <summary>
+    /// Project file I/O can complete on a worker thread (scanner routing,
+    /// resource import and specialist tools all use the same workspace).
+    /// All workspace listeners update WPF-bound trees and ObservableCollections:
+    /// never deliver this event on an arbitrary I/O thread.
+    /// </summary>
+    private void NotifyCurrentChanged()
+    {
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is null || dispatcher.CheckAccess())
+        {
+            CurrentChanged?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+        if (!dispatcher.HasShutdownStarted && !dispatcher.HasShutdownFinished)
+            dispatcher.BeginInvoke(new Action(() =>
+                CurrentChanged?.Invoke(this, EventArgs.Empty)));
+    }
 
     /// <summary>Validate strings without touching disk; safe for each TextBox keystroke.</summary>
     public static string ValidateInput(string name, string parentDirectory)
@@ -163,7 +183,7 @@ public sealed partial class ProjectWorkspaceService
 
         // The desktop caller resumes on the WPF synchronization context.
         Current = result;
-        CurrentChanged?.Invoke(this, EventArgs.Empty);
+        NotifyCurrentChanged();
         return result;
     }
     /// <summary>Open any formal project manifest without scanning every asset on the UI thread.</summary>
@@ -180,7 +200,7 @@ public sealed partial class ProjectWorkspaceService
             return new OpenProjectContext(definition, full, hash);
         }, ct);
         Current = result;
-        CurrentChanged?.Invoke(this, EventArgs.Empty);
+        NotifyCurrentChanged();
         return result;
     }
 
@@ -240,7 +260,7 @@ public sealed partial class ProjectWorkspaceService
                 return (Context: next, Document: check.Document, Receipt: check.Receipt, Revision: updated.Revision);
             }, ct);
             Current = result.Context;
-            CurrentChanged?.Invoke(this, EventArgs.Empty);
+            NotifyCurrentChanged();
             return new DbcEditorSession(result.Context.Definition.Id, result.Context.ManifestPath,
                 result.Context.ManifestSha256, opened.AssetId, result.Revision, asset.Name,
                 result.Document, result.Receipt);
@@ -307,7 +327,7 @@ public sealed partial class ProjectWorkspaceService
                     next.ManifestPath, asset.Id, updated.Revision, asset.Name, path, updated.Sha256, reread));
             }, ct);
             Current = result.Context;
-            CurrentChanged?.Invoke(this, EventArgs.Empty);
+            NotifyCurrentChanged();
             return result.Session;
         }
         finally { _writeLock.Release(); }
@@ -374,7 +394,7 @@ public sealed partial class ProjectWorkspaceService
                     next.ManifestPath, asset.Id, updated.Revision, asset.Name, path, updated.Sha256, reread));
             }, ct);
             Current = result.Context;
-            CurrentChanged?.Invoke(this, EventArgs.Empty);
+            NotifyCurrentChanged();
             return result.Session;
         }
         finally { _writeLock.Release(); }
@@ -430,7 +450,7 @@ public sealed partial class ProjectWorkspaceService
                 throw new ProjectDataException("DBC_IMPORT_VERIFY",
                     "替换 DBC 后的文件与工程索引不一致。");
             Current = context;
-            CurrentChanged?.Invoke(this, EventArgs.Empty);
+            NotifyCurrentChanged();
             return updated;
         }
         finally { _writeLock.Release(); }
@@ -577,7 +597,7 @@ public sealed partial class ProjectWorkspaceService
                     path, updated.Sha256, reread));
             }, ct);
             Current = result.Context;
-            CurrentChanged?.Invoke(this, EventArgs.Empty);
+            NotifyCurrentChanged();
             return result.Session;
         }
         finally { _writeLock.Release(); }
@@ -679,7 +699,7 @@ public sealed partial class ProjectWorkspaceService
                 }
             }, ct);
             Current = entry.Context;
-            CurrentChanged?.Invoke(this, EventArgs.Empty);
+            NotifyCurrentChanged();
             return entry.Asset;
         }
         finally { _writeLock.Release(); }
@@ -708,7 +728,7 @@ public sealed partial class ProjectWorkspaceService
                 .ConfigureAwait(false);
             var hash = await HashFileAsync(current.ManifestPath, ct).ConfigureAwait(false);
             Current = new OpenProjectContext(verified, current.ManifestPath, hash);
-            CurrentChanged?.Invoke(this, EventArgs.Empty);
+            NotifyCurrentChanged();
         }
         finally { _writeLock.Release(); }
     }
@@ -786,7 +806,7 @@ public sealed partial class ProjectWorkspaceService
                     File.Move(nextPath, previousPath);
                 throw;
             }
-            CurrentChanged?.Invoke(this, EventArgs.Empty);
+            NotifyCurrentChanged();
         }
         finally { _writeLock.Release(); }
     }
@@ -815,7 +835,7 @@ public sealed partial class ProjectWorkspaceService
                 return new OpenProjectContext(verified, current.ManifestPath, hash);
             }, ct);
             Current = updated;
-            CurrentChanged?.Invoke(this, EventArgs.Empty);
+            NotifyCurrentChanged();
         }
         finally { _writeLock.Release(); }
     }

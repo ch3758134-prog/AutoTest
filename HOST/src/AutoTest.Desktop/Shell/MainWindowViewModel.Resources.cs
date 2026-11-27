@@ -100,6 +100,14 @@ public sealed partial class MainWindowViewModel
 
     private async Task RefreshEngineeringResourcesAsync()
     {
+        var uiDispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (uiDispatcher is not null && !uiDispatcher.CheckAccess())
+        {
+            // The refresh can originate from background scanner/project I/O.
+            // Reenter on the UI dispatcher before any WPF binding is changed.
+            await await uiDispatcher.InvokeAsync(() => RefreshEngineeringResourcesAsync());
+            return;
+        }
         var project = _workspace.Current;
         if (project is null)
         {
