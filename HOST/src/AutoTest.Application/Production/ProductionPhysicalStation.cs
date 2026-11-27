@@ -26,9 +26,11 @@ public interface IProductionPhysicalStation
 }
 
 public sealed record FixtureAdmissionEvidence(
-    RunId Run, StationId Station, bool MechanicalClosureVerified,
+    RunId Run, StationId Station, long ControllerEpoch,
+    bool MechanicalClosureVerified,
     bool SafetyInterlockVerified, string EvidenceReference);
 
 public sealed record PhysicalStartEvidence(
-    RunId Run, StationId Station, bool FreshPhysicalEdgeVerified,
+    RunId Run, StationId Station, long ControllerEpoch,
+    bool FreshPhysicalEdgeVerified,
     string EvidenceReference);
