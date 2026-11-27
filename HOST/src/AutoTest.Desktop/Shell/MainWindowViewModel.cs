@@ -435,7 +435,7 @@ public sealed partial class MainWindowViewModel : BindableBase
     {
         if (_workspace.Current is null) return;
         ActivateEditor("project-overview",
-            new ProjectOverviewView { DataContext = this },
+            new ProjectOverviewView(this),
             "ECU 工程 · " + CurrentProjectName, () => true);
     }
 
@@ -1458,7 +1458,7 @@ public sealed partial class MainWindowViewModel : BindableBase
             await SynchronizeProjectEcuCanAsync();
             await RestoreRecentEditorAsync();
             if (IsEngineerWorkspace && OpenEditors.Count == 0)
-                await OpenDefaultEngineeringDocumentAsync();
+                ShowOverview();
         }
     }
 
@@ -1480,10 +1480,11 @@ public sealed partial class MainWindowViewModel : BindableBase
             return;
         }
         if (lastKey is null) return;
-        // Management/flow tabs must not displace the main TEST authoring task on restart.
+        // Restore a specific test case when available; otherwise show the
+        // stable project home, not an obsolete setup or approval document.
         if (!lastKey.StartsWith("test|", StringComparison.Ordinal))
         {
-            await OpenDefaultEngineeringDocumentAsync();
+            ShowOverview();
             return;
         }
         var separator = lastKey.LastIndexOf('|');
@@ -1718,7 +1719,10 @@ public sealed partial class MainWindowViewModel : BindableBase
         {
             if (!ReferenceEquals(snapshot, _workspace.Current)) return;
             node.Children.Clear();
-            node.Children.Add(new ResourceTreeNode("引用读取失败", "", error.Message,
+            if (error is InvalidDataException &&
+                error.Message.Contains("TEST 项目不是当前版本", StringComparison.Ordinal))
+                TestProjectRecoveryAvailable = true;
+            node.Children.Add(new ResourceTreeNode("TEST 顺序无法读取", "", error.Message,
                 role: "Placeholder", isPlaceholder: true));
             node.CountLabel = "!";
             RefreshCaseNavigation();
@@ -1903,7 +1907,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         await SynchronizeProjectEcuCanAsync();
         // A recent DBC is not auto-opened as a modal window on startup.
         await RestoreRecentEditorAsync();
-        if (OpenEditors.Count == 0) await OpenDefaultEngineeringDocumentAsync();
+        if (OpenEditors.Count == 0) ShowOverview();
         timer.Stop();
         StatusMessage = "工程打开完成 · " + Path.GetFileName(path) +
             " · " + timer.ElapsedMilliseconds + " ms";
@@ -2185,7 +2189,17 @@ public sealed partial class MainWindowViewModel : BindableBase
         if (IsAlreadyOpen("project|" + asset.Id)) return;
         await RunOperationAsync(async () =>
         {
-            var session = await _workspace.OpenTestProjectEditorAsync(asset.Id);
+            TestProjectEditorSession session;
+            try { session = await _workspace.OpenTestProjectEditorAsync(asset.Id); }
+            catch (InvalidDataException error) when
+                (error.Message.Contains("TEST 项目不是当前版本", StringComparison.Ordinal))
+            {
+                TestProjectRecoveryAvailable = true;
+                StatusMessage = "当前 TEST 顺序格式无法读取。请在工程首页重建空白 TEST 项目，" +
+                    "已保存的独立用例与其他资源不会被删除。";
+                ShowOverview();
+                return;
+            }
             var editor = new TestProjectWorkbenchViewModel(_workspace, _testDialogs, session, _runSelections, _realTest, _hardware);
             BindProjectNavigation(asset, editor);
             ActivateEditor("project|" + asset.Id, new TestProjectWorkbenchView(editor, ShowProjectConfiguration),

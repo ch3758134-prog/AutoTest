@@ -86,6 +86,9 @@ public sealed partial class MainWindowViewModel
             RaisePropertyChanged(nameof(EngineeringFlowStatus));
             OpenEngineeringResourcesCommand.RaiseCanExecuteChanged();
             NewEngineeringDbcCommand.RaiseCanExecuteChanged();
+            // Keep the engineering home and resource workbench in sync with
+            // the same saved project; no second resource list is maintained.
+            _ = RefreshEngineeringResourcesAsync();
         };
     }
 

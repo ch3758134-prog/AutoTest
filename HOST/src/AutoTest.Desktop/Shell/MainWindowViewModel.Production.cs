@@ -421,10 +421,10 @@ public sealed partial class MainWindowViewModel
             _developerRestored = true;
             if (_workspace.Current is null) await RestoreLastProjectAsync();
         }
-        // A test engineer enters the ONE formal ordered TEST document, not a
-        // setup dashboard. Restore existing editors without replacing drafts.
+        // Engineering is project-first: a valid recently opened TEST editor
+        // is preserved; otherwise the project home owns the next actions.
         if (_workspace.Current is not null && OpenEditors.Count == 0)
-            await OpenDefaultEngineeringDocumentAsync();
+            ShowOverview();
         // Mode switch must reload the one project under the correct policy:
         // engineering may inspect saved drafts, while production only reads
         // a verified station deployment. Never carry the previous mode's
