@@ -72,17 +72,17 @@ public sealed partial class AutomaticTestHomeViewModel
             // Identity routing is useful even before the station has its
             // physical START and mechanical feedback connected. Present it,
             // but do not create a formal run or claim admission.
-            _dutSerial = routed.Serial;
+            _dutSerial = routed.FullBarcode;
             _scanMappedFields = new Dictionary<string, string>(StringComparer.Ordinal)
             {
-                ["DutSerial"] = routed.Serial,
-                ["ProductKey"] = routed.ProductKey,
-                ["HardwareCode"] = routed.Hardware,
+                ["DutSerial"] = routed.FullBarcode,
+                ["RecognitionMarker"] = routed.Marker,
+                ["FullBarcode"] = routed.FullBarcode,
                 ["ProjectId"] = routed.Package.ProjectId.ToString("D"),
                 ["PackageSha256"] = routed.Package.PackageSha256,
-                ["ProjectDecisionBasis"] = "INSTALLED_CATALOG"
+                ["ProjectDecisionBasis"] = "FIXED_MARKER"
             };
-            _scanStatus = "已识别 ECU " + routed.Serial +
+            _scanStatus = "已识别 ECU " + routed.FullBarcode +
                 " · 检测工程：" + routed.Package.ProjectName +
                 "（修订 " + routed.Package.ProjectRevision + "）。";
             _scanAlertRequired = false;
@@ -107,7 +107,7 @@ public sealed partial class AutomaticTestHomeViewModel
                 return;
             }
             var prepared = await ProductionPreparationService.PrepareAsync(
-                plan.Project, routed.ProductKey, routed.Serial,
+                plan.Project, routed.Marker, routed.FullBarcode,
                 requireProductionDeployment: true);
             if (!prepared.ConfigurationReady || prepared.Preparation is null)
             {
@@ -127,30 +127,44 @@ public sealed partial class AutomaticTestHomeViewModel
                 Reject("扫码期间设备状态发生变化，请重新扫码。");
                 return;
             }
-            var settings = await _productionCatalog.GetSettingsAsync();
-            var serialized = JsonSerializer.Serialize(settings);
+            var latestRoute = await _productionCatalog.ResolveAsync(raw);
+            if (!latestRoute.Accepted || latestRoute.Package is null ||
+                latestRoute.Package.PackageSha256 != routed.Package.PackageSha256 ||
+                latestRoute.RuleRevision != routed.RuleRevision)
+            {
+                Reject("扫码识别规则已变化，请重新扫码。");
+                return;
+            }
+            var serialized = JsonSerializer.Serialize(new
+            {
+                Schema = "FIXED_MARKER_V1",
+                Marker = routed.Marker,
+                Separator = "-",
+                PackageSha256 = routed.Package.PackageSha256,
+                Revision = routed.RuleRevision
+            });
             var ruleHash = Convert.ToHexString(
                 SHA256.HashData(Encoding.UTF8.GetBytes(serialized)));
             var observedFields = _scanMappedFields.ToDictionary(
                 x => x.Key, x => x.Value, StringComparer.Ordinal);
             _acceptedStationEpoch = stationEpoch;
-            _lastIdentity = routed.Serial;
+            _lastIdentity = routed.FullBarcode;
             _prepared = prepared.Preparation with
             {
                 AcceptedScannerObservation = new FrozenScanIdentity(
                     Guid.NewGuid(), observedAt, port, raw, serialized, ruleHash,
-                    routed.ProductKey, routed.Serial, routed.Hardware, observedFields)
+                    routed.Marker, routed.FullBarcode, "", observedFields)
                 {
                     PublishedConfigurationSha256 = "",
                     PublicationId = Guid.Empty,
-                    BarcodeRuleId = "PRODUCTION_CATALOG_V1",
-                    BarcodeRuleRevision = 1,
-                    ProjectDecisionBasis = "INSTALLED_CATALOG",
+                    BarcodeRuleId = "FIXED_MARKER_V1",
+                    BarcodeRuleRevision = routed.RuleRevision,
+                    ProjectDecisionBasis = "FIXED_MARKER",
                     StationSlotId = station.Fixture.StationSlotId,
                     ScannerPnpInstanceId = device.PnpInstanceId
                 }
             };
-            _scanStatus = "ECU 编号：" + routed.Serial + " · 工程：" +
+            _scanStatus = "ECU 编号：" + routed.FullBarcode + " · 工程：" +
                 routed.Package.ProjectName + "。等待工位启动条件。";
             _scanAlertRequired = false;
             Notify();
