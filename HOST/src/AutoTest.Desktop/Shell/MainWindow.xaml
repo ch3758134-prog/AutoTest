@@ -206,75 +206,33 @@
    </DockPanel>
   </Border>
 
-  <Border Grid.Row="1" Height="49" Background="#F4F7FA"
-   BorderBrush="#E1E5E9" BorderThickness="0,0,0,1">
-   <Border.Style>
-    <Style TargetType="Border">
-     <Setter Property="Visibility" Value="Collapsed"/>
-     <Style.Triggers>
-      <MultiDataTrigger>
-       <MultiDataTrigger.Conditions>
-        <Condition Binding="{Binding IsEngineerWorkspace}" Value="True"/>
-        <Condition Binding="{Binding IsCompactShell}" Value="False"/>
-       </MultiDataTrigger.Conditions>
-       <Setter Property="Visibility" Value="Visible"/>
-      </MultiDataTrigger>
-     </Style.Triggers>
-    </Style>
-   </Border.Style>
-   <DockPanel Margin="10,0" LastChildFill="False">
+  <Border Grid.Row="1" Height="49" Background="#FFFFFF"
+   BorderBrush="#DFE7F1" BorderThickness="0,0,0,1"
+   Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}">
+   <DockPanel LastChildFill="False" Margin="12,0">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-     <!-- The contextual engineering toolbar keeps only controller CAN settings;
-          specialist workbenches have one stable entry in Tools. -->
-     <TextBlock Text="ECU CAN" VerticalAlignment="Center" Foreground="#526172"
-      Margin="0,0,5,0" ToolTip="{Binding EcuCanRateStatus}"/>
-     <ComboBox Width="137" MinHeight="28" VerticalAlignment="Center" Margin="0,0,8,0"
-      ItemsSource="{Binding EcuCanRateChoices}" DisplayMemberPath="Label"
-      SelectedValuePath="Kbps"
-      SelectedValue="{Binding RequestedEcuCanBitrateKbps,Mode=TwoWay}"
-      ToolTip="选择 ECU CAN 目标码率；按“应用”执行 USB 0x42 并通过 0x43 回读，确认成功后才允许实体 ECU CAN 发送。"/>
-     <Button Content="应用" Command="{Binding ApplyEcuCanBitrateCommand}"
-      Margin="0,0,7,0" Padding="8,4" ToolTip="{Binding EcuCanRateStatus}"/>
-     <Border CornerRadius="4" Padding="8,5" Margin="0,0,8,0"
-      ToolTip="{Binding HardwareStatus}">
-      <Border.Style>
-       <Style TargetType="Border">
-        <Setter Property="Background" Value="#FFF4E7"/>
-        <Setter Property="BorderBrush" Value="#D1A76D"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Style.Triggers>
-         <DataTrigger Binding="{Binding MainUsbConnected}" Value="True">
-          <Setter Property="Background" Value="#EAF4EF"/>
-          <Setter Property="BorderBrush" Value="#A9D3BC"/>
-         </DataTrigger>
-        </Style.Triggers>
-       </Style>
-      </Border.Style>
-      <TextBlock Text="{Binding MainUsbDisplay}" FontSize="12"
-       VerticalAlignment="Center" Foreground="#6E4F23"/>
-     </Border>
-     <!-- CAN 监视并入手动台架，独立旧工具入口不占用全局命令栏。 -->
+     <Button Content="检查工程" Command="{Binding OpenProjectConfigurationOverviewCommand}"
+      Style="{StaticResource AtQuietButton}" Margin="0,0,8,0" Padding="9,5"/>
+     <Button Content="用于生产…" Command="{Binding ConfirmProductionConfigurationCommand}"
+      Style="{StaticResource AtPrimaryButton}" Padding="11,5"
+      ToolTip="核对当前工程的完整 TEST、DBC、波形和 FLASH 后固定生产版本"/>
     </StackPanel>
     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
-     <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
-      Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}">
-     <Button Content="检查工程" Command="{Binding OpenProjectConfigurationOverviewCommand}"
-       Margin="0,0,5,0" ToolTip="TEST 项目、原生 FLASH、DBC 与波形"/>
-      <Button Content="检测流程" Command="{Binding OpenFirstTestProjectCommand}"
-       Margin="0,0,9,0" ToolTip="打开本 ECU 工程唯一的有序用例列表"/>
-     <Button Content="用于生产…" Command="{Binding ConfirmProductionConfigurationCommand}"
-       ToolTip="校验保存的测试工程并在本机建立稳定生产版本，随后关联扫码标记"
-       Margin="0,0,9,0" Padding="9,4"/>
-     <Button Content="参数面板" Click="ToggleInspector_Click" Margin="0,0,7,0"
-       ToolTip="按需显示当前步骤的参数；复杂步骤可在独立编辑窗口修改"/>
-     <TextBlock Text="{Binding CurrentProjectName}" FontWeight="SemiBold"
-      VerticalAlignment="Center" MaxWidth="160" TextTrimming="CharacterEllipsis"
-      ToolTip="{Binding CurrentProjectPath}"/>
-     <Border Background="#E1E5E9" Width="1" Height="18" Margin="10,0"/>
-     <TextBlock Text="自动保存" FontSize="11" Foreground="#60758B"
-      VerticalAlignment="Center" Margin="4,0,0,0"/>
-      <!-- Contextual preflight stays inside the current TEST editor. -->
-     </StackPanel>
+     <TextBlock Text="{Binding CurrentProjectName}" FontSize="15" FontWeight="SemiBold"
+      Foreground="#21384F" VerticalAlignment="Center" MaxWidth="220"
+      TextTrimming="CharacterEllipsis" ToolTip="{Binding CurrentProjectPath}"/>
+     <Border Width="1" Height="21" Background="#DEE7F1" Margin="13,0,9,0"/>
+     <Button Content="{Binding ActiveDbcLabel}" Command="{Binding OpenDbcToolCommand}"
+      Style="{StaticResource AtQuietButton}" Margin="0,0,5,0" Padding="9,5"
+      ToolTip="编辑当前工程唯一的 ECU DBC；用例信号引用共享此数据库"/>
+     <Button Content="FLASH 烧录" Command="{Binding OpenNativeFlashProfileCommand}"
+      Style="{StaticResource AtQuietButton}" Margin="0,0,5,0" Padding="9,5"
+      ToolTip="编辑当前工程唯一的烧录工艺；独立实测可从工具菜单进入"/>
+     <Button Content="波形判定" Command="{Binding OpenWaveWorkbenchCommand}"
+      Style="{StaticResource AtQuietButton}" Margin="0,0,5,0" Padding="9,5"/>
+     <Button Content="公共流程" Command="{Binding NewPublicFlowCommand}"
+      Style="{StaticResource AtQuietButton}" Margin="0,0,5,0" Padding="9,5"
+      ToolTip="新建公共流程；已有公共流程位于左侧的复用入口"/>
     </StackPanel>
    </DockPanel>
   </Border>
@@ -282,7 +240,7 @@
   <Grid Grid.Row="2" Background="#FFFFFF"
    Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}">
    <Grid.ColumnDefinitions>
-    <ColumnDefinition x:Name="TreeColumn" Width="320" MinWidth="210" MaxWidth="480"/>
+    <ColumnDefinition x:Name="TreeColumn" Width="266" MinWidth="210" MaxWidth="365"/>
     <ColumnDefinition Width="4"/>
     <ColumnDefinition Width="*" MinWidth="460"/>
    </Grid.ColumnDefinitions>

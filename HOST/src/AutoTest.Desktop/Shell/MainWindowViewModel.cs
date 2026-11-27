@@ -177,6 +177,8 @@ public sealed partial class MainWindowViewModel : BindableBase
         OpenRecordHistoryCommand = new DelegateCommand(OpenRecordHistory);
         OpenFirstTestProjectCommand = new DelegateCommand(async () => await OpenFirstAssetAsync(
             ProjectWorkspaceService.TestProjectKind, CreateTestProjectAsync));
+        NewPublicFlowCommand = new DelegateCommand(async () => await CreatePublicFlowAsync(),
+            () => HasProject && !IsBusy);
         OpenFirstTestProgramCommand = new DelegateCommand(async () => await OpenFirstAssetAsync(
             ProjectWorkspaceService.TestProgramKind, CreateTestProgramAsync));
         OpenProjectConfigurationOverviewCommand = new DelegateCommand(ShowProjectConfiguration);
@@ -204,10 +206,10 @@ public sealed partial class MainWindowViewModel : BindableBase
         OpenFirstConfigurationCommand = new DelegateCommand(ShowProjectConfiguration);
         HelpCommand = new DelegateCommand(() =>
             MessageBox.Show(
-                "工程资源：左侧点击打开。测试用例：Ctrl+Space 新增、F2 编辑名称、F9 断点、" +
-                "Ctrl+F 查找、Ctrl+Z/Y 撤销/重做、Delete 删除、拖动调整顺序。" +
-                "\n测试项目勾选只作用于本次检查，工程默认独立保存。" +
-                "\n工程测试可运行前置烧录和全部用例；正式生产放行仍须整机验收。",
+                "测试工程：左侧单击用例编辑，新增用例自动加入正式 TEST 顺序。\n" +
+                "双击步骤编辑，Ctrl+Space 插入步骤，F9 断点，Ctrl+Z/Y 撤销重做。\n" +
+                "DBC、波形、FLASH 和公共流程是当前工程的共享专业资源。\n" +
+                "临时调试范围不改变生产执行顺序，正式生产仍需真实工位验证。",
                 "AutoTest · 编辑帮助", MessageBoxButton.OK, MessageBoxImage.Information));
         // USB diagnostics may burst during faults; coalesce instead of queueing WPF invocations.
         _hardware.EvidenceRecorded += QueueHardwareStatusUi;
@@ -225,6 +227,7 @@ public sealed partial class MainWindowViewModel : BindableBase
             RaisePropertyChanged(nameof(CurrentProjectPath));
             RaisePropertyChanged(nameof(AssetCount));
             RaisePropertyChanged(nameof(TestProjectCount));
+            RaisePropertyChanged(nameof(ActiveDbcLabel));
             RaisePropertyChanged(nameof(TestProgramCount));
             RaisePropertyChanged(nameof(ConfigurationCount));
             foreach (var projectTab in OpenEditors.ToArray())
@@ -263,7 +266,33 @@ public sealed partial class MainWindowViewModel : BindableBase
         string Unit, string Status);
     public MonitorDisplayCollection<CanMonitorRow> CanRecords { get; } = new();
     public MonitorDisplayCollection<DecodedCanRow> DecodedCanRecords { get; } = new();
+    public string ActiveDbcLabel => _workspace.Current?.Definition.Assets
+        .FirstOrDefault(a => a.Kind == ProjectWorkspaceService.DbcKind)?.Name ?? "导入 DBC";
+
     public ObservableCollection<ResourceTreeNode> ResourceNodes { get; } = new();
+
+    // The old asset tree remains an internal adapter during migration, but the
+    // operator-facing navigation only projects the sole ordered TEST program.
+    // Reusable flows are secondary and never imply inclusion in production.
+    public ObservableCollection<ResourceTreeNode> OrderedCaseNodes { get; } = new();
+    public ObservableCollection<ResourceTreeNode> PublicFlowNodes { get; } = new();
+    public int OrderedCaseCount => OrderedCaseNodes.Count;
+    public bool HasOrderedCases => OrderedCaseNodes.Count != 0;
+
+    private void RefreshCaseNavigation()
+    {
+        var currentProject = ResourceNodes.FirstOrDefault(n => n.Role == "Project");
+        OrderedCaseNodes.Clear();
+        if (currentProject is not null)
+            foreach (var node in currentProject.Children.Where(n => n.Role == "Case" && n.Asset is not null))
+                OrderedCaseNodes.Add(node);
+        PublicFlowNodes.Clear();
+        foreach (var flow in ResourceNodes.Where(n => n.Asset?.Kind ==
+            ProjectWorkspaceService.PublicFlowKind))
+            PublicFlowNodes.Add(flow);
+        RaisePropertyChanged(nameof(OrderedCaseCount));
+        RaisePropertyChanged(nameof(HasOrderedCases));
+    }
     public string HardwareStatus
     {
         get => _hardwareStatus;
@@ -352,6 +381,7 @@ public sealed partial class MainWindowViewModel : BindableBase
     public DelegateCommand HelpCommand { get; }
     public DelegateCommand OpenFirstTestProjectCommand { get; }
     public DelegateCommand CreateStarterProjectCommand { get; }
+    public DelegateCommand NewPublicFlowCommand { get; }
     public DelegateCommand OpenFirstTestProgramCommand { get; }
     public DelegateCommand OpenFirstConfigurationCommand { get; }
     public DelegateCommand OpenProjectConfigurationOverviewCommand { get; }
@@ -400,8 +430,34 @@ public sealed partial class MainWindowViewModel : BindableBase
             ShowProjectConfiguration();
             return;
         }
-        await OpenFirstAssetAsync(ProjectWorkspaceService.TestProjectKind,
-            CreateTestProjectAsync);
+        // Opening an ECU project means editing its TEST cases, not opening a
+        // management editor for the invocation list or an empty project tree.
+        var project = _workspace.Current.Definition.Assets.SingleOrDefault(a =>
+            a.Kind == ProjectWorkspaceService.TestProjectKind);
+        if (project is null) return;
+        var session = await _workspace.OpenTestProjectEditorAsync(project.Id);
+        var first = session.Document.Packages.FirstOrDefault();
+        if (first is null)
+        {
+            await OpenFirstAssetAsync(ProjectWorkspaceService.TestProjectKind,
+                CreateTestProjectAsync);
+            return;
+        }
+        var caseAsset = _workspace.Current.Definition.Assets.FirstOrDefault(a =>
+            a.Kind == ProjectWorkspaceService.TestProgramKind &&
+            a.Id.Value == first.PackageAssetId);
+        if (caseAsset is null)
+        {
+            StatusMessage = "正式 TEST 中引用的用例缺失；请打开检测顺序修复引用。";
+            await OpenFirstAssetAsync(ProjectWorkspaceService.TestProjectKind,
+                CreateTestProjectAsync);
+            return;
+        }
+        SelectResource(AllNodes(ResourceNodes).FirstOrDefault(n => n.Role == "Case" &&
+            n.Asset?.Id == caseAsset.Id) ??
+            new ResourceTreeNode(caseAsset.Name, "", caseAsset.RelativePath,
+                caseAsset.Kind, caseAsset, role: "Case"));
+        await OpenSelectedResourceAsync();
     }
 
     public void ShowProjectConfiguration()
@@ -609,10 +665,10 @@ public sealed partial class MainWindowViewModel : BindableBase
     };
     public string StartDescription => StartMode switch
     {
-        "none" => "打开已有工程，或创建新的空白工程。",
+        "none" => "打开已有 ECU 测试工程，或创建新工程。",
         "project" => "当前工程还没有测试项目。先建立项目，再组织具体测试用例。",
         "case" => "项目已经建立。进入项目后可新建空白用例或加入已有用例。",
-        _ => "从工程树选择资源，或直接继续编辑现有的测试用例。"
+        _ => "左侧选择用例，直接编辑和调试步骤；DBC、波形与 FLASH 在工程栏打开。"
     };
     public string StartPrimaryLabel => StartMode switch
     {
@@ -1312,6 +1368,12 @@ public sealed partial class MainWindowViewModel : BindableBase
             return;
         }
         if (lastKey is null) return;
+        // Management/flow tabs must not displace the main TEST authoring task on restart.
+        if (!lastKey.StartsWith("test|", StringComparison.Ordinal))
+        {
+            await OpenDefaultEngineeringDocumentAsync();
+            return;
+        }
         var separator = lastKey.LastIndexOf('|');
         if (separator < 0 || !Guid.TryParse(lastKey[(separator + 1)..], out var guid)) return;
         var asset = project.Definition.Assets.FirstOrDefault(a => a.Id.Value == guid);
@@ -1466,7 +1528,8 @@ public sealed partial class MainWindowViewModel : BindableBase
     {
         var choice = _runSelections.Get(project.Id.Value, itemId, enabled);
         return new ResourceTreeNode(name, "", "项目中的第 " + order + " 条执行引用 · 临时勾选",
-            ProjectWorkspaceService.TestProgramKind, asset, asset is null, "Case", "", choice);
+            ProjectWorkspaceService.TestProgramKind, asset, asset is null, "Case",
+            order.ToString("D2"), choice);
     }
 
     private void BindProjectNavigation(AssetEntry projectAsset, TestProjectWorkbenchViewModel editor)
@@ -1485,6 +1548,7 @@ public sealed partial class MainWindowViewModel : BindableBase
                     row.Name, row.Enabled, row.Order));
             }
             UpdateProjectCount(node);
+            RefreshCaseNavigation();
             RefreshUnassignedCases();
             ApplyResourceSearchHighlight();
             RaiseStartStateChanged();
@@ -1530,6 +1594,7 @@ public sealed partial class MainWindowViewModel : BindableBase
                     asset?.Name ?? entry.DisplayName, entry.Enabled, ++order));
             }
             UpdateProjectCount(node);
+            RefreshCaseNavigation();
             RefreshUnassignedCases();
             ApplyResourceSearchHighlight();
             RaiseStartStateChanged();
@@ -1542,6 +1607,7 @@ public sealed partial class MainWindowViewModel : BindableBase
             node.Children.Add(new ResourceTreeNode("引用读取失败", "", error.Message,
                 role: "Placeholder", isPlaceholder: true));
             node.CountLabel = "!";
+            RefreshCaseNavigation();
             ApplyResourceSearchHighlight();
             RaiseStartStateChanged();
         }
@@ -1574,9 +1640,12 @@ public sealed partial class MainWindowViewModel : BindableBase
         var selectedId = _selectedResource?.Asset?.Id;
         var wasSetupSelected = _selectedResource?.Role == "Setup";
         ResourceNodes.Clear();
+        OrderedCaseNodes.Clear();
+        PublicFlowNodes.Clear();
         _selectedResource = null;
         if (_workspace.Current is not { } current)
         {
+            RefreshCaseNavigation();
             RaiseSelectedResourceChanges();
             return;
         }
@@ -1669,6 +1738,7 @@ public sealed partial class MainWindowViewModel : BindableBase
             _selectedResource = ResourceNodes.FirstOrDefault(x => x.Role == "Setup");
         if (_selectedResource is not null) _selectedResource.IsSelected = true;
         ApplyResourceSearchHighlight();
+        RefreshCaseNavigation();
         RaiseSelectedResourceChanges();
     }
 

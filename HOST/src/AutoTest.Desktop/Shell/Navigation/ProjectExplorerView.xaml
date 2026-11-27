@@ -1,213 +1,117 @@
 <UserControl x:Class="AutoTest.Desktop.Shell.Navigation.ProjectExplorerView"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- Background="#FAFBFB" Foreground="#2B3435" FontFamily="{StaticResource UiFont}" FontSize="13">
+ Background="#F8FAFD" Foreground="#24394D"
+ FontFamily="{StaticResource UiFont}" FontSize="13">
  <UserControl.Resources>
-  <!-- Every navigator row has its own hover/selection state. The Windows default
-       TreeViewItem chrome/expansion glyph is entirely replaced. -->
-  <Style x:Key="ExplorerTreeItem" TargetType="{x:Type TreeViewItem}">
-   <Setter Property="IsExpanded" Value="True"/>
-   <Setter Property="IsSelected" Value="{Binding IsSelected,Mode=TwoWay}"/>
+  <Style x:Key="CaseRow" TargetType="{x:Type ListBoxItem}">
    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-   <Setter Property="Template">
-    <Setter.Value>
-     <ControlTemplate TargetType="{x:Type TreeViewItem}">
-      <Grid>
-       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-       <Border x:Name="RowChrome" Grid.Row="0" Height="40" CornerRadius="5" Margin="2,1"
-        Background="Transparent" BorderBrush="Transparent" BorderThickness="1"
-        Padding="4,0,6,0">
-        <DockPanel LastChildFill="True">
-         <ToggleButton x:Name="Expander" DockPanel.Dock="Left" Width="19" Height="28"
-          IsChecked="{Binding IsExpanded,RelativeSource={RelativeSource TemplatedParent},Mode=TwoWay}"
-          Focusable="False" ToolTip="展开／收起" Background="Transparent" BorderThickness="0">
-          <ToggleButton.Template>
-           <ControlTemplate TargetType="{x:Type ToggleButton}">
-            <Grid Background="Transparent">
-             <Path x:Name="Chevron" Data="M8 5 L14 11 L8 17" Stroke="#7890AB"
-              StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-              Width="12" Height="14" Stretch="Uniform" HorizontalAlignment="Center"
-              VerticalAlignment="Center"/>
-            </Grid>
-            <ControlTemplate.Triggers>
-             <Trigger Property="IsChecked" Value="True">
-              <Setter TargetName="Chevron" Property="Data" Value="M5 8 L11 14 L17 8"/>
-             </Trigger>
-            </ControlTemplate.Triggers>
-           </ControlTemplate>
-          </ToggleButton.Template>
-         </ToggleButton>
-         <ContentPresenter ContentSource="Header" VerticalAlignment="Center"
-          HorizontalAlignment="Stretch"/>
-        </DockPanel>
-       </Border>
-       <Border Grid.Row="1" Margin="24,0,0,0" BorderBrush="#E4EBE8" BorderThickness="1,0,0,0">
-        <ItemsPresenter x:Name="ItemsHost" Margin="5,0,0,0"/>
-       </Border>
-      </Grid>
-      <ControlTemplate.Triggers>
-       <Trigger Property="HasItems" Value="False">
-        <Setter TargetName="Expander" Property="Visibility" Value="Hidden"/>
-        <Setter TargetName="ItemsHost" Property="Visibility" Value="Collapsed"/>
-       </Trigger>
-       <Trigger Property="IsExpanded" Value="False">
-        <Setter TargetName="ItemsHost" Property="Visibility" Value="Collapsed"/>
-       </Trigger>
-       <Trigger Property="IsMouseOver" Value="True">
-        <Setter TargetName="RowChrome" Property="Background" Value="#F1F6F4"/>
-       </Trigger>
-       <Trigger Property="IsSelected" Value="True">
-        <Setter TargetName="RowChrome" Property="Background" Value="#EEF5FF"/>
-        <Setter TargetName="RowChrome" Property="BorderBrush" Value="#E7EFFB"/>
-       </Trigger>
-       <DataTrigger Binding="{Binding Role}" Value="Root">
-        <Setter TargetName="RowChrome" Property="Height" Value="44"/>
-        <Setter TargetName="RowChrome" Property="Background" Value="#F5F7F6"/>
-        <Setter TargetName="RowChrome" Property="BorderBrush" Value="#E0E8E3"/>
-        <Setter TargetName="RowChrome" Property="Margin" Value="3,2,3,10"/>
-       </DataTrigger>
-       <DataTrigger Binding="{Binding Role}" Value="Setup">
-        <Setter TargetName="RowChrome" Property="Height" Value="42"/>
-        <Setter TargetName="RowChrome" Property="Margin" Value="3,1,3,5"/>
-        <Setter TargetName="RowChrome" Property="Background" Value="#EAF3FC"/>
-        <Setter TargetName="RowChrome" Property="BorderBrush" Value="#DDEAF9"/>
-       </DataTrigger>
-       <DataTrigger Binding="{Binding Role}" Value="Section">
-        <Setter TargetName="RowChrome" Property="Height" Value="33"/>
-        <Setter TargetName="RowChrome" Property="BorderBrush" Value="#E7ECE9"/>
-        <Setter TargetName="RowChrome" Property="Margin" Value="3,10,3,2"/>
-       </DataTrigger>
-       <DataTrigger Binding="{Binding Role}" Value="Advanced">
-         <Setter Property="IsExpanded" Value="False"/>
-         <Setter TargetName="RowChrome" Property="Height" Value="30"/>
-         <Setter TargetName="RowChrome" Property="Background" Value="#F8FAF9"/>
-        </DataTrigger>
-        <DataTrigger Binding="{Binding Role}" Value="Placeholder">
-        <Setter TargetName="RowChrome" Property="Height" Value="28"/>
-        <Setter TargetName="RowChrome" Property="Opacity" Value="0.68"/>
-       </DataTrigger>
-      </ControlTemplate.Triggers>
-     </ControlTemplate>
-    </Setter.Value>
-   </Setter>
+   <Setter Property="Padding" Value="0"/>
+   <Setter Property="Margin" Value="2,2,2,2"/>
+   <Setter Property="BorderThickness" Value="0"/>
+   <Setter Property="Background" Value="Transparent"/>
+   <Setter Property="IsSelected" Value="{Binding IsSelected,Mode=TwoWay}"/>
+   <Style.Triggers>
+    <Trigger Property="IsSelected" Value="True">
+     <Setter Property="Background" Value="#E4F0FD"/>
+     <Setter Property="Foreground" Value="#165CA3"/>
+    </Trigger>
+    <Trigger Property="IsMouseOver" Value="True">
+     <Setter Property="Background" Value="#EDF4FA"/>
+    </Trigger>
+   </Style.Triggers>
   </Style>
-  <HierarchicalDataTemplate x:Key="ExplorerNodeTemplate" ItemsSource="{Binding Children}"
-   ItemContainerStyle="{StaticResource ExplorerTreeItem}">
-   <Grid Height="38" HorizontalAlignment="Stretch" ToolTip="{Binding Description}">
-    <Grid.ColumnDefinitions>
-     <ColumnDefinition Width="Auto"/><ColumnDefinition Width="18"/>
-     <ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/>
-    </Grid.ColumnDefinitions>
-    <CheckBox x:Name="RunCheck" Grid.Column="0" VerticalAlignment="Center"
-     IsChecked="{Binding RunSelection.IsSelected,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-     Width="17" Height="17" Margin="0,0,4,0" Focusable="False"
-     ToolTip="本次执行选择（不修改工程默认）">
-     <CheckBox.Style>
-      <Style TargetType="{x:Type CheckBox}" BasedOn="{StaticResource {x:Type CheckBox}}">
-       <Setter Property="Visibility" Value="Collapsed"/>
-      </Style>
-     </CheckBox.Style>
-    </CheckBox>
-    <Viewbox x:Name="NodeIcon" Grid.Column="1" Width="16" Height="16"
-     VerticalAlignment="Center" Stretch="Uniform" Margin="0,0,4,0">
-     <Canvas Width="24" Height="24">
-      <Path Data="{Binding IconPath}" Stroke="#5279A5" StrokeThickness="1.65"
-       StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Fill="Transparent"/>
-     </Canvas>
-    </Viewbox>
-    <TextBlock x:Name="NodeText" Grid.Column="2" Text="{Binding Label}"
-     FontSize="14" Foreground="#25394D" TextTrimming="CharacterEllipsis"
-     VerticalAlignment="Center" Margin="5,0,3,0" Cursor="Hand"
-     ToolTip="单击打开当前对象 · F2 重命名资源 · 右键更多操作"/>
-    <TextBlock x:Name="NodeCount" Grid.Column="3" Text="{Binding CountLabel}"
-     FontSize="12" FontWeight="SemiBold" Foreground="#435B74" VerticalAlignment="Center"
-     Margin="0,0,5,0"/>
-    <Button x:Name="AddResource" Grid.Column="4" Content="＋"
-     Click="AddResource_Click" Focusable="False" Height="24" Width="24"
-     MinHeight="0" MinWidth="0" FontSize="16" Padding="0" Margin="0,0,2,0"
-     ToolTip="新建／导入此类工程资源"
->
-     <Button.Style>
-      <Style TargetType="{x:Type Button}" BasedOn="{StaticResource AtQuietButton}">
-       <Setter Property="Visibility" Value="Collapsed"/>
-      </Style>
-     </Button.Style>
-    </Button>
-   </Grid>
-   <HierarchicalDataTemplate.Triggers>
-    <DataTrigger Binding="{Binding IsRunSelectable}" Value="True">
-     <Setter TargetName="RunCheck" Property="Visibility" Value="Visible"/>
-    </DataTrigger>
-    <DataTrigger Binding="{Binding IsCreatableCategory}" Value="True">
-     <Setter TargetName="AddResource" Property="Visibility" Value="Visible"/>
-    </DataTrigger>
-    <DataTrigger Binding="{Binding Role}" Value="Root">
-     <Setter TargetName="NodeText" Property="FontSize" Value="14"/>
-     <Setter TargetName="NodeText" Property="FontWeight" Value="Bold"/>
-     <Setter TargetName="NodeIcon" Property="Width" Value="19"/>
-     <Setter TargetName="NodeIcon" Property="Height" Value="19"/>
-    </DataTrigger>
-    <DataTrigger Binding="{Binding Role}" Value="Section">
-     <Setter TargetName="NodeText" Property="FontSize" Value="14"/>
-     <Setter TargetName="NodeText" Property="FontWeight" Value="Bold"/>
-     <Setter TargetName="NodeText" Property="Foreground" Value="#425A73"/>
-     <Setter TargetName="NodeIcon" Property="Visibility" Value="Collapsed"/>
-    </DataTrigger>
-    <DataTrigger Binding="{Binding Role}" Value="Setup">
-     <Setter TargetName="NodeText" Property="FontWeight" Value="SemiBold"/>
-     <Setter TargetName="NodeText" Property="Foreground" Value="#265F9A"/>
-    </DataTrigger>
-    <DataTrigger Binding="{Binding Role}" Value="Project">
-     <Setter TargetName="NodeText" Property="FontWeight" Value="SemiBold"/>
-     <Setter TargetName="NodeCount" Property="Foreground" Value="#3478D6"/>
-    </DataTrigger>
-    <DataTrigger Binding="{Binding Role}" Value="Case">
-     <Setter TargetName="NodeText" Property="FontSize" Value="14"/>
-    </DataTrigger>
-    <DataTrigger Binding="{Binding Role}" Value="Placeholder">
-     <Setter TargetName="NodeText" Property="Foreground" Value="#97B6DE"/>
-     <Setter TargetName="NodeIcon" Property="Visibility" Value="Collapsed"/>
-    </DataTrigger>
-    <DataTrigger Binding="{Binding IsSearchMatch}" Value="True">
-     <Setter TargetName="NodeText" Property="Background" Value="#FFF0BE"/>
-     <Setter TargetName="NodeText" Property="Foreground" Value="#935510"/>
-     <Setter TargetName="NodeText" Property="FontWeight" Value="SemiBold"/>
-    </DataTrigger>
-   </HierarchicalDataTemplate.Triggers>
-  </HierarchicalDataTemplate>
  </UserControl.Resources>
  <DockPanel LastChildFill="True">
-  <Border DockPanel.Dock="Top" Height="43" BorderBrush="#ECF2EF" BorderThickness="0,0,0,1"
-   Padding="11,0" Background="#FAFBFB">
-   <DockPanel LastChildFill="True">
-    <TextBox x:Name="ResourceSearch" DockPanel.Dock="Right" Width="132" Height="33"
-     VerticalContentAlignment="Center" Padding="6,3" FontSize="13"
-     TextChanged="ResourceSearch_TextChanged"
-     ToolTip="输入名称，仅高亮工程树匹配对象；清空后恢复，单击再打开编辑"/>
-    <TextBlock Text="测试工程" FontSize="14" FontWeight="SemiBold"
-     VerticalAlignment="Center" Margin="0,0,8,0"
-     ToolTip="检测流程定义执行顺序；用例库管理定义；工位设置位于顶部“设置”"/>
-   </DockPanel>
+  <Border DockPanel.Dock="Top" Background="White" BorderBrush="#DFE8F1"
+   BorderThickness="0,0,0,1" Padding="11,11,11,10">
+   <StackPanel>
+    <DockPanel LastChildFill="True">
+     <TextBlock DockPanel.Dock="Left" Text="测试用例" FontSize="16"
+      FontWeight="SemiBold" VerticalAlignment="Center"/>
+     <TextBlock DockPanel.Dock="Right" Foreground="#55718D" FontSize="12"
+      Text="{Binding OrderedCaseCount,StringFormat='{}{0} 项'}"
+      VerticalAlignment="Center"/>
+    </DockPanel>
+    <TextBox x:Name="CaseSearch" Height="32" Margin="0,11,0,9"
+     Padding="8,5" VerticalContentAlignment="Center"
+     TextChanged="CaseSearch_TextChanged"
+     ToolTip="搜索用例名称，不修改 TEST 顺序"/>
+    <Button Content="＋ 新建测试用例" Command="{Binding NewTestProgramCommand}"
+     Style="{StaticResource AtPrimaryButton}" Padding="9,7"
+     HorizontalAlignment="Stretch" Margin="0,0,0,4"
+     ToolTip="创建测试用例并直接加入本工程的正式执行顺序"/>
+    <Button Content="调整检测顺序…" Command="{Binding OpenFirstTestProjectCommand}"
+     Style="{StaticResource AtQuietButton}" HorizontalAlignment="Stretch"
+     Padding="8,5" ToolTip="编辑正式执行顺序；单步和临时调试勾选不修改生产顺序"/>
+   </StackPanel>
   </Border>
-  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-   Padding="7,6,7,12">
-   <TreeView x:Name="Navigator" ItemsSource="{Binding ResourceNodes}" BorderThickness="0"
-    Background="Transparent" ItemTemplate="{StaticResource ExplorerNodeTemplate}"
-    ItemContainerStyle="{StaticResource ExplorerTreeItem}"
-    SelectedItemChanged="Navigator_SelectedItemChanged"
-    PreviewKeyDown="Navigator_PreviewKeyDown"
-    PreviewMouseRightButtonDown="Navigator_RightClick">
-    <TreeView.ContextMenu>
-     <ContextMenu DataContext="{Binding PlacementTarget.DataContext,RelativeSource={RelativeSource Self}}">
-      <MenuItem Header="打开检测流程" Command="{Binding OpenFirstTestProjectCommand}"/>
-      <MenuItem Header="新建测试用例并加入项目" Command="{Binding NewTestProgramCommand}"/>
-      <MenuItem Header="导入 DBC 数据库" Command="{Binding ImportDbcCommand}"/>
-      <Separator/>
-      <MenuItem Header="重命名所选资源" Command="{Binding RenameResourceCommand}"/>
-      <MenuItem Header="移除资源引用" Command="{Binding RemoveReferenceCommand}"/>
-     </ContextMenu>
-    </TreeView.ContextMenu>
-   </TreeView>
-  </ScrollViewer>
+  <StackPanel DockPanel.Dock="Bottom">
+   <Expander Header="公共流程 · 按需编辑" IsExpanded="False"
+    Margin="8,5,8,0" Foreground="#3C5772">
+    <StackPanel Margin="4,8,4,8">
+     <ItemsControl ItemsSource="{Binding PublicFlowNodes}">
+      <ItemsControl.ItemTemplate>
+       <DataTemplate>
+        <Button Content="{Binding Label}" ToolTip="{Binding Description}"
+         Click="PublicFlow_Click" HorizontalContentAlignment="Left"
+         Style="{StaticResource AtQuietButton}" Padding="8,5"
+         HorizontalAlignment="Stretch" Margin="0,1"/>
+       </DataTemplate>
+      </ItemsControl.ItemTemplate>
+     </ItemsControl>
+     <Button Content="＋ 新建公共流程"
+      Command="{Binding DataContext.NewPublicFlowCommand,RelativeSource={RelativeSource AncestorType=UserControl}}"
+      Style="{StaticResource AtQuietButton}" HorizontalContentAlignment="Left"
+      Padding="8,5" Margin="0,4,0,0" HorizontalAlignment="Stretch"/>
+    </StackPanel>
+   </Expander>
+   <Border BorderBrush="#DFE8F1" BorderThickness="0,1,0,0" Padding="12,9"
+    Background="White">
+    <TextBlock Text="DBC、FLASH、波形属于当前工程；从顶部工程栏进入。"
+     Foreground="#6D7E91" FontSize="11" TextWrapping="Wrap"/>
+   </Border>
+  </StackPanel>
+  <Grid>
+   <ListBox x:Name="CaseList" ItemsSource="{Binding OrderedCaseNodes}"
+    ItemContainerStyle="{StaticResource CaseRow}"
+    SelectionChanged="CaseList_SelectionChanged"
+    PreviewKeyDown="CaseList_PreviewKeyDown"
+    BorderThickness="0" Background="Transparent" Padding="5,7"
+    ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+    <ListBox.ItemTemplate>
+     <DataTemplate>
+      <Grid Height="39" ToolTip="{Binding Description}">
+       <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="32"/>
+        <ColumnDefinition Width="*"/>
+       </Grid.ColumnDefinitions>
+       <TextBlock Grid.Column="0" Text="{Binding CountLabel}" FontSize="12"
+        Foreground="#67819C" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+       <TextBlock Grid.Column="1" Text="{Binding Label}" FontSize="14"
+        TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+        Margin="4,0,4,0"/>
+      </Grid>
+     </DataTemplate>
+    </ListBox.ItemTemplate>
+   </ListBox>
+   <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+    Margin="14" IsHitTestVisible="False">
+    <StackPanel.Style>
+     <Style TargetType="StackPanel">
+      <Setter Property="Visibility" Value="Collapsed"/>
+      <Style.Triggers>
+       <DataTrigger Binding="{Binding HasOrderedCases}" Value="False">
+        <Setter Property="Visibility" Value="Visible"/>
+       </DataTrigger>
+      </Style.Triggers>
+     </Style>
+    </StackPanel.Style>
+    <TextBlock Text="暂无正式测试用例" FontSize="14" FontWeight="SemiBold"
+     Foreground="#667E95" HorizontalAlignment="Center"/>
+    <TextBlock Text="新建用例后直接编辑步骤" FontSize="12"
+     Foreground="#8193A6" Margin="0,7,0,0" HorizontalAlignment="Center"/>
+   </StackPanel>
+  </Grid>
  </DockPanel>
 </UserControl>
