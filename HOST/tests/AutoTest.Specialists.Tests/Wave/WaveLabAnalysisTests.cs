@@ -148,6 +148,50 @@ public sealed class WaveLabAnalysisTests
     }
 
     [Fact]
+    public void MultiSignalStandardPersistsAsOneNamedStandardAndPreservesSources()
+    {
+        var root = Path.Combine(Path.GetTempPath(),
+            "wave-standard-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var one = Series([0, .1, .2, .3]);
+            var otherSignal = Signal with { SignalName = "MotorSpeed", Unit = "rpm" };
+            var buffer = new WaveSampleBuffer(otherSignal,
+                new TimePoint(Origin, 0, TimeSource.Replay, TimeQuality.ReplayDerived), 16);
+            for (var i = 0; i < 4; i++)
+            {
+                var sample = new TimePoint(Origin.AddSeconds(i * .1), i + 1,
+                    TimeSource.Replay, TimeQuality.ReplayDerived);
+                buffer.Append(new SignalObservation(otherSignal, i * 100, "rpm",
+                    sample, EvidenceQuality.Derived, EvidenceRef.New(), false));
+            }
+            var two = buffer.Snapshot();
+            var catalog = new WaveReferenceCatalog(root);
+            var standard = catalog.SaveStandard("静态驻车基准", [one, two]);
+            Assert.Equal(2, standard.Channels.Count);
+            Assert.Equal(2, catalog.List().Count);
+
+            var reopened = new WaveReferenceCatalog(root);
+            var group = Assert.Single(reopened.ListStandards());
+            Assert.Equal("静态驻车基准", group.Name);
+            Assert.Equal(2, group.Channels.Count);
+            Assert.Contains(group.Channels, x => x.Signal.SignalName == "MotorSpeed");
+            foreach (var channel in group.Channels)
+                Assert.True(reopened.Load(channel.Reference).Series.Samples.Length > 0);
+
+            // Conflicts and incomplete measurements cannot create another
+            // visible standard, or alter the original source measurement.
+            Assert.Throws<InvalidDataException>(() =>
+                reopened.SaveStandard("静态驻车基准", [one]));
+            Assert.Throws<InvalidDataException>(() =>
+                reopened.SaveStandard("invalid-duplicate", [one, one]));
+            Assert.Single(reopened.ListStandards());
+            Assert.Equal(4, one.Samples.Length);
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
+    [Fact]
     public void CatalogPersistsAndDetectsObsoleteDbcRevision()
     {
         var root = Path.Combine(Path.GetTempPath(), "wave-catalog-" + Guid.NewGuid().ToString("N"));
