@@ -196,6 +196,26 @@ public sealed class ProductionOrchestrationTests
         Assert.Equal(0, stages.FlashCalls);
     }
 
+    [Theory]
+    [InlineData(true, false, "MECHANICAL_FIXTURE_NOT_VERIFIED")]
+    [InlineData(false, true, "PHYSICAL_START_NOT_VERIFIED")]
+    public async Task ReconnectedControllerSessionCannotReusePreviousPhysicalProof(
+        bool staleFixture, bool staleStart, string expected)
+    {
+        var project = Project();
+        var session = Ready(project);
+        var physical = new TestPhysicalStation(
+            staleFixture: staleFixture, staleStart: staleStart);
+        var stages = new TestStageExecutor();
+        var result = await new ProductionWorkflow(stages,
+            new ProductionResultCoordinator(new CapturingSink()),
+            new ProductionPreflight(), physical)
+            .ExecuteAsync(session, CancellationToken.None);
+        Assert.Equal(expected, result.Code);
+        Assert.Equal(0, stages.FlashCalls);
+        Assert.False(result.PhysicalReleaseAllowed);
+    }
+
     [Fact]
     public async Task PhysicalStartProofMustBeDurablyRecordedBeforeFlash()
     {
@@ -351,7 +371,8 @@ public sealed class ProductionOrchestrationTests
 
     /// <summary>Test-only external ports. Not registered in a production host.</summary>
     private sealed class TestPhysicalStation(
-        bool closed = true, bool interlock = true, bool start = true)
+        bool closed = true, bool interlock = true, bool start = true,
+        bool staleFixture = false, bool staleStart = false)
         : IProductionPhysicalStation
     {
         public int PressRequests { get; private set; }
@@ -361,7 +382,8 @@ public sealed class ProductionOrchestrationTests
         {
             PressRequests++;
             return ValueTask.FromResult(new FixtureAdmissionEvidence(
-                job.Run, job.Station, job.ControllerEpoch, closed, interlock,
+                job.Run, job.Station,
+                job.ControllerEpoch + (staleFixture ? 1 : 0), closed, interlock,
                 closed && interlock ? "TEST_FIXTURE" : ""));
         }
         public ValueTask<PhysicalStartEvidence> WaitForStartAsync(
@@ -370,7 +392,8 @@ public sealed class ProductionOrchestrationTests
         {
             StartRequests++;
             return ValueTask.FromResult(new PhysicalStartEvidence(
-                job.Run, job.Station, job.ControllerEpoch, start,
+                job.Run, job.Station,
+                job.ControllerEpoch + (staleStart ? 1 : 0), start,
                 start ? "TEST_EDGE" : ""));
         }
     }
