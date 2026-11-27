@@ -209,7 +209,11 @@ public sealed class ProductionCommandHandler
 
     public OperationResult<Unit> RetryWithNewRun()
     {
-        if (IsBusy) return OperationResult.Rejected("STATION_BUSY", "Cannot retry an unfinished run.");
+        if (Volatile.Read(ref _handling) != 0 ||
+            _session.State is ProductionState.Running or ProductionState.AwaitingCommit
+                or ProductionState.Unknown or ProductionState.Aborted)
+            return OperationResult.Rejected("STATION_BUSY",
+                "Cannot retry while physical work is active or recovery is required.");
         var reset = _session.Reset();
         if (reset.Outcome == Outcome.Accepted)
         {
