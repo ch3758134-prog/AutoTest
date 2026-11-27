@@ -5,9 +5,10 @@ namespace AutoTest.Desktop.Tests.Projects;
 
 public sealed class ProductionAdmissionReviewTests
 {
-    private static ProductionAdmissionFacts All(bool start = false, bool recorder = false) =>
+    private static ProductionAdmissionFacts All(
+        bool start = false, bool recorder = false, bool fixture = true) =>
         new(true, true, true, true, true, true, true,
-            true, true, true, start, recorder);
+            true, true, true, start, fixture, recorder);
 
     [Fact]
     public void FrozenRealScanNeverTurnsIntoFormalStartOrPass()
