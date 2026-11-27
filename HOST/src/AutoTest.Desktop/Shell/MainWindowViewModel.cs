@@ -590,6 +590,45 @@ public sealed partial class MainWindowViewModel : BindableBase
     /// It edits a draft and never opens WinUSB or authorizes programming.
     /// The standalone FlashLab remains a separate physical diagnostic tool.
     /// </summary>
+    /// <summary>
+    /// ECU CAN rate is defined once by this ECU project's FLASH parameters.
+    /// No bench-side selection or separate TEST configuration may override it.
+    /// Applied only on the idle real USB station and verified by readback.
+    /// </summary>
+    private async Task SynchronizeProjectEcuCanAsync()
+    {
+        var project = _workspace.Current;
+        if (project is null) return;
+        try
+        {
+            var flash = await NativeFlashProfileStore.LoadAsync(project.RootDirectory);
+            if (flash is null || !string.Equals(_workspace.Current?.ManifestPath,
+                    project.ManifestPath, StringComparison.OrdinalIgnoreCase))
+                return;
+            if (_realTest.IsRunning || _hardwareBusy ||
+                _hardware.IsTestRunApproved || _hardware.IsManualCanBatchApproved ||
+                _hardware.IsManualKeyActionApproved || _hardware.IsFlashSecuritySensitive)
+                return;
+            var desired = flash.Profile.EcuCanKbps;
+            _hardware.SelectRequestedEcuCanBitrate(desired);
+            if (_hardware.IsConnected)
+            {
+                var actual = await _hardware.ApplyRequestedEcuCanBitrateAsync();
+                if (actual != desired)
+                    throw new IOException("主控 ECU CAN 波特率与当前烧录参数不一致。");
+            }
+            RaisePropertyChanged(nameof(RequestedEcuCanBitrateKbps));
+            RaisePropertyChanged(nameof(EcuCanRateStatus));
+        }
+        catch (Exception error) when (error is IOException or InvalidDataException or
+            FormatException or InvalidOperationException or NotSupportedException or
+            ArgumentOutOfRangeException or UnauthorizedAccessException)
+        {
+            StatusMessage = "ECU CAN 未能使用工程烧录参数：" + error.Message;
+            System.Diagnostics.Trace.TraceWarning("Project ECU CAN sync failed: " + error);
+        }
+    }
+
     private void OpenNativeFlashProfile()
     {
         if (_workspace.Current is not { } project)
@@ -615,11 +654,12 @@ public sealed partial class MainWindowViewModel : BindableBase
             WindowStartupLocation = WindowStartupLocation.CenterOwner
         };
         _nativeFlashProfileWindow = window;
-        window.Closed += (_, _) =>
+        window.Closed += async (_, _) =>
         {
             if (ReferenceEquals(_nativeFlashProfileWindow, window))
                 _nativeFlashProfileWindow = null;
-            _ = RefreshEngineeringSetupAsync();
+            await SynchronizeProjectEcuCanAsync();
+            await RefreshEngineeringSetupAsync();
         };
         window.Show();
     }
@@ -1393,6 +1433,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         finally { IsBusy = false; }
         if (openedSuccessfully)
         {
+            await SynchronizeProjectEcuCanAsync();
             await RestoreRecentEditorAsync();
             if (IsEngineerWorkspace && OpenEditors.Count == 0)
                 await OpenDefaultEngineeringDocumentAsync();
@@ -1809,6 +1850,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         finally { IsBusy = false; }
         if (created && _workspace.Current is not null)
         {
+            await SynchronizeProjectEcuCanAsync();
             // First-class setup stays available in a document tab. When no TEST
             // project exists create ONE formal order and its first linked case:
             // never leave a loose TEST asset outside the order by default.
@@ -1837,6 +1879,7 @@ public sealed partial class MainWindowViewModel : BindableBase
             StatusMessage = "工程清单已载入，正在恢复编辑器…";
         });
         if (!opened) return;
+        await SynchronizeProjectEcuCanAsync();
         // A recent DBC is not auto-opened as a modal window on startup.
         await RestoreRecentEditorAsync();
         if (OpenEditors.Count == 0) await OpenDefaultEngineeringDocumentAsync();

@@ -85,19 +85,11 @@
      Padding="12,7" Margin="9,0,0,0"/>
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
      VerticalAlignment="Center" Margin="12,0,12,0">
-     <TextBlock Text="ECU CAN 波特率" VerticalAlignment="Center"
-      Foreground="#334252" Margin="0,0,8,0" FontWeight="SemiBold"/>
-     <ComboBox Width="148" MinHeight="30"
-      ItemsSource="{Binding EcuCanRateChoices}" DisplayMemberPath="Label"
-      SelectedValuePath="Kbps"
-      SelectedValue="{Binding RequestedEcuCanBitrateKbps,Mode=TwoWay}"
-      ToolTip="应用并回读 ECU CAN 波特率；按键 CAN 保持 500 kbit/s"/>
-     <Button Content="应用" Command="{Binding ApplyEcuCanBitrateCommand}"
-      Margin="7,0,0,0" Padding="8,5"
-      ToolTip="空闲工位设置 ECU CAN 波特率并向主控读回确认"/>
-     <TextBlock x:Name="BenchBaudStatusText" Text="{Binding EcuCanBitrateStatus}"
-      Foreground="#A45B36" VerticalAlignment="Center" FontSize="10"
-      Margin="8,0,0,0" MaxWidth="215" TextWrapping="Wrap"/>
+     <TextBlock Text="ECU CAN" VerticalAlignment="Center"
+      Foreground="#334252" FontWeight="SemiBold" Margin="0,0,8,0"/>
+     <TextBlock Text="{Binding EcuCanBitrateStatus}" Foreground="#536C85"
+      FontSize="11" VerticalAlignment="Center" MaxWidth="255" TextWrapping="Wrap"
+      ToolTip="波特率由当前工程 FLASH 参数决定。手动台架不提供第二套设置。"/>
     </StackPanel>
     <StackPanel>
      <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
