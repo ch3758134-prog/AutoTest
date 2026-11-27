@@ -4,6 +4,7 @@ using System.Windows.Input;
 using AutoTest.Desktop.Hardware;
 using AutoTest.Desktop.Configuration;
 using AutoTest.Contracts;
+using AutoTest.Application.TestAuthoring;
 using AutoTest.Devices.Can;
 using System.Globalization;
 using AutoTest.Specialists.Scan;
@@ -75,6 +76,7 @@ public sealed partial class MainWindowViewModel : BindableBase
     private readonly ProjectWorkspaceService _workspace;
     private readonly HardwareConnectionService _hardware;
     private readonly RealTestWorkbenchService _realTest;
+    private readonly TestAuthoringUseCases _testAuthoring;
     private readonly LiveDbcSignalService _liveSignals;
     private string? _activeEditorProjectPath;
     private string _hardwareStatus = "USB 未连接";
@@ -111,13 +113,14 @@ public sealed partial class MainWindowViewModel : BindableBase
         ProjectFileDialogService fileDialogs, DbcEditorDialogs dbcDialogs,
         TestEditorDialogs testDialogs, RecentProjectStore recentProjects,
         HardwareConnectionService hardware, RealTestWorkbenchService realTest,
-        LiveDbcSignalService liveSignals)
+        LiveDbcSignalService liveSignals, TestAuthoringUseCases testAuthoring)
     {
         _workspace = workspace;
         _runSelections.Changed += RefreshProjectCounts;
         _hardware = hardware;
         _hardware.EcuCanBitrateSelectionChanged += OnSelectedEcuCanRateChanged;
         _realTest = realTest;
+        _testAuthoring = testAuthoring;
         _liveSignals = liveSignals;
         InitializeScannerWorkbench();
         InitializeProductionWorkspace();
@@ -1930,7 +1933,7 @@ public sealed partial class MainWindowViewModel : BindableBase
                 return;
             }
             var opened = await _workspace.OpenTestEditorAsync(caseAsset.Id);
-            var editor = new TestEditorViewModel(_workspace, _testDialogs, opened, _realTest);
+            var editor = new TestEditorViewModel(_workspace, _testDialogs, opened, _realTest, _testAuthoring);
             ActivateEditor("test|" + caseAsset.Id, new TestEditorView(editor, this),
                 "测试用例 · " + caseAsset.Name, editor.ConfirmClose);
             SelectAsset(caseAsset.Id);
@@ -2020,7 +2023,7 @@ public sealed partial class MainWindowViewModel : BindableBase
                 "测试项目 · " + projectAsset.Name, projectEditor.ConfirmClose);
 
             var opened = await _workspace.OpenTestEditorAsync(caseAsset.Id);
-            var editor = new TestEditorViewModel(_workspace, _testDialogs, opened, _realTest);
+            var editor = new TestEditorViewModel(_workspace, _testDialogs, opened, _realTest, _testAuthoring);
             ActivateEditor("test|" + caseAsset.Id, new TestEditorView(editor, this),
                 "测试用例 · " + caseAsset.Name, editor.ConfirmClose);
             SelectAsset(caseAsset.Id);
@@ -2215,7 +2218,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         await RunOperationAsync(async () =>
         {
             var session = await _workspace.OpenTestEditorAsync(asset.Id);
-            var editor = new TestEditorViewModel(_workspace, _testDialogs, session, _realTest);
+            var editor = new TestEditorViewModel(_workspace, _testDialogs, session, _realTest, _testAuthoring);
             ActivateEditor("test|" + asset.Id, new TestEditorView(editor, this),
                 asset.Name, editor.ConfirmClose);
             StatusMessage = "已打开测试程序：" + asset.Name;

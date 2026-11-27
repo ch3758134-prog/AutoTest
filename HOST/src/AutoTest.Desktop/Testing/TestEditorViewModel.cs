@@ -3,6 +3,7 @@ using System.IO;
 using System.Text.Json;
 using System.Windows.Threading;
 using AutoTest.Core;
+using AutoTest.Application.TestAuthoring;
 using AutoTest.Desktop.Projects;
 using AutoTest.Projects.Project;
 using AutoTest.Testing.Authoring;
@@ -32,6 +33,7 @@ public sealed class TestEditorViewModel : BindableBase
     private readonly ProjectWorkspaceService _workspace;
     private readonly TestEditorDialogs _dialogs;
     private readonly RealTestWorkbenchService _realTest;
+    private readonly TestAuthoringUseCases _authoring;
     private TestTargetMapping? _selectedMapping;
     private string _approval = "";
     private string _dutIdentity = "";
@@ -41,7 +43,6 @@ public sealed class TestEditorViewModel : BindableBase
     private TestDocument? _preparedRunDocument;
     private CancellationTokenSource? _singleRunCancellation;
     private string _runSummary = "尚未执行";
-    private readonly StepDescriptorCatalog _catalog = StepDescriptorCatalog.Builtins();
     private OpenProjectContext? _choiceContext;
     private IReadOnlyList<MappingChoice>? _choiceCache;
     private Task<IReadOnlyList<MappingChoice>>? _choiceLoading;
@@ -66,11 +67,12 @@ public sealed class TestEditorViewModel : BindableBase
 
     public TestEditorViewModel(ProjectWorkspaceService workspace,
         TestEditorDialogs dialogs, TestEditorSession session,
-        RealTestWorkbenchService realTest)
+        RealTestWorkbenchService realTest, TestAuthoringUseCases authoring)
     {
         _workspace = workspace;
         _dialogs = dialogs;
         _realTest = realTest;
+        _authoring = authoring ?? throw new ArgumentNullException(nameof(authoring));
         _autosaveTimer.Tick += async (_, _) =>
         {
             _autosaveTimer.Stop();
@@ -107,8 +109,7 @@ public sealed class TestEditorViewModel : BindableBase
         EditParametersCommand = new DelegateCommand(() =>
         {
             if (_selectedItem?.Step is not { } original || !CanProceed()) return;
-            if (_catalog.Lookup(original.Type) is null &&
-                original.Type is not ("KeySet" or "CanSend" or "CanWait"))
+            if (!_authoring.SupportsEditing(original.Type))
             {
                 StatusMessage = "该步骤尚无对应的可编辑操作：" + original.Name;
                 return;
@@ -462,7 +463,7 @@ public sealed class TestEditorViewModel : BindableBase
         if (place is null || chosen is null || IsBusy) return false;
         try
         {
-            var node = _catalog.CreateNodeForAction(chosen.Key);
+            var node = _authoring.CreateStepDraft(chosen.Key);
             place.ValidateNode(node);
             _transaction.Insert(place.Phase, place.ParentId, place.Slot, place.Index, node);
             _cancelledDraftId = null;
@@ -578,7 +579,7 @@ public sealed class TestEditorViewModel : BindableBase
         // Resolve variables from the actual execution path before this node,
         // not from arbitrary DBC resources or later steps in the document.
         var ifVariables = original?.Type is ("If" or "Switch")
-            ? TestVariableFlowValidator.Before(_transaction.Current, original.Id)
+            ? _authoring.AvailableVariables(_transaction.Current, original.Id)
                 .Select(x => new TestStepFieldChoice(x.Name,
                     x.Name + "（来自：" + x.Source + "）")).ToArray()
             : Array.Empty<TestStepFieldChoice>();

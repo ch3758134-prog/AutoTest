@@ -1,4 +1,5 @@
 using AutoTest.Desktop.Projects;
+using AutoTest.Application.TestAuthoring;
 using AutoTest.Desktop.Dbc;
 using AutoTest.Desktop.Testing;
 using AutoTest.Desktop.Hardware;
@@ -14,6 +15,7 @@ public static class PrismRegistration
         registry.RegisterSingleton<HardwareConnectionService>();
         registry.RegisterSingleton<LiveDbcSignalService>();
         registry.RegisterSingleton<RealTestWorkbenchService>();
+        registry.RegisterSingleton<TestAuthoringUseCases>();
         registry.RegisterSingleton<RecentProjectStore>();
         registry.RegisterSingleton<ProjectWorkspaceService>();
         registry.RegisterSingleton<NewProjectDialogService>();

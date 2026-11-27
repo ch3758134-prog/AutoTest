@@ -6,6 +6,7 @@ using System.Text;
 using AutoTest.Contracts;
 using AutoTest.Core;
 using AutoTest.Application.TestRecord;
+using AutoTest.Application.TestAuthoring;
 using AutoTest.Records.Exports;
 using AutoTest.Records.Model;
 using AutoTest.Records.Storage;
@@ -26,16 +27,19 @@ public sealed partial class RealTestWorkbenchService
     private readonly HardwareConnectionService _hardware;
     private readonly ProjectWorkspaceService _projects;
     private readonly LiveDbcSignalService _signals;
+    private readonly TestAuthoringUseCases _authoring;
     private readonly SemaphoreSlim _station = new(1, 1);
     private RealRunCoordinator? _running;
     private ProjectExecutionSession? _projectSession;
 
     public RealTestWorkbenchService(HardwareConnectionService hardware,
-        ProjectWorkspaceService projects, LiveDbcSignalService signals)
+        ProjectWorkspaceService projects, LiveDbcSignalService signals,
+        TestAuthoringUseCases authoring)
     {
         _hardware = hardware;
         _projects = projects;
         _signals = signals;
+        _authoring = authoring ?? throw new ArgumentNullException(nameof(authoring));
     }
 
     public bool IsRunning => _projectSession is not null || (_running?.IsRunning ?? false);
@@ -55,8 +59,7 @@ public sealed partial class RealTestWorkbenchService
         // Runtime must execute exactly the resource closure approved by the
         // project and production preflight, never opportunistically rebind to
         // the newest workspace asset while preparing a physical run.
-        new PlanCompiler().Prepare(document, allowRealOperations: true,
-            inheritedVariables: inheritedVariables);
+        _authoring.PrepareForExecution(document, inheritedVariables);
 
     public static bool HasPhysicalWrites(TestDocument document) =>
         TestRunStepScope.RequiresPhysicalWrite(document);
