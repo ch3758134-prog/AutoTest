@@ -6,7 +6,7 @@ namespace AutoTest.Application.Production;
 
 public sealed record ProductionStationReadiness(StationId Station,
     StationConnectionState Connection, string VerifiedSupply, bool ResourceLockAvailable,
-    AuthorizationScope Permission);
+    long ControllerEpoch, AuthorizationScope Permission);
 public sealed record ProductionPreflightResult(bool Ready, ImmutableArray<string> Blockers);
 
 public sealed class ProductionPreflight
@@ -35,6 +35,8 @@ public sealed class ProductionPreflight
         if (string.IsNullOrWhiteSpace(station.Station.Value)) issues.Add("STATION_ID_MISSING");
         if (station.Connection != StationConnectionState.Ready) issues.Add("STATION_NOT_READY");
         if (!station.ResourceLockAvailable) issues.Add("STATION_BUSY");
+        if (station.ControllerEpoch <= 0)
+            issues.Add("CONTROLLER_SESSION_NOT_BOUND");
         if (string.IsNullOrWhiteSpace(station.VerifiedSupply) ||
             station.VerifiedSupply.Equals("UNKNOWN", StringComparison.OrdinalIgnoreCase))
             issues.Add("SUPPLY_UNVERIFIED");
