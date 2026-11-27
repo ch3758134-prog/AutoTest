@@ -23,8 +23,6 @@ public static class StationDeploymentStore
         string TestProjectSha256,
         string NativeProfileSha256,
         string FlashJobFingerprint,
-        Guid InspectionProcedureId,
-        string InspectionProcedureSha256,
         DateTimeOffset DeployedAtUtc);
 
     public sealed record Verified(
@@ -36,11 +34,6 @@ public static class StationDeploymentStore
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "AutoTest", "station-deployment.json");
 
-    // An ECU without fixture or IGN setup actions has no extra authored
-    // station-procedure resource. This sentinel denotes that explicit absence;
-    // it is not evidence that a physical clamp reached any position.
-    public static readonly string NoProcedureSha256 =
-        Convert.ToHexString(SHA256.HashData(Array.Empty<byte>()));
     private static readonly SemaphoreSlim Gate = new(1, 1);
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
 
@@ -85,13 +78,10 @@ public static class StationDeploymentStore
             // free-form project model label.
             var job = NativeFlashPublicationStore.FreezePublished(
                 fresh.RootDirectory, native);
-            var station = await UniqueProcedureAsync(fresh, ct).ConfigureAwait(false);
-            var pin = new Deployment(2, fresh.ManifestPath,
+            var pin = new Deployment(3, fresh.ManifestPath,
                 fresh.Definition.Id.Value, fresh.ManifestSha256,
                 snapshot.TestProjectAsset.Id.Value, snapshot.TestProjectAsset.Sha256,
-                native.ProfileSha256, job.Fingerprint,
-                station?.Id.Value ?? Guid.Empty,
-                station?.Sha256 ?? NoProcedureSha256, DateTimeOffset.UtcNow);
+                native.ProfileSha256, job.Fingerprint, DateTimeOffset.UtcNow);
             var verified = await VerifyAsync(pin, ct).ConfigureAwait(false);
             var folder = Path.GetDirectoryName(PathName)!;
             Directory.CreateDirectory(folder);
@@ -130,32 +120,12 @@ public static class StationDeploymentStore
         return new(definition, full, manifestSha);
     }
 
-    private static async Task<AutoTest.Projects.Resources.AssetEntry?> UniqueProcedureAsync(
-        OpenProjectContext project, CancellationToken ct)
-    {
-        var matches = project.Definition.Assets.Where(a =>
-            a.Kind == ProjectWorkspaceService.InspectionKind).ToArray();
-        if (matches.Length == 0) return null;
-        if (matches.Length != 1)
-            throw new InvalidDataException("同一工程存在多个工位动作定义，不能自动猜选。");
-        var bytes = await AutomaticTestResourceContract.ReadPinnedAsync(
-            project, matches[0], ct).ConfigureAwait(false);
-        var procedure = (InspectionStationProcedureDocument)
-            ProjectConfigurationCodec.Decode(matches[0].Kind, bytes);
-        procedure.Validate();
-        return matches[0];
-    }
-
     public static async Task<Verified> VerifyAsync(Deployment pin, CancellationToken ct)
     {
-        if (pin.SchemaVersion != 2 || pin.ProjectId == Guid.Empty ||
+        if (pin.SchemaVersion != 3 || pin.ProjectId == Guid.Empty ||
             pin.TestProjectId == Guid.Empty ||
-            (pin.InspectionProcedureId == Guid.Empty &&
-             !string.Equals(pin.InspectionProcedureSha256,
-                 NoProcedureSha256, StringComparison.OrdinalIgnoreCase)) ||
             new[] { pin.ManifestSha256, pin.TestProjectSha256,
-                pin.NativeProfileSha256, pin.FlashJobFingerprint,
-                pin.InspectionProcedureSha256 }.Any(x =>
+                pin.NativeProfileSha256, pin.FlashJobFingerprint }.Any(x =>
                     x is not { Length: 64 } || !x.All(Uri.IsHexDigit)))
             throw new InvalidDataException(
                 "工程部署格式或指纹无效。旧版部署不兼容，必须从当前工程重新应用。");
@@ -184,11 +154,6 @@ public static class StationDeploymentStore
         if (!string.Equals(job.Fingerprint, pin.FlashJobFingerprint,
                 StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("生产固件或安全算法指纹已变化，必须重新部署。");
-        var procedure = await UniqueProcedureAsync(current, ct).ConfigureAwait(false);
-        if ((procedure?.Id.Value ?? Guid.Empty) != pin.InspectionProcedureId ||
-            !string.Equals(procedure?.Sha256 ?? NoProcedureSha256,
-                pin.InspectionProcedureSha256, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException("工位准备/收尾动作已变更，必须重新发布工程。");
         return new(pin, current, test);
     }
 }
