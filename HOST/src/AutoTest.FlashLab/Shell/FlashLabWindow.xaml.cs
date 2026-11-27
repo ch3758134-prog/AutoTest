@@ -215,8 +215,8 @@ public partial class FlashLabWindow : Window
         // Never hide the reason behind a disabled Start button: when config
         // or safety is incomplete, Start runs offline validation and explains
         // the exact missing file without transmitting anything to the ECU.
-        StartFlashButton.IsEnabled=!_closingInProgress && !_vm.IsBusy && _device.IsConnected &&
-            _vm.Image is not null;
+        StartFlashButton.IsEnabled=!_closingInProgress && !_vm.IsBusy &&
+            _device.IsConnected && _nativeProfileRoot is not null;
         AbortFlashButton.IsEnabled=!_closingInProgress && _flashStop is not null;
     }
     private async Task RefreshDevicesAsync()
@@ -543,17 +543,19 @@ public partial class FlashLabWindow : Window
 
     private async Task LoadEngineeringNativeProfileAsync()
     {
-        // AutoTest engineering launches with a real ECU project. Reuse its
-        // native HEX / security / parameter configuration without asking the
-        // engineer to import another CanTool XML or choose another recipe.
-        if (string.IsNullOrWhiteSpace(NativeProjectRoot)) return;
+        // Native-only FLASH: project uses its own parameters; standalone
+        // tools use a persistent local native profile. Neither needs XML,
+        // a user-selected safety DLL, or a second parameter editor.
+        var root = NativeStorageRoot;
         try
         {
-            var current = await NativeFlashProfileStore.EnsureHydEpbReferenceAsync(
-                NativeProjectRoot, NativeProjectModelCode);
+            var current = NativeProjectRoot is not null
+                ? await NativeFlashProfileStore.EnsureHydEpbReferenceAsync(
+                    root, NativeProjectModelCode)
+                : await NativeFlashProfileStore.LoadAsync(root);
             if (current is null)
             {
-                NativeProfileLabel.Text = "当前工程尚未配置烧录参数";
+                NativeProfileLabel.Text = "尚未设置 HEX 与烧录参数";
                 AddLog("当前工程缺少烧录配置，请先编辑并保存。");
                 return;
             }
@@ -562,11 +564,12 @@ public partial class FlashLabWindow : Window
                     StringComparison.Ordinal))
                 throw new InvalidDataException(
                     "烧录配置与当前工程不匹配，请检查。");
-            _nativeProfileRoot = NativeProjectRoot;
+            _nativeProfileRoot = root;
             _nativeProfileSha = current.ProfileSha256;
-            NativeProfileLabel.Text = "当前烧录配置：工程 " +
-                current.Profile.EcuModelCode + " · 修订 " + current.Profile.Revision;
-            _vm.Status = "已使用工程内 HEX、安全文件及烧录参数；仍需校验实际 Job 后方可授权。";
+            NativeProfileLabel.Text = current.Profile.FirmwareDisplayName is { Length: > 0 } name
+                ? "当前 HEX：" + name + " · ECU CAN " + current.Profile.EcuCanKbps + " kbit/s"
+                : "已配置烧录参数；尚未选择 HEX";
+            _vm.Status = "已读取原生烧录参数，开始前会核对实际 HEX 与地址。";
             InvalidateFlashPreview();
             AddLog("已载入工程原生配置（未发送 CAN）：" + current.FullPath);
         }
@@ -604,9 +607,10 @@ public partial class FlashLabWindow : Window
                 throw new InvalidDataException("工程型号已改变；原生烧录配置必须重新审核。");
             _nativeProfileRoot = root;
             _nativeProfileSha = current.ProfileSha256;
-            NativeProfileLabel.Text = "当前执行配置：原生 " +
-                current.Profile.EcuModelCode + " · 修订 " + current.Profile.Revision;
-            _vm.Status = "已启用工程内原生配置；烧录时直接冻结强类型参数，不加载 XML。";
+            NativeProfileLabel.Text = current.Profile.FirmwareDisplayName is { Length: > 0 } name
+                ? "当前 HEX：" + name + " · ECU CAN " + current.Profile.EcuCanKbps + " kbit/s"
+                : "烧录参数已保存，尚未选择 HEX";
+            _vm.Status = "烧录参数已更新；开始前会重新检查实际数据。";
             InvalidateFlashPreview();
             AddLog("原生 Profile 已载入：" + current.FullPath +
                 "；当前只是离线配置，不执行 ECU 操作。");
@@ -639,14 +643,13 @@ public partial class FlashLabWindow : Window
         _activeStage = -1;
         FlashProgressBar.Value = 0;
         FlashPlanSummary.Text =
-            $"工程原生配置：{latest.Profile.EcuModelCode} (rev {latest.Profile.Revision})\n" +
+            $"ECU：{latest.Profile.EcuModelCode}\n" +
+            $"固件：{latest.Profile.FirmwareDisplayName ?? "已选 HEX"}\n" +
             $"APP TX/RX=0x{job.App.RequestCanId:X}/0x{job.App.ResponseCanId:X}\n" +
             $"BOOT TX/RX=0x{job.Boot.RequestCanId:X}/0x{job.Boot.ResponseCanId:X}\n" +
-            $"ECU CAN 目标={job.ConfiguredBitrate}（真实烧录前 USB 0x42/0x43 核验）\n" +
+            $"ECU CAN={job.ConfiguredBitrate}\n" +
             $"擦除范围=0x{job.FlashStart:X8}..0x{job.FlashEndInclusive:X8}\n" +
-            $"下载={job.Blocks.Length} 块 / {job.PlannedBytes:N0} 字节\n" +
-            $"镜像 SHA={job.FirmwareSha256}\n安全算法 SHA={job.SecuritySha256}\n" +
-            $"任务 SHA={job.Fingerprint}";
+            $"实际下载={job.Blocks.Length} 块 / {job.PlannedBytes:N0} 字节";
         FlashStageLabel.Text = "已从原生配置冻结真实 CanTool Job；尚未发送 CAN。";
         WorkflowStatusLabel.Text = "请核对实际 ECU 供电、固件及擦除地址，再单独授权开始。";
         _vm.Status = "烧录配置检查通过，可继续确认烧录。";
@@ -655,53 +658,12 @@ public partial class FlashLabWindow : Window
 
     private CanToolFlashJob BuildFlashJob()
     {
-        if (_nativeProfileRoot is not null)
-            return BuildNativeJob();
-            if(_vm.Image is null || string.IsNullOrWhiteSpace(_vm.FirmwarePath))
-                throw new InvalidOperationException("请先选择并离线校验 HEX/S19/BIN 镜像。");
-            // Always reload both visible configuration file paths before freezing.
-            ApplySafetyFileFromConfiguration();
-            if(string.IsNullOrWhiteSpace(_safetyFilePath))
-                throw new InvalidOperationException(
-                    "缺少 CanTool 安全文件 SafetyFile.dll，或其接口检查未通过。");
-            // Rebuild immutable on-wire snapshot using current config, current file
-            // and current DLL; no stale UI values or automatic hardware actions.
-            var plan=CanToolFlashJob.Freeze(_vm.Configuration,
-                _vm.FirmwarePath,BinBaseBox.Text,_safetyFilePath,"",
-                LegacyTailSignatureCheck.IsChecked==true);
-            // The exact captured HydEPB profile automatically enables its
-            // verified tail. Do NOT mutate the separate manual checkbox:
-            // a later in-place ECU profile edit must never inherit a hidden
-            // manual true value and stamp an unrelated ECU image.
-            if(plan.LegacyTailSignature && LegacyTailSignatureCheck.IsChecked!=true)
-                AddLog("本次 HydEPB 参考配置自动附加已实测签名尾块 0x1006FE00。");
-            // Lock the exact original-reference builtin provider BEFORE any
-            // CAN action. It does not dynamically load sa_demo or KEY.dll.
-            using(var provider=CanToolSecurityProvider.Open(
-                CanToolSecurityProvider.Inspect(plan.SecurityLibraryPath))) { }
-            _previewFlash=plan;
-            _vm.ResetStages();
-            _activeStage=-1;
-            FlashProgressBar.Value=0;
-            FlashPlanSummary.Text=
-                $"ECU（配置身份未自动核验）: {plan.TargetLabel}\n"+
-                $"APP TX/RX=0x{plan.App.RequestCanId:X}/0x{plan.App.ResponseCanId:X}\n"+
-                $"BOOT TX/RX=0x{plan.Boot.RequestCanId:X}/0x{plan.Boot.ResponseCanId:X}\n"+
-                $"CAN1 XML 波特率={plan.ConfiguredBitrate}（未自动配置）\n"+
-                $"擦除: 0x{plan.FlashStart:X8}..0x{plan.FlashEndInclusive:X8} "+
-                $"({plan.EraseLength:N0}B)\n"+
-                $"镜像源字节={plan.SourceBytes:N0}，实际计划块字节={plan.PlannedBytes:N0}，"+
-                $"对齐块=0x{plan.AlignmentBlockLength:X}（{plan.AlignmentSource}）\n"+
-                $"参考末端签名={(plan.LegacyTailSignature ? "启用：12 34 56 78，可能覆盖原字节" : "未启用")}\n"+
-                $"固件 SHA={plan.FirmwareSha256}\n安全算法=CanTool 参考内置 LFSR（未验证目标 ECU 兼容）\n"+
-                $"参考文件 SHA={plan.SecuritySha256}";
-            FlashStageLabel.Text="文件及烧录地址检查完成；尚未向 ECU 发送请求。";
-            WorkflowStatusLabel.Text="已自动检查；请核对实体 ECU、供电与擦除地址。";
-            _vm.Status="开始烧录：配置已自动检查，等待最终确认。";
-            AddLog("F2 冻结任务已生成 SHA="+plan.Fingerprint+
-                "，擦除范围 0x"+plan.FlashStart.ToString("X8")+"..0x"+
-                plan.FlashEndInclusive.ToString("X8")+"；当前没有 CAN 发送。");
-            return plan;
+        // The legacy CanTool XML / per-project DLL route is retired. The same
+        // native settings path is used by independent FLASH and production.
+        if (_nativeProfileRoot is null)
+            throw new InvalidOperationException(
+                "请先在“编辑烧录配置”中保存 HEX 和烧录参数。");
+        return BuildNativeJob();
     }
 
     private async void StartFlash_Click(object sender,RoutedEventArgs e)

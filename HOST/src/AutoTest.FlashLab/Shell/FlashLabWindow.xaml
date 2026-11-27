@@ -171,7 +171,12 @@
         ToolTip="手动编辑、自动保存到工程固定位置；独立工具可使用本地专属原生配置"
         HorizontalAlignment="Stretch"/>
       <TextBlock x:Name="NativeProfileLabel" Margin="7,0,7,5" Foreground="#375B73"
-        TextWrapping="Wrap" FontSize="11" Text="未加载烧录配置"/>
+        TextWrapping="Wrap" FontSize="12" Text="尚未配置烧录参数"/>
+      <TextBlock Text="HEX、CAN 参数、FLASH 地址统一在上方编辑；安全算法由软件固定提供。"
+        Margin="7,2,7,9" TextWrapping="Wrap" Foreground="#63778A" FontSize="12"/>
+      <!-- Legacy reference controls are inert during the native-only R1
+           transition; keep named instances until old handlers are removed. -->
+      <StackPanel Visibility="Collapsed">
       <Expander Header="导入参考烧录资料（调试用）" IsExpanded="False"
         Margin="3,0,3,6">
        <StackPanel>
@@ -249,6 +254,7 @@
           ToolTip="实测 HydEPB 配置自动启用并计入任务摘要；其他 ECU 仅在已确认 Bootloader 要求时手动勾选。"/>
        </StackPanel>
       </Expander>
+      </StackPanel>
      </StackPanel>
     </ScrollViewer>
    </GroupBox>
