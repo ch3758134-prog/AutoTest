@@ -15,6 +15,7 @@ using AutoTest.Desktop.Dbc;
 using AutoTest.Desktop.Testing;
 using AutoTest.Desktop.Diagnostics;
 using AutoTest.FlashLab.Shell;
+using AutoTest.FlashLab.Programming;
 using System.Text.Json;
 using AutoTest.Projects.Project;
 using AutoTest.Projects.Resources;
