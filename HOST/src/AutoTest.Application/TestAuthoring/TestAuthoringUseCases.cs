@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using AutoTest.Core;
 using AutoTest.Testing.Authoring;
 using AutoTest.Testing.Preparation;
 
