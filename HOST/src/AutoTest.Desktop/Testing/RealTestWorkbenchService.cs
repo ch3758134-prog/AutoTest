@@ -56,14 +56,6 @@ public sealed partial class RealTestWorkbenchService
         // the newest workspace asset while preparing a physical run.
         new PlanCompiler().Prepare(document, allowRealOperations: true);
 
-    public string ExpectedFlashApproval(TestDocument document)
-    {
-        var root = _projects.Current?.RootDirectory ??
-            throw new InvalidOperationException("请先打开 ECU 工程。");
-        var jobs = ConfiguredRealTestFlashPort.FreezeJobs(document, root);
-        return jobs.Count == 0 ? "" : jobs.Values.Single().Consent;
-    }
-
     public static bool HasPhysicalWrites(TestDocument document) =>
         TestRunStepScope.RequiresPhysicalWrite(document);
 
@@ -71,10 +63,10 @@ public sealed partial class RealTestWorkbenchService
         "AUTHORIZE TEST RUN " + plan.Fingerprint;
 
     public Task<RealRunResult> ExecuteAsync(TestDocument document, string confirmation,
-        CancellationToken ct) => ExecuteAsync(document, confirmation, "", "", ct);
+        CancellationToken ct) => ExecuteAsync(document, confirmation, "", ct);
 
     public async Task<RealRunResult> ExecuteAsync(TestDocument document, string confirmation,
-        string flashConfirmation = "", string dutIdentity = "", CancellationToken ct = default,
+        string dutIdentity = "", CancellationToken ct = default,
         bool isolatedStep = false, ProjectExecutionSession? projectSession = null)
     {
         bool ownsStation = projectSession is null;
@@ -102,11 +94,6 @@ public sealed partial class RealTestWorkbenchService
             // Freeze all destructive resources before the first hardware write.
             var project = _projects.Current ??
                 throw new InvalidOperationException("请先打开 ECU 工程。");
-            var jobs = ConfiguredRealTestFlashPort.FreezeJobs(document, project.RootDirectory);
-            if (jobs.Count > 0 &&
-                !string.Equals(flashConfirmation, jobs.Values.Single().Consent,
-                    StringComparison.Ordinal))
-                throw new UnauthorizedAccessException("实体 FLASH 授权不匹配；必须输入完整指纹。");
             if (dutIdentity.Length > 0 &&
                 (string.IsNullOrWhiteSpace(dutIdentity) ||
                  dutIdentity != dutIdentity.Trim() || dutIdentity.Length > 256 ||
@@ -135,16 +122,9 @@ public sealed partial class RealTestWorkbenchService
                 throw new IOException("测试授权期间 USB 会话已改变；中止运行并清理。");
             // The WAVE references were already fixed and checked before
             // the first authorized physical step.
-            // Subscribe to physical evidence before any FLASH workflow can run.
+            // Subscribe to physical evidence before TEST operations begin.
             evidence = new RealRunEvidenceRecorder(_hardware, _signals);
-            ITestFlashPort? flash = jobs.Count == 0 ? null :
-                new ConfiguredRealTestFlashPort(_hardware, actions, document,
-                    mappings, jobs, project.RootDirectory, plan.Fingerprint,
-                    confirmation, flashConfirmation, evidence);
-            if (projectSession is not null && jobs.Count > 0)
-                throw new InvalidOperationException(
-                    "连续整组不允许在已授权 TEST 中嵌入互斥的 FLASH；必须使用项目级前置烧录。");
-            var run = new RealRunCoordinator(_signals, actions, wave, flash);
+            var run = new RealRunCoordinator(_signals, actions, wave);
             run.StepStarted += (step, name, phase) =>
             {
                 try { StepBegan?.Invoke(step, name, phase); }

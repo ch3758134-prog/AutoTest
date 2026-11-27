@@ -104,15 +104,6 @@ public static class AutomaticTestResourceContract
                         "PLAN:" + entry.PackageAssetId.ToString("N"),
                         "TEST 步骤", "TEST 定义预检失败", entry.DisplayName,
                         error, entry.PackageAssetId, entry.ItemId);
-                // The automatic-test flow owns pre-run FLASH. An embedded
-                // case FLASH would program the same ECU twice.
-                if (TestRunStepScope.EnabledSteps(program).Any(s => s.Type == "Flash"))
-                    Flag("用例「" + entry.DisplayName +
-                        "」含烧录步骤；正式自动测试使用工程级前置烧录，不得重复烧录。",
-                        "FLASH:" + entry.PackageAssetId.ToString("N"),
-                        "执行冲突", "用例包含重复烧录", entry.DisplayName,
-                        "移除用例内 FLASH，使用工程前置原生烧录。",
-                        entry.PackageAssetId, entry.ItemId);
                 foreach (var mapping in TestRunStepScope.RequiredMappings(program))
                 {
                     try { await ValidateMappingAsync(project, mapping, ct); }

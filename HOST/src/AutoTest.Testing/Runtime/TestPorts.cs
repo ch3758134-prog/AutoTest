@@ -30,26 +30,6 @@ public interface ITestSignalPort
 public sealed record TestOperationResult(bool Acknowledged, bool StateKnown,
     string Code, string Diagnostic, DateTimeOffset At, string? Evidence = null);
 
-/// <summary>Actual FLASH result, never inferred from a USB ACK alone.</summary>
-public sealed record TestFlashResult(bool ProtocolCompleted, bool AppVerified,
-    long TransferAcknowledged, long VerifiedBytes, string Code, string Diagnostic,
-    string? Evidence = null);
-
-/// <summary>Preserves the actual physical FLASH trace identity even when the
-/// existing programming workflow throws before returning a normal result.</summary>
-public sealed class TestFlashExecutionException : IOException
-{
-    public string EvidenceId { get; }
-    public TestFlashExecutionException(string message, string evidenceId, Exception inner)
-        : base(message, inner) => EvidenceId = evidenceId;
-}
-
-/// <summary>Uses the already connected physical station; not a second flash engine.</summary>
-public interface ITestFlashPort
-{
-    Task<TestFlashResult> ExecuteAsync(StepNode step, CancellationToken ct);
-}
-
 public interface ITestActuationPort
 {
     ValueTask<TestOperationResult> WriteAsync(TestTargetMapping target, string action,

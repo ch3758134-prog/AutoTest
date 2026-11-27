@@ -147,11 +147,15 @@ public sealed class AuthoringAndRuntimeTests
     }
 
     [Fact]
-    public void UnsupportedExecutionNodesCannotClaimToBeRunnable()
+    public void FlashIsNotATestStepEvenWhenRealHardwareExecutionIsAllowed()
     {
+        // Project-level programming is a separate physical operation;
+        // it cannot be smuggled into imported or edited TEST steps.
+        Assert.Null(StepDescriptorCatalog.Builtins().Lookup("Flash"));
         var tx = new StepEditTransaction(TestDocument.Create("unsupported"));
         tx.Insert(TestPhase.Test, null, null, 0, N("Flash"));
-        Assert.NotEmpty(new PlanCompiler().Prepare(tx.Current).Diagnostics);
+        Assert.NotEmpty(new PlanCompiler().Prepare(
+            tx.Current, allowRealOperations: true).Diagnostics);
     }
 
     [Fact]

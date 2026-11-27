@@ -51,10 +51,7 @@ public sealed class StepDescriptorCatalog
         Add("WaveAnalyze", false, [], ["captureKey", "variable", "profile"]);
         // Formal wave judgement uses a completed real capture and pinned reference/profile.
         Add("WaveCompare", false, [], ["captureKey", "variable", "profile"]);
-        // Explicitly modeled future capabilities; never claim V1 runtime support.
-        // FLASH uses the same TEST DSL. Physical execution remains disabled until wired.
-        Add("Flash", false, [], ["programmingProfile", "firmwarePath",
-            "securityLibraryPath", "targetLabel"]);
+        // Only actually supported TEST steps are registered.
         foreach (var name in new[] { "PowerSet", "KeySet", "CanSend", "CanWait", "UdsRequest",
             "WaveCapture", "Log", "Fail", "Skip" }) Add(name, false);
         return c;

@@ -85,10 +85,6 @@ public sealed partial class RealTestWorkbenchService
                 var doc = plan.RestoreDocument();
                 // The project may intentionally invoke one TEST asset more than once;
                 // separate CaseAttempt/RunIds still identify each invocation.
-                if (ConfiguredRealTestFlashPort.FreezeJobs(
-                    doc, project.RootDirectory).Count > 0)
-                    throw new InvalidDataException("连续 TEST 不能包含互斥的 FLASH 步骤；" +
-                        "当前工程应先完成独立的前置 FLASH 工艺。");
                 pinned.Add((doc.Id, plan.Fingerprint));
                 foreach (var mapping in TestRunStepScope.RequiredMappings(doc))
                 {
@@ -304,7 +300,7 @@ public sealed partial class RealTestWorkbenchService
             var caseBoundaryStartedUtc = DateTimeOffset.UtcNow;
             var activeBefore = Actions.PeriodicEvidenceSnapshot()
                 .Where(x => x.StoppedUtc is null).ToArray();
-            var result = await _owner.ExecuteAsync(doc, "", "", _dut, ct,
+            var result = await _owner.ExecuteAsync(doc, "", _dut, ct,
                 projectSession: this);
             var after = Actions.PeriodicEvidenceSnapshot();
             var activeAfter = after.Where(x => x.StoppedUtc is null).ToArray();

@@ -82,7 +82,6 @@ public sealed class RealRunCoordinator
     private readonly ITestSignalPort _signals;
     private readonly ITestActuationPort _actions;
     private readonly ITestWavePort _waves;
-    private readonly ITestFlashPort? _flash;
     private readonly object _gate = new();
     private CancellationTokenSource? _stop;
     private TaskCompletionSource<bool>? _resume;
@@ -94,13 +93,11 @@ public sealed class RealRunCoordinator
     /// <summary>Real step opening, emitted only after the durable RECORD sink accepts it.</summary>
     public event Action<StepId, string, TestPhase>? StepStarted;
 
-    public RealRunCoordinator(ITestSignalPort signals, ITestActuationPort actions, ITestWavePort waves,
-        ITestFlashPort? flash = null)
+    public RealRunCoordinator(ITestSignalPort signals, ITestActuationPort actions, ITestWavePort waves)
     {
         _signals = signals ?? throw new ArgumentNullException(nameof(signals));
         _actions = actions ?? throw new ArgumentNullException(nameof(actions));
         _waves = waves ?? throw new ArgumentNullException(nameof(waves));
-        _flash = flash;
     }
 
     public void RequestStop()
@@ -438,29 +435,6 @@ public sealed class RealRunCoordinator
                         Fact(node, result.Acknowledged ? RealStepStatus.Completed : RealStepStatus.DeviceError,
                             Property(node, "value"), result.Code, result.Diagnostic, result.Evidence);
                         if (!result.Acknowledged) throw new IOException("Device did not acknowledge: " + result.Code);
-                        break;
-                    }
-                    case "Flash":
-                    {
-                        var port = _flash ?? throw new NotSupportedException(
-                            "FLASH 未接入真实硬件会话；禁止模拟成功。");
-                        var flash = await port.ExecuteAsync(node, ct);
-                        var status = !flash.ProtocolCompleted ? RealStepStatus.DeviceError :
-                            flash.AppVerified ? RealStepStatus.Completed : RealStepStatus.NoData;
-                        Fact(node, status, Property(node, "flashJobFingerprint"),
-                            flash.Code + " ACK=" + flash.TransferAcknowledged +
-                            " VERIFIED=" + flash.VerifiedBytes, flash.Diagnostic, flash.Evidence);
-                        if (!flash.ProtocolCompleted)
-                            throw new IOException("真实烧录协议未完成：" + flash.Code);
-                        if (!flash.AppVerified)
-                        {
-                            // An ACKed download/reset is not evidence that the ECU
-                            // returned to its application. Do not run subsequent TEST
-                            // actions on a potentially bootloader-only ECU.
-                            incomplete = true;
-                            throw new IOException(
-                                "FLASH 传输后未确认 ECU APP 恢复；已终止正常测试步骤并进入安全清理。");
-                        }
                         break;
                     }
                     case "CanStopPeriodic":
@@ -817,9 +791,7 @@ public sealed class RealRunCoordinator
                             (gapObserved ? " | SIGNAL_GAP: frame/record loss" : "") +
                             (bindingInvalid ? " | DBC_SNAPSHOT_MISMATCH" : "") +
                             (stepFailure is null ? "" : " | " + stepFailure.Message),
-                        Evidence = original.Evidence ??
-                            (stepFailure is TestFlashExecutionException flashFailure
-                                ? flashFailure.EvidenceId : null),
+                        Evidence = original.Evidence,
                         StepOccurrenceId = occurrence,
                         ParentOccurrenceId = parentOccurrenceId,
                         Phase = phase,

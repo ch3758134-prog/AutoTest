@@ -34,9 +34,7 @@ public sealed class TestEditorViewModel : BindableBase
     private readonly RealTestWorkbenchService _realTest;
     private TestTargetMapping? _selectedMapping;
     private string _approval = "";
-    private string _flashApproval = "";
     private string _dutIdentity = "";
-    private string _expectedFlashApproval = "";
     private long _preparedStationEpoch;
     private string _preparedDutIdentity = "";
     private StepId? _preparedStepId;
@@ -323,16 +321,6 @@ public sealed class TestEditorViewModel : BindableBase
             if (SetProperty(ref _dutIdentity, value))
                 RunCommand?.RaiseCanExecuteChanged();
         }
-    }
-    public string FlashApproval
-    {
-        get => _flashApproval;
-        set => SetProperty(ref _flashApproval, value);
-    }
-    public string ExpectedFlashApproval
-    {
-        get => _expectedFlashApproval;
-        private set => SetProperty(ref _expectedFlashApproval, value);
     }
     public string RunApproval
     {
@@ -1049,8 +1037,6 @@ public sealed class TestEditorViewModel : BindableBase
         _preparedStepId = null;
         _preparedRunDocument = null;
         RunApproval = "";
-        ExpectedFlashApproval = "";
-        FlashApproval = "";
         if (!_realTest.IsHardwareConnected || _realTest.ConnectedStationEpoch <= 0)
         {
             StatusMessage = "主控未连接。";
@@ -1078,8 +1064,6 @@ public sealed class TestEditorViewModel : BindableBase
                 StatusMessage = "运行准备失败：" + plan.Diagnostics[0];
                 return;
             }
-            ExpectedFlashApproval = _realTest.ExpectedFlashApproval(runDocument);
-            FlashApproval = "";
             if (!_realTest.IsHardwareConnected ||
                 _realTest.ConnectedStationEpoch != approvedEpoch)
                 throw new IOException("准备运行期间 USB 主控会话变化，请重新确认。");
@@ -1089,11 +1073,9 @@ public sealed class TestEditorViewModel : BindableBase
             _preparedRunDocument = runDocument;
             RunApproval = RealTestWorkbenchService.ExpectedApproval(plan);
             RefreshCommands();
-            StatusMessage = ExpectedFlashApproval.Length == 0 ?
-                (DutIdentity.Length == 0
-                    ? "未填写 ECU 编号：可执行真实开发诊断，记录标记为未绑定 DUT，不能计入出厂。"
-                    : "当前用例已确认，可以运行真实步骤；编号尚未经扫码规则验证。") :
-                "烧录资源已冻结。必须在下方手动输入完整 FLASH 授权文字；授权不写入工程。";
+            StatusMessage = DutIdentity.Length == 0
+                ? "未填写 ECU 编号：作为开发诊断运行，不计入出厂统计。"
+                : "当前用例已准备运行。";
             RunSummary = singleStep is null
                 ? "已确认当前测试用例 · 尚未执行"
                 : "已确认单步骤诊断 · 尚未执行";
@@ -1106,7 +1088,7 @@ public sealed class TestEditorViewModel : BindableBase
 
     /// <summary>One visible run action: do the same version-pinned preflight/authorization
     /// as the former separate confirmation button before entering the existing executor.
-    /// A FLASH step still needs its explicit physical FLASH consent.</summary>
+    /// FLASH is a separate project-level programming workflow.</summary>
     private async Task RunCurrentCaseInteractiveAsync()
     {
         if (IsBusy || HasNewStepDraft || !CanProceed()) return;
@@ -1165,12 +1147,6 @@ public sealed class TestEditorViewModel : BindableBase
             _preparedDutIdentity != DutIdentity)
             PrepareRunApproval(step.Id);
         if (_preparedRunDocument is null || _preparedStepId != step.Id) return;
-        if (ExpectedFlashApproval.Length > 0 &&
-            !string.Equals(FlashApproval, ExpectedFlashApproval, StringComparison.Ordinal))
-        {
-            StatusMessage = "单步 FLASH 需要手动填写下方完整实体烧录授权，然后再次点击运行此步骤。";
-            return;
-        }
         await RunRealAsync(singleStep: true);
     }
 
@@ -1227,12 +1203,6 @@ public sealed class TestEditorViewModel : BindableBase
             StatusMessage = "ECU 编号格式不正确；开发调试可留空。";
             return;
         }
-        if (ExpectedFlashApproval.Length > 0 &&
-            !string.Equals(FlashApproval, ExpectedFlashApproval, StringComparison.Ordinal))
-        {
-            StatusMessage = "FLASH 授权不匹配：必须手动输入完整 AUTHORIZE ECU FLASH 指纹。";
-            return;
-        }
         _singleRunCancellation = new CancellationTokenSource();
         IsBusy = true;
         RunFacts.Clear();
@@ -1262,7 +1232,7 @@ public sealed class TestEditorViewModel : BindableBase
         try
         {
             var result = await _realTest.ExecuteAsync(candidate, RunApproval,
-                FlashApproval, DutIdentity, _singleRunCancellation!.Token,
+                DutIdentity, _singleRunCancellation!.Token,
                 isolatedStep: singleStep);
             RunFacts.Clear();
             RunFactRows.Clear();
@@ -1315,8 +1285,7 @@ public sealed class TestEditorViewModel : BindableBase
             _preparedStepId = null;
             _preparedRunDocument = null;
             RunApproval = "";
-            FlashApproval = "";
-            IsBusy = false;
+                IsBusy = false;
         }
     }
 
@@ -1336,9 +1305,7 @@ public sealed class TestEditorViewModel : BindableBase
             _preparedStepId = null;
             _preparedRunDocument = null;
             RunApproval = "";
-            FlashApproval = "";
-            ExpectedFlashApproval = "";
-        }
+                }
         if (documentChanged && RunFacts.Count > 0)
         {
             RunFacts.Clear();
@@ -1619,9 +1586,7 @@ public sealed class TestEditorViewModel : BindableBase
             _preparedStepId = null;
             _preparedStationEpoch = 0;
             RunApproval = "";
-            FlashApproval = "";
-            ExpectedFlashApproval = "";
-            _newDraftId = null;
+                    _newDraftId = null;
             _newDraftActionKey = null;
             _cancelledDraftId = null;
             _cancelledDraftActionKey = null;

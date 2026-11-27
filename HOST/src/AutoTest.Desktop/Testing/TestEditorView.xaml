@@ -294,7 +294,6 @@
              <DataTrigger Binding="{Binding Category}" Value="Can"><Setter Property="Background" Value="#D9E9FC"/></DataTrigger>
              <DataTrigger Binding="{Binding Category}" Value="Hardware"><Setter Property="Background" Value="#FCE4C4"/></DataTrigger>
              <DataTrigger Binding="{Binding Category}" Value="Uds"><Setter Property="Background" Value="#DFE5F6"/></DataTrigger>
-             <DataTrigger Binding="{Binding Category}" Value="Flash"><Setter Property="Background" Value="#FCE1DB"/></DataTrigger>
              <DataTrigger Binding="{Binding Category}" Value="Flow"><Setter Property="Background" Value="#E0E7F1"/></DataTrigger>
              <DataTrigger Binding="{Binding Category}" Value="Wave"><Setter Property="Background" Value="#D9F0E8"/></DataTrigger>
             </Style.Triggers>
@@ -309,7 +308,6 @@
               <DataTrigger Binding="{Binding Category}" Value="Can"><Setter Property="Foreground" Value="#3478D6"/></DataTrigger>
               <DataTrigger Binding="{Binding Category}" Value="Hardware"><Setter Property="Foreground" Value="#A26319"/></DataTrigger>
               <DataTrigger Binding="{Binding Category}" Value="Uds"><Setter Property="Foreground" Value="#384E91"/></DataTrigger>
-              <DataTrigger Binding="{Binding Category}" Value="Flash"><Setter Property="Foreground" Value="#B42318"/></DataTrigger>
               <DataTrigger Binding="{Binding Category}" Value="Flow"><Setter Property="Foreground" Value="#435975"/></DataTrigger>
               <DataTrigger Binding="{Binding Category}" Value="Wave"><Setter Property="Foreground" Value="#17694E"/></DataTrigger>
              </Style.Triggers>

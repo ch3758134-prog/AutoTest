@@ -353,8 +353,6 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
                 await actionCheck.PrepareAsync(mappings, CancellationToken.None);
                 actionCheck.ValidateRunSteps(runDocument);
 
-                // FLASH belongs to the project-level pre-test operation.
-                _ = ConfiguredRealTestFlashPort.FreezeJobs(opened.Document, context.RootDirectory);
                 prepared.Add(new FrozenSelectedCase(row.ToEntry(), runDocument,
                     plan.Fingerprint, asset.Revision, asset.Sha256));
             }
