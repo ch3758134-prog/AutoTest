@@ -34,7 +34,7 @@ public sealed partial class MainWindowViewModel
     public bool IsProductionWorkspace => _productionWorkspace;
     public bool IsEngineerWorkspace => !_productionWorkspace;
     public string WindowTitle => IsProductionWorkspace
-        ? "AutoTest · 生产检测" : "AutoTest · 工程开发";
+        ? "AutoTest · 生产检测" : "AutoTest · 测试工程";
     public DelegateCommand ShowProductionWorkspaceCommand { get; private set; } = null!;
     public DelegateCommand ShowEngineerWorkspaceCommand { get; private set; } = null!;
     public DelegateCommand ConfigureAutomaticTestCommand { get; private set; } = null!;
@@ -326,10 +326,17 @@ public sealed partial class MainWindowViewModel
             // release: StationDeploymentStore.VerifyAsync will reject it.
             await NativeFlashPublicationStore.PublishAsync(
                 project.RootDirectory, draft.ProfileSha256);
+            // Install a verified, immutable local production package. This is
+            // internal packaging, not a manual user export/import round trip.
+            // One exact barcode marker still needs a station-owned binding.
+            var installed = await _productionCatalog.InstallEngineeringProjectAsync(
+                project.ManifestPath);
             var deployed = await StationDeploymentStore.DeployAsync(project);
-            StatusMessage = "已启用检测工程：" + deployed.Project.Definition.Name +
-                "。正式检测需在启动按钮与记录功能接入并验证后才能开始。";
+            StatusMessage = "检测工程已保存为生产稳定版本：" +
+                installed.ProjectName + "。请关联固定扫码标记。" +
+                "实体 START、夹具及 FLASH 仍需真实硬件验收。";
             await RefreshEngineeringSetupAsync();
+            if (!singleApply) OpenProductionProjectLibrary();
             return true;
         }
         catch (Exception error) when (error is IOException or InvalidDataException or
