@@ -209,6 +209,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         OpenFlashWorkbenchCommand = new DelegateCommand(async () => await OpenFlashWorkbenchAsync(),
             () => !_openingFlashLab && !_hardwareBusy);
         OpenNativeFlashProfileCommand = new DelegateCommand(OpenNativeFlashProfile);
+        InitializeEngineeringResourceWorkbench();
         // The ECU project itself is the authoring scope; no TCF/TBC
         // selection is required to begin configuring this fixed station.
         OpenFirstConfigurationCommand = new DelegateCommand(ShowProjectConfiguration);
