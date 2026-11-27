@@ -621,12 +621,10 @@ public partial class FlashLabWindow : Window
         }
     }
 
-    private void UseLegacyConfiguration()
-    {
-        _nativeProfileRoot = null;
-        _nativeProfileSha = null;
-        NativeProfileLabel.Text = "当前执行配置：兼容 CanTool XML（原生配置未载入）";
-    }
+    [Obsolete("Legacy CanTool XML workflows are retired in AutoTest R1.")]
+    private void UseLegacyConfiguration() =>
+        throw new NotSupportedException(
+            "旧 XML/三文件导入已停用。请使用当前工程的原生烧录参数。");
 
     private CanToolFlashJob BuildNativeJob()
     {
@@ -673,30 +671,16 @@ public partial class FlashLabWindow : Window
         try
         {
             var frozen=BuildFlashJob();
-            // Any edited XML field, new disk bytes, DLL or selected BIN base MUST
-            // invalidate the displayed physical consent fingerprint.
-            // BuildFlashJob already validated the SafetyFile.dll path.
-            // Repeat the non-null guard at the actual freeze call, rather than
-            // silently passing an empty DLL path or suppressing a null warning.
-            CanToolFlashJob fresh;
-            if (_nativeProfileRoot is not null)
-            {
-                var latest = NativeFlashProfileStore.LoadAsync(_nativeProfileRoot)
-                    .GetAwaiter().GetResult()
-                    ?? throw new IOException("原生烧录配置已删除，拒绝执行。");
-                if (!string.Equals(latest.ProfileSha256, _nativeProfileSha,
-                        StringComparison.OrdinalIgnoreCase))
-                    throw new IOException("原生烧录 Profile 已变化，请重新载入后重新授权。");
-                fresh = NativeFlashJobBuilder.Freeze(latest.Profile, _nativeProfileRoot);
-            }
-            else
-            {
-                var verifiedSecurityFile = _safetyFilePath ??
-                    throw new InvalidOperationException("未找到已核查的 SafetyFile.dll。");
-                fresh = CanToolFlashJob.Freeze(_vm.Configuration,
-                    _vm.FirmwarePath, BinBaseBox.Text, verifiedSecurityFile, "",
-                    LegacyTailSignatureCheck.IsChecked == true);
-            }
+            // Real programming always re-reads the ONE native configuration.
+            // The old CanTool XML / external security DLL branch is retired.
+            var root = _nativeProfileRoot ??
+                throw new InvalidOperationException("请先配置 HEX 和原生烧录参数。");
+            var latest = NativeFlashProfileStore.LoadAsync(root).GetAwaiter().GetResult()
+                ?? throw new IOException("烧录参数已丢失，请重新打开配置。");
+            if (!string.Equals(latest.ProfileSha256, _nativeProfileSha,
+                    StringComparison.OrdinalIgnoreCase))
+                throw new IOException("烧录参数已修改，请重新打开配置并重新确认。");
+            var fresh = NativeFlashJobBuilder.Freeze(latest.Profile, root);
             if(!string.Equals(frozen.Fingerprint,fresh.Fingerprint,StringComparison.Ordinal))
                 throw new InvalidOperationException("配置、固件或安全文件已改变；请重新点击开始烧录。");
             // The operator needs a decision, not a technical audit printout.
@@ -714,7 +698,7 @@ public partial class FlashLabWindow : Window
                 $"固件：{Path.GetFileName(frozen.FirmwarePath)}\n"+
                 $"擦除范围：0x{frozen.FlashStart:X8} - 0x{frozen.FlashEndInclusive:X8}\n\n"+
                 "将对真实 ECU 擦除并写入，请确认型号与固件匹配、供电稳定。\n"+
-                "请核对当前安全文件、固件及 ECU 型号与已批准烧录工艺一致。\n\n"+
+                "请核对固件与 ECU 型号是否一致。\n\n"+
                 "确定开始烧录？",
                 "确认开始烧录",MessageBoxButton.YesNo,
                 MessageBoxImage.Warning,MessageBoxResult.No);
