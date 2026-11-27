@@ -7,6 +7,15 @@ namespace AutoTest.Specialists.Wave;
 public sealed record WaveReferenceEntry(ReferenceRef Reference, SignalRef Signal,
     string Name, DateTimeOffset CreatedUtc);
 
+/// <summary>One named standard may contain multiple verified signal references
+/// from the same capture session. No user-facing file type is introduced.</summary>
+public sealed record WaveStandardGroup(string Name,
+    IReadOnlyList<WaveReferenceEntry> Channels)
+{
+    public string Description => Channels.Count + " 路信号 · " +
+        string.Join("、", Channels.Select(x => x.Signal.SignalName).Take(4));
+}
+
 /// <summary>
 /// Index of immutable reference assets. JSON stores only validated primitives, never relies on
 /// the default deserializer for the private-constructor RevisionFingerprint value object.
@@ -32,6 +41,50 @@ public sealed class WaveReferenceCatalog
     public IReadOnlyList<WaveReferenceEntry> List()
     {
         lock (_gate) return ReadIndex();
+    }
+
+    public IReadOnlyList<WaveStandardGroup> ListStandards() =>
+        List().GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(g => new WaveStandardGroup(g.First().Name, g.ToArray()))
+            .OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase).ToArray();
+
+    /// <summary>
+    /// Promote one verified multi-signal capture as a single logical standard.
+    /// Validate every channel before indexing anything. Original measurement
+    /// evidence is never edited or replaced.
+    /// </summary>
+    public WaveStandardGroup SaveStandard(string name, IReadOnlyList<WaveSeries> captured)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentNullException.ThrowIfNull(captured);
+        if (name.Trim().Length > 128 || captured.Count is < 1 or > 32)
+            throw new ArgumentException("标准名称无效，或超过最多 32 路信号。");
+        if (captured.Any(x => x is null) ||
+            captured.Select(x => x.Signal).Distinct().Count() != captured.Count)
+            throw new InvalidDataException("标准不能含有空波形或重复信号。");
+        if (captured.Any(x => !WaveTimeQuality.Describe(x).CanJudge))
+            throw new InvalidDataException("采集数据质量不足，不能设为标准。");
+        name = name.Trim();
+        lock (_gate)
+        {
+            var existing = ReadIndex();
+            if (existing.Any(x => string.Equals(x.Name, name,
+                    StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidDataException("同名标准已存在，请使用其他名称。");
+            var all = new List<WaveReferenceEntry>();
+            foreach (var series in captured)
+            {
+                var created = _repository.SaveReference(
+                    AssetId.New(), AssetRevision.Create(1), name, series);
+                all.Add(new WaveReferenceEntry(created.Reference, series.Signal,
+                    name, DateTimeOffset.UtcNow));
+            }
+            // A partially written reference asset is not a discoverable
+            // standard until all channels are indexed in one atomic update.
+            existing.AddRange(all);
+            PersistIndex(existing);
+            return new WaveStandardGroup(name, all);
+        }
     }
 
     public WaveReference Save(string name, WaveSeries captured)
