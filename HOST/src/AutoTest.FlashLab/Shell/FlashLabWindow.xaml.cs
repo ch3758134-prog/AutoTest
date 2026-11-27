@@ -23,7 +23,6 @@ public partial class FlashLabWindow : Window
     private readonly FlashLabDeviceSession _device = new();
     private CancellationTokenSource? _connectStop;
     private CancellationTokenSource? _flashStop;
-    private string? _safetyFilePath;
     private readonly ConcurrentQueue<CanLogRow> _pendingCan=new();
     private int _pendingCount;
     private int _flushRunning;
@@ -285,122 +284,6 @@ public partial class FlashLabWindow : Window
         catch(Exception ex) { Error("主控断开",ex); }
         finally { Busy(false); }
     }
-    /// <summary>Import CanTool XML, firmware, and the one required safety file.</summary>
-    private async void ImportThreeFiles_Click(object sender,RoutedEventArgs e)
-    {
-        if(_vm.IsBusy || _closingInProgress || _closingApproved)return;
-        var dialog=new OpenFolderDialog
-        {
-            Title="选择包含 CanTool XML、ECU 固件、SafetyFile.dll 的烧录资料目录",
-            Multiselect=false
-        };
-        if(dialog.ShowDialog(this)!=true)return;
-        UseLegacyConfiguration();
-        string selectedFolder=dialog.FolderName;
-        string binBase=BinBaseBox.Text; // Capture WPF value on UI thread.
-        Busy(true);
-        try
-        {
-            var files=await Task.Run(()=>
-                CanToolBundleDiscovery.Discover(selectedFolder));
-            var checkedFiles=await Task.Run(()=>
-            {
-                var cfg=CanToolXmlProfileReader.Load(files.ConfigurationXml);
-                var library=CanToolSecurityProvider.Inspect(files.ManagedSafetyFile);
-                if(library.Kind!=CanToolSecurityKind.CanToolReferenceBuiltInLfsr)
-                    throw new FormatException(
-                        "SafetyFile.dll 与已核查的 CanTool 参考安全文件不一致；"+
-                        "当前不采用未知算法进行 ECU 解锁。");
-                var image=FirmwareSelectionService.Load(files.FirmwareImage,
-                    binBase,cfg);
-                return (cfg,library,image);
-            });
-            if(_closingInProgress || _closingApproved)return;
-            checkedFiles.cfg.Set("SafetyFilePath",checkedFiles.library.Path);
-            _vm.ApplyConfiguration(checkedFiles.cfg);
-            // A new XML must never inherit the preceding ECU's tail option.
-            LegacyTailSignatureCheck.IsChecked=false;
-            _vm.SetImage(files.FirmwareImage,checkedFiles.image);
-            ApplySafetyFileFromConfiguration();
-            InvalidateFlashPreview();
-            _vm.Status="已导入烧录文件；USB 连接后直接点击开始烧录。";
-            AddLog($"三文件导入成功：XML={files.ConfigurationXml}，"+
-                $"固件={files.FirmwareImage}，SafetyFile={checkedFiles.library.Path}");
-        }
-        catch(Exception ex){Error("导入三文件烧录资料",ex);}
-        finally {Busy(false);}
-    }
-
-    private void LoadXml_Click(object sender,RoutedEventArgs e)
-    {
-        var dialog=new OpenFileDialog
-        { Title="选择 CanTool Configuration.xml",Filter="CanTool XML (*.xml)|*.xml|全部文件 (*.*)|*.*" };
-        if(dialog.ShowDialog(this)!=true)return;
-        UseLegacyConfiguration();
-        try
-        {
-            var cfg=CanToolXmlProfileReader.Load(dialog.FileName);
-            _vm.ApplyConfiguration(cfg);
-            // A new ECU profile starts without the old profile's tail choice.
-            LegacyTailSignatureCheck.IsChecked=false;
-            InvalidateFlashPreview();
-            ApplySafetyFileFromConfiguration();
-            _vm.Status="已加载 CanTool XML；字段与未知项已保留。";
-            AddLog("XML 配置载入："+dialog.FileName);
-        }
-        catch(Exception ex) { Error("读取配置 XML",ex); }
-    }
-    private void LoadJson_Click(object sender,RoutedEventArgs e)
-    {
-        var dialog=new OpenFileDialog
-        { Title="导入 CanTool settings.json（不会覆盖 XML 字段）",
-          Filter="JSON (*.json)|*.json|全部文件 (*.*)|*.*" };
-        if(dialog.ShowDialog(this)!=true)return;
-        UseLegacyConfiguration();
-        try
-        {
-            _vm.Configuration.LoadRelatedJson(dialog.FileName);
-            _vm.ApplyConfiguration(_vm.Configuration);
-            InvalidateFlashPreview();
-            ApplySafetyFileFromConfiguration();
-            _vm.Status="已导入 settings.json 非冲突字段；未知字段不驱动硬件。";
-            AddLog("JSON 参考配置："+dialog.FileName);
-        }
-        catch(Exception ex) { Error("读取 settings.json",ex); }
-    }
-    private void SaveXml_Click(object sender,RoutedEventArgs e)
-    {
-        var dialog=new SaveFileDialog
-        { Title="保存 CanTool 配置",Filter="CanTool XML (*.xml)|*.xml",
-          FileName="Configuration.xml",OverwritePrompt=true };
-        if(dialog.ShowDialog(this)!=true)return;
-        try
-        {
-            _vm.Configuration.ValidateConfiguredRange();
-            _vm.Configuration.SaveAs(dialog.FileName);
-            _vm.Status="配置已保存（仅文件，不会发送任何 ECU 指令）。";
-            AddLog("配置保存："+dialog.FileName);
-        }
-        catch(Exception ex) { Error("保存配置",ex); }
-    }
-    private void ChooseImage_Click(object sender,RoutedEventArgs e)
-    {
-        var dialog=new OpenFileDialog
-        { Title="选择固件镜像（离线，只验证文件）",
-          Filter="支持的固件|*.hex;*.h86;*.s19;*.s28;*.s37;*.sx;*.mot;*.bin|HEX|*.hex;*.h86|S19|*.s19;*.s28;*.s37;*.sx;*.mot|BIN|*.bin|全部文件|*.*" };
-        if(dialog.ShowDialog(this)!=true)return;
-        UseLegacyConfiguration();
-        try
-        {
-            var result=FirmwareSelectionService.Load(dialog.FileName,BinBaseBox.Text,_vm.Configuration);
-            InvalidateFlashPreview();
-            _vm.SetImage(dialog.FileName,result);
-            ApplySafetyFileFromConfiguration();
-            _vm.Status="镜像解析及地址边界校验通过（离线）；不代表兼容真实 ECU。";
-            AddLog("镜像检查："+result.Summary);
-        }
-        catch(Exception ex) { Error("固件镜像校验",ex); }
-    }
     private void InvalidateFlashPreview()
     {
         _previewFlash=null;
@@ -409,136 +292,6 @@ public partial class FlashLabWindow : Window
         if(WorkflowStatusLabel is not null)
             WorkflowStatusLabel.Text="文件就绪后直接开始烧录；程序自动校验参数。";
         UpdateButtons();
-    }
-
-    private string? ResolveReferenceFile(string configValue)
-    {
-        if(string.IsNullOrWhiteSpace(configValue))return null;
-        string path=Environment.ExpandEnvironmentVariables(configValue.Trim().Trim('"'));
-        string? source=_vm.Configuration.SourcePath;
-        if(!Path.IsPathRooted(path) && !string.IsNullOrWhiteSpace(source))
-            path=Path.Combine(Path.GetDirectoryName(source)!,path);
-        return Path.GetFullPath(path);
-    }
-    private string? ResolveAndInspect(string field,CanToolSecurityKind expected,
-        System.Windows.Controls.TextBlock display)
-    {
-        string? path;
-        try {path=ResolveReferenceFile(_vm.Configuration.Get(field));}
-        catch(Exception ex){display.Text="配置路径无效："+ex.Message;return null;}
-        if(string.IsNullOrWhiteSpace(path)){display.Text="未选择文件";return null;}
-        if(!File.Exists(path))
-        {
-            display.Text="找不到："+Path.GetFileName(path);
-            display.ToolTip=path;
-            AddLog(field+" 文件不存在："+path);
-            return null;
-        }
-        try
-        {
-            var value=CanToolSecurityProvider.Inspect(path);
-            if(value.Kind!=CanToolSecurityKind.CanToolReferenceBuiltInLfsr)
-            {
-                display.Text="非已核实 CanTool 参考文件";
-                AddLog(field+"：SHA/算法来源未核实；当前不尝试其它 Seed/Key DLL。");
-                return null;
-            }
-            display.Text=Path.GetFileName(path)+" · 原版参考内置算法";
-            display.ToolTip=value.Path+" / SHA256="+value.Sha256;
-            AddLog(field+" 已识别："+value.Summary+"；路径="+path);
-            return value.Path;
-        }
-        catch(Exception ex)
-        {
-            display.Text="DLL 检查失败："+Path.GetFileName(path);
-            display.ToolTip=ex.Message;
-            AddLog(field+" 检查失败："+ex.Message);
-            return null;
-        }
-    }
-    private void ApplySafetyFileFromConfiguration()
-    {
-        // Internal CanTool reference algorithm; the original SafetyFile.dll
-        // is retained as a source-identity input, not invoked as a CLR DLL.
-        // Never load KEY.dll or sa_demo.dll, and never silently guess a key.
-        string configured=_vm.Configuration.Get("SafetyFilePath");
-        string? explicitPath=null;
-        if(!string.IsNullOrWhiteSpace(configured))
-        {
-            try { explicitPath=ResolveReferenceFile(configured); }
-            catch(Exception ex)
-            {
-                SafetyDllStatusLabel.Text="安全文件路径有误："+ex.Message;
-                _safetyFilePath=null;
-                UpdateButtons();return;
-            }
-        }
-        // An explicit existing file is authoritative, even if its hash is
-        // unsupported: do not silently replace it with a different DLL.
-        bool needsDiscovery=explicitPath is null || !File.Exists(explicitPath);
-        if(needsDiscovery)
-        {
-            string? discovered=CanToolBundleDiscovery.FindSafetyFileNear(
-                _vm.Configuration.SourcePath,
-                _vm.Image is null?null:_vm.FirmwarePath);
-            if(discovered is not null)
-            {
-                var info=CanToolSecurityProvider.Inspect(discovered);
-                if(info.Kind==CanToolSecurityKind.CanToolReferenceBuiltInLfsr)
-                {
-                    if(!string.Equals(explicitPath,info.Path,
-                        StringComparison.OrdinalIgnoreCase))
-                        AddLog("根据 CanTool 配置文件目录自动发现参考安全文件："+info.Path);
-                    _vm.Configuration.Set("SafetyFilePath",info.Path);
-                    explicitPath=info.Path;
-                }
-                else
-                {
-                    SafetyDllStatusLabel.Text="发现 SafetyFile.dll，但文件版本不符合参考证据";
-                    _safetyFilePath=null;
-                    UpdateButtons();return;
-                }
-            }
-        }
-        _safetyFilePath=ResolveAndInspect("SafetyFilePath",
-            CanToolSecurityKind.CanToolReferenceBuiltInLfsr,SafetyDllStatusLabel);
-        if(_safetyFilePath is null)
-        {
-            SafetyDllStatusLabel.Text=explicitPath is null
-                ? "未找到 SafetyFile.dll；可点击选择，或放在 XML 同目录"
-                : "安全文件未就绪，请检查文件路径 / 文件身份";
-            WorkflowStatusLabel.Text="已加载的资料缺少可用安全文件；请选择或放在 XML 同目录。";
-        }
-        else
-        {
-            SafetyDllStatusLabel.Text="SafetyFile.dll · 已自动匹配参考算法";
-            SafetyDllStatusLabel.ToolTip=_safetyFilePath;
-        }
-        UpdateButtons();
-    }
-
-    private void ChooseSafetyFile_Click(object sender,RoutedEventArgs e)
-    {
-        var dialog=new OpenFileDialog
-        {
-            Title="选择 CanTool 安全文件 SafetyFile.dll",
-            Filter="安全文件 (*.dll)|*.dll|全部文件 (*.*)|*.*"
-        };
-        if(dialog.ShowDialog(this)!=true)return;
-        UseLegacyConfiguration();
-        try
-        {
-            var info=CanToolSecurityProvider.Inspect(dialog.FileName);
-            if(info.Kind!=CanToolSecurityKind.CanToolReferenceBuiltInLfsr)
-                throw new NotSupportedException(
-                    "该安全文件不属于已经静态核实的 CanTool 参考组合。"+
-                    "不会自动加载未知 DLL 或尝试错误 Key。");
-            _vm.Configuration.Set("SafetyFilePath",info.Path);
-            ApplySafetyFileFromConfiguration();
-            InvalidateFlashPreview();
-            AddLog("已导入烧录安全文件："+info.Path);
-        }
-        catch(Exception ex){Error("导入烧录安全文件",ex);}
     }
 
     private async Task LoadEngineeringNativeProfileAsync()
@@ -620,11 +373,6 @@ public partial class FlashLabWindow : Window
             Error("原生烧录配置", error);
         }
     }
-
-    [Obsolete("Legacy CanTool XML workflows are retired in AutoTest R1.")]
-    private void UseLegacyConfiguration() =>
-        throw new NotSupportedException(
-            "旧 XML/三文件导入已停用。请使用当前工程的原生烧录参数。");
 
     private CanToolFlashJob BuildNativeJob()
     {
