@@ -85,6 +85,7 @@ public sealed class ProductionWorkflow
             var fixture = await _physicalStation!.PressAndVerifyAsync(job, ct)
                 .ConfigureAwait(false);
             if (fixture.Run != job.Run || fixture.Station != job.Station ||
+                fixture.ControllerEpoch != job.ControllerEpoch ||
                 !fixture.MechanicalClosureVerified ||
                 !fixture.SafetyInterlockVerified ||
                 string.IsNullOrWhiteSpace(fixture.EvidenceReference))
@@ -111,6 +112,7 @@ public sealed class ProductionWorkflow
             var start = await _physicalStation.WaitForStartAsync(
                 job, fixture, ct).ConfigureAwait(false);
             if (start.Run != job.Run || start.Station != job.Station ||
+                start.ControllerEpoch != job.ControllerEpoch ||
                 !start.FreshPhysicalEdgeVerified ||
                 string.IsNullOrWhiteSpace(start.EvidenceReference))
             {
