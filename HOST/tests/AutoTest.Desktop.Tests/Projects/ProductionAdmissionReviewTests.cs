@@ -17,7 +17,7 @@ public sealed class ProductionAdmissionReviewTests
         Assert.False(decision.CanBeginFormalInspection);
         Assert.Equal("PRODUCTION_PHYSICAL_START_NOT_CONNECTED", decision.Code);
         Assert.Equal(10, decision.SatisfiedChecks);
-        Assert.Equal(12, decision.TotalChecks);
+        Assert.Equal(13, decision.TotalChecks);
     }
 
     [Theory]
@@ -54,6 +54,16 @@ public sealed class ProductionAdmissionReviewTests
     }
 
     [Fact]
+    public void MissingMechanicalFeedbackCannotAdmitEvenWithStartAndWriter()
+    {
+        var decision = ProductionAdmissionReview.Evaluate(
+            All(start: true, recorder: true, fixture: false));
+        Assert.Equal("PRODUCTION_FIXTURE_PROOF_NOT_CONNECTED", decision.Code);
+        Assert.False(decision.CanBeginFormalInspection);
+        Assert.Equal(11, decision.SatisfiedChecks);
+    }
+
+    [Fact]
     public void AllPreconditionsMeanAdmissionOnlyNotInspectionVerdict()
     {
         var decision = ProductionAdmissionReview.Evaluate(All(start: true, recorder: true));
@@ -78,6 +88,7 @@ public sealed class ProductionAdmissionReviewTests
             ready with { SameScannerPort = false },
             ready with { SameEcuCanRate = false },
             ready with { TrustedPhysicalStartConnected = false },
+            ready with { TrustedFixtureAndInterlockReady = false },
             ready with { VerifiedInspectionWriterConnected = false },
             ready
         };
