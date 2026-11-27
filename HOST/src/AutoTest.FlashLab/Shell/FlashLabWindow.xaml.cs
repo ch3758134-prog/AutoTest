@@ -541,22 +541,26 @@ public partial class FlashLabWindow : Window
         AddLog("操作员取消实体烧录；写入影响可能未知，保留原始日志。");
     }
 
-    private void Export_Click(object sender,RoutedEventArgs e)
+    private async void Export_Click(object sender,RoutedEventArgs e)
     {
-        var dlg=new SaveFileDialog
-        { Title="导出 FlashLab USB/CAN/UDS 原始诊断 ZIP",
-          Filter="ZIP 证据档案 (*.zip)|*.zip",
-          FileName=$"FlashLab_CAN_UDS_{DateTime.Now:yyyyMMdd_HHmmss}.zip",
-          OverwritePrompt=true };
-        if(dlg.ShowDialog(this)!=true)return;
+        var dlg = new SaveFileDialog
+        {
+            Title = "导出真实 ECU 烧录诊断记录",
+            Filter = "ZIP 诊断记录 (*.zip)|*.zip",
+            FileName = $"FlashLab_{DateTime.Now:yyyyMMdd_HHmmss}.zip",
+            OverwritePrompt = true
+        };
+        if (dlg.ShowDialog(this) != true) return;
         try
         {
-            FlashLabEvidenceExporter.Export(dlg.FileName,_device.EvidencePath,
-                _vm.Configuration,_vm.Image,_vm.Logs.ToArray());
-            _vm.Status="诊断 ZIP 导出成功；真实 ECU 标识信息请妥善保存。";
-            AddLog("导出诊断证据："+dlg.FileName);
+            NativeFlashProfileStore.Snapshot? snapshot = _nativeProfileRoot is null
+                ? null : await NativeFlashProfileStore.LoadAsync(_nativeProfileRoot);
+            FlashLabEvidenceExporter.Export(dlg.FileName, _device.EvidencePath,
+                snapshot?.Profile, _previewFlash, FlashStageLabel.Text, _vm.Logs.ToArray());
+            _vm.Status = "诊断记录已导出。实际烧录结果以硬件日志为准。";
+            AddLog("已导出诊断记录：" + dlg.FileName);
         }
-        catch(Exception ex) { Error("导出诊断 ZIP",ex); }
+        catch (Exception ex) { Error("导出诊断 ZIP", ex); }
     }
     private void ClearLog_Click(object sender,RoutedEventArgs e)
     {
