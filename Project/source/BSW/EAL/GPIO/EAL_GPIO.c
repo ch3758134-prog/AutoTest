@@ -81,7 +81,7 @@ uint8_t EAL_GPIO_KeyPopEvent(EAL_GPIO_KeyEventType *event)
     uint8_t value;
     const uint32_t now = EAL_TIME_GetTicks();
 
-    if (event == NULL)
+    if (event == NULL || s_keyPending == 0U)
         return 0U;
 
     /* 每路独立消抖。边沿 ISR 还在继续记录下一次变化时，不能清掉新事件。 */
@@ -169,5 +169,6 @@ void EAL_GPIO_Init(void)
     PORT_SetPinInterruptConfig(PORTC, KEY3_PIN, kPORT_InterruptEitherEdge);
     PORT_ClearPinsInterruptFlags(PORTC, KEY_PORTC_PINS);
     NVIC_ClearPendingIRQ(PORTC_IRQn);
+    NVIC_SetPriority(PORTC_IRQn, 5U); /* 按键中断不抢占 USB 高优先级处理。 */
     NVIC_EnableIRQ(PORTC_IRQn);
 }
