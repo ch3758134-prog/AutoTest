@@ -13,7 +13,7 @@
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
      <Button Content="重新核对" Command="{Binding RefreshEngineeringSetupCommand}"
       Padding="12,7" Margin="0,0,8,0"/>
-     <Button Content="返回检测流程" Command="{Binding OpenFirstTestProjectCommand}"
+     <Button Content="返回测试用例" Command="{Binding ReturnToTestCommand}"
       Padding="13,7" Style="{StaticResource AtPrimaryButton}"/>
     </StackPanel>
     <StackPanel VerticalAlignment="Center">

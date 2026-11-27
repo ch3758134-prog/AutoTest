@@ -228,7 +228,7 @@
       ToolTip="编辑当前工程唯一的烧录工艺；独立实测可从工具菜单进入"/>
      <Button Content="波形判定" Command="{Binding OpenWaveWorkbenchCommand}"
       Style="{StaticResource AtQuietButton}" Margin="0,0,5,0" Padding="9,5"/>
-     <Button Content="公共流程" Command="{Binding NewPublicFlowCommand}"
+     <Button Content="＋ 公共流程" Command="{Binding NewPublicFlowCommand}"
       Style="{StaticResource AtQuietButton}" Margin="0,0,5,0" Padding="9,5"
       ToolTip="新建公共流程；已有公共流程位于左侧的复用入口"/>
     </StackPanel>
@@ -258,6 +258,10 @@
        ItemsSource="{Binding OpenEditors}" DisplayMemberPath="Title"
        SelectedItem="{Binding ActiveEditorTab,Mode=TwoWay}"
        ToolTip="切换已打开的测试用例、公共流程或检查内容"/>
+      <Button DockPanel.Dock="Right" Content="返回用例"
+       Command="{Binding ReturnToTestCommand}"
+       Style="{StaticResource AtQuietButton}" Padding="8,3" Margin="0,4,7,4"
+       ToolTip="返回上次编辑的 TEST 用例，保留原编辑上下文"/>
       <Button DockPanel.Dock="Right" Content="关闭当前"
        Tag="{Binding ActiveEditorTab}" Click="CloseEditorTab_Click"
        Style="{StaticResource AtQuietButton}" Margin="0,4,6,4"

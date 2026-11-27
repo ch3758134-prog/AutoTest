@@ -102,6 +102,7 @@ public sealed partial class MainWindowViewModel : BindableBase
     private string _statusMessage = "尚未打开工程";
     private bool _isBusy;
     private ResourceTreeNode? _selectedResource;
+    private AssetId? _lastTestCaseAssetId;
     private readonly ProjectRunSelectionState _runSelections = new();
 
     public MainWindowViewModel(
@@ -175,6 +176,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         OpenIndependentDbcCommand = new DelegateCommand(async () => await OpenIndependentDbcAsync());
         OpenUdsWorkbenchCommand = new DelegateCommand(OpenUdsWorkbench);
         OpenRecordHistoryCommand = new DelegateCommand(OpenRecordHistory);
+        ReturnToTestCommand = new DelegateCommand(async () => await ReturnToTestAsync());
         OpenFirstTestProjectCommand = new DelegateCommand(async () => await OpenFirstAssetAsync(
             ProjectWorkspaceService.TestProjectKind, CreateTestProjectAsync));
         NewPublicFlowCommand = new DelegateCommand(async () => await CreatePublicFlowAsync(),
@@ -382,6 +384,7 @@ public sealed partial class MainWindowViewModel : BindableBase
     public DelegateCommand OpenFirstTestProjectCommand { get; }
     public DelegateCommand CreateStarterProjectCommand { get; }
     public DelegateCommand NewPublicFlowCommand { get; }
+    public DelegateCommand ReturnToTestCommand { get; }
     public DelegateCommand OpenFirstTestProgramCommand { get; }
     public DelegateCommand OpenFirstConfigurationCommand { get; }
     public DelegateCommand OpenProjectConfigurationOverviewCommand { get; }
@@ -457,6 +460,25 @@ public sealed partial class MainWindowViewModel : BindableBase
             n.Asset?.Id == caseAsset.Id) ??
             new ResourceTreeNode(caseAsset.Name, "", caseAsset.RelativePath,
                 caseAsset.Kind, caseAsset, role: "Case"));
+        await OpenSelectedResourceAsync();
+    }
+
+    private async Task ReturnToTestAsync()
+    {
+        if (_workspace.Current is null) return;
+        var current = _workspace.Current;
+        var last = _lastTestCaseAssetId is { } id
+            ? current.Definition.Assets.FirstOrDefault(a =>
+                a.Id == id && a.Kind == ProjectWorkspaceService.TestProgramKind)
+            : null;
+        if (last is null)
+        {
+            await OpenDefaultEngineeringDocumentAsync();
+            return;
+        }
+        SelectResource(OrderedCaseNodes.FirstOrDefault(n => n.Asset?.Id == last.Id) ??
+            new ResourceTreeNode(last.Name, "", last.RelativePath,
+                last.Kind, last, role: "Case"));
         await OpenSelectedResourceAsync();
     }
 
@@ -790,20 +812,23 @@ public sealed partial class MainWindowViewModel : BindableBase
             await OpenIndependentDbcAsync();
             return;
         }
-        if (!SelectedResourceIsDbc)
+        var databases = _workspace.Current.Definition.Assets
+            .Where(a => a.Kind == ProjectWorkspaceService.DbcKind).ToArray();
+        if (databases.Length > 1)
         {
-            var databases = _workspace.Current.Definition.Assets
-                .Where(a => a.Kind == ProjectWorkspaceService.DbcKind).ToArray();
-            if (databases.Length > 1)
-            {
-                StatusMessage = "旧工程存在多份 DBC。请检查工程并整理为唯一的 ECU 数据库，禁止自动猜测。";
-                return;
-            }
-            if (databases.Length == 0) { await ImportDbcAsync(); return; }
-            SelectAsset(databases[0].Id);
+            StatusMessage = "旧工程有多份 DBC，请明确保留哪一份后再继续。";
+            return;
         }
-        await OpenSelectedDbcAsync();
+        if (databases.Length == 0)
+        {
+            await ImportDbcAsync();
+            return;
+        }
+        // DBC edits are a separate owned window. Do not silently switch the
+        // TEST editor selection away from the case being worked on.
+        await ShowDbcWindowAsync(databases[0].Id, databases[0].Name);
     }
+
     /// <summary>Uses existing formal editor save contracts. Never skips Inspector validation,
     /// never writes when editor/Test is busy, never discards an invalid draft.</summary>
     public async Task AutoSaveOpenEditorsAsync()
@@ -1441,6 +1466,9 @@ public sealed partial class MainWindowViewModel : BindableBase
         if (ReferenceEquals(_selectedResource, item)) return;
         if (_selectedResource is not null) _selectedResource.IsSelected = false;
         _selectedResource = item;
+        if (item?.Role == "Case" &&
+            item.Asset?.Kind == ProjectWorkspaceService.TestProgramKind)
+            _lastTestCaseAssetId = item.Asset.Id;
         if (item is not null) item.IsSelected = true;
         RaiseSelectedResourceChanges();
     }
@@ -1968,7 +1996,6 @@ public sealed partial class MainWindowViewModel : BindableBase
         await RunOperationAsync(async () =>
         {
             var entry = await _workspace.ImportDbcAsync(path);
-            SelectAsset(entry.Id);
             await ShowDbcWindowAsync(entry.Id, entry.Name);
             StatusMessage = currentDbcs.Length == 0
                 ? "工程 DBC 已建立：" + entry.Name
