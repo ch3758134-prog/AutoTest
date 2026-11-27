@@ -109,170 +109,72 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
     public DelegateCommand RequestSoftwareStartCommand { get; }
 
     /// <summary>
-    /// This operator home does not yet own a verified production execution
-    /// adapter. START is visible, but must refuse until that adapter is wired;
-    /// it cannot present fake progress or bypass the production gate.
+    /// One real inspection screen using the shared full-project execution.
+    /// No separate manufacturing admission approval or fake physical START.
     /// </summary>
     public string StartRequestStatus
     {
         get => _startRequestStatus;
         private set => SetProperty(ref _startRequestStatus, value);
     }
-    // These are projections of existing project, scanner and station facts.
-    // They never infer a physical START, a production RunId or a final PASS.
+
     public string ProductionHeadline =>
-        _isProductionWorkspace() ? FormalAdmission.Headline :
-        IsOperatorRunning ? "工程测试进行中" :
-        _plans.Current is null
-            ? _engineering.Current is null ? "工位未配置检测工程" : "检测工程核验未通过" :
-        !_plans.Current.ResourceReady ? "检测工程资源未就绪" :
-        !_hardware.IsConnected ? "等待主控连接" :
-        !_hardware.IsEcuCanBitrateApplied ? "ECU CAN 码率未确认" :
+        IsOperatorRunning ? "正在检测 ECU" :
+        _productionVerdict == "PASS" ? "检测合格" :
+        _productionVerdict == "FAIL" ? "检测不合格" :
+        _productionVerdict is "记录失败" or "检测未完成" ? "本次检测未完成" :
         !_scanner.IsConnected ? "等待扫码枪连接" :
-        _prepared is not null &&
-        _hardware.ConfirmedEcuCanBitrateKbps != _prepared.EcuCanKbps
-            ? "ECU CAN 与工程烧录配置不一致" :
-        _prepared is null ? "等待 ECU 扫码" :
-        "ECU 已识别 · 正式检测尚不可启动";
+        !_hardware.IsConnected ? "等待主控连接" :
+        _plans.Current is null ? "等待扫码识别 ECU" :
+        !_plans.Current.ResourceReady ? "当前工程需要修复" :
+        !IdentityAccepted ? "请扫描本台 ECU 编号" :
+        !CanBitrateReady ? "ECU CAN 码率未确认" :
+        "ECU 已识别 · 可以开始检测";
 
     public string ProductionDisplayStage =>
-        _isProductionWorkspace() ? FormalAdmission.Stage :
         IsOperatorRunning ? OperatorRunState :
-        _plans.Current is null || !_plans.Current.ResourceReady ? "工程预检" :
-        !_hardware.IsConnected || !_hardware.IsEcuCanBitrateApplied ||
-        !_scanner.IsConnected ||
-        (_prepared is not null &&
-         _hardware.ConfirmedEcuCanBitrateKbps != _prepared.EcuCanKbps)
-            ? "设备预检" :
-        _prepared is null ? "扫码识别" : "实体 START 待接线";
+        _productionVerdict != "等待检测结果" ? "检测结果" :
+        _prepared is null ? "扫码识别" : "等待 START";
 
     public string ProductionGuidance =>
-        _isProductionWorkspace() ? FormalAdmission.Guidance :
-        IsOperatorRunning
-            ? "仅显示已有工程验证事实；不会计入正式生产结果。"
-            : _plans.Current is null
-                ? _engineering.Current is null
-                    ? "请由工程人员建立并保存对应型号的 ECU 检测工程。"
-                    : "工程不能用于生产：" + _plans.Issue
-            : !_plans.Current.ResourceReady
-                ? "工程资源阻断：" +
-                    (_plans.Current.ResourceIssues.FirstOrDefault() ??
-                     "请工程人员修正 TEST、DBC、波形或烧录资源。")
-            : !_hardware.IsConnected
-                ? "主控未连接，请检查设备连接。"
-            : !_hardware.IsEcuCanBitrateApplied
-                ? "ECU CAN 波特率尚未完成主控回读确认。"
-            : !_scanner.IsConnected
-                ? "扫码枪未连接，请检查端口或连接设备。"
-            : _prepared is not null &&
-                _hardware.ConfirmedEcuCanBitrateKbps != _prepared.EcuCanKbps
-                ? "已冻结工程要求 ECU CAN " + _prepared.EcuCanKbps +
-                  " kbit/s，主控当前 " +
-                  _hardware.ConfirmedEcuCanBitrateKbps +
-                  " kbit/s；工程师须核对并应用目标码率后重新扫码。"
-            : _prepared is null
-                ? "请扫描本台 ECU 编号。"
-                : "扫码身份及工程资源已核对；实体 START 和正式生产归档尚未接线。";
+        IsOperatorRunning ? OperatorCurrentCase + " · " + OperatorCurrentStep :
+        _productionVerdict != "等待检测结果" ? "报告与详细证据请查看本次检测记录。" :
+        _prepared is null ? _scanStatus :
+        !CanBitrateReady ? _hardware.EcuCanBitrateStatus :
+        "点击“开始检测”或按实体 START，系统使用同一检测流程。";
 
-    /// <summary>
-    /// One authoritative production admission projection. A scanner match,
-    /// USB ACK or test case plan never authorizes a physical START.
-    /// Hardware START and formal RECORD inputs remain false until their
-    /// actual, reviewed physical/durable adapters are wired.
-    /// </summary>
-    private ProductionAdmissionResult FormalAdmission
-    {
-        get
-        {
-            var plan = _plans.Current;
-            var prepared = _prepared;
-            var observed = prepared?.AcceptedScannerObservation;
-            var projectSame = plan is not null && prepared is not null &&
-                plan.Project.Definition.Id.Value == prepared.ProjectId &&
-                string.Equals(plan.Project.ManifestPath, prepared.ManifestPath,
-                    StringComparison.OrdinalIgnoreCase) &&
-                string.Equals(plan.Project.ManifestSha256, prepared.ManifestSha256,
-                    StringComparison.OrdinalIgnoreCase);
-            return ProductionAdmissionReview.Evaluate(new ProductionAdmissionFacts(
-                plan is not null,
-                plan?.ResourceReady == true,
-                _hardware.IsConnected && _hardware.CurrentStationEpoch > 0,
-                _hardware.IsEcuCanBitrateApplied,
-                _scanner.IsConnected,
-                observed is
-                    { Source: FrozenScanSource.ProductionFixedMarker,
-                      RuleRevision: > 0 } &&
-                    observed.PackageSha256.Length == 64 &&
-                    string.Equals(observed.RawBarcode, _lastObservedBarcode,
-                        StringComparison.Ordinal) &&
-                    string.Equals(observed.RawBarcode, _lastIdentity,
-                        StringComparison.Ordinal),
-                projectSame,
-                prepared is not null && _acceptedStationEpoch > 0 &&
-                    _acceptedStationEpoch == _hardware.CurrentStationEpoch,
-                observed is not null && string.Equals(observed.ScannerPort,
-                    _scanner.ConnectedPort, StringComparison.OrdinalIgnoreCase),
-                prepared is not null &&
-                    _hardware.ConfirmedEcuCanBitrateKbps == prepared.EcuCanKbps &&
-                    _hardware.RequestedEcuCanBitrateKbps == prepared.EcuCanKbps,
-                TrustedPhysicalStartConnected: false,
-                TrustedFixtureAndInterlockReady: false,
-                VerifiedInspectionWriterConnected: false));
-        }
-    }
-
-    // Formal station facts do not exist until the physical START and
-    // production RECORD adapter are wired. Never project the last development
-    // verification into the production operator's active DUT.
-    // The read-only operator must not display fabricated case/measurement
-    // placeholders before a real formal Inspection event source exists.
-    // The production adapter must raise this when formal StepOccurrence
-    // evidence becomes available; engineering verifications do not count.
-    public bool HasFormalExecutionFacts => false;
-    public string ProductionCurrentCase => "—";
-    public string ProductionCurrentStep => "—";
-    public string ProductionStepStatus => "正式检测未开始";
-    public string ProductionMeasuredValue => "—";
-    public string ProductionExpectedValue => "—";
-    public string ProductionFailure => "";
-    public string ProductionFlashState => "尚未烧录";
-    public string ProductionTestState => "尚未测试";
-    public string ProductionRecordState => "尚无生产检测记录";
-    // UI severity is a separate fact; do not classify errors by translated text.
+    public bool HasFormalExecutionFacts => _isProductionWorkspace() &&
+        (IsOperatorRunning || _productionVerdict != "等待检测结果");
+    public string ProductionCurrentCase => OperatorCurrentCase;
+    public string ProductionCurrentStep => OperatorCurrentStep;
+    public string ProductionStepStatus => OperatorStepStatus;
+    public string ProductionMeasuredValue => OperatorActual;
+    public string ProductionExpectedValue => OperatorExpected;
+    public string ProductionFailure => OperatorFailure;
+    public string ProductionFlashState => OperatorFlashState;
+    public string ProductionTestState => OperatorRunState;
+    public string ProductionRecordState => OperatorRecordState;
     public string ProductionAlert =>
-        _prepared is null && _scanAlertRequired ? _scanStatus : "";
-
-    public string ProductionResultLabel =>
-        "等待检测结果";
-
-    public string PhysicalStartStatus => "启动按钮未接入";
-    public string StartInputHint =>
-        "工程实测可使用软件启动；正式生产放行尚需实体 START 与生产记录验收。";
+        _scanAlertRequired ? _scanStatus :
+        _productionVerdict is "检测未完成" or "记录失败" ? OperatorFailure : "";
+    public string ProductionResultLabel => _productionVerdict;
+    public string PhysicalStartStatus => "软件 START 可用；实体 START 待固件事件接通";
+    public string StartInputHint => "实体与界面 START 共用执行入口。";
 
     private void RequestSoftwareStart()
     {
-        if (_isProductionWorkspace())
+        if (!CanStartOperatorVerification)
         {
-            StartRequestStatus = "正式生产禁止软件 START：必须由可信主控实体 START 事件及正式 Inspection 记录链路发起。";
+            StartRequestStatus = _prepared is null
+                ? "请先扫描 ECU 编号并匹配检测工程。"
+                : !_hardware.IsConnected ? "主控 USB 尚未连接。"
+                : !_hardware.IsEcuCanBitrateApplied ? "请确认 ECU CAN 波特率。"
+                : IsOperatorRunning ? "当前 ECU 正在检测。"
+                : "当前工程或设备状态不能开始本台检测。";
             return;
         }
-        // A readiness query is not a START. Until a verified production
-        // adapter and durable RunId record are wired, NEVER issue CAN/FLASH,
-        // claim a START edge, fabricate progress or return PASS.
-        if (_plans.Current is not { } plan)
-            StartRequestStatus = "请先打开 ECU 工程。";
-        else if (!plan.ResourceReady)
-            StartRequestStatus = "工程未就绪，请检查用例和资源。";
-        else if (!_scanner.IsConnected)
-            StartRequestStatus = "扫码枪未连接。";
-        else if (_prepared is null || string.IsNullOrWhiteSpace(_lastIdentity))
-            StartRequestStatus = "请扫描当前 ECU 编号。";
-        else if (!_hardware.IsConnected)
-            StartRequestStatus = "主控未连接。";
-        else if (!_hardware.IsEcuCanBitrateApplied)
-            StartRequestStatus = "ECU CAN 波特率待确认：" + _hardware.EcuCanBitrateStatus;
-        else
-            StartRequestStatus = "工程准备检查通过；正式生产功能尚待验收。";
+        StartRequestStatus = "正在启动本台 ECU 检测";
+        StartOperatorVerificationCommand.Execute();
     }
     public bool IsBusy
     {
@@ -357,19 +259,14 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         (_prepared is not null && _hardware.ConfirmedEcuCanBitrateKbps != _prepared.EcuCanKbps
             ? " · 工程要求 " + _prepared.EcuCanKbps + "k"
             : "") + " · 不代表 ECU 已响应";
-    public string StationReadiness => _isProductionWorkspace()
-        ? "工位检查 " + FormalAdmission.SatisfiedChecks + "/" +
-          FormalAdmission.TotalChecks + " · 启动条件未满足" : !_hardware.IsConnected ? "等待主控连接" :
+    public string StationReadiness =>
+        !_hardware.IsConnected ? "主控未连接" :
         !_hardware.IsEcuCanBitrateApplied ? "CAN 波特率待确认" :
-        !_scanner.IsConnected ? "等待扫码枪" :
-        _plans.Current is null ? "请打开工程" :
-        !_plans.Current.ResourceReady ? "工程未就绪" :
+        !_scanner.IsConnected ? "扫码枪未连接" :
+        IsOperatorRunning ? OperatorRunState :
         _prepared is null ? "等待扫码" :
-        _hardware.ConfirmedEcuCanBitrateKbps != _prepared.EcuCanKbps
-            ? "工程/ECU CAN 速率不符" :
-        IsOperatorRunning ? "工程实测进行中" :
-        _isProductionWorkspace() ? "已核对扫码；实体 START 未接线" :
-        "工程实测可启动";
+        !CanBitrateReady ? "ECU CAN 与工程配置不一致" :
+        "主控已连接 · 已匹配当前工程";
     public string IdentityLabel => IdentityAccepted ? "编号已核对" : "编号待核对";
     public string DutSerial => _dutSerial;
     public string ScanStatus => _scanStatus;
@@ -381,7 +278,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
             : _draftPreview is null
                 ? "当前没有可用工程，请进入开发与调试"
                 : "当前工程 · 检测配置待完善"
-        : "使用已确认工程 · 实体 START/RECORD 尚待接入";
+        : "使用当前已匹配工程";
     public int CaseCount => Cases.Count;
     public string DeviceStatus => (_hardware.IsConnected ? "主控已连接" : "主控未连接") +
         " · " + (_scanner.IsConnected ? "扫码枪已连接" : "扫码枪未连接");
@@ -399,7 +296,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
               " 项运行资源问题；请进入开发与调试定位。"
             : _prepared is null
                 ? "当前工程已读取；需要实际扫码及工位预检。"
-                : "扫码与工程资源已核对；真实夹具、START、FLASH、TEST 和 RECORD 的整机执行尚未接通。";
+                : "扫码已匹配工程；点击开始检测进入真实夹具、FLASH、TEST 和记录流程。";
 
     public async Task RestoreAsync()
     {
@@ -616,6 +513,17 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         RaisePropertyChanged(nameof(ProductionDisplayStage));
         RaisePropertyChanged(nameof(ProductionGuidance));
         RaisePropertyChanged(nameof(ProductionResultLabel));
+        RaisePropertyChanged(nameof(HasFormalExecutionFacts));
+        RaisePropertyChanged(nameof(ProductionCurrentCase));
+        RaisePropertyChanged(nameof(ProductionCurrentStep));
+        RaisePropertyChanged(nameof(ProductionStepStatus));
+        RaisePropertyChanged(nameof(ProductionMeasuredValue));
+        RaisePropertyChanged(nameof(ProductionExpectedValue));
+        RaisePropertyChanged(nameof(ProductionFailure));
+        RaisePropertyChanged(nameof(ProductionFlashState));
+        RaisePropertyChanged(nameof(ProductionTestState));
+        RaisePropertyChanged(nameof(ProductionRecordState));
+        RaisePropertyChanged(nameof(PhysicalStartStatus));
         RaisePropertyChanged(nameof(ProductionAlert));
         RaisePropertyChanged(nameof(StationReadiness));
         RaisePropertyChanged(nameof(EngineeringNextAction));

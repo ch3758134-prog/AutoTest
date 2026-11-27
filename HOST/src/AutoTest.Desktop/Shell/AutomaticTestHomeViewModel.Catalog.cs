@@ -34,6 +34,7 @@ public sealed partial class AutomaticTestHomeViewModel
             if (!CurrentScan() || IsOperatorRunning) return;
             _prepared = null;
             _acceptedStationEpoch = 0;
+            _productionVerdict = "等待检测结果";
             var routed = await _productionCatalog.ResolveAsync(raw);
             if (!CurrentScan()) return;
             if (!routed.Accepted || routed.Package is null)

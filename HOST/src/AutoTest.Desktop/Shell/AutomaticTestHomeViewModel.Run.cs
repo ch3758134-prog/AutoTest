@@ -84,7 +84,11 @@ public sealed partial class AutomaticTestHomeViewModel
         private set
         {
             if (SetProperty(ref _operatorRunState, value))
+            {
                 RaisePropertyChanged(nameof(ProductionDisplayStage));
+                RaisePropertyChanged(nameof(ProductionTestState));
+                RaisePropertyChanged(nameof(ProductionGuidance));
+            }
         }
     }
     public string OperatorCurrentCase
@@ -149,7 +153,7 @@ public sealed partial class AutomaticTestHomeViewModel
     }
 
     public bool CanStartOperatorVerification =>
-        !_operatorRunning && !_busy && Volatile.Read(ref _startRequestInFlight) == 0 &&
+        !_operatorRunning && !_busy &&
         (_isProductionWorkspace() || _engineeringVerificationArmed) &&
         _plans.Current is { ResourceReady: true } &&
         _prepared?.AcceptedScannerObservation is { } scan &&
