@@ -460,11 +460,7 @@ public sealed class TestEditorViewModel : BindableBase
         if (place is null || chosen is null || IsBusy) return false;
         try
         {
-            var node = StepUiCatalog.NewNode(chosen.StepType) with { Name = chosen.Title };
-            // The shared Write descriptor historically defaults to Key "Pulse".
-            // A new CAN send must begin with an unconfigured payload instead of
-            // accidentally interpreting that KEY action as CAN bytes.
-            if (chosen.Key == "can") node = node.WithProperty("value", "HEX:0000000000000000");
+            var node = _catalog.CreateNodeForAction(chosen.Key);
             place.ValidateNode(node);
             _transaction.Insert(place.Phase, place.ParentId, place.Slot, place.Index, node);
             _cancelledDraftId = null;

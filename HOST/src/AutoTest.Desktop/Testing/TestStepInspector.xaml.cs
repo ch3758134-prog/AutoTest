@@ -19,20 +19,10 @@ using Prism.Mvvm;
 namespace AutoTest.Desktop.Testing;
 
 public sealed record TestActionOption(string Key, string Category, string Title, string StepType,
-    string TargetCategory, string Description)
+    string TargetCategory, string Description, bool IsFrequent = false, bool ContextualOnly = false)
 {
     public string DisplayName => Category + "  /  " + Title;
-    public string Group => Key switch
-    {
-        "can" or "can-send" or "can-wait" or "stop-can" or "read" or "wait-signal" or "assert-signal" or "expect"
-            => "CAN 与数据",
-        "key" or "ign" => "工位操作",
-        "uds" => "UDS 服务",
-        "wave-start" or "wave-stop" or "wave-analyze" or "wave-capture" or "wave-compare"
-            => "波形分析",
-        "flash" => "UDS 服务",
-        _ => "流程与计算"
-    };
+    public string Group => Category;
 }
 
 public sealed record TestStepFieldChoice(string Value, string Label);
@@ -104,73 +94,13 @@ public sealed record StepCompositionResult(StepNode Step, TestTargetMapping? Map
 public partial class TestStepInspector : UserControl
 {
     private static readonly IReadOnlyList<TestActionOption> Options =
-    [
-        new("can", "外部操作", "发送 CAN 报文", "Write", "can",
-            "直接编辑完整 CAN ID 与 DATA；选择 DBC 定义后，可用信号辅助解析和修改 DATA。"),
-        new("key", "外部操作", "按键动作", "Write", "button",
-            "选择 KEY 组合与保持时间。"),
-        new("ign", "外部操作", "切换 IGN", "Write", "ign", "切换固定台架的 IGN 输出。"),
-        new("stop-can", "外部操作", "停止全部周期 CAN", "CanStopPeriodic", "",
-            "停止本次测试启动的 ECU CAN 周期发送。"),
-        new("read", "读取与观察", "读取 CAN 信号", "Read", "signal",
-            "通过已导入的 DBC 选择信号，将实际读取值保存到变量，不自动判定。"),
-        new("wait-signal", "读取与观察", "等待信号条件", "WaitUntil", "signal",
-            "持续观察指定 DBC 信号直到满足条件或超时。"),
-        new("assert-signal", "分析与判断", "CAN 信号判定", "AssertSignal", "signal",
-            "选择 DBC 信号及目标值，规定时间内达到条件判定通过；超时且未匹配判定失败，完全无有效数据则无法判定。"),
-        new("wave-start", "读取与观察", "开始波形采集", "WaveStart", "signal",
-            "从 ECU CAN 采集波形信号。"),
-        new("wave-stop", "读取与观察", "结束波形采集", "WaveStop", "",
-            "停止指定采集，保存测量证据。"),
-        new("wave-analyze", "分析与判断", "分析波形", "WaveAnalyze", "wave",
-            "选择已配置波形分析方案或参考，输出数据供测试判断步骤使用。"),
-        new("expect", "分析与判断", "期望判定", "Expect", "",
-            "比较测量值、变量或分析结果，显式作出测试结论。"),
-        new("calculate", "分析与判断", "计算变量", "Calculate", "",
-            "使用实际测量与变量构建计算表达式。"),
-        new("variable", "分析与判断", "设置变量", "SetVariable", "",
-            "设置测试用例的数据变量。"),
-        new("if", "流程控制", "条件分支 IF / ELSE", "If", "",
-            "根据已获得的变量值选择条件分支。"),
-        new("loop", "流程控制", "循环", "Loop", "", "有界次数循环，循环体可以继续添加步骤。"),
-        new("sequence", "流程控制", "步骤分组", "Sequence", "", "按照顺序执行子步骤。"),
-        new("wait", "流程控制", "固定等待", "Wait", "", "固定等待指定毫秒数。"),
-        new("switch", "流程控制", "SWITCH / CASE", "Switch", "",
-            "按已有有效变量选择唯一 CASE；支持 default，未知数据阻断正常测试；无隐式贯穿。"),
-        new("case", "流程控制", "CASE 分支", "Case", "",
-            "在 SWITCH 子分支中填写匹配值并加入步骤。"),
-        new("when", "流程控制", "WHEN 等待条件", "When", "",
-            "条件等待与超时，运行前阻断。"),
-        new("try", "流程控制", "TRY / CATCH / FINALLY", "TryCatch", "",
-            "异常处理树结构可编辑；执行未接线。"),
-        new("subroutine", "流程控制", "子程序", "Subroutine", "",
-            "具名子程序容器，执行未接线。"),
-        new("call-public-flow", "流程控制", "调用公共流程", "CallPublicFlow", "",
-            "从当前工程选择已保存的公共流程，引用固定修订；不自动跟随更新。"),
-        new("call", "流程控制", "调用子程序", "CallSubroutine", "",
-            "必须明确填写子程序引用，执行未接线。"),
-        new("can-send", "外部操作", "旧版 CAN 发送（待转换）", "CanSend", "",
-            "原步骤只保留旧配置，尚不能发送到真实 ECU。请在中央步骤列表添加“发送 CAN 报文”，重新选择 DBC 报文并配置每个信号。"),
-        new("can-wait", "读取与观察", "旧版 CAN 等待（待转换）", "CanWait", "",
-            "旧等待节点尚不能参与真实执行。请使用“CAN 信号判定”或“等待信号条件”重新选择正式 DBC 信号。"),
-        new("uds", "外部操作", "UDS 服务", "UdsRequest", "",
-            "编辑服务和请求，实体诊断执行必须独立授权。"),
-        new("flash", "外部操作", "Flash 烧录", "Flash", "",
-            "选择经核对的配置及固件。真正运行需要连接设备、冻结资源指纹、独立授权和 APP 诊断恢复确认。"),
-        new("wave-capture", "读取与观察", "波形采集（扩展步骤）", "WaveCapture", "",
-            "编辑采集资源，运行前需要真实采集服务。"),
-        new("wave-compare", "分析与判断", "波形判定", "WaveCompare", "wave",
-            "比较本次已采集的真实 DBC 波形与冻结参考；PASS / FAIL / 无法判定均保留证据。")
-    ];
+        StepDescriptorCatalog.Builtins().Actions.Select(action => new TestActionOption(
+            action.Key, action.Category, action.Title, action.StepType,
+            action.TargetCategory, action.Description, action.IsFrequent,
+            action.ContextualOnly)).ToArray();
 
     public static IReadOnlyList<TestActionOption> PaletteActions(bool caseOnly) =>
-        Options.Where(option => caseOnly
-            ? option.StepType == "Case"
-            : option.StepType != "Case" &&
-              // Do not offer unusable or legacy execution nodes as new steps.
-              StepUiCatalog.Choices.Any(choice =>
-                  choice.Type == option.StepType && choice.Runnable) &&
-              option.Key is not ("can-send" or "can-wait" or "flash")).ToArray();
+        Options.Where(option => option.ContextualOnly == caseOnly).ToArray();
 
     private readonly StepNode? _editing;
     private readonly IReadOnlyList<TestStepFieldChoice> _ifVariables;

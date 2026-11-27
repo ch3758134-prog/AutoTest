@@ -20,12 +20,6 @@ public sealed class PlanCompiler
     private readonly StepDescriptorCatalog _catalog;
     public PlanCompiler(StepDescriptorCatalog? catalog = null) =>
         _catalog = catalog ?? StepDescriptorCatalog.Builtins();
-    private static readonly HashSet<string> RealTypes = new(StringComparer.Ordinal)
-    {
-        "Write", "Read", "WaitUntil", "AssertSignal", "CanStopPeriodic", "Calculate", "Expect",
-        "WaveStart", "WaveStop", "WaveAnalyze", "WaveCompare"
-    };
-
     public PreparedTestPlan Prepare(TestDocument document, ISet<string>? availableAssets = null,
         bool allowRealOperations = false,
         IReadOnlyCollection<string>? inheritedVariables = null)
@@ -43,9 +37,11 @@ public sealed class PlanCompiler
                 if (!StepExecutionPolicy.IsEnabled(node)) continue;
                 try { _ = StepResultRecordingOptions.Read(node); }
                 catch (FormatException e) { errors.Add(node.Id + ": " + e.Message); }
-                if (_catalog.Lookup(node.Type) is { ExecutableV1: false } &&
-                    !(allowRealOperations && RealTypes.Contains(node.Type)))
-                    errors.Add($"{node.Id}: {node.Type} not executable in V1");
+                var descriptor = _catalog.Lookup(node.Type);
+                if (descriptor is null ||
+                    descriptor.Execution == StepExecutionCapability.Unsupported ||
+                    descriptor.Execution == StepExecutionCapability.Hardware && !allowRealOperations)
+                    errors.Add($"{node.Id}: {node.Type} is not available in this execution mode.");
                 if (node.Type == "If" &&
                     (!node.Slots.TryGetValue("then", out var thenArm) ||
                      !thenArm.Any(StepExecutionPolicy.IsEnabled)) &&

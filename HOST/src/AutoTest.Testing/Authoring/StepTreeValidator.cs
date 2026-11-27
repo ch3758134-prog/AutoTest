@@ -34,10 +34,7 @@ public static class StepTreeValidator
                     if (!n.Slots.ContainsKey(slot)) errors.Add($"{location}: missing slot {slot}");
                 foreach (var slot in n.Slots.Keys)
                     if (!d.RequiredSlots.Contains(slot)) errors.Add($"{location}: illegal slot {slot}");
-                if (!allowIncompleteSteps)
-                    foreach (var key in d.RequiredProperties)
-                        if (!n.Properties.TryGetValue(key, out var v) || string.IsNullOrWhiteSpace(v))
-                            errors.Add($"{location}: missing property {key}");
+                errors.AddRange(catalog.ValidateParameters(n, location, allowIncompleteSteps));
             }
             // CallSubroutine.target is a TEST subroutine identity, not an asset mapping.
             // Only physical/signal operations use TestTargetMapping.
