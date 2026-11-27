@@ -326,6 +326,46 @@
       </DockPanel>
       
       
+      <!-- Real TestCtr PTC7/6/5 button inputs, unrelated to CAN KEY_SIM K1-K20. -->
+      <Border BorderBrush="#DDE8E3" BorderThickness="1" Background="#FBFDFC"
+       CornerRadius="7" Padding="9" Margin="0,8,0,0">
+       <StackPanel>
+        <DockPanel Margin="0,0,0,6">
+         <Button DockPanel.Dock="Right" Content="刷新输入"
+          Command="{Binding RefreshExternalKeyInputsCommand}"
+          Padding="8,4" MinHeight="25" ToolTip="USB 0x45 只读查询主控板 KEY1~KEY3 稳定电平"/>
+         <TextBlock Text="实体按键输入（主控板）" FontWeight="SemiBold"
+          Foreground="#365A47" FontSize="12" VerticalAlignment="Center"/>
+        </DockPanel>
+        <ItemsControl ItemsSource="{Binding ExternalKeyInputs}">
+         <ItemsControl.ItemsPanel><ItemsPanelTemplate>
+          <UniformGrid Columns="3"/>
+         </ItemsPanelTemplate></ItemsControl.ItemsPanel>
+         <ItemsControl.ItemTemplate>
+          <DataTemplate>
+           <Border Background="White" BorderBrush="#DDE7E1" BorderThickness="1"
+            CornerRadius="6" Padding="7,5" Margin="2">
+            <StackPanel>
+             <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold"
+              Foreground="#344B5E"/>
+             <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+              <TextBlock Text="{Binding LevelText}" FontSize="12"
+               Foreground="#177A5A" FontWeight="SemiBold"/>
+             </StackPanel>
+             <TextBlock Text="{Binding StateText}" FontSize="10"
+              Foreground="#65778A" TextWrapping="Wrap"/>
+            </StackPanel>
+           </Border>
+          </DataTemplate>
+         </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <TextBlock Text="{Binding LastExternalKeyEvent}" FontSize="11"
+         Foreground="#365A47" TextWrapping="Wrap" Margin="2,6,0,0"/>
+        <TextBlock Text="{Binding ExternalKeyMonitorStatus}" FontSize="10"
+         Foreground="#6B7C87" TextWrapping="Wrap" Margin="2,3,0,0"/>
+       </StackPanel>
+      </Border>
+
       <Border BorderBrush="#E3EAE5" BorderThickness="0,1,0,0" Margin="0,12,0,10"/>
       <DockPanel Margin="0,0,0,8">
        <Button DockPanel.Dock="Right" Content="实际全部断开 KEY"
