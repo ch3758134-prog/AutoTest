@@ -20,8 +20,6 @@
    <StackPanel MaxWidth="1050" Margin="22,19,22,24">
     <TextBlock Text="{Binding CurrentProjectName}" FontSize="21"
      FontWeight="SemiBold" Foreground="#243950"/>
-    <TextBlock Text="在这里编辑测试用例、烧录配置和信号资源。工位设备可在“工位设置”中管理。"
-     TextWrapping="Wrap" Foreground="#65798A" Margin="0,8,0,14"/>
     <Border CornerRadius="7" BorderBrush="#DFE7F1" BorderThickness="1"
      Background="#F5F8FC" Padding="13" Margin="0,0,0,17">
      <StackPanel>

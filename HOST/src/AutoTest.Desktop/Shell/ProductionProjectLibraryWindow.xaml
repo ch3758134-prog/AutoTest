@@ -1,7 +1,7 @@
 <Window x:Class="AutoTest.Desktop.Shell.ProductionProjectLibraryWindow"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- Title="生产工程管理" Width="1020" Height="740" MinWidth="780" MinHeight="550"
+ Title="检测工程" Width="1020" Height="740" MinWidth="780" MinHeight="550"
  WindowStartupLocation="CenterOwner" FontFamily="Microsoft YaHei" FontSize="13"
  Background="#F6F8FB" Foreground="#263D52">
  <Window.Resources>
@@ -41,9 +41,7 @@
    <Button Content="关闭" DockPanel.Dock="Right" Click="Close_Click"
     Margin="8,0,0,0"/>
    <StackPanel>
-    <TextBlock Text="生产工程库" FontSize="21" FontWeight="SemiBold"/>
-    <TextBlock Text="选择检测工程，设置扫码识别标记。检测时自动使用该工程的测试与固件。"
-     Foreground="#62788B" Margin="0,5,0,0" TextWrapping="Wrap"/>
+    <TextBlock Text="检测工程" FontSize="21" FontWeight="SemiBold"/>
    </StackPanel>
   </DockPanel>
 
@@ -72,7 +70,7 @@
    <StackPanel>
     <Border Style="{StaticResource Panel}">
      <StackPanel>
-      <TextBlock Text="本机可用于生产的工程版本" Style="{StaticResource Section}"/>
+      <TextBlock Text="本机检测工程" Style="{StaticResource Section}"/>
       <Grid>
        <DataGrid x:Name="CatalogTable" Height="226" AutoGenerateColumns="False"
         IsReadOnly="True" CanUserAddRows="False" SelectionMode="Single"
@@ -85,7 +83,7 @@
         </DataGrid.Columns>
        </DataGrid>
        <TextBlock x:Name="EmptyCatalogHint"
-        Text="还没有可供扫码选择的工程。打开测试工程，点击“更新生产工程”即可添加。" FontSize="14"
+        Text="尚无检测工程。可导入工程包，或先在“测试工程”中打开工程，再切换到“生产检测”。" FontSize="14"
         Foreground="#617A8E" TextWrapping="Wrap" TextAlignment="Center"
         HorizontalAlignment="Center" VerticalAlignment="Center"
         Margin="16" IsHitTestVisible="False"/>

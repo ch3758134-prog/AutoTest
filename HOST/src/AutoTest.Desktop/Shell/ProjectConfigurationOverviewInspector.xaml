@@ -26,8 +26,6 @@
    <Button Content="编辑工程特殊动作" Command="{Binding OpenInspectionProcedureCommand}"
     Padding="12,7" Margin="0,0,0,10"/>
    <Border Background="#EEF4FA" CornerRadius="6" Padding="10">
-    <TextBlock Text="工程检查只评估配置状态；实际检测仍需连接设备并完成现场验证。"
-     TextWrapping="Wrap" Foreground="#63788A" FontSize="11"/>
    </Border>
   </StackPanel>
  </ScrollViewer>

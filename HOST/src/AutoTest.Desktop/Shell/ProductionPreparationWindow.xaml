@@ -39,8 +39,6 @@
     Click="Close_Click" Margin="7,0,0,0"/>
    <StackPanel>
     <TextBlock Text="工位设备设置" FontSize="21" FontWeight="SemiBold"/>
-    <TextBlock Text="扫码枪、主控和夹具。检测工程请在“生产工程管理”中管理。"
-     Foreground="#657B8E" FontSize="12" Margin="0,5,0,0"/>
    </StackPanel>
   </DockPanel>
   <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"

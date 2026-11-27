@@ -122,7 +122,7 @@
              TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
             <Button Content="更新引用…" Tag="{Binding}" Click="AdoptCurrentRevision_Click"
              FontSize="10" Margin="6,0,0,0" Padding="4,0" Height="17" MinHeight="0"
-             ToolTip="先核对当前 TEST 资源的版本与哈希，再只更新本条正式调用实例">
+             ToolTip="使用当前编辑的用例内容更新本次调用">
              <Button.Style>
               <Style TargetType="{x:Type Button}" BasedOn="{StaticResource AtQuietButton}">
                <Setter Property="Visibility" Value="Collapsed"/>
@@ -190,8 +190,6 @@
      <StackPanel>
       <TextBlock Text="测试前准备 / 测试后收尾" FontSize="14" FontWeight="SemiBold"
        Foreground="#294A70" Margin="0,0,0,6"/>
-      <TextBlock Text="可选整车测试环境：项目准备 → 有序用例 → 项目收尾。周期 CAN 跨用例保持；扫码、机械工装、前置 FLASH 不放在这里。"
-       TextWrapping="Wrap" Foreground="#60768A" Margin="0,0,0,9"/>
       <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
        <TextBlock Text="选择已有 TEST 定义" VerticalAlignment="Center" Margin="0,0,8,0"/>
        <ComboBox Width="280" Height="28" ItemsSource="{Binding AvailablePackages}"
@@ -200,7 +198,7 @@
       <DockPanel Margin="0,0,0,8">
        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
         <Button Content="＋ 新建" Command="{Binding CreateProjectSetupCommand}"
-         Margin="0,0,5,0" ToolTip="创建同一 TEST DSL 的新资源，自动绑定并进入步骤编辑"/>
+         Margin="0,0,5,0" ToolTip="创建新的准备流程并进入步骤编辑"/>
         <Button Content="绑定" Command="{Binding SetProjectSetupCommand}" Margin="0,0,5,0"/>
         <Button Content="编辑步骤" Command="{Binding OpenProjectSetupCommand}" Margin="0,0,5,0"/>
         <Button Content="移除" Command="{Binding RemoveProjectSetupCommand}"/>

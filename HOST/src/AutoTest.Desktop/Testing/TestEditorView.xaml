@@ -37,7 +37,7 @@
        ToolTip="先选阶段或明确的子分支，再直接选择步骤类型">
        <MenuItem Header="发送 CAN 报文" Command="{Binding QuickAddCommand}" CommandParameter="can"/>
        <MenuItem Header="停止全部周期 CAN" Command="{Binding QuickAddCommand}" CommandParameter="stop-can"/>
-       <MenuItem Header="模拟 ECU 按键" Command="{Binding QuickAddCommand}" CommandParameter="key"/>
+       <MenuItem Header="按键动作" Command="{Binding QuickAddCommand}" CommandParameter="key"/>
        <MenuItem Header="切换 IGN" Command="{Binding QuickAddCommand}" CommandParameter="ign"/>
        <MenuItem Header="读取 CAN 信号" Command="{Binding QuickAddCommand}" CommandParameter="read"/>
           <MenuItem Header="CAN 信号判定" Command="{Binding QuickAddCommand}" CommandParameter="assert-signal"/>
