@@ -60,7 +60,7 @@
       <DataGrid x:Name="PackagesGrid" Grid.Row="1"
        ItemsSource="{Binding Packages}" SelectedItem="{Binding SelectedPackage,Mode=TwoWay}"
        AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
-       HeadersVisibility="Column" RowHeight="62" ColumnHeaderHeight="36"
+       HeadersVisibility="Column" RowHeight="68" ColumnHeaderHeight="36"
        MinHeight="100" BorderThickness="0" VirtualizingPanel.IsVirtualizing="True"
        VirtualizingPanel.VirtualizationMode="Recycling"
        ScrollViewer.CanContentScroll="True"
