@@ -26,8 +26,8 @@ public sealed partial class ProjectWorkspaceService
     public const string ManifestFileName = "project.autotest-project.json";
     public const string TestProgramKind = "test-program";
     public const string PublicFlowKind = "public-flow";
-    public const string TestProjectKind = "test-project";
-    public const string DbcKind = "dbc";
+    public const string TestProjectKind = ProjectResourceKinds.TestProject;
+    public const string DbcKind = ProjectResourceKinds.Dbc;
     public const string FirmwareKind = "firmware";
     public const string WaveKind = "wave";
     public const string ControllerKind = ProjectConfigurationCodec.ControllerKind;
@@ -336,6 +336,11 @@ public sealed partial class ProjectWorkspaceService
     public Task<AssetEntry> CreateTestProjectAsync(string name, CancellationToken ct = default)
     {
         ValidateResourceName(name);
+        // Creating a TEST project means opening the single TEST object if it
+        // already exists; a second TEST is not a meaningful user operation.
+        var existing = Current?.Definition.Assets.SingleOrDefault(
+            a => a.Kind == TestProjectKind);
+        if (existing is not null) return Task.FromResult(existing);
         return AddAssetAsync(TestProjectKind, name, ".prj.json",
             TestProjectCodec.Encode(TestProjectDocument.Create(name)), ct);
     }

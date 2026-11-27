@@ -26,6 +26,14 @@ public sealed record ProjectDefinition(ProjectId Id, int SchemaVersion, int Revi
         foreach (var asset in Assets) asset.Validate();
         if (Assets.GroupBy(a => a.Id).Any(g => g.Count() != 1))
             throw new ProjectDataException("ASSET_DUPLICATE", "Duplicate AssetId in project.");
+        // Invalid project shapes are not something an operator should have
+        // to discover during production preparation. Enforce at every edit.
+        if (Assets.Count(a => a.Kind == Resources.ProjectResourceKinds.TestProject) > 1)
+            throw new ProjectDataException("TEST_PROJECT_UNIQUE",
+                "一个 ECU 工程只能包含一个有序 TEST 项目。");
+        if (Assets.Count(a => a.Kind == Resources.ProjectResourceKinds.Dbc) > 1)
+            throw new ProjectDataException("DBC_UNIQUE",
+                "一个 ECU 工程只能绑定一份有效 DBC。");
         Resources.ReferenceValidator.RejectDangling(this);
         return this;
     }
