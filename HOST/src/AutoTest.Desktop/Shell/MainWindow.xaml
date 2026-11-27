@@ -132,7 +132,7 @@
        </Style>
       </Button.Style>
      </Button>
-     <Button Content="测试工程" Command="{Binding ShowEngineerWorkspaceCommand}"
+     <Button Content="工程开发" Command="{Binding ShowEngineerWorkspaceCommand}"
       Padding="15,5" Margin="0,0,4,0" FontSize="13" FontWeight="SemiBold"
       ToolTip="编辑工程和用例，在真实工位调试测试步骤">
       <Button.Style>
@@ -180,17 +180,27 @@
       <MenuItem Header="显示／隐藏实时观察" Click="ToggleBottom_Click"/>
       <MenuItem Header="显示／隐藏参数面板" Click="ToggleInspector_Click"/>
      </MenuItem>
-     <MenuItem Header="工具">
-      <MenuItem Header="手动台架" Command="{Binding OpenManualBenchCommand}"/>
-      <Separator/>
+     
+    </Menu>
+    <!-- Specialist and device workflows retain their own real tool windows. -->
+    <Menu Background="Transparent" VerticalAlignment="Center" FontSize="13"
+     chrome:WindowChrome.IsHitTestVisibleInChrome="True">
+     <MenuItem Header="专业工具">
+      <MenuItem Header="DBC 文件编辑" Command="{Binding OpenDbcToolCommand}"/>
+      <MenuItem Header="新建独立 DBC" Command="{Binding NewIndependentDbcCommand}"/>
+      <MenuItem Header="打开独立 DBC" Command="{Binding OpenIndependentDbcCommand}"/>
+      <MenuItem Header="波形采集与标准" Command="{Binding OpenWaveWorkbenchCommand}"/>
       <MenuItem Header="UDS 诊断" Command="{Binding OpenUdsWorkbenchCommand}"/>
-      <MenuItem Header="独立烧录调试" Command="{Binding OpenFlashWorkbenchCommand}"/>
-      <MenuItem Header="新建独立 DBC…" Command="{Binding NewIndependentDbcCommand}"/>
-      <MenuItem Header="打开独立 DBC…" Command="{Binding OpenIndependentDbcCommand}"/>
-      <MenuItem Header="导入／替换工程 DBC…" Command="{Binding ImportDbcCommand}"/>
-      <Separator/>
-      <MenuItem Header="波形采集与分析" Command="{Binding OpenWaveWorkbenchCommand}"/>
-      <MenuItem Header="工程 DBC 编辑" Command="{Binding OpenDbcToolCommand}"/>
+      <MenuItem Header="烧录工具" Command="{Binding OpenFlashWorkbenchCommand}"/>
+     </MenuItem>
+    </Menu>
+    <Menu Background="Transparent" VerticalAlignment="Center" FontSize="13"
+     chrome:WindowChrome.IsHitTestVisibleInChrome="True">
+     <MenuItem Header="设备调试">
+      <MenuItem Header="手动台架" Command="{Binding OpenManualBenchCommand}"/>
+      <MenuItem Header="CAN 监视" Command="{Binding OpenCanMonitorCommand}"/>
+      <MenuItem Header="扫码枪通信" Command="{Binding OpenSerialScannerCommand}"/>
+      <MenuItem Header="型号标记与工程匹配" Command="{Binding OpenProductionProjectLibraryCommand}"/>
      </MenuItem>
     </Menu>
     <Menu Background="Transparent" VerticalAlignment="Center" FontSize="13"
@@ -209,27 +219,22 @@
    Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}">
    <DockPanel LastChildFill="False" Margin="12,0">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-     <Button Content="检查工程" Command="{Binding OpenProjectConfigurationOverviewCommand}"
-      Style="{StaticResource AtQuietButton}" Margin="0,0,8,0" Padding="9,5"/>
+     <Button Content="整组调试" Command="{Binding EnterEngineeringVerificationCommand}"
+      Style="{StaticResource AtQuietButton}" Padding="9,5"
+      ToolTip="调试当前工程的 TEST；正式生产从扫码入口运行"/>
     </StackPanel>
     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
-     <Button Content="{Binding CurrentProjectName}" Command="{Binding RenameProjectCommand}"
-      Style="{StaticResource AtQuietButton}" FontSize="15" FontWeight="SemiBold"
-      Foreground="#21384F" VerticalAlignment="Center" MaxWidth="220"
-      ToolTip="单击重命名工程；工程身份和已保存测试内容不会改变"/>
+     <TextBlock Text="{Binding CurrentProjectName}" FontSize="15"
+      FontWeight="SemiBold" Foreground="#21384F" VerticalAlignment="Center"
+      MaxWidth="245" TextTrimming="CharacterEllipsis"
+      ToolTip="{Binding CurrentProjectPath}"/>
      <Border Width="1" Height="21" Background="#DEE7F1" Margin="13,0,9,0"/>
+     <Button Content="工程首页" Command="{Binding OpenEngineeringHomeCommand}"
+      Style="{StaticResource AtQuietButton}" Margin="0,0,5,0" Padding="9,5"/>
+     <Button Content="TEST 顺序" Command="{Binding OpenFirstTestProjectCommand}"
+      Style="{StaticResource AtQuietButton}" Margin="0,0,5,0" Padding="9,5"/>
      <Button Content="工程资源" Command="{Binding OpenEngineeringResourcesCommand}"
-      Style="{StaticResource AtQuietButton}" Margin="0,0,8,0" Padding="10,5"
-      ToolTip="查看当前 DBC、标准波形、公共流程与烧录参数，在各自的专业环境中编辑"/>
-     <Button Content="DBC" Command="{Binding OpenDbcToolCommand}"
-      Style="{StaticResource AtQuietButton}" Margin="0,0,5,0" Padding="9,5"
-      ToolTip="编辑当前工程的 DBC 文件"/>
-     <Button Content="波形" Command="{Binding OpenWaveWorkbenchCommand}"
-      Style="{StaticResource AtQuietButton}" Margin="0,0,5,0" Padding="9,5"
-      ToolTip="进入实时采集、建立标准与比较分析工作台"/>
-     <Button Content="FLASH" Command="{Binding OpenNativeFlashProfileCommand}"
-      Style="{StaticResource AtQuietButton}" Margin="0,0,5,0" Padding="9,5"
-      ToolTip="编辑当前工程的 HEX 和 ECU 烧录参数"/>
+      Style="{StaticResource AtQuietButton}" Margin="0,0,5,0" Padding="9,5"/>
     </StackPanel>
    </DockPanel>
   </Border>
