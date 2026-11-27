@@ -27,7 +27,7 @@ C 业务层统一引用 `ECU_CAN_PORT`、`KEY_CAN_PORT` 与 `ECU_CAN_USB_CHANNEL
 
 上述 HOUT 属高边输出，均需共用 `SOL24IN`，GPIO HIGH 并不证明输出端子已有负载电压。**已批准并落实的源码初始化：IGN、六路 LED、Air_ALVE1/2、HOUT9/10、U22 CH4 预留控制输入全部 LOW；`RL_DRV` 属内部硬件使能，在上述 IO 均设为 LOW 后由 EAL 初始化 HIGH。** 只有烧录新固件后此行为才生效；复位到 GPIO 初始化前的瞬态仍需硬件检查。现场线束仍需确认从旧 J1 C6 改至 J1 C10。
 
-## 3. 外部 KEY 输入（只定义不启用）
+## 3. 外部实体 KEY1～3 按钮输入（PORTC 中断）
 
 | 宏 | MCU Pad | J1 | 电路 |
 |---|---|---|---|
@@ -35,7 +35,7 @@ C 业务层统一引用 `ECU_CAN_PORT`、`KEY_CAN_PORT` 与 `ECU_CAN_USB_CHANNEL
 | KEY2 | PTC6 | C18 | R8/R11/C8 分压滤波 → MCU_KEY2 |
 | KEY3 | PTC5 | C16 | R9/R13/C9 分压滤波 → MCU_KEY3 |
 
-仅给出 `KEY1_PORT/PIN`～`KEY3_PORT/PIN`；不初始化为 GPIO/ADC、不读值、不添加 USB 业务和阈值判定。这三路是主控板外部输入，**不是 KEY_SIM 的 20 路 K1～K20 控制**。
+三路已在 `EAL_GPIO_Init()` 配置为 GPIO 输入，并启用 `PORTC_IRQHandler` 的双边沿中断。ISR 只记录边沿；主循环独立20ms消抖后使用 USB `0x44`（SEQ=0、5B事件）上报；`0x45` 空请求查询3B稳定电平位图及16bit事件计数。**这些是独立于 KEY_SIM K1～K20 的主控板输入**，不触发任何业务输出；有效按下电平尚未实测。
 
 ## 4. 未改变的行为与验证边界
 
@@ -44,7 +44,7 @@ C 业务层统一引用 `ECU_CAN_PORT`、`KEY_CAN_PORT` 与 `ECU_CAN_USB_CHANNEL
 - 已完成源码映射变更：**IGN 从 HOUT5/PTC10/J1 C6 迁移为 HOUT1/PTC1/J1 C10**；保留现有 IGN 命令号，上电默认改成 LOW。六路 LED 按 RED1/YELLOW1/GREEN1/RED2/YELLOW2/GREEN2 顺序占用 HOUT2~HOUT7。未据此宣称已完成现场改线或硬件验证。
 - 六路 LED 已初始化为 GPIO 输出 LOW；USB CMD 0x1A 单路设置 [index, level]，0x1B 读取位图，0x1C 设置六路位图(0x00~0x3F)。USB index 1..6 与位图 bit0..5 依次对应 RED1、YELLOW1、GREEN1、RED2、YELLOW2、GREEN2；协议编号不变。
 - USB OK 只说明业务 GPIO 指令执行，GET 只读 MCU GPIO 电平；不提供 J1 端子电压或灯状态反馈。USB 断开不自动改变 LED 请求，且 USB 不负责 RL_DRV；MCU 复位后 LED 重新初始化 LOW。
-- KEY1~KEY3 仍仅声明固定硬件资源，不提供采样逻辑或 USB 命令。
+- KEY1~KEY3 已启用 PORTC 双边沿中断、主循环消抖和 USB 0x44/0x45 只读监测，不能据此视为实体按钮功能验收通过。
 - MCU 引脚、驱动器、连接器依据原理图；实际装配、线束及上电输出仍需实体复核。
 
 ## 5. 未分配高边输入与内部硬件初始化（2026-11-18 决定）
