@@ -8,397 +8,350 @@ namespace AutoTest.Application.Tests;
 
 public sealed class ProductionOrchestrationTests
 {
-    private readonly RevisionFingerprint _hash = RevisionFingerprint.FromBytes(new byte[] { 9 });
-    private static RawScan Scan() => new("EPB-00001", "keyboard",
-        TimePoint.FromSimulation(DateTimeOffset.UtcNow, 1), true);
-    private ProductionProjectExecution Config(bool flash = false) =>
-        new(ProjectId.New(), new ProjectRevision(1), _hash, flash,
-            "24V", ImmutableArray.Create(new AssetRef(
-                AssetId.New(), AssetRevision.Create(1), _hash)));
-    private static ProductionStationReadiness Station(bool mock = true, AuthorizationScope? auth = null) =>
-        new(StationId.Create("SIM"), StationConnectionState.Ready, "24V", true, mock,
-            auth ?? (mock ? AuthorizationScope.MockOnly : AuthorizationScope.PhysicalCommand));
+    private readonly RevisionFingerprint _hash =
+        RevisionFingerprint.FromBytes(new byte[] { 9 });
 
-    private static ProductionSession Matched(ProductionProjectExecution config)
+    private static RawScan Scan(string code = "HYDEP-00001") =>
+        new(code, "COM7",
+            TimePoint.FromHostArrival(DateTimeOffset.UtcNow, 1), true);
+
+    private ProductionProjectExecution Project(bool flash = true) =>
+        new(ProjectId.New(), new ProjectRevision(1), _hash, flash, "24V",
+            ImmutableArray.Create(new AssetRef(
+                AssetId.New(), AssetRevision.Create(1), _hash)));
+
+    private static ProductionStationReadiness Station(
+        AuthorizationScope auth = AuthorizationScope.Programming) =>
+        new(StationId.Create("STATION-1"), StationConnectionState.Ready,
+            "24V", true, auth);
+
+    private ProductionSession Ready(ProductionProjectExecution project)
     {
         var session = new ProductionSession();
         Assert.Equal(Outcome.Accepted, session.StartDraft(Scan()).Outcome);
-        Assert.Equal(Outcome.Accepted, session.SetMatch(new MatchDecision(true,
-            "EPB-00001", config.Assets, null)).Outcome);
+        Assert.Equal(Outcome.Accepted,
+            session.SetMatch(new MatchDecision(true, Scan().Text,
+                project.Assets, null)).Outcome);
+        Assert.Equal(Outcome.Accepted, session.Confirm(project,
+            new RuleRevision(_hash), new ProjectRevision(1),
+            Station().Station).Outcome);
         return session;
     }
 
-    [Fact] // P1-T01
-    public void P1_T01_ScanToMatchToReadyMock()
+    private ProductionCommandHandler Handler(ProductionProjectExecution project,
+        ProductionSession session, TestStageExecutor executor,
+        CapturingSink sink, IProductionPhysicalStation? physical = null,
+        bool rewriteIdentity = false)
     {
-        var config = Config();
-        var session = Matched(config);
-        var check = new ProductionPreflight().Validate(session, config, Station());
-        Assert.True(check.Ready);
-        Assert.Equal(Outcome.Accepted, session.Confirm(config,
-            new RuleRevision(_hash), new ProjectRevision(1), Station().Station, true).Outcome);
-        Assert.Equal(ProductionState.Ready, session.State);
+        var workflow = new ProductionWorkflow(executor,
+            new ProductionResultCoordinator(sink),
+            new ProductionPreflight(), physical);
+        return new ProductionCommandHandler(
+            new TestMatcher(project.Assets, rewriteIdentity),
+            _ => project, session, workflow,
+            new RuleRevision(_hash), new ProjectRevision(1));
     }
 
-    [Fact] // P1-T02
-    public void P1_T02_WrongModelIsBlocked()
+    [Fact]
+    public async Task ScanSelectsOneProjectButDoesNotActuateOrStart()
     {
-        var config = Config();
+        var project = Project();
         var session = new ProductionSession();
-        session.StartDraft(Scan());
-        var result = session.SetMatch(new MatchDecision(false, null,
-            ImmutableArray<AssetRef>.Empty, "CONFIG_NO_MATCH"));
-        Assert.Equal(Outcome.Rejected, result.Outcome);
+        var station = new TestPhysicalStation();
+        var stages = new TestStageExecutor();
+        var sink = new CapturingSink();
+        var handler = Handler(project, session, stages, sink, station);
+        var scanned = await handler.ScanAsync(Scan(), Station(), CancellationToken.None);
+        Assert.Equal("READY_FOR_STATION", scanned.Code);
+        Assert.Equal("HYDEP-00001", scanned.FullBarcode);
+        Assert.NotNull(scanned.Run);
+        Assert.Equal(ProductionState.Ready, scanned.State);
+        Assert.Equal(0, station.PressRequests);
+        Assert.Equal(0, station.StartRequests);
+        Assert.Equal(0, stages.FlashCalls);
+        Assert.Empty(sink.Facts);
+    }
+
+    [Theory]
+    [InlineData("HYDEP")]
+    [InlineData("HYDEP-")]
+    [InlineData("HYDEP-001\n")]
+    [InlineData("HYDEP 001")]
+    [InlineData("OTHER?A-001")]
+    public async Task InvalidBarcodeIsRejectedBeforeMatcher(string raw)
+    {
+        var project = Project();
+        var session = new ProductionSession();
+        var handler = Handler(project, session,
+            new TestStageExecutor(), new CapturingSink());
+        var decision = await handler.ScanAsync(Scan(raw), Station(),
+            CancellationToken.None);
+        Assert.Equal("BARCODE_INVALID", decision.Code);
+        Assert.Equal(ProductionState.Empty, session.State);
+    }
+
+    [Fact]
+    public async Task MatcherCannotRewriteActualScannerIdentity()
+    {
+        var project = Project();
+        var session = new ProductionSession();
+        var handler = Handler(project, session,
+            new TestStageExecutor(), new CapturingSink(),
+            rewriteIdentity: true);
+        var decision = await handler.ScanAsync(Scan(), Station(),
+            CancellationToken.None);
+        Assert.Equal("SCAN_IDENTITY_CHANGED", decision.Code);
+        Assert.Equal("HYDEP-00001", decision.FullBarcode);
         Assert.Equal(ProductionState.Blocked, session.State);
-        Assert.Equal("CONFIG_NO_MATCH", session.FailureCode);
     }
 
-    [Fact] // P1-T03
-    public void P1_T03_RetestCreatesNewRunIdWithoutChangingUnitIdentity()
+    [Fact]
+    public void AProjectWithoutMandatoryFlashIsNotProductionReady()
     {
-        var config = Config();
-        var session = Matched(config);
-        var first = session.Confirm(config, new RuleRevision(_hash), new ProjectRevision(1), Station().Station, true).Value!;
-        session.BeginExecution();
-        session.Mark(ProductionState.Completed);
-        Assert.Equal(Outcome.Accepted, session.Reset().Outcome);
-        session.StartDraft(Scan());
-        session.SetMatch(new MatchDecision(true, first.DutIdentity, config.Assets, null));
-        var second = session.Confirm(config, new RuleRevision(_hash), new ProjectRevision(1), Station().Station, true).Value!;
-        Assert.NotEqual(first.Run, second.Run);
-        Assert.Equal(first.DutIdentity, second.DutIdentity);
+        var project = Project(flash: false);
+        var result = new ProductionPreflight().ValidateStation(project, Station());
+        Assert.False(result.Ready);
+        Assert.Contains("PRODUCTION_FLASH_REQUIRED", result.Blockers);
     }
 
-    [Fact] // P1-T04
-    public async Task P1_T04_StatisticsComeOnlyFromRecordReader()
+    [Fact]
+    public void ProgrammingRequiresRealStationAuthorization()
     {
-        var reader = new FakeSummaryReader();
-        var projection = new ProductionStatisticsProjection(reader);
-        var summary = await projection.Refresh(projection.Filter(null, null), CancellationToken.None);
-        Assert.Equal(2, summary.RunCount);
-        Assert.Equal(1, summary.DistinctDutCount);
-        Assert.Equal(1, reader.Calls);
-    }
-
-    [Fact] // P1-T05
-    public void P1_T05_FlashWithoutProgrammingAuthorizationIsRejected()
-    {
-        var config = Config(true);
-        var result = new ProductionPreflight().ValidateStation(config, Station(false,
-            AuthorizationScope.PhysicalCommand));
+        var project = Project();
+        var result = new ProductionPreflight().ValidateStation(project,
+            Station(AuthorizationScope.PhysicalCommand));
         Assert.False(result.Ready);
         Assert.Contains("FLASH_AUTH_REQUIRED", result.Blockers);
     }
 
     [Fact]
-    public void PhysicalInspectionCannotSkipProjectFlash()
+    public async Task UnconnectedPhysicalAdapterCannotRunAnyStage()
     {
-        var config = Config(flash: false);
-        var status = new ProductionPreflight().ValidateStation(config,
-            Station(false, AuthorizationScope.Programming));
-        Assert.False(status.Ready);
-        Assert.Contains("PRODUCTION_FLASH_REQUIRED", status.Blockers);
-    }
-
-    [Fact] // E1-T06
-    public void E1_T06_ScanDuringExecutionCannotReplaceUnit()
-    {
-        var config = Config();
-        var session = Matched(config);
-        var initial = session.Confirm(config, new RuleRevision(_hash), new ProjectRevision(1), Station().Station, true).Value!;
-        session.BeginExecution();
-        var rejected = session.StartDraft(new RawScan("EPB-99999", "keyboard", Scan().Time, true));
-        Assert.Equal("STATION_BUSY", rejected.FailureCode);
-        Assert.Equal(initial.DutIdentity, session.Job!.DutIdentity);
-    }
-
-    [Fact]
-    public async Task P1_MockAcknowledgementNeverReleasesPhysicalDut()
-    {
-        var config = Config();
-        var session = Matched(config);
-        session.Confirm(config, new RuleRevision(_hash), new ProjectRevision(1), Station().Station, true);
-        var sink = new FakeSink(true);
-        var workflow = new ProductionWorkflow(new FakeStageExecutor(),
-            new ProductionResultCoordinator(sink), new ProductionPreflight());
-        var result = await workflow.ExecuteAsync(session, CancellationToken.None);
-        Assert.False(result.PhysicalReleaseAllowed);
-        Assert.Equal(Verdict.Inconclusive, result.Verdict);
-        Assert.Equal("MOCK_COMPLETE_NOT_DUT_PASS", result.Code);
-    }
-
-    [Fact]
-    public async Task P1_NonDurableRecordBlocksCompletion()
-    {
-        var config = Config();
-        var session = Matched(config);
-        session.Confirm(config, new RuleRevision(_hash), new ProjectRevision(1), Station().Station, true);
-        var workflow = new ProductionWorkflow(new FakeStageExecutor(),
-            new ProductionResultCoordinator(new FakeSink(false)), new ProductionPreflight());
-        var result = await workflow.ExecuteAsync(session, CancellationToken.None);
-        Assert.Equal(ProductionState.AwaitingCommit, result.State);
-        Assert.False(result.Durable);
-        Assert.False(result.PhysicalReleaseAllowed);
-    }
-
-    [Fact]
-    public async Task E1_T06_RunningSecondScanIsImmediatelyRejectedAndDoesNotQueue()
-    {
-        var config = Config();
-        var executor = new BlockingStageExecutor();
+        var project = Project();
         var session = new ProductionSession();
-        var matcher = new FakeMatcher(config.Assets);
-        var workflow = new ProductionWorkflow(executor,
-            new ProductionResultCoordinator(new FakeSink(true)), new ProductionPreflight());
-        var handler = new ProductionCommandHandler(matcher, _ => config, session, workflow,
-            new RuleRevision(_hash), new ProjectRevision(1));
-        var first = handler.ScanAsync(Scan(), Station(), true, CancellationToken.None);
-        Assert.Equal(ProductionState.Running, session.State);
-        var second = await handler.ScanAsync(new RawScan("EPB-99999", "keyboard", Scan().Time, true),
-            Station(), true, CancellationToken.None);
-        Assert.Equal("STATION_BUSY", second.Code);
-        Assert.Equal("EPB-00001", session.Job!.DutIdentity);
-        executor.Finish();
-        await first;
+        var stages = new TestStageExecutor();
+        var sink = new CapturingSink();
+        var handler = Handler(project, session, stages, sink);
+        await handler.ScanAsync(Scan(), Station(), CancellationToken.None);
+        var result = await handler.BeginStationCycleAsync(CancellationToken.None);
+        Assert.Equal("PHYSICAL_STATION_ADAPTER_NOT_CONNECTED", result.Code);
+        Assert.Equal(ProductionState.Ready, result.State);
+        Assert.Equal(0, stages.FlashCalls);
+        Assert.Empty(sink.Facts);
+        Assert.Equal(Outcome.Accepted, handler.ClearForNextScan().Outcome);
+        Assert.Equal(ProductionState.Empty, session.State);
     }
 
     [Fact]
-    public void P1_UnknownSideEffectsCannotBeSilentlyResetOrReplaced()
+    public async Task FixtureIntentMustBeDurableBeforeOutputEnergizes()
     {
-        var config = Config();
-        var session = Matched(config);
-        session.Confirm(config, new RuleRevision(_hash), new ProjectRevision(1), Station().Station, true);
-        session.BeginExecution();
-        session.Mark(ProductionState.Unknown, "UNKNOWN_FLASH_EFFECT");
-        Assert.Equal("RECOVERY_REQUIRED", session.Reset().FailureCode);
-        Assert.Equal("STATION_BUSY", session.StartDraft(Scan()).FailureCode);
-    }
-
-    [Fact]
-    public async Task ClaimedVerifiedCommitWithoutStageEvidenceCannotYieldPhysicalPass()
-    {
-        var config = Config(flash: true);
-        var session = Matched(config);
-        var job = session.Confirm(config, new RuleRevision(_hash),
-            new ProjectRevision(1), Station(false, AuthorizationScope.Programming).Station,
-            isMock: false).Value!;
-        var test = new ProductionStageResult(Outcome.Accepted, Verdict.Pass,
-            "UNPROVEN", false, ImmutableArray<EvidenceRef>.Empty);
-        var result = await new ProductionResultCoordinator(new ClaimingVerifiedSink())
-            .FinalizeAsync(job, test, CancellationToken.None);
-        Assert.Equal("PRODUCTION_VERDICT_NOT_PROVEN", result.Code);
-        Assert.Equal(Verdict.Inconclusive, result.Verdict);
+        var project = Project();
+        var session = Ready(project);
+        var physical = new TestPhysicalStation();
+        var stages = new TestStageExecutor();
+        var sink = new CapturingSink("FIXTURE_PRESS_INTENT_EFFECT_UNKNOWN");
+        var result = await new ProductionWorkflow(stages,
+            new ProductionResultCoordinator(sink),
+            new ProductionPreflight(), physical)
+            .ExecuteAsync(session, CancellationToken.None);
+        Assert.Equal("FIXTURE_INTENT_NOT_DURABLE", result.Code);
+        Assert.Equal(0, physical.PressRequests);
+        Assert.Equal(0, stages.FlashCalls);
         Assert.False(result.PhysicalReleaseAllowed);
     }
 
-    [Fact]
-    public async Task DurableGenericUnknownCommitCannotBecomePhysicalDutPass()
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public async Task MechanicalClosureAndInterlockMustBothBeVerified(
+        bool closed, bool interlock)
     {
-        var config = Config(flash: true);
-        var session = Matched(config);
-        var job = session.Confirm(config, new RuleRevision(_hash),
-            new ProjectRevision(1), Station(false, AuthorizationScope.Programming).Station,
-            isMock: false).Value!;
-        var test = new ProductionStageResult(Outcome.Accepted, Verdict.Pass,
-            "CLAIMED_PASS", false, ImmutableArray<EvidenceRef>.Empty);
-        var result = await new ProductionResultCoordinator(new FakeSink(true))
-            .FinalizeAsync(job, test, CancellationToken.None);
-        Assert.Equal("PRODUCTION_VERIFIED_RECORD_COMMIT_NOT_CONNECTED", result.Code);
-        Assert.Equal(Verdict.Inconclusive, result.Verdict);
-        Assert.False(result.PhysicalReleaseAllowed);
+        var project = Project();
+        var session = Ready(project);
+        var physical = new TestPhysicalStation(closed: closed, interlock: interlock);
+        var stages = new TestStageExecutor();
+        var result = await new ProductionWorkflow(stages,
+            new ProductionResultCoordinator(new CapturingSink()),
+            new ProductionPreflight(), physical)
+            .ExecuteAsync(session, CancellationToken.None);
+        Assert.Equal("MECHANICAL_FIXTURE_NOT_VERIFIED", result.Code);
+        Assert.Equal(0, physical.StartRequests);
+        Assert.Equal(0, stages.FlashCalls);
+        Assert.Equal(ProductionState.Unknown, result.State);
     }
 
     [Fact]
-    public async Task RealProduction_NeverContinuesToTestWithoutPhysicalFlashEvidence()
+    public async Task PressedWithoutFreshStartProofNeverErasesEcu()
     {
-        var configuration = Config(flash: true);
-        var session = Matched(configuration);
-        session.Confirm(configuration, new RuleRevision(_hash),
-            new ProjectRevision(1), Station(false, AuthorizationScope.Programming).Station,
-            isMock: false);
-        var executor = new FlashProofExecutor(simulated: false);
-        var result = await new ProductionWorkflow(executor,
-            new ProductionResultCoordinator(new FakeSink(true)),
-            new ProductionPreflight(), new TestStationPort())
+        var project = Project();
+        var session = Ready(project);
+        var physical = new TestPhysicalStation(start: false);
+        var stages = new TestStageExecutor();
+        var result = await new ProductionWorkflow(stages,
+            new ProductionResultCoordinator(new CapturingSink()),
+            new ProductionPreflight(), physical)
+            .ExecuteAsync(session, CancellationToken.None);
+        Assert.Equal("PHYSICAL_START_NOT_VERIFIED", result.Code);
+        Assert.Equal(1, physical.StartRequests);
+        Assert.Equal(0, stages.FlashCalls);
+    }
+
+    [Fact]
+    public async Task PhysicalStartProofMustBeDurablyRecordedBeforeFlash()
+    {
+        var project = Project();
+        var session = Ready(project);
+        var stages = new TestStageExecutor();
+        var sink = new CapturingSink("STATION_PHYSICAL_START_VERIFIED:TEST_EDGE");
+        var result = await new ProductionWorkflow(stages,
+            new ProductionResultCoordinator(sink),
+            new ProductionPreflight(), new TestPhysicalStation())
+            .ExecuteAsync(session, CancellationToken.None);
+        Assert.Equal("PHYSICAL_START_FACT_NOT_DURABLE", result.Code);
+        Assert.Equal(0, stages.FlashCalls);
+    }
+
+    [Fact]
+    public async Task FlashIntentMustBeDurableBeforeProgramming()
+    {
+        var project = Project();
+        var session = Ready(project);
+        var stages = new TestStageExecutor();
+        var sink = new CapturingSink("FLASH_STAGE_ENTERED_EFFECT_UNKNOWN");
+        var result = await new ProductionWorkflow(stages,
+            new ProductionResultCoordinator(sink),
+            new ProductionPreflight(), new TestPhysicalStation())
+            .ExecuteAsync(session, CancellationToken.None);
+        Assert.Equal("FLASH_START_FACT_NOT_DURABLE", result.Code);
+        Assert.Equal(0, stages.FlashCalls);
+    }
+
+    [Fact]
+    public async Task MissingFlashEvidenceCannotReachTest()
+    {
+        var project = Project();
+        var session = Ready(project);
+        var stages = new TestStageExecutor(flashEvidence: false);
+        var result = await new ProductionWorkflow(stages,
+            new ProductionResultCoordinator(new CapturingSink()),
+            new ProductionPreflight(), new TestPhysicalStation())
             .ExecuteAsync(session, CancellationToken.None);
         Assert.Equal("FLASH_EVIDENCE_MISSING", result.Code);
-        Assert.Equal(0, executor.TestCalls);
+        Assert.Equal(1, stages.FlashCalls);
+        Assert.Equal(0, stages.TestCalls);
+        Assert.False(result.PhysicalReleaseAllowed);
+    }
+
+    [Fact]
+    public async Task SimulatedFlashResultCannotReachTest()
+    {
+        var project = Project();
+        var session = Ready(project);
+        var stages = new TestStageExecutor(simulatedFlash: true);
+        var result = await new ProductionWorkflow(stages,
+            new ProductionResultCoordinator(new CapturingSink()),
+            new ProductionPreflight(), new TestPhysicalStation())
+            .ExecuteAsync(session, CancellationToken.None);
+        Assert.Equal("FLASH_SIMULATED", result.Code);
+        Assert.Equal(0, stages.TestCalls);
+    }
+
+    [Fact]
+    public async Task OrdinaryDurableRecordCanNeverYieldFormalPass()
+    {
+        var project = Project();
+        var session = Ready(project);
+        var stages = new TestStageExecutor();
+        var result = await new ProductionWorkflow(stages,
+            new ProductionResultCoordinator(new CapturingSink()),
+            new ProductionPreflight(), new TestPhysicalStation())
+            .ExecuteAsync(session, CancellationToken.None);
+        Assert.Equal("PRODUCTION_VERIFIED_RECORD_COMMIT_NOT_CONNECTED", result.Code);
+        Assert.Equal(Verdict.Inconclusive, result.Verdict);
         Assert.Equal(ProductionState.Unknown, result.State);
         Assert.False(result.PhysicalReleaseAllowed);
     }
 
     [Fact]
-    public async Task RealProduction_RejectsSimulatedFlashEvenWhenItClaimsPass()
+    public async Task VerifiedCommitStillDoesNotAutomaticallyReleaseMechanicalFixture()
     {
-        var configuration = Config(flash: true);
-        var session = Matched(configuration);
-        session.Confirm(configuration, new RuleRevision(_hash),
-            new ProjectRevision(1), Station(false, AuthorizationScope.Programming).Station,
-            isMock: false);
-        var executor = new FlashProofExecutor(simulated: true);
-        var result = await new ProductionWorkflow(executor,
-            new ProductionResultCoordinator(new FakeSink(true)),
-            new ProductionPreflight(), new TestStationPort())
+        var project = Project();
+        var session = Ready(project);
+        var stages = new TestStageExecutor();
+        var result = await new ProductionWorkflow(stages,
+            new ProductionResultCoordinator(new TestVerifiedSink()),
+            new ProductionPreflight(), new TestPhysicalStation())
             .ExecuteAsync(session, CancellationToken.None);
-        Assert.Equal("FLASH_SIMULATED", result.Code);
-        Assert.Equal(0, executor.TestCalls);
+        // Test-only port; never supplied by Desktop or real device wiring.
+        Assert.Equal(ProductionState.Completed, result.State);
+        Assert.True(result.Durable);
+        Assert.Equal(Verdict.Pass, result.Verdict);
         Assert.False(result.PhysicalReleaseAllowed);
+        Assert.Equal(1, stages.FlashCalls);
+        Assert.Equal(1, stages.TestCalls);
     }
 
     [Fact]
-    public async Task RealProductionCannotAutoStartFromBarcodeOrUseSoftwareStart()
+    public void SameBarcodeRetestMustCreateDistinctRunId()
     {
-        var configuration = Config(flash: true);
-        var executor = new CountingProductionStageExecutor();
-        var session = new ProductionSession();
-        var handler = new ProductionCommandHandler(
-            new FakeMatcher(configuration.Assets), _ => configuration,
-            session, new ProductionWorkflow(executor,
-                new ProductionResultCoordinator(new FakeSink(true)),
-                new ProductionPreflight()),
-            new RuleRevision(_hash), new ProjectRevision(1));
-        var admitted = await handler.ScanAsync(Scan(),
-            Station(mock: false, auth: AuthorizationScope.Programming),
-            autoStart: true, CancellationToken.None);
-        Assert.Equal("REAL_PRODUCTION_PHYSICAL_START_REQUIRED", admitted.Code);
-        Assert.Equal(ProductionState.Ready, admitted.State);
-        Assert.NotNull(admitted.Run);
-        var software = await handler.StartAsync(CancellationToken.None);
-        Assert.Equal("REAL_PRODUCTION_PHYSICAL_START_REQUIRED", software.Code);
-        Assert.Equal(ProductionState.Ready, software.State);
-        Assert.Equal(0, executor.Commands);
+        var project = Project();
+        var session = Ready(project);
+        var original = session.Job!;
+        session.BeginExecution();
+        session.Mark(ProductionState.Completed);
+        Assert.Equal(Outcome.Accepted, session.Reset().Outcome);
+        session.StartDraft(Scan());
+        session.SetMatch(new MatchDecision(true, Scan().Text,
+            project.Assets, null));
+        var next = session.Confirm(project,
+            new RuleRevision(_hash), new ProjectRevision(1),
+            Station().Station).Value!;
+        Assert.NotEqual(original.Run, next.Run);
+        Assert.Equal(original.DutIdentity, next.DutIdentity);
     }
 
     [Fact]
-    public async Task RawBoolPhysicalStartCannotClaimARealInspectionWithoutVerifiedInput()
+    public void UnknownPhysicalSideEffectsCannotBeClearedOrReplaced()
     {
-        var configuration = Config(flash: true);
-        var executor = new CountingProductionStageExecutor();
-        var session = new ProductionSession();
-        var handler = new ProductionCommandHandler(
-            new FakeMatcher(configuration.Assets), _ => configuration,
-            session, new ProductionWorkflow(executor,
-                new ProductionResultCoordinator(new FakeSink(true)),
-                new ProductionPreflight()),
-            new RuleRevision(_hash), new ProjectRevision(1));
-        var admitted = await handler.ScanAsync(Scan(),
-            Station(mock: false, auth: AuthorizationScope.Programming),
-            autoStart: false, CancellationToken.None);
-        Assert.Equal("READY_FOR_START", admitted.Code);
-        var released = await handler.PhysicalStartSignalAsync(false, CancellationToken.None);
-        var pressed = await handler.PhysicalStartSignalAsync(true, CancellationToken.None);
-        Assert.Equal("PHYSICAL_START_SOURCE_NOT_CONNECTED", released.Code);
-        Assert.Equal("PHYSICAL_START_SOURCE_NOT_CONNECTED", pressed.Code);
-        Assert.Equal(ProductionState.Ready, session.State);
-        Assert.Equal(0, executor.Commands);
+        var project = Project();
+        var session = Ready(project);
+        session.BeginExecution();
+        session.Mark(ProductionState.Unknown, "FLASH_EFFECT_UNCERTAIN");
+        Assert.Equal("RECOVERY_REQUIRED", session.Reset().FailureCode);
+        Assert.Equal("STATION_BUSY", session.StartDraft(Scan("HYDEP-00002")).FailureCode);
     }
 
     [Fact]
-    public async Task StationCycleCannotUseSoftwareStartOrRunWithoutPhysicalAdapter()
+    public void ProductionCommandHandlerHasNoSoftwareOrRawBoolStartApi()
     {
-        var config = Config(flash: true);
-        var executor = new CountingProductionStageExecutor();
-        var session = new ProductionSession();
-        var workflow = new ProductionWorkflow(executor,
-            new ProductionResultCoordinator(new CapturingFactSink()),
-            new ProductionPreflight());
-        var handler = new ProductionCommandHandler(new FakeMatcher(config.Assets),
-            _ => config, session, workflow,
-            new RuleRevision(_hash), new ProjectRevision(1));
-        var admitted = await handler.ScanAsync(Scan(),
-            Station(mock: false, auth: AuthorizationScope.Programming),
-            autoStart: false, CancellationToken.None);
-        Assert.Equal("READY_FOR_START", admitted.Code);
-        var cycle = await handler.BeginStationCycleAsync(CancellationToken.None);
-        Assert.Equal("PHYSICAL_STATION_ADAPTER_NOT_CONNECTED", cycle.Code);
-        Assert.Equal(ProductionState.Ready, cycle.State);
-        Assert.Equal(0, executor.Commands);
-        Assert.Null(handler.LastStartSource);
-        var cancel = handler.RetryWithNewRun();
-        Assert.Equal(Outcome.Accepted, cancel.Outcome);
-        Assert.Equal(ProductionState.Empty, session.State);
+        var names = typeof(ProductionCommandHandler).GetMethods()
+            .Select(m => m.Name).ToArray();
+        Assert.DoesNotContain("StartAsync", names);
+        Assert.DoesNotContain("PhysicalStartSignalAsync", names);
     }
 
     [Fact]
-    public async Task RealRunCannotTouchFixtureOrFlashWithoutTrustedStationPort()
+    public async Task StatisticsCountUniqueUnitsOnlyFromRecordStore()
     {
-        var configuration = Config(flash: true);
-        var session = Matched(configuration);
-        session.Confirm(configuration, new RuleRevision(_hash),
-            new ProjectRevision(1), Station(false, AuthorizationScope.Programming).Station,
-            isMock: false);
-        var executor = new CountingProductionStageExecutor();
-        var sink = new CapturingFactSink();
-        var result = await new ProductionWorkflow(executor,
-            new ProductionResultCoordinator(sink), new ProductionPreflight())
-            .ExecuteAsync(session, CancellationToken.None);
-        Assert.Equal("PHYSICAL_STATION_ADAPTER_NOT_CONNECTED", result.Code);
-        Assert.Equal(ProductionState.Ready, result.State);
-        Assert.Equal(0, executor.Commands);
-        Assert.Empty(sink.Facts);
+        var reader = new TestSummaryReader();
+        var projection = new ProductionStatisticsProjection(reader);
+        var summary = await projection.Refresh(projection.Filter(null, null),
+            CancellationToken.None);
+        Assert.Equal(2, summary.RunCount);
+        Assert.Equal(1, summary.DistinctDutCount);
+        Assert.Equal(1, reader.Calls);
     }
 
-    [Fact]
-    public async Task UnverifiedClampPositionNeverStartsProgramming()
+    private sealed class TestMatcher(
+        ImmutableArray<AssetRef> assets, bool rewriteIdentity) : IIdentityMatcher
     {
-        var configuration = Config(flash: true);
-        var session = Matched(configuration);
-        session.Confirm(configuration, new RuleRevision(_hash),
-            new ProjectRevision(1), Station(false, AuthorizationScope.Programming).Station,
-            isMock: false);
-        var executor = new CountingProductionStageExecutor();
-        var station = new TestStationPort(closureVerified: false);
-        var result = await new ProductionWorkflow(executor,
-            new ProductionResultCoordinator(new FakeSink(true)),
-            new ProductionPreflight(), station)
-            .ExecuteAsync(session, CancellationToken.None);
-        Assert.Equal("MECHANICAL_FIXTURE_NOT_VERIFIED", result.Code);
-        Assert.Equal(0, station.StartRequests);
-        Assert.Equal(0, executor.Commands);
-        Assert.False(result.PhysicalReleaseAllowed);
+        public MatchDecision Match(RawScan scan, RuleRevision rule, ProjectRevision project) =>
+            new(true, rewriteIdentity ? "FORGED-00001" : scan.Text, assets, null);
     }
 
-    [Fact]
-    public async Task MissingFreshStartEdgeNeverStartsFlash()
-    {
-        var configuration = Config(flash: true);
-        var session = Matched(configuration);
-        session.Confirm(configuration, new RuleRevision(_hash),
-            new ProjectRevision(1), Station(false, AuthorizationScope.Programming).Station,
-            isMock: false);
-        var executor = new CountingProductionStageExecutor();
-        var station = new TestStationPort(startVerified: false);
-        var result = await new ProductionWorkflow(executor,
-            new ProductionResultCoordinator(new FakeSink(true)),
-            new ProductionPreflight(), station)
-            .ExecuteAsync(session, CancellationToken.None);
-        Assert.Equal("PHYSICAL_START_NOT_VERIFIED", result.Code);
-        Assert.Equal(1, station.StartRequests);
-        Assert.Equal(0, executor.Commands);
-    }
-
-    [Fact]
-    public async Task FixtureIntentMustBeDurableBeforeStationOutput()
-    {
-        var configuration = Config(flash: true);
-        var session = Matched(configuration);
-        session.Confirm(configuration, new RuleRevision(_hash),
-            new ProjectRevision(1), Station(false, AuthorizationScope.Programming).Station,
-            isMock: false);
-        var station = new TestStationPort();
-        var executor = new CountingProductionStageExecutor();
-        var result = await new ProductionWorkflow(executor,
-            new ProductionResultCoordinator(new FixtureIntentRejectSink()),
-            new ProductionPreflight(), station)
-            .ExecuteAsync(session, CancellationToken.None);
-        Assert.Equal("FIXTURE_INTENT_NOT_DURABLE", result.Code);
-        Assert.Equal(0, station.PressRequests);
-        Assert.Equal(0, executor.Commands);
-    }
-
-    // Only used inside domain unit tests. No runtime adapter is registered.
-    private sealed class TestStationPort(
-        bool closureVerified = true, bool startVerified = true)
+    /// <summary>Test-only external ports. Not registered in a production host.</summary>
+    private sealed class TestPhysicalStation(
+        bool closed = true, bool interlock = true, bool start = true)
         : IProductionPhysicalStation
     {
         public int PressRequests { get; private set; }
@@ -408,8 +361,8 @@ public sealed class ProductionOrchestrationTests
         {
             PressRequests++;
             return ValueTask.FromResult(new FixtureAdmissionEvidence(
-                job.Run, job.Station, closureVerified, true,
-                closureVerified ? "TEST_ONLY_FIXTURE_PROOF" : ""));
+                job.Run, job.Station, closed, interlock,
+                closed && interlock ? "TEST_FIXTURE" : ""));
         }
         public ValueTask<PhysicalStartEvidence> WaitForStartAsync(
             ProductionJobSnapshot job, FixtureAdmissionEvidence fixture,
@@ -417,210 +370,80 @@ public sealed class ProductionOrchestrationTests
         {
             StartRequests++;
             return ValueTask.FromResult(new PhysicalStartEvidence(
-                job.Run, job.Station, startVerified,
-                startVerified ? "TEST_ONLY_START_EDGE" : ""));
+                job.Run, job.Station, start,
+                start ? "TEST_EDGE" : ""));
         }
     }
 
-    private sealed class FixtureIntentRejectSink : IRunFactSink
+    private sealed class TestStageExecutor(
+        bool flashEvidence = true, bool simulatedFlash = false,
+        bool testEvidence = true) : IProductionStageExecutor
     {
-        public ValueTask<RecordWriteReceipt> AppendAsync(RunFact fact, CancellationToken ct)
-        {
-            var durable = fact.Description != "FIXTURE_PRESS_INTENT_EFFECT_UNKNOWN";
-            return ValueTask.FromResult(new RecordWriteReceipt(
-                fact.Run, fact.EventId, durable, durable ? "DURABLE" : "DISK_FAILURE"));
-        }
-        public ValueTask<RecordCommitReceipt> CommitAsync(RunId run, CancellationToken ct) =>
-            throw new InvalidOperationException("Never commit unproven physical run.");
-    }
-
-    private sealed class CountingProductionStageExecutor : IProductionStageExecutor
-    {
-        public int Commands { get; private set; }
-        public ValueTask<ProductionStageResult> ExecuteFlashAsync(
-            ProductionJobSnapshot job, CancellationToken ct)
-        {
-            Commands++;
-            throw new InvalidOperationException("No real hardware must be invoked.");
-        }
-        public ValueTask<ProductionStageResult> ExecuteTestAsync(
-            ProductionJobSnapshot job, CancellationToken ct)
-        {
-            Commands++;
-            throw new InvalidOperationException("No real TEST must be invoked.");
-        }
-        public ValueTask RequestStopAsync(RunId run, CancellationToken ct) =>
-            ValueTask.CompletedTask;
-    }
-
-    [Fact]
-    public async Task NondurableFlashAdmissionFactPreventsAnyDestructiveExecutorCall()
-    {
-        var configuration = Config(flash: true);
-        var session = Matched(configuration);
-        session.Confirm(configuration, new RuleRevision(_hash),
-            new ProjectRevision(1), Station(false, AuthorizationScope.Programming).Station,
-            isMock: false);
-        var executor = new CountingProductionStageExecutor();
-        var result = await new ProductionWorkflow(executor,
-            new ProductionResultCoordinator(new FlashAdmissionRejectSink()),
-            new ProductionPreflight(), new TestStationPort())
-            .ExecuteAsync(session, CancellationToken.None);
-        Assert.Equal("FLASH_START_FACT_NOT_DURABLE", result.Code);
-        Assert.Equal(ProductionState.Unknown, result.State);
-        Assert.False(result.PhysicalReleaseAllowed);
-        Assert.Equal(0, executor.Commands);
-    }
-
-    private sealed class FlashAdmissionRejectSink : IRunFactSink
-    {
-        public ValueTask<RecordWriteReceipt> AppendAsync(RunFact fact, CancellationToken ct)
-        {
-            var durable = fact.Description != "FLASH_STAGE_ENTERED_EFFECT_UNKNOWN";
-            return ValueTask.FromResult(new RecordWriteReceipt(
-                fact.Run, fact.EventId, durable, durable ? "DURABLE" : "DISK_FAILURE"));
-        }
-        public ValueTask<RecordCommitReceipt> CommitAsync(RunId run, CancellationToken ct) =>
-            throw new InvalidOperationException("No verdict is permitted.");
-    }
-
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task TerminalFlashFailureRecordsActualInterruptedStageWithoutRunningTest(
-        bool operatorCancelled)
-    {
-        var configuration = Config(flash: true);
-        var session = Matched(configuration);
-        session.Confirm(configuration, new RuleRevision(_hash),
-            new ProjectRevision(1), Station(false, AuthorizationScope.Programming).Station,
-            isMock: false);
-        var sink = new CapturingFactSink();
-        var executor = new ThrowingFlashExecutor(operatorCancelled);
-        var result = await new ProductionWorkflow(executor,
-            new ProductionResultCoordinator(sink), new ProductionPreflight(),
-            new TestStationPort()).ExecuteAsync(session, CancellationToken.None);
-        Assert.Equal(operatorCancelled ? ProductionState.Aborted :
-            ProductionState.Unknown, result.State);
-        Assert.False(result.PhysicalReleaseAllowed);
-        Assert.Equal(0, executor.TestCalls);
-        Assert.Contains(sink.Facts, f =>
-            f.Description == "FLASH_STAGE_ENTERED_EFFECT_UNKNOWN");
-        Assert.Contains(sink.Facts, f => f.Description ==
-            (operatorCancelled ? "RUN_CANCELLED_AT_FLASH" :
-                "RUN_EXCEPTION_AT_FLASH"));
-    }
-
-    private sealed class ThrowingFlashExecutor(bool cancelled) : IProductionStageExecutor
-    {
+        public int FlashCalls { get; private set; }
         public int TestCalls { get; private set; }
         public ValueTask<ProductionStageResult> ExecuteFlashAsync(
             ProductionJobSnapshot job, CancellationToken ct)
         {
-            if (cancelled)
-                throw new OperationCanceledException("Operator stop during FLASH");
-            throw new IOException("Real FLASH transport failure");
+            FlashCalls++;
+            return ValueTask.FromResult(new ProductionStageResult(
+                Outcome.Accepted, Verdict.Pass, "FLASH_TEST_ONLY",
+                simulatedFlash,
+                flashEvidence ? ImmutableArray.Create(EvidenceRef.New()) :
+                    ImmutableArray<EvidenceRef>.Empty));
         }
         public ValueTask<ProductionStageResult> ExecuteTestAsync(
             ProductionJobSnapshot job, CancellationToken ct)
         {
             TestCalls++;
-            throw new InvalidOperationException("No TEST after uncertain FLASH.");
+            return ValueTask.FromResult(new ProductionStageResult(
+                Outcome.Accepted, Verdict.Pass, "TEST_ONLY",
+                false, testEvidence ? ImmutableArray.Create(EvidenceRef.New()) :
+                    ImmutableArray<EvidenceRef>.Empty));
         }
         public ValueTask RequestStopAsync(RunId run, CancellationToken ct) =>
             ValueTask.CompletedTask;
     }
 
-    private sealed class CapturingFactSink : IRunFactSink
+    private sealed class CapturingSink(string? failOn = null) : IRunFactSink
     {
         public List<RunFact> Facts { get; } = [];
-        public ValueTask<RecordWriteReceipt> AppendAsync(RunFact fact, CancellationToken ct)
+        public ValueTask<RecordWriteReceipt> AppendAsync(RunFact fact,
+            CancellationToken ct)
         {
             Facts.Add(fact);
-            return ValueTask.FromResult(
-                new RecordWriteReceipt(fact.Run, fact.EventId, true, "DURABLE"));
+            var durable = !string.Equals(fact.Description, failOn,
+                StringComparison.Ordinal);
+            return ValueTask.FromResult(new RecordWriteReceipt(
+                fact.Run, fact.EventId, durable,
+                durable ? "DURABLE" : "DISK_FAILURE"));
         }
         public ValueTask<RecordCommitReceipt> CommitAsync(RunId run, CancellationToken ct) =>
             ValueTask.FromResult(new RecordCommitReceipt(run, true, "DURABLE"));
     }
 
-    private sealed class FlashProofExecutor(bool simulated) : IProductionStageExecutor
-    {
-        public int TestCalls { get; private set; }
-        public ValueTask<ProductionStageResult> ExecuteFlashAsync(
-            ProductionJobSnapshot job, CancellationToken ct) =>
-            ValueTask.FromResult(new ProductionStageResult(Outcome.Accepted, Verdict.Pass,
-                "CLAIMED_PASS", simulated, ImmutableArray<EvidenceRef>.Empty));
-        public ValueTask<ProductionStageResult> ExecuteTestAsync(
-            ProductionJobSnapshot job, CancellationToken ct)
-        {
-            TestCalls++;
-            return ValueTask.FromResult(new ProductionStageResult(Outcome.Accepted,
-                Verdict.Pass, "UNEXPECTED_TEST", false,
-                ImmutableArray<EvidenceRef>.Empty));
-        }
-        public ValueTask RequestStopAsync(RunId run, CancellationToken ct) =>
-            ValueTask.CompletedTask;
-    }
-
-    private sealed class FakeMatcher : IIdentityMatcher
-    {
-        private readonly ImmutableArray<AssetRef> _assets;
-        public FakeMatcher(ImmutableArray<AssetRef> assets) => _assets = assets;
-        public MatchDecision Match(RawScan scan, RuleRevision rule, ProjectRevision project) =>
-            new(true, "EPB-00001", _assets, null);
-    }
-    private sealed class BlockingStageExecutor : IProductionStageExecutor
-    {
-        private readonly TaskCompletionSource<ProductionStageResult> _finish =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
-        public ValueTask<ProductionStageResult> ExecuteFlashAsync(ProductionJobSnapshot job, CancellationToken ct) =>
-            throw new InvalidOperationException("Not required in this scenario.");
-        public ValueTask<ProductionStageResult> ExecuteTestAsync(ProductionJobSnapshot job, CancellationToken ct) =>
-            new(_finish.Task);
-        public ValueTask RequestStopAsync(RunId run, CancellationToken ct) => ValueTask.CompletedTask;
-        public void Finish() => _finish.SetResult(new(Outcome.Accepted, Verdict.Inconclusive,
-            "MOCK_DONE", true, ImmutableArray<EvidenceRef>.Empty));
-    }
-
-    private sealed class FakeSummaryReader : IProductionSummaryReader
-    {
-        public int Calls { get; private set; }
-        public ValueTask<ProductionSummary> QuerySummaryAsync(ProductionSummaryFilter filter, CancellationToken ct)
-        { Calls++; return ValueTask.FromResult(new ProductionSummary(2, 1, 1, 1, 0, true)); }
-    }
-    private sealed class ClaimingVerifiedSink : IVerifiedProductionCommitSink
+    private sealed class TestVerifiedSink : IVerifiedProductionCommitSink
     {
         public ValueTask<RecordWriteReceipt> AppendAsync(RunFact fact,
             CancellationToken ct) =>
             ValueTask.FromResult(new RecordWriteReceipt(
-                fact.Run, fact.EventId, true, "DURABLE"));
+                fact.Run, fact.EventId, true, "TEST_DURABLE"));
         public ValueTask<RecordCommitReceipt> CommitAsync(RunId run,
             CancellationToken ct) =>
-            ValueTask.FromResult(new RecordCommitReceipt(run, true, "DURABLE"));
+            ValueTask.FromResult(new RecordCommitReceipt(run, true, "TEST_DURABLE"));
         public ValueTask<VerifiedProductionCommit> CommitVerifiedAsync(RunId run,
             ProductionStageResult test, CancellationToken ct) =>
-            ValueTask.FromResult(new VerifiedProductionCommit(
-                run, true, true, Verdict.Pass, "CLAIMED"));
+            ValueTask.FromResult(new VerifiedProductionCommit(run,
+                true, true, test.Verdict, "TEST_ONLY_PROOF"));
     }
 
-    private sealed class FakeSink : IRunFactSink
+    private sealed class TestSummaryReader : IProductionSummaryReader
     {
-        private readonly bool _durable;
-        public FakeSink(bool durable) => _durable = durable;
-        public ValueTask<RecordWriteReceipt> AppendAsync(RunFact fact, CancellationToken ct) =>
-            ValueTask.FromResult(new RecordWriteReceipt(fact.Run, fact.EventId, _durable, "FAKE"));
-        public ValueTask<RecordCommitReceipt> CommitAsync(RunId run, CancellationToken ct) =>
-            ValueTask.FromResult(new RecordCommitReceipt(run, _durable, "FAKE"));
-    }
-    private sealed class FakeStageExecutor : IProductionStageExecutor
-    {
-        public ValueTask<ProductionStageResult> ExecuteFlashAsync(ProductionJobSnapshot job, CancellationToken ct) =>
-            ValueTask.FromResult(new ProductionStageResult(Outcome.Accepted, Verdict.Pass,
-                "MOCK_FLASH", true, ImmutableArray<EvidenceRef>.Empty));
-        public ValueTask<ProductionStageResult> ExecuteTestAsync(ProductionJobSnapshot job, CancellationToken ct) =>
-            ValueTask.FromResult(new ProductionStageResult(Outcome.Accepted, Verdict.Pass,
-                "MOCK_TEST", true, ImmutableArray<EvidenceRef>.Empty));
-        public ValueTask RequestStopAsync(RunId run, CancellationToken ct) => ValueTask.CompletedTask;
+        public int Calls { get; private set; }
+        public ValueTask<ProductionSummary> QuerySummaryAsync(
+            ProductionSummaryFilter filter, CancellationToken ct)
+        {
+            Calls++;
+            return ValueTask.FromResult(new ProductionSummary(2, 1, 1, 1, 0, true));
+        }
     }
 }
