@@ -652,6 +652,8 @@ public sealed partial class ProjectWorkspaceService
     /// <summary>Create this ECU project's only active DBC directly in AutoTest.</summary>
     public Task<AssetEntry> CreateDbcAsync(string name, CancellationToken ct = default)
     {
+        name = name.EndsWith(".dbc", StringComparison.OrdinalIgnoreCase)
+            ? name[..^4] : name;
         ValidateResourceName(name);
         var empty = DbcParserAdapter.Export(DbcDatabase.Create(name));
         _ = DbcWorkbenchDocument.Import(name, empty);
