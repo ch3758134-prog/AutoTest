@@ -104,6 +104,9 @@ uint8_t EAL_GPIO_KeyPopEvent(EAL_GPIO_KeyEventType *event)
         if ((ready & bit) == 0U)
             continue;
         value = (uint8_t)((KeyRawLevels() >> i) & 1U);
+        /* 取 ready 之后又发生新边沿，必须重新等待消抖，不能提前上报。 */
+        if ((s_keyPending & bit) != 0U)
+            continue;
         if (((s_keyStableLevels >> i) & 1U) == value)
             continue; /* 机械抖动后回到原状态，不产生额外按键事件。 */
 
