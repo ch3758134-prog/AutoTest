@@ -19,7 +19,7 @@ public partial class ProductionPreparationWindow : Window
     private readonly Func<string> _hardwareStatus;
     private readonly Action _configurationChanged;
     private readonly DispatcherTimer _autosave;
-    private StationProductionConfiguration _draft = StationProductionConfiguration.New();
+    private StationDeviceConfiguration _draft = StationDeviceConfiguration.New();
     private bool _ready;
     private bool _dirty;
     private bool _busy;
@@ -90,7 +90,7 @@ public partial class ProductionPreparationWindow : Window
         _ready = false;
         try
         {
-            _draft = await StationProductionConfigurationStore.LoadDraftAsync();
+            _draft = await StationDeviceConfigurationStore.LoadAsync();
             var fixture = _draft.Fixture;
             AutoClamp.IsChecked = fixture.AutoClampEnabled;
             Clamp1.IsChecked = fixture.UseClamp1;
@@ -143,7 +143,7 @@ public partial class ProductionPreparationWindow : Window
                 : "自动夹具已设置。机械是否到位仍须由可信反馈或现场检查确认。";
     }
 
-    private StationProductionConfiguration CaptureDraft()
+    private StationDeviceConfiguration CaptureDraft()
     {
         if (!int.TryParse(SettleDelayInput.Text, out var delay) ||
             delay is < 0 or > 30000)
@@ -175,7 +175,7 @@ public partial class ProductionPreparationWindow : Window
             Say("工位正在执行设备操作，请完成后再修改设置。");
             return false;
         }
-        StationProductionConfiguration next;
+        StationDeviceConfiguration next;
         try { next = CaptureDraft(); }
         catch (Exception error) when (error is ArgumentException or InvalidDataException)
         {
@@ -186,7 +186,7 @@ public partial class ProductionPreparationWindow : Window
         _busy = true;
         try
         {
-            await StationProductionConfigurationStore.SaveDraftAsync(next);
+            await StationDeviceConfigurationStore.SaveAsync(next);
             _draft = next;
             _configurationChanged();
             _dirty = generation != _editGeneration;
@@ -211,7 +211,7 @@ public partial class ProductionPreparationWindow : Window
         if (_ready || !_mayEdit()) return;
         try
         {
-            await StationProductionConfigurationStore.ResetUnreadableDraftAsync();
+            await StationDeviceConfigurationStore.ResetUnreadableAsync();
             await LoadAsync();
             if (_ready) Say("已重新设置，原文件已备份。请核对实际接线。");
         }
