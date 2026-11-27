@@ -52,6 +52,7 @@ public sealed partial class MainWindowViewModel
     public DelegateCommand NavigateProductionPreparationCommand { get; private set; } = null!;
     private ProductionPreparationWindow? _productionPreparationWindow;
     private ProductionProjectLibraryWindow? _productionLibraryWindow;
+    private string? _preferredProductionVersionSha;
     private readonly ProductionProjectCatalog _productionCatalog = new();
     public DelegateCommand OpenProductionProjectLibraryCommand { get; private set; } = null!;
 
@@ -102,6 +103,11 @@ public sealed partial class MainWindowViewModel
     {
         if (_productionLibraryWindow is { IsVisible: true } opened)
         {
+            if (_preferredProductionVersionSha is { } preferred)
+            {
+                opened.PreferPackage(preferred);
+                _preferredProductionVersionSha = null;
+            }
             if (opened.WindowState == WindowState.Minimized)
                 opened.WindowState = WindowState.Normal;
             opened.Activate();
@@ -117,8 +123,10 @@ public sealed partial class MainWindowViewModel
                   !_hardware.IsManualCanBatchApproved &&
                   !_hardware.IsManualKeyActionApproved,
             () => IsEngineerWorkspace,
-            () => _automaticTestHome.OnPublishedConfigurationChanged())
+            () => _automaticTestHome.OnPublishedConfigurationChanged(),
+            _preferredProductionVersionSha)
         { Owner = global::System.Windows.Application.Current?.MainWindow };
+        _preferredProductionVersionSha = null;
         _productionLibraryWindow = window;
         window.Closed += (_, _) =>
         {
@@ -336,7 +344,11 @@ public sealed partial class MainWindowViewModel
                 installed.ProjectName + "。请关联固定扫码标记。" +
                 "实体 START、夹具及 FLASH 仍需真实硬件验收。";
             await RefreshEngineeringSetupAsync();
-            if (!singleApply) OpenProductionProjectLibrary();
+            if (!singleApply)
+            {
+                _preferredProductionVersionSha = installed.PackageSha256;
+                OpenProductionProjectLibrary();
+            }
             return true;
         }
         catch (Exception error) when (error is IOException or InvalidDataException or
