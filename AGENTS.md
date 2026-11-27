@@ -14,6 +14,8 @@
 
 完整基准：[`HOST/docs/r1-ui-workbench/AUTOTEST_PRODUCT_ARCHITECTURE_RESET_20261127.md`](HOST/docs/r1-ui-workbench/AUTOTEST_PRODUCT_ARCHITECTURE_RESET_20261127.md)。
 
+**所有 UI/业务修改必须遵守完整用户任务合同**：[`HOST/docs/r1-ui-workbench/R1_USER_JOURNEYS_AND_SYSTEM_REBUILD_CONTRACT_20261127.md`](HOST/docs/r1-ui-workbench/R1_USER_JOURNEYS_AND_SYSTEM_REBUILD_CONTRACT_20261127.md)。不得因截图反馈仅逐点打补丁或复活已废弃的二级业务模型。
+
 - 四个工作区：生产检测、工程开发、专业工具、设备调试。Windows 离线、单 PC 单工位，浅色现代、高可读、自然的编辑和操作方式。
 - 一个 ECU 型号一份工程；工程只有一个有序 TEST 项目、一份当前 DBC、一份原生 FLASH/HEX，支持多个波形标准及公共流程。TEST、波形、DBC、FLASH 各有完整专业编辑/调试闭环。
 - **一个 TEST DSL 和一套真实解释/执行内核**。整个 TEST 项目连续运行，跨用例 CAN 周期发送、KEY_SIM 最后状态、IGN 和变量持续直到显式改变或项目收尾；工程局部调试只改变运行范围。
