@@ -191,7 +191,8 @@ public partial class TestEditorView : UserControl
     {
         if (ReferenceEquals(e.OriginalSource, StepPropertyOverlay))
         {
-            TryDismissPropertyEditor();
+            // Backdrop is not a Save/Cancel button. Keep the transaction open
+            // and avoid losing the current field focus or an invalid draft.
             e.Handled = true;
         }
     }
