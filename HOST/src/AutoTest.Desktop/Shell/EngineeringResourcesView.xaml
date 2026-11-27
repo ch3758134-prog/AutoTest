@@ -1,140 +1,126 @@
 <UserControl x:Class="AutoTest.Desktop.Shell.EngineeringResourcesView"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- FontFamily="{StaticResource UiFont}" Foreground="#243447"
- Background="#F7F9FC" FontSize="13">
+ FontFamily="{StaticResource UiFont}" Foreground="#26394A"
+ Background="#F8FAFD" FontSize="13">
  <UserControl.Resources>
-  <Style x:Key="ResourceCard" TargetType="Border">
+  <Style x:Key="AssetPanel" TargetType="Border">
    <Setter Property="Background" Value="White"/>
-   <Setter Property="BorderBrush" Value="#DDE5ED"/>
+   <Setter Property="BorderBrush" Value="#DFE7EF"/>
    <Setter Property="BorderThickness" Value="1"/>
-   <Setter Property="CornerRadius" Value="8"/>
-   <Setter Property="Padding" Value="16"/>
+   <Setter Property="CornerRadius" Value="9"/>
+   <Setter Property="Padding" Value="18,15"/>
+   <Setter Property="Margin" Value="0,0,0,11"/>
   </Style>
-  <Style x:Key="ResourceHeading" TargetType="TextBlock">
-   <Setter Property="FontSize" Value="16"/>
+  <Style x:Key="AssetTitle" TargetType="TextBlock">
+   <Setter Property="FontSize" Value="17"/>
    <Setter Property="FontWeight" Value="SemiBold"/>
-   <Setter Property="Foreground" Value="#203C55"/>
+   <Setter Property="Foreground" Value="#233F58"/>
   </Style>
-  <Style x:Key="ResourceHint" TargetType="TextBlock">
-   <Setter Property="FontSize" Value="12"/>
-   <Setter Property="Foreground" Value="#6C7C8E"/>
+  <Style x:Key="AssetInfo" TargetType="TextBlock">
+   <Setter Property="FontSize" Value="13"/>
+   <Setter Property="Foreground" Value="#5B7489"/>
    <Setter Property="TextWrapping" Value="Wrap"/>
   </Style>
-  <Style x:Key="ResourceAction" TargetType="Button"
+  <Style x:Key="AssetAction" TargetType="Button"
    BasedOn="{StaticResource AtQuietButton}">
-   <Setter Property="Padding" Value="12,6"/>
-   <Setter Property="MinHeight" Value="30"/>
-   <Setter Property="Margin" Value="0,0,7,0"/>
+   <Setter Property="Padding" Value="13,7"/>
+   <Setter Property="MinHeight" Value="34"/>
+   <Setter Property="Margin" Value="0,0,9,5"/>
   </Style>
  </UserControl.Resources>
  <ScrollViewer VerticalScrollBarVisibility="Auto"
   HorizontalScrollBarVisibility="Disabled">
-  <StackPanel Margin="24,18,24,22" MaxWidth="1260">
-   <DockPanel LastChildFill="True" Margin="0,0,0,16">
+  <StackPanel Margin="26,20,26,26" MaxWidth="1060">
+   <DockPanel LastChildFill="True" Margin="0,0,0,20">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
      VerticalAlignment="Center">
-     <Button Content="返回 TEST" Command="{Binding ReturnToTestCommand}"
-      Style="{StaticResource ResourceAction}"/>
+     <Button Content="返回工程首页" Command="{Binding OpenEngineeringHomeCommand}"
+      Style="{StaticResource AssetAction}"/>
      <Button Content="刷新" Command="{Binding RefreshEngineeringResourcesCommand}"
-      Style="{StaticResource ResourceAction}"/>
+      Style="{StaticResource AssetAction}"/>
     </StackPanel>
     <StackPanel>
-     <TextBlock Text="工程资源" FontSize="23" FontWeight="SemiBold"
-      Foreground="#1F3449"/>
+     <TextBlock Text="工程资源" FontSize="25" FontWeight="SemiBold"
+      Foreground="#1B3953"/>
+     <TextBlock Text="{Binding CurrentProjectName}" FontSize="13"
+      Foreground="#71869A" TextTrimming="CharacterEllipsis"/>
     </StackPanel>
    </DockPanel>
-   <Grid>
-    <Grid.ColumnDefinitions>
-     <ColumnDefinition Width="*" MinWidth="260"/>
-     <ColumnDefinition Width="14"/>
-     <ColumnDefinition Width="*" MinWidth="260"/>
-    </Grid.ColumnDefinitions>
-    <Grid.RowDefinitions>
-     <RowDefinition Height="Auto"/><RowDefinition Height="14"/>
-     <RowDefinition Height="Auto"/>
-    </Grid.RowDefinitions>
-    <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource ResourceCard}">
-     <StackPanel>
-      <TextBlock Text="DBC · 通信数据库" Style="{StaticResource ResourceHeading}"/>
-      <TextBlock Text="{Binding EngineeringDbcName}"
-       FontSize="15" FontWeight="SemiBold" Margin="0,14,0,4"
-       TextTrimming="CharacterEllipsis"/>
-      <TextBlock Text="{Binding EngineeringDbcDescription}"
-       Style="{StaticResource ResourceHint}" Margin="0,0,0,13"/>
-      <WrapPanel>
-       <Button Content="打开编辑" Command="{Binding OpenDbcToolCommand}"
-        Style="{StaticResource ResourceAction}"/>
-       <Button Content="导入 / 更换文件" Command="{Binding ImportDbcCommand}"
-        Style="{StaticResource ResourceAction}"/>
-       <Button Content="新建 DBC" Command="{Binding NewEngineeringDbcCommand}"
-        Visibility="{Binding CanCreateEngineeringDbc,Converter={StaticResource BoolToVisibility}}"
-        Style="{StaticResource ResourceAction}"/>
-      </WrapPanel>
-     </StackPanel>
-    </Border>
-    <Border Grid.Row="0" Grid.Column="2" Style="{StaticResource ResourceCard}">
-     <StackPanel>
-      <TextBlock Text="标准波形 · 测量基准" Style="{StaticResource ResourceHeading}"/>
-      <TextBlock Text="{Binding EngineeringWaveStatus}" Margin="0,14,0,10"
-       Style="{StaticResource ResourceHint}"/>
-      <ItemsControl ItemsSource="{Binding EngineeringWaveStandards}"
-       MaxHeight="116">
-       <ItemsControl.ItemTemplate>
-        <DataTemplate>
-         <DockPanel Margin="0,0,0,7">
-          <TextBlock Text="{Binding Description}" DockPanel.Dock="Right"
-           Foreground="#71869A" FontSize="11" Margin="8,0,0,0"
-           TextTrimming="CharacterEllipsis" MaxWidth="210"/>
-          <TextBlock Text="{Binding Name}" FontWeight="Medium"
-           TextTrimming="CharacterEllipsis"/>
-         </DockPanel>
-        </DataTemplate>
-       </ItemsControl.ItemTemplate>
-      </ItemsControl>
-      <Button Content="进入波形工作台" Command="{Binding OpenWaveWorkbenchCommand}"
-       Style="{StaticResource ResourceAction}" HorizontalAlignment="Left"/>
-     </StackPanel>
-    </Border>
-    <Border Grid.Row="2" Grid.Column="0" Style="{StaticResource ResourceCard}">
-     <StackPanel>
-      <TextBlock Text="公共流程 · TEST 复用逻辑"
-       Style="{StaticResource ResourceHeading}"/>
-      <TextBlock Text="{Binding EngineeringFlowStatus}" Margin="0,12,0,9"
-       Style="{StaticResource ResourceHint}"/>
-      <ItemsControl ItemsSource="{Binding PublicFlowNodes}" MaxHeight="155">
-       <ItemsControl.ItemTemplate>
-        <DataTemplate>
-         <Button Content="{Binding Label}"
-          Command="{Binding DataContext.OpenEngineeringFlowCommand,RelativeSource={RelativeSource AncestorType=UserControl}}"
-          CommandParameter="{Binding}"
-          HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"
-          Style="{StaticResource ResourceAction}"
-          ToolTip="在 TEST 步骤编辑环境中打开此公共流程"/>
-        </DataTemplate>
-       </ItemsControl.ItemTemplate>
-      </ItemsControl>
-      <Button Content="＋ 创建公共流程" Command="{Binding NewPublicFlowCommand}"
-       Style="{StaticResource ResourceAction}" HorizontalAlignment="Left"
-       Margin="0,10,0,0"/>
-     </StackPanel>
-    </Border>
-    <Border Grid.Row="2" Grid.Column="2" Style="{StaticResource ResourceCard}">
-     <StackPanel>
-      <TextBlock Text="FLASH · 固件与烧录参数"
-       Style="{StaticResource ResourceHeading}"/>
-      <TextBlock Text="{Binding EngineeringFlashStatus}"
-       FontSize="14" FontWeight="Medium" Margin="0,14,0,7"
-       TextWrapping="Wrap"/>
-      <WrapPanel>
-       <Button Content="编辑烧录参数" Command="{Binding OpenNativeFlashProfileCommand}"
-        Style="{StaticResource ResourceAction}"/>
-       <Button Content="独立烧录调试" Command="{Binding OpenFlashWorkbenchCommand}"
-        Style="{StaticResource ResourceAction}"/>
-      </WrapPanel>
-     </StackPanel>
-    </Border>
-   </Grid>
+   <Border Style="{StaticResource AssetPanel}">
+    <StackPanel>
+     <TextBlock Text="DBC · 通信数据库文件" Style="{StaticResource AssetTitle}"/>
+     <TextBlock Text="{Binding EngineeringDbcName}" FontSize="15"
+      FontWeight="SemiBold" Foreground="#2769A1" Margin="0,8,0,5"
+      TextTrimming="CharacterEllipsis"/>
+     <TextBlock Text="一个工程使用一份 DBC。文件可独立创建、编辑和导入，绑定后供 TEST 解码和判定使用。"
+      Style="{StaticResource AssetInfo}" Margin="0,0,0,12"/>
+     <WrapPanel>
+      <Button Content="编辑 DBC" Command="{Binding OpenDbcToolCommand}"
+       Style="{StaticResource AssetAction}"/>
+      <Button Content="导入 / 替换 DBC" Command="{Binding ImportDbcCommand}"
+       Style="{StaticResource AssetAction}"/>
+      <Button Content="新建 DBC" Command="{Binding NewEngineeringDbcCommand}"
+       Visibility="{Binding CanCreateEngineeringDbc,Converter={StaticResource BoolToVisibility}}"
+       Style="{StaticResource AssetAction}"/>
+     </WrapPanel>
+    </StackPanel>
+   </Border>
+   <Border Style="{StaticResource AssetPanel}">
+    <StackPanel>
+     <TextBlock Text="标准波形 · 采集与判定" Style="{StaticResource AssetTitle}"/>
+     <TextBlock Text="{Binding EngineeringWaveStatus}" Style="{StaticResource AssetInfo}"
+      Margin="0,7,0,8"/>
+     <ItemsControl ItemsSource="{Binding EngineeringWaveStandards}" MaxHeight="100"
+      Margin="0,0,0,6">
+      <ItemsControl.ItemTemplate>
+       <DataTemplate>
+        <DockPanel Margin="0,0,0,5">
+         <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+          Foreground="#41647E" TextTrimming="CharacterEllipsis"/>
+         <TextBlock DockPanel.Dock="Right" Text="{Binding Description}"
+          Foreground="#7990A2" TextTrimming="CharacterEllipsis"
+          MaxWidth="250" Margin="12,0,0,0"/>
+        </DockPanel>
+       </DataTemplate>
+      </ItemsControl.ItemTemplate>
+     </ItemsControl>
+     <Button Content="采集 / 建立标准波形" Command="{Binding OpenWaveWorkbenchCommand}"
+      Style="{StaticResource AssetAction}" HorizontalAlignment="Left"/>
+    </StackPanel>
+   </Border>
+   <Border Style="{StaticResource AssetPanel}">
+    <StackPanel>
+     <TextBlock Text="公共流程 · 可复用 TEST 步骤" Style="{StaticResource AssetTitle}"/>
+     <TextBlock Text="{Binding EngineeringFlowStatus}" Style="{StaticResource AssetInfo}"
+      Margin="0,7,0,10"/>
+     <ItemsControl ItemsSource="{Binding PublicFlowNodes}" MaxHeight="120">
+      <ItemsControl.ItemTemplate>
+       <DataTemplate>
+        <Button Content="{Binding Label}" HorizontalContentAlignment="Left"
+         Command="{Binding DataContext.OpenEngineeringFlowCommand,RelativeSource={RelativeSource AncestorType=UserControl}}"
+         CommandParameter="{Binding}" Style="{StaticResource AssetAction}"/>
+       </DataTemplate>
+      </ItemsControl.ItemTemplate>
+     </ItemsControl>
+     <Button Content="＋ 创建公共流程" Command="{Binding NewPublicFlowCommand}"
+      Style="{StaticResource AssetAction}" HorizontalAlignment="Left"
+      Margin="0,9,0,0"/>
+    </StackPanel>
+   </Border>
+   <Border Style="{StaticResource AssetPanel}">
+    <StackPanel>
+     <TextBlock Text="FLASH · 固件与原生烧录参数" Style="{StaticResource AssetTitle}"/>
+     <TextBlock Text="{Binding EngineeringFlashStatus}" Style="{StaticResource AssetInfo}"
+      Margin="0,9,0,13"/>
+     <WrapPanel>
+      <Button Content="配置固件与烧录参数" Command="{Binding OpenNativeFlashProfileCommand}"
+       Style="{StaticResource AssetAction}"/>
+      <Button Content="打开烧录调试工具" Command="{Binding OpenFlashWorkbenchCommand}"
+       Style="{StaticResource AssetAction}"/>
+     </WrapPanel>
+    </StackPanel>
+   </Border>
   </StackPanel>
  </ScrollViewer>
 </UserControl>
