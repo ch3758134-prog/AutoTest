@@ -40,7 +40,7 @@ public sealed class ProductionResultCoordinator
                 TimeSource.HostArrival, TimeQuality.HostArrivalOnly), quality,
             evidence.IsDefault ? ImmutableArray<EvidenceRef>.Empty : evidence),
             ct).ConfigureAwait(false);
-        if (!result.Durable && !job.IsMock)
+        if (!result.Durable)
             return OperationResult.Uncertain("RECORD_APPEND_NOT_DURABLE", "Run fact not durably stored.");
         return OperationResult.Accepted();
     }
@@ -52,7 +52,7 @@ public sealed class ProductionResultCoordinator
     public async ValueTask<ProductionRunResult> FinalizeAsync(ProductionJobSnapshot job,
         ProductionStageResult test, CancellationToken ct)
     {
-        if (!job.IsMock && _facts is IVerifiedProductionCommitSink verified)
+        if (_facts is IVerifiedProductionCommitSink verified)
         {
             VerifiedProductionCommit receipt;
             try
@@ -96,14 +96,8 @@ public sealed class ProductionResultCoordinator
         if (!genericCommit.Durable || genericCommit.Run != job.Run)
             return new(job.Run, ProductionState.AwaitingCommit, Verdict.Inconclusive,
                 false, false, "RECORD_COMMIT_NOT_DURABLE");
-        if (!job.IsMock)
-            return new(job.Run, ProductionState.Unknown, Verdict.Inconclusive,
-                true, false, "PRODUCTION_VERIFIED_RECORD_COMMIT_NOT_CONNECTED");
-
-        // Mock runs may be useful in isolated contract tests, but never
-        // establish a physical DUT verdict or any release permission.
-        return new(job.Run, ProductionState.Completed, Verdict.Inconclusive,
-            true, false, "MOCK_COMPLETE_NOT_DUT_PASS");
+        return new(job.Run, ProductionState.Unknown, Verdict.Inconclusive,
+            true, false, "PRODUCTION_VERIFIED_RECORD_COMMIT_NOT_CONNECTED");
     }
 
     public bool RequireCommit(ProductionRunResult result) => !result.Durable;
