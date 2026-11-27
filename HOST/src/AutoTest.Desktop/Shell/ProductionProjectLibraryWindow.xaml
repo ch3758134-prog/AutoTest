@@ -85,7 +85,7 @@
        </DataGrid.Columns>
        </DataGrid>
        <TextBlock x:Name="EmptyCatalogHint"
-        Text="还没有导入检测工程。请点击上方“导入工程包…”添加。"
+        Text="还没有安装检测工程。请先在“工程”中导出工程包，再点击上方“导入工程包…”添加。"
         FontSize="14" Foreground="#60788C" TextWrapping="Wrap"
         TextAlignment="Center" HorizontalAlignment="Center"
         VerticalAlignment="Center" Margin="18,35,18,0"
