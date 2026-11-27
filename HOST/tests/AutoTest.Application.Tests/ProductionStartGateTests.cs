@@ -41,6 +41,7 @@ public sealed class ProductionStartGateTests
         Assert.Throws<InvalidOperationException>(() => gate.Arm(second));
         gate.ObservePhysical(first, false);
         Assert.True(gate.ObservePhysical(first, true).Accepted);
+        Assert.Throws<InvalidOperationException>(() => gate.Arm(second));
         gate.Disarm();
         Assert.False(gate.ObservePhysical(first, true).Accepted);
         gate.Arm(second);
