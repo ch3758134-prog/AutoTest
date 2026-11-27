@@ -441,7 +441,8 @@ public sealed class PhysicalCommandFence
     public static bool IsReadOnly(byte command, ReadOnlySpan<byte> payload) =>
         payload.IsEmpty && (command is MainControllerCodec.Ping or MainControllerCodec.GetVersion
             or MainControllerCodec.GetIgn or MainControllerCodec.GetClamps or
-               MainControllerCodec.GetLeds or MainControllerCodec.GetEcuCanBaud or 0x53);
+               MainControllerCodec.GetLeds or MainControllerCodec.GetEcuCanBaud or
+               MainControllerCodec.GetExternalKeyInputs or 0x53);
 
     /// <summary>Explicit operator Apply / consented FLASH only. Exactly one
     /// 0x42 payload, one USB generation, five seconds, consumed before I/O.</summary>
