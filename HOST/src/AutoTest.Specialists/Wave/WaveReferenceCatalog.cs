@@ -5,7 +5,12 @@ using AutoTest.Core;
 namespace AutoTest.Specialists.Wave;
 
 public sealed record WaveReferenceEntry(ReferenceRef Reference, SignalRef Signal,
-    string Name, DateTimeOffset CreatedUtc);
+    string Name, DateTimeOffset CreatedUtc)
+{
+    /// <summary>Explicit same-session group identity. Null is a historical
+    /// single-channel reference and must never be grouped by matching name.</summary>
+    public Guid? StandardId { get; init; }
+}
 
 /// <summary>One named standard may contain multiple verified signal references
 /// from the same capture session. No user-facing file type is introduced.</summary>
@@ -24,7 +29,8 @@ public sealed class WaveReferenceCatalog
 {
     private sealed record Row(Guid ReferenceId, int ReferenceRevision, string ReferenceSha256,
         Guid DbcId, int DbcRevision, string DbcSha256, BusRole Role, uint FrameId,
-        string SignalName, string Unit, string Name, DateTimeOffset CreatedUtc);
+        string SignalName, string Unit, string Name, DateTimeOffset CreatedUtc,
+        Guid? StandardId = null);
 
     private readonly string _path;
     private readonly WaveReferenceRepository _repository;
@@ -44,7 +50,9 @@ public sealed class WaveReferenceCatalog
     }
 
     public IReadOnlyList<WaveStandardGroup> ListStandards() =>
-        List().GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+        // Every promoted capture owns an explicit group ID. Legacy individual
+        // references remain separate even when they happen to share a name.
+        List().GroupBy(x => x.StandardId ?? x.Reference.Asset.Id.Value)
             .Select(g => new WaveStandardGroup(g.First().Name, g.ToArray()))
             .OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase).ToArray();
 
@@ -72,12 +80,13 @@ public sealed class WaveReferenceCatalog
                     StringComparison.OrdinalIgnoreCase)))
                 throw new InvalidDataException("同名标准已存在，请使用其他名称。");
             var all = new List<WaveReferenceEntry>();
+            var groupId = Guid.NewGuid();
             foreach (var series in captured)
             {
                 var created = _repository.SaveReference(
                     AssetId.New(), AssetRevision.Create(1), name, series);
                 all.Add(new WaveReferenceEntry(created.Reference, series.Signal,
-                    name, DateTimeOffset.UtcNow));
+                    name, DateTimeOffset.UtcNow) { StandardId = groupId });
             }
             // A partially written reference asset is not a discoverable
             // standard until all channels are indexed in one atomic update.
@@ -138,7 +147,8 @@ public sealed class WaveReferenceCatalog
                     AssetRevision.Create(row.DbcRevision), RevisionFingerprint.FromSha256(row.DbcSha256)),
                     row.Role, row.FrameId, row.SignalName, row.Unit);
                 WaveTimeQuality.ValidateSignal(signal);
-                return new WaveReferenceEntry(reference, signal, row.Name, row.CreatedUtc);
+                return new WaveReferenceEntry(reference, signal, row.Name, row.CreatedUtc)
+                { StandardId = row.StandardId };
             }).ToList();
         }
         catch (Exception ex) when (ex is JsonException or ArgumentException)
@@ -155,7 +165,8 @@ public sealed class WaveReferenceCatalog
                 entry.Reference.Asset.Revision.Value, entry.Reference.Asset.Fingerprint.Sha256,
                 entry.Signal.DbcAsset.Id.Value, entry.Signal.DbcAsset.Revision.Value,
                 entry.Signal.DbcAsset.Fingerprint.Sha256, entry.Signal.Role, entry.Signal.FrameId,
-                entry.Signal.SignalName, entry.Signal.Unit, entry.Name, entry.CreatedUtc)).ToArray();
+                entry.Signal.SignalName, entry.Signal.Unit, entry.Name, entry.CreatedUtc,
+                entry.StandardId)).ToArray();
             File.WriteAllBytes(temp, JsonSerializer.SerializeToUtf8Bytes(rows));
             File.Move(temp, _path, true);
         }
