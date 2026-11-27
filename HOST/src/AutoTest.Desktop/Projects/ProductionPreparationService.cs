@@ -11,31 +11,26 @@ namespace AutoTest.Desktop.Projects;
 public sealed record FrozenProductionCase(
     Guid EntryId, Guid TestAssetId, string DisplayName, int Revision, string Sha256);
 /// <summary>
-/// Accepted REAL scanner observation fixed to its exact interpretation-rule
-/// JSON and checksum. This is a pre-run observation, NOT a claimed formal
-/// RunRecord or DUT PASS. The future production RECORD adapter must link it
-/// to its verified RunId before claiming end-to-end traceability.
+/// Complete COM barcode observation and the ONLY selected project identity.
+/// Production barcode routing and engineering manual verification are distinct
+/// sources; neither supplies a physical START or a formal inspection verdict.
+/// The hardware adapter must bind the scan to its actual scanner and station.
 /// </summary>
-public sealed record FrozenScanIdentity(
-    Guid ObservationId, DateTimeOffset CapturedAtUtc,
-    string ScannerPort, string RawBarcode, string RuleJson,
-    string RuleSha256, string ProductKey, string DutSerial,
-    string? HardwareCode, IReadOnlyDictionary<string, string> MappedFields)
+public enum FrozenScanSource
 {
-    public string PublishedConfigurationSha256 { get; init; } = "";
-    public Guid PublicationId { get; init; }
-    public string BarcodeRuleId { get; init; } = "";
-    public int BarcodeRuleRevision { get; init; }
-    public string ProjectDecisionBasis { get; init; } = "";
-    public string StationSlotId { get; init; } = "";
-    public string ScannerPnpInstanceId { get; init; } = "";
-    // Non-production engineering scan pins only the actual station fixture
-    // setup. It never claims a published barcode rule or production release.
-    public string EngineeringFixtureSha256 { get; init; } = "";
+    EngineeringRaw,
+    ProductionFixedMarker
 }
 
+public sealed record FrozenScanIdentity(
+    Guid ObservationId, DateTimeOffset CapturedAtUtc,
+    string ScannerPort, string RawBarcode, FrozenScanSource Source,
+    string RuleDefinition, string RuleSha256, string RecognitionMarker,
+    int RuleRevision, string PackageSha256, string StationSlotId,
+    string ScannerPnpInstanceId, string EngineeringFixtureSha256);
+
 public sealed record FrozenProductionPreparation(
-    string ProductKey, string DutSerial, Guid ProjectId, string ManifestPath,
+    string RecognitionMarker, string FullBarcode, Guid ProjectId, string ManifestPath,
     string ManifestSha256, Guid TestProjectAssetId, string TestProjectSha256,
     IReadOnlyList<FrozenProductionCase> OrderedEnabledCases,
     string NativeProfileSha256, string JobFingerprint, string FirmwareSha256,
@@ -63,13 +58,13 @@ public sealed record ProductionPreparationDecision(
 public static class ProductionPreparationService
 {
     public static async Task<ProductionPreparationDecision> PrepareAsync(
-        OpenProjectContext project, string productKey, string dutSerial,
+        OpenProjectContext project, string recognitionMarker, string fullBarcode,
         CancellationToken ct = default, bool requireProductionDeployment = true)
     {
         try
         {
             return new("PRODUCTION_CONFIG_PREPARED",
-                await FreezeAsync(project, productKey, dutSerial, ct,
+                await FreezeAsync(project, recognitionMarker, fullBarcode, ct,
                     requireProductionDeployment)
                     .ConfigureAwait(false),
                 "工程资源、原生 FLASH 方法、固件和完整 TEST 顺序已离线核对。" +
@@ -87,12 +82,12 @@ public static class ProductionPreparationService
     }
 
     private static async Task<FrozenProductionPreparation> FreezeAsync(
-        OpenProjectContext opened, string productKey, string dutSerial,
+        OpenProjectContext opened, string recognitionMarker, string fullBarcode,
         CancellationToken ct, bool requireProductionDeployment)
     {
-        if (string.IsNullOrWhiteSpace(dutSerial))
-            throw new InvalidDataException("缺少本次实体型号或唯一编号。");
-        if (dutSerial.Length > 128 || dutSerial.Any(char.IsControl))
+        if (string.IsNullOrWhiteSpace(fullBarcode))
+            throw new InvalidDataException("缺少本次 ECU 完整扫码编号。");
+        if (fullBarcode.Length > 128 || fullBarcode.Any(char.IsControl))
             throw new InvalidDataException("外部唯一编号长度或控制字符无效。");
         var actual = await ProjectRepository.OpenDefinitionAsync(
             opened.ManifestPath, ct).ConfigureAwait(false);
@@ -179,7 +174,7 @@ public static class ProductionPreparationService
                 "当前 FLASH 工艺或固件与已确认的生产版本不同；必须重新核对并确认。");
         var pinned = string.Join("\n",
             "AUTOTEST-PRODUCTION-PREPARE-V2",
-            productKey, dutSerial, actual.Id.Value.ToString("D"), manifestSha,
+            recognitionMarker, fullBarcode, actual.Id.Value.ToString("D"), manifestSha,
             testAsset.Id.Value.ToString("D"), testAsset.Sha256,
             profileSha, frozenJob.Fingerprint,
             "PROJECT_SETUP:" + (frozenSetup is null ? "NONE" :
@@ -198,7 +193,7 @@ public static class ProductionPreparationService
                     .ConfigureAwait(false))),
                 manifestSha, StringComparison.OrdinalIgnoreCase))
             throw new IOException("生产配置冻结期间工程清单发生更改。");
-        return new(productKey, dutSerial, actual.Id.Value,
+        return new(recognitionMarker, fullBarcode, actual.Id.Value,
             opened.ManifestPath, manifestSha, testAsset.Id.Value, testAsset.Sha256,
             frozenCases.ToArray(), profileSha, frozenJob.Fingerprint,
             frozenJob.FirmwareSha256, frozenJob.SecuritySha256,
