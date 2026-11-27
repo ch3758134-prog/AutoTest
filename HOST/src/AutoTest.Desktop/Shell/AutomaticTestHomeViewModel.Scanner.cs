@@ -26,14 +26,14 @@ public sealed partial class AutomaticTestHomeViewModel
     public string LastObservedAt => _lastObservedAt;
     private string? _lastIdentity;
     private FrozenProductionPreparation? _prepared;
-    private IReadOnlyDictionary<string, string> _scanMappedFields =
-        new Dictionary<string, string>(StringComparer.Ordinal);
-
-    /// <summary>Operator-facing trace only; no formal RECORD is claimed
-    /// until the production run and evidence writer are connected.</summary>
-    public string ScanTraceSummary => _scanMappedFields.Count == 0 ? "" :
-        "本次扫码字段：" + string.Join(" · ",
-            _scanMappedFields.Select(x => x.Key + "=" + x.Value));
+    /// <summary>Operator display only. Never expose internal routing
+    /// hashes/field indexes as the meaning of a barcode.</summary>
+    public string ScanTraceSummary =>
+        _prepared?.AcceptedScannerObservation is not { } observed ? "" :
+        observed.Source == FrozenScanSource.ProductionFixedMarker
+            ? "ECU 编号：" + observed.RawBarcode +
+              " · 识别标记：" + observed.RecognitionMarker
+            : "工程实测编号：" + observed.RawBarcode;
 
     private void OnScannerPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -145,7 +145,6 @@ public sealed partial class AutomaticTestHomeViewModel
         Interlocked.Increment(ref _scanRevision);
         _prepared = null;
         _acceptedStationEpoch = 0;
-        _scanMappedFields = new Dictionary<string, string>(StringComparer.Ordinal);
         _dutSerial = "等待扫码";
         _lastIdentity = null;
         _scanStatus = reason;
@@ -165,7 +164,6 @@ public sealed partial class AutomaticTestHomeViewModel
             return;
         _prepared = null;
         _acceptedStationEpoch = 0;
-        _scanMappedFields = new Dictionary<string, string>(StringComparer.Ordinal);
         _dutSerial = "正在核对";
         _scanAlertRequired = false;
         _scanStatus = "正在核对 ECU 编号与检测工程。";
@@ -213,13 +211,6 @@ public sealed partial class AutomaticTestHomeViewModel
                 StringComparison.Ordinal);
             _lastIdentity = raw;
             _dutSerial = raw;
-            _scanMappedFields = new Dictionary<string, string>(
-                StringComparer.Ordinal)
-            {
-                ["DutSerial"] = raw,
-                ["ProjectId"] = plan.Project.Definition.Id.Value.ToString("D"),
-                ["ProjectBasis"] = "OPENED_ENGINEERING_PROJECT"
-            };
             _acceptedStationEpoch = initialStationEpoch;
             _prepared = engineeringDecision.Preparation! with
             {
@@ -266,8 +257,7 @@ public sealed partial class AutomaticTestHomeViewModel
             if (revision != _scanRevision) return;
             _prepared = null;
             _acceptedStationEpoch = 0;
-            _scanMappedFields = new Dictionary<string, string>(StringComparer.Ordinal);
-            _dutSerial = "等待扫码";
+                _dutSerial = "等待扫码";
             _scanStatus = reason;
             _scanAlertRequired = true;
             Notify();
