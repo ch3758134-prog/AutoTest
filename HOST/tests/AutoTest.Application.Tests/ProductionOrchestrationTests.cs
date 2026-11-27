@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Text.Json;
 using AutoTest.Application.Production;
 using AutoTest.Contracts;
 using AutoTest.Core;
@@ -274,6 +275,33 @@ public sealed class ProductionOrchestrationTests
             .ExecuteAsync(session, CancellationToken.None);
         Assert.Equal("FLASH_SIMULATED", result.Code);
         Assert.Equal(0, stages.TestCalls);
+    }
+
+    [Fact]
+    public async Task FormalRunScopeIsDurablyPinnedToFullCodeAndProjectVersion()
+    {
+        var project = Project();
+        var session = Ready(project);
+        var frozen = session.Job!;
+        var sink = new CapturingSink();
+        await new ProductionWorkflow(new TestStageExecutor(),
+            new ProductionResultCoordinator(sink),
+            new ProductionPreflight(), new TestPhysicalStation())
+            .ExecuteAsync(session, CancellationToken.None);
+        var prefix = "PRODUCTION_SCOPE:";
+        var scope = Assert.Single(sink.Facts
+            .Where(x => x.Description.StartsWith(prefix, StringComparison.Ordinal)));
+        using var parsed = JsonDocument.Parse(scope.Description[prefix.Length..]);
+        Assert.Equal(frozen.Scan.Text,
+            parsed.RootElement.GetProperty("FullBarcode").GetString());
+        Assert.Equal(project.Project.ToString(),
+            parsed.RootElement.GetProperty("ProjectId").GetString());
+        Assert.Equal(project.PackageFingerprint.Sha256,
+            parsed.RootElement.GetProperty("PackageSha256").GetString());
+        Assert.Equal(frozen.ControllerEpoch,
+            parsed.RootElement.GetProperty("ControllerEpoch").GetInt64());
+        Assert.Equal("COM7",
+            parsed.RootElement.GetProperty("ScannerOrigin").GetString());
     }
 
     [Fact]
