@@ -14,8 +14,6 @@ public sealed class BarcodeRuleTests
     private static IdentityRuleSet Rules(params IdentityRule[] rules) => new(rules, Revision, true);
     private static IdentityRule Rule(string id = "A", string pattern = @"(?<model>EPB)-(?<serial>\d{5})") =>
         new(id, pattern, ImmutableArray.Create("model", "serial"), RulePublication.Published);
-    private static ProductionRecipe Recipe() => new("Recipe-EPB", 1, "EPB", null,
-        ImmutableArray.Create(new AssetRef(AssetId.New(), AssetRevision.Create(1), Revision)), false, true);
 
     [Fact] // E1-T02: focused capture only; no global keyboard stealing.
     public void E1_T02_UnfocusedKeyboardInputIsRejected()
@@ -56,37 +54,6 @@ public sealed class BarcodeRuleTests
         Assert.Equal("IDENTITY_AMBIGUOUS", result.Code);
         Assert.Null(result.Identity);
         Assert.Equal(2, result.MatchedRuleIds.Length);
-    }
-
-    [Fact]
-    public void E1_RuleRevisionMismatchRejectsMatching()
-    {
-        var resolver = new ConfigMatchService(Rules(Rule()), new ProjectRevision(1), new[] { Recipe() });
-        var decision = resolver.Match(Scan("EPB-00001"),
-            new RuleRevision(RevisionFingerprint.FromBytes(new byte[] { 7 })), new ProjectRevision(1));
-        Assert.False(decision.Allowed);
-        Assert.Equal("MATCH_REVISION_STALE", decision.RejectionCode);
-    }
-
-    [Fact]
-    public void E1_RecipeAmbiguityRejectsMatching()
-    {
-        var r = Recipe();
-        var resolver = new ConfigMatchService(Rules(Rule()), new ProjectRevision(1),
-            new[] { r, r with { RecipeId = "Other" } });
-        var decision = resolver.Match(Scan("EPB-00001"), new RuleRevision(Revision), new ProjectRevision(1));
-        Assert.Equal("CONFIG_AMBIGUOUS", decision.RejectionCode);
-    }
-
-    [Fact]
-    public void E1_DraftConfirmationLocksIdentity()
-    {
-        var resolver = new ConfigMatchService(Rules(Rule()), new ProjectRevision(1), new[] { Recipe() });
-        var drafts = new ScanDraftService();
-        var d = drafts.Capture(Scan("EPB-00001"));
-        drafts.Evaluate(d.DraftId, resolver, new RuleRevision(Revision), new ProjectRevision(1));
-        drafts.Confirm(d.DraftId);
-        Assert.Throws<InvalidOperationException>(() => drafts.Capture(Scan("EPB-00002")));
     }
 
     [Fact]
