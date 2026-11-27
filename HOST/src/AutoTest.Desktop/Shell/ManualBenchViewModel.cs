@@ -389,6 +389,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         ClearLogsCommand = new DelegateCommand(() => Logs.Clear());
         InitializeCanRows();
         InitializeKeyActions();
+        InitializeExternalKeyMonitor();
         _ = ReloadResourcesAsync();
     }
 
@@ -434,6 +435,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         {
             if (_disposed) return;
             _connected = epoch != 0;
+            ResetExternalKeyMonitor(epoch);
             if (epoch == 0) { _ = StopCanRowsAsync(); _keyActionStop?.Cancel(); }
             CanConfirmation = "";
             KeyConfirmation = "";
@@ -928,6 +930,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         if (_disposed) return;
         _disposed = true;
         StopMonitorDispatch();
+        DisposeExternalKeyMonitor();
         _ = StopCanRowsAsync();
         DisposeKeyActions();
         _hardware.FrameObserved -= FrameObserved;
