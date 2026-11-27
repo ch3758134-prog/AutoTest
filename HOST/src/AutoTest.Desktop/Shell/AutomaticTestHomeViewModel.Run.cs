@@ -300,45 +300,6 @@ public sealed partial class AutomaticTestHomeViewModel
         Cases[_operatorActiveCaseIndex] = item with { Children = children };
     }
 
-    private static async Task ApplyStationActionsAsync(
-        IReadOnlyList<InspectionStationAction> actions,
-        HardwareConnectionService hardware, CancellationToken ct,
-        Action<string>? observe = null, string? stationFingerprint = null)
-    {
-        foreach (var action in actions)
-        {
-            ct.ThrowIfCancellationRequested();
-            switch (action.Kind)
-            {
-                case "Wait": break;
-                case "Clamp1Press":
-                case "Clamp1Release":
-                case "Clamp2Press":
-                case "Clamp2Release":
-                    throw new InvalidDataException("旧工程夹具动作不能从工位 IGN/等待工艺执行；" +
-                        "只允许已发布工位夹具方案取得自动夹具授权。");
-                case "IgnOn":
-                    if (stationFingerprint is not null)
-                        await hardware.SendStationIgnAsync(true, stationFingerprint, ct);
-                    else await SetAndCheckIgnRequestAsync(hardware, true, ct);
-                    break;
-                case "IgnOff":
-                    if (stationFingerprint is not null)
-                        await hardware.SendStationIgnAsync(false, stationFingerprint, ct);
-                    else await SetAndCheckIgnRequestAsync(hardware, false, ct);
-                    break;
-                default:
-                    throw new InvalidDataException("未识别的工位动作：" + action.Kind);
-            }
-            if (action.WaitAfterMilliseconds > 0)
-                await Task.Delay(action.WaitAfterMilliseconds, ct);
-            observe?.Invoke(action.Kind == "Wait"
-                ? "工位纯等待 " + action.WaitAfterMilliseconds + "ms 已结束"
-                : "工位动作 " + action.Kind + "：USB ACK 与主控 GPIO 回读一致。" +
-                  "实际夹具到位或 IGN 负载电压仍未测量。");
-        }
-    }
-
     private static async Task SetAndCheckIgnRequestAsync(
         HardwareConnectionService hardware, bool on, CancellationToken ct)
     {
@@ -768,24 +729,16 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
             // The resource and equipment checks above are read-only. Do not
             // send fixture cleanup commands if an inspection was rejected
             // before any physical command was even attempted.
-            // Standard fixture ownership lives in the frozen station
-            // configuration, not legacy project BeforeStart/AfterFinish.
-            if ((frozen.Fixture?.BeforeStart ?? []).Concat(
-                    frozen.Fixture?.AfterFinish ?? [])
-                .Any(x => x.Kind.StartsWith("Clamp", StringComparison.Ordinal)))
-                throw new InvalidDataException("工程工位动作仍包含旧夹具命令，" +
-                    "请删除重复装夹/释放步骤，由已发布工位夹具配置统一执行。");
-
+            // Only station-owned fixture plan may actuate clamps. A product
+            // TEST may contain its own IGN steps, but no project-defined
+            // station preparation or release script can run here.
             stationOperationsMayHaveStarted = true;
-            var hasStationIgn = (frozen.Fixture?.BeforeStart ?? [])
-                .Concat(frozen.Fixture?.AfterFinish ?? [])
-                .Any(x => x.Kind is "IgnOn" or "IgnOff");
-            if (fixturePlan.Press.Count != 0 || hasStationIgn)
+            if (fixturePlan.Press.Count != 0)
             {
                 RequireFrozenCanRate();
                 await _hardware.AuthorizeStationFixtureRunAsync(
                     frozen.PreparationFingerprint, fixturePlan.AllowedOutputMask,
-                    hasStationIgn, ct);
+                    false, ct);
                 fixtureScopeGranted = true;
                 OperatorRunState = "正在压紧夹具";
                 foreach (var action in fixturePlan.Press)
@@ -816,9 +769,6 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
             }
             else AddOperatorEvent("工位未选择夹具输出，本次不执行自动装夹。");
             OperatorRunState = "正在准备测试环境";
-            await ApplyStationActionsAsync(
-                frozen.Fixture?.BeforeStart ?? [], _hardware, ct, AddOperatorEvent,
-                fixtureScopeGranted ? frozen.PreparationFingerprint : null);
             RequireFrozenCanRate();
 
             OperatorRunState = "正在烧录 ECU";
@@ -1038,12 +988,8 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
                 if (stationOperationsMayHaveStarted)
                 {
                     OperatorRunState += " · 工位收尾";
-                    using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(12));
-                    await ApplyStationActionsAsync(
-                        frozen.Fixture?.AfterFinish ?? [], _hardware, cleanup.Token,
-                        AddOperatorEvent,
-                        fixtureScopeGranted ? frozen.PreparationFingerprint : null);
-                    AddOperatorEvent("工程配置的 IGN / 等待收尾已执行；现场状态仍需确认");
+                    // No project-owned station cleanup is allowed. Controlled
+                    // release below uses only the pinned station fixture plan.
                     if (fixtureScopeGranted && fixturePressComplete &&
                         completedNormally && failure is null && !_hardware.IsTestRunApproved &&
                         _hardware.IsConnected &&
