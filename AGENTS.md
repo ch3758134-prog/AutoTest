@@ -1,26 +1,34 @@
-# AutoTest · 三工程系统基线工作指引
+# AutoTest R1｜当前项目级实施指引（2026-11-27）
 
-本仓库 `main` 保存系统整机固定源码快照；**不是只含上位机**。开始修改前必须确认职责、目标分支、文件责任与准确 HEAD。禁止把之前 G4 临时执行指令当作当前仓库管理制度。
+> 这是现行的 AutoTest 产品设计与代码实施基线。旧 G4、UI 研究分支、HOST 实验分支、生产发布和“准入门控”文档不能覆盖本文件，也不能作为拒绝修复真实产品问题的理由。
 
-## 独立工程及分支
+## 仓库和工作分支
 
-- `HOST/`：Windows .NET 10/WPF/Prism 软件；开发分支 `HOST`。在 `HOST/` 执行解决方案 Restore、Build、Test。不得修改主控板、按键板固件。
-- `Main_Control/`：MK20 主控板 Keil 工程；开发分支 `Main_Control`，Keil `Project/Template.uvprojx`。固件源码的提交不能证明板卡已烧录。
-- `Key_Sim/`：MC9S08DZ32 按键板 CodeWarrior 工程；开发分支 `Key_Sim`。不把 Eclipse 工作区缓存、自动生成文件提交进 `main`。
-- `docs/`：跨专业项目文件、架构和历史记录。当前管理审批记录仍以专用 `Project_Management` 分支为准。
-- `tools/project-control-v2/`：通用项目管理工具，非 HOST 专属工具。
-- `ui/ide-design`：唯一现代 Fluent UI 设计研究源，正式代码实施须按当前审查结果批准。
+- 仓库：`ch3758134-prog/AutoTest`，包含 `HOST/`（Windows .NET 10 / WPF / Prism）、`Main_Control/`（MK20 主控 Keil）、`Key_Sim/`（MC9S08 按键固件）。
+- **`R1` 是当前唯一活跃的整机产品与上位机开发分支**；所有本轮 HOST 产品重构直接提交 `R1`，不要另开 UI/研究/功能分支；`main` 仍为受控整机基线，未经批准不修改。
+- 主控板和按键板源码只是硬件事实来源，固件源码的存在不代表板卡已烧录。未经具体固件任务不要擅改固件。设备事实、接线和 USB 协议必须与用户实物一致。
+- 在任何修改前读取 R1 最新准确 HEAD，核对相关完整调用链；本机 Windows Codex 由用户用于拉取、Release 编译、启动和提供错误日志，软件源码修复仍由 R1 实施者负责。不主动启动 GitHub CI。
+- 项目管理、产品设计、系统架构、UI/UX、软件实施和复审是同一项整体责任。不要向用户反复抛出应该由产品设计者自行判断的菜单、开关、审批或可选方案。
 
-## 安全与交付约束
+## 唯一产品与用户模型
 
-1. 不以编译或 Mock 结果替代真实 ECU 实测；不能将 USB ACK 推定为 GPIO 外部电气、机械或 DUT 真实动作。
-2. 不重新添加已废弃的 MOCK / 旧 TEST 执行入口；保留唯一 TEST DSL 与设备实际会话。
-3. 固件与 HOST 接口使用可追溯的精确版本、USB 协议和线束映射；特别注意主控 IGN/HOUT1、LED、两夹具与 KEY_SIM 电阻网络的实际限制。
-4. `main` 仅由明确批准的受控基线接收更新；专业工作先在独立分支实施与验证，不自动宣称系统 Gate PASS。
-5. 在 Windows 本地操作前核对 `git rev-parse HEAD`，运行结果以准确源码版本与原始日志为准。
+完整基准：[`HOST/docs/r1-ui-workbench/AUTOTEST_PRODUCT_ARCHITECTURE_RESET_20261127.md`](HOST/docs/r1-ui-workbench/AUTOTEST_PRODUCT_ARCHITECTURE_RESET_20261127.md)。
 
-## 入口
+- 四个工作区：生产检测、工程开发、专业工具、设备调试。Windows 离线、单 PC 单工位，浅色现代、高可读、自然的编辑和操作方式。
+- 一个 ECU 型号一份工程；工程只有一个有序 TEST 项目、一份当前 DBC、一份原生 FLASH/HEX，支持多个波形标准及公共流程。TEST、波形、DBC、FLASH 各有完整专业编辑/调试闭环。
+- **一个 TEST DSL 和一套真实解释/执行内核**。整个 TEST 项目连续运行，跨用例 CAN 周期发送、KEY_SIM 最后状态、IGN 和变量持续直到显式改变或项目收尾；工程局部调试只改变运行范围。
+- 扫一个真实完整编号，按可识别的型号标记匹配**整个工程**；生产仅执行完整项目，不产生第二套测试配方、启用清单、工位脚本或外部 FLASH 配置。
+- 标准生产周期：扫码 → 匹配工程 → 实体/界面 START → 固定两夹具压紧 → **压紧后收到真实 ECU CAN 帧**作为功能通信就绪反馈 → 每次正式检测必经原生 FLASH → 全量连续 TEST → 真正持久记录及报告 → 释放夹具。扫码本身不应致动夹具；软件 START 不以实体 START 固件是否完成为前提。
+- MCU USB 夹具 GPIO ACK/回读不能冒充机械位置；ECU CAN 通信也不能冒充机械安全互锁。人员安全、电气和气动风险由真实工位安全设计负责。
+- 工程资源合法性主要在专业编辑和引用建立阶段保证。运行时真实设备断开、ECU CAN 超时、FLASH/TEST 失败和磁盘写入错误均按实际原因处理，不另设人工“生产准入/可信认证/发布批准”系统。
 
-- [三工程目录与迁移边界](docs/architecture/REPOSITORY_STRUCTURE_20261119.md)
-- [系统源码基线总览](README.md)
-- [项目管理入口](docs/project-management/README.md)
+## 破坏性重构与交付事实
+
+- **可以删除错误业务模型与不可达旧路径**；不兼容旧工程、不用 Mock 冒充硬件、不因旧代码类名或技术审查合同阻止正确重构。
+- 复用真实 CAN/UDS/FLASH/DBC/KEY 硬件能力，不因修正 UI 或资源组织另造协议内核。
+- 生产与工程复用相同硬件会话、TEST 执行器、FLASH 内核，但保留明确的业务运行来源与真实结果。
+- 只在**真实测试运行事实全部可归档**时给出生产 PASS；没有数据或证据不得臆造。
+- 区分四种完成状态：源码已提交、Windows 编译和启动、真实 USB/ECU/扫码枪/夹具联调、单台/批量报告与异常恢复验收。任何一种不自动代替另一种。
+- 工程操作质量必须以新建—编辑—自动保存—调试—扫码生产—报告—关闭恢复的完整用户流程评价，而不是按单个按钮、静态检查、Commit、主观评分宣称通过。
+
+当前源码复审记录：[`R1_REBUILD_IMPLEMENTATION_AUDIT_20261127.md`](HOST/docs/r1-ui-workbench/R1_REBUILD_IMPLEMENTATION_AUDIT_20261127.md)。
