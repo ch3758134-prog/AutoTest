@@ -470,7 +470,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
             : "自动压紧：" + string.Join(" → ", fixturePlan.Press
                 .Select(x => "夹具 " + x.Clamp)) +
               "；测试结束后将请求释放。" +
-              "当前无法仅凭主控反馈判定机械实际到位。";
+              "压紧后等待 ECU CAN 通信就绪反馈；这不是机械位置传感器。";
         // One operation-specific confirmation. The physical interlocks,
         // project identity checks and execution authority are unchanged.
         if (MessageBox.Show(
@@ -666,6 +666,10 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
             // TEST may contain its own IGN steps, but no project-defined
             // station preparation or release script can run here.
             stationOperationsMayHaveStarted = true;
+            // Subscribe before pressing; accept only an ECU frame received after all clamp commands.
+            using var fixtureCanFeedback = fixturePlan.Press.Count != 0
+                ? new EcuCanFixtureFeedback(_hardware)
+                : null;
             if (fixturePlan.Press.Count != 0)
             {
                 RequireFrozenCanRate();
@@ -699,6 +703,17 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
                     }
                 }
                 fixturePressComplete = true;
+                fixtureCanFeedback!.ArmAfterPress();
+                OperatorRunState = "等待 ECU CAN 确认夹具通信就绪";
+                AddOperatorEvent("夹具已请求压紧，等待压紧后新收到的 ECU CAN 报文");
+                var verifiedFrame = await fixtureCanFeedback.WaitAsync(
+                    TimeSpan.FromSeconds(10), ct);
+                RequireFrozenCanRate();
+                AddOperatorEvent("夹具功能就绪 · ECU CAN 0x" +
+                    verifiedFrame.Frame.Id.ToString("X") +
+                    " · " + verifiedFrame.Time.Utc.ToString("O") +
+                    " · 这是通信反馈，不是机械传感器或防护联锁");
+                Snapshot();
             }
             else AddOperatorEvent("工位未选择夹具输出，本次不执行自动装夹。");
             OperatorRunState = "正在准备测试环境";
