@@ -19,75 +19,150 @@ internal static class DbcSourcePreservingExporter
     private static readonly Regex SignalHeader = new(
         @"^\s*SG_\s+(\w+)\s*(?:M|m\d+)?\s*:", RegexOptions.Compiled);
 
+    // References outside BO_/SG_ must never become orphaned after a delete.
+    // Only the known source-preserving grammar is eligible; unfamiliar directives
+    // are rejected by DbcWorkbenchDocument.Import before any mutation.
+    internal static void AssertMayDeleteMessage(string original, uint messageId) =>
+        AssertNoExternalReferences(original, messageId, null);
+
+    internal static void AssertMayDeleteSignal(string original, uint messageId, string signalName) =>
+        AssertNoExternalReferences(original, messageId, signalName);
+
+    private static void AssertNoExternalReferences(string original, uint messageId, string? signalName)
+    {
+        var id = messageId.ToString(CultureInfo.InvariantCulture);
+        var pattern = signalName is null
+            ? @"\b(?:BO_|SG_|VAL_)\s+" + id + @"\b"
+            : @"\b(?:SG_|VAL_)\s+" + id + @"\s+" +
+                Regex.Escape(signalName) + @"(?:\s|;|$)";
+        foreach (var line in original.Replace("\r\n", "\n").Split('\n'))
+        {
+            var text = line.TrimStart();
+            if ((text.StartsWith("CM_ ", StringComparison.Ordinal) ||
+                 text.StartsWith("BA_ ", StringComparison.Ordinal) ||
+                 text.StartsWith("VAL_ ", StringComparison.Ordinal)) &&
+                Regex.IsMatch(text, pattern, RegexOptions.CultureInvariant))
+                throw Conflict(signalName is null
+                    ? "此报文仍被注释、枚举或属性引用，不能直接删除。"
+                    : "此信号仍被注释、枚举或属性引用，不能直接删除。");
+        }
+    }
+
     internal static string Rewrite(string original, DbcDatabase draft)
     {
         var before = DbcParserAdapter.Parse(original, draft.Name,
             allowSignalOverlaps: true);
-        if (before.Messages.Length != draft.Messages.Length ||
-            !before.Messages.Select(m => m.Id).Order().SequenceEqual(draft.Messages.Select(m => m.Id).Order()))
-            throw Conflict("添加、删除或修改 CAN ID 不受保留原文模式支持。");
+        var oldMessages = before.Messages.ToDictionary(m => m.Id);
+        var newMessages = draft.Messages.ToDictionary(m => m.Id);
 
-        foreach (var oldMessage in before.Messages)
+        foreach (var old in before.Messages)
         {
-            var editedMessage = draft.Messages.Single(m => m.Id == oldMessage.Id);
-            if (oldMessage.Signals.Length != editedMessage.Signals.Length ||
-                !oldMessage.Signals.Select(s => s.Name).Order().SequenceEqual(
-                    editedMessage.Signals.Select(s => s.Name).Order()))
-                throw Conflict("新增、删除或重命名信号需要同时更新注释和引用，当前禁止。");
+            if (!newMessages.TryGetValue(old.Id, out var edited))
+            {
+                AssertMayDeleteMessage(original, old.Id);
+                continue;
+            }
+            foreach (var oldSignal in old.Signals)
+                if (!edited.Signals.Any(s => s.Name == oldSignal.Name))
+                    AssertMayDeleteSignal(original, old.Id, oldSignal.Name);
         }
 
-        // All newly generated BO_/SG_ lines come from the one existing serializer.
+        // Use the canonical exporter only for the BO_/SG_ records being edited.
+        // Preserve VERSION, CM_, BA_, BA_DEF_, VAL_ and all other source lines.
         var exported = DbcParserAdapter.Export(draft);
         var messageLines = new Dictionary<uint, string>();
         var signalLines = new Dictionary<(uint MessageId, string Name), string>();
-        uint? currentExportId = null;
+        uint? exportId = null;
         foreach (var line in exported.Split('\n'))
         {
             var message = MessageHeader.Match(line);
             if (message.Success)
             {
-                currentExportId = uint.Parse(message.Groups[1].Value, CultureInfo.InvariantCulture);
-                messageLines.Add(currentExportId.Value, line);
+                exportId = uint.Parse(message.Groups[1].Value, CultureInfo.InvariantCulture);
+                messageLines.Add(exportId.Value, line.TrimEnd('\r'));
                 continue;
             }
             var signal = SignalHeader.Match(line);
-            if (signal.Success && currentExportId is not null)
-                signalLines.Add((currentExportId.Value, signal.Groups[1].Value), line);
+            if (signal.Success && exportId is not null)
+                signalLines.Add((exportId.Value, signal.Groups[1].Value), line.TrimEnd('\r'));
         }
 
-        var outText = new StringBuilder(original.Length + 128);
+        var newline = original.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
+        var output = new StringBuilder(original.Length + 512);
         uint? currentId = null;
+        var additionsWritten = false;
+
+        void AddExtraSignals()
+        {
+            if (currentId is not uint id || !newMessages.TryGetValue(id, out var current))
+                return;
+            var originalNames = oldMessages[id].Signals.Select(s => s.Name)
+                .ToHashSet(StringComparer.Ordinal);
+            foreach (var signal in current.Signals)
+                if (!originalNames.Contains(signal.Name))
+                    output.Append(signalLines[(id, signal.Name)]).Append(newline);
+        }
+
+        void AddNewMessages()
+        {
+            if (additionsWritten) return;
+            additionsWritten = true;
+            foreach (var added in draft.Messages.Where(m => !oldMessages.ContainsKey(m.Id)))
+            {
+                output.Append(newline).Append(messageLines[added.Id]).Append(newline);
+                foreach (var signal in added.Signals)
+                    output.Append(signalLines[(added.Id, signal.Name)]).Append(newline);
+            }
+        }
+
         foreach (var part in Regex.Split(original, @"(?<=\n)"))
         {
             if (part.Length == 0) continue;
-            var end = part.EndsWith("\r\n", StringComparison.Ordinal) ? "\r\n" :
-                      part.EndsWith("\n", StringComparison.Ordinal) ? "\n" : "";
-            var content = end.Length == 0 ? part : part[..^end.Length];
-            var updated = content;
-            var message = MessageHeader.Match(content);
+            var ending = part.EndsWith("\r\n", StringComparison.Ordinal) ? "\r\n" :
+                part.EndsWith("\n", StringComparison.Ordinal) ? "\n" : "";
+            var line = ending.Length == 0 ? part : part[..^ending.Length];
+            var message = MessageHeader.Match(line);
             if (message.Success)
             {
+                AddExtraSignals();
                 currentId = uint.Parse(message.Groups[1].Value, CultureInfo.InvariantCulture);
-                var old = before.FindMessage(currentId.Value);
-                var draftMessage = draft.FindMessage(currentId.Value);
-                if (old.Name != draftMessage.Name || old.Dlc != draftMessage.Dlc ||
-                    old.Transmitter != draftMessage.Transmitter)
-                    updated = messageLines[currentId.Value];
-            }
-            else
-            {
-                var signal = SignalHeader.Match(content);
-                if (signal.Success && currentId is not null)
+                if (newMessages.TryGetValue(currentId.Value, out var edited))
                 {
-                    var oldSignal = before.FindSignal(currentId.Value, signal.Groups[1].Value);
-                    var editedSignal = draft.FindSignal(currentId.Value, signal.Groups[1].Value);
-                    if (oldSignal != editedSignal)
-                        updated = signalLines[(currentId.Value, signal.Groups[1].Value)];
+                    var old = oldMessages[currentId.Value];
+                    output.Append(old.Name == edited.Name && old.Dlc == edited.Dlc &&
+                        old.Transmitter == edited.Transmitter
+                        ? line : messageLines[currentId.Value]).Append(ending);
                 }
+                continue;
             }
-            outText.Append(updated).Append(end);
+            var signal = SignalHeader.Match(line);
+            if (signal.Success && currentId is uint id && oldMessages.ContainsKey(id))
+            {
+                if (newMessages.TryGetValue(id, out var edited))
+                {
+                    var newSignal = edited.Signals.FirstOrDefault(s => s.Name == signal.Groups[1].Value);
+                    if (newSignal is not null)
+                    {
+                        var oldSignal = before.FindSignal(id, newSignal.Name);
+                        output.Append(oldSignal == newSignal ? line :
+                            signalLines[(id, newSignal.Name)]).Append(ending);
+                    }
+                }
+                continue;
+            }
+            // First non-empty non-signal line after the last BO_/SG_ group:
+            // insert new records BEFORE CM_/BA_/VAL_ reference metadata.
+            if (currentId is not null && !string.IsNullOrWhiteSpace(line))
+            {
+                AddExtraSignals();
+                AddNewMessages();
+                currentId = null;
+            }
+            output.Append(line).Append(ending);
         }
-        return outText.ToString();
+        AddExtraSignals();
+        AddNewMessages();
+        return output.ToString();
     }
 
     private static ProjectDataException Conflict(string message) =>

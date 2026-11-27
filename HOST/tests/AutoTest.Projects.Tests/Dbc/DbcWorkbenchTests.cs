@@ -115,12 +115,45 @@ public sealed class DbcWorkbenchTests
         Assert.True(doc.IsSourcePreserving);
         Assert.Equal(source, doc.ExportText());
     }
-    [Fact] public void UnknownSyntax_RefusesDestructiveEdits()
+    [Fact] public void SourcePreservingDbc_CanAddSignalWithoutLosingExistingAttributes()
     {
-        var doc = DbcWorkbenchDocument.Import("example", Basic + "\nBA_ \"GenMsgCycleTime\" BO_ 291 10;\n");
-        var error = Assert.Throws<ProjectDataException>(() => doc.AddSignal(291,
-            new DbcSignal("New", 40, 8, true, false, 1, 0, 0, 255, "", "Tester")));
+        var source = Basic + "\nBA_ \"GenMsgCycleTime\" BO_ 291 10;\n";
+        var doc = DbcWorkbenchDocument.Import("example", source);
+        Assert.True(doc.IsSourcePreserving);
+        doc.AddSignal(291,
+            new DbcSignal("New", 40, 8, true, false, 1, 0, 0, 255, "", "Tester"));
+        var saved = doc.ExportText();
+        Assert.Contains("BA_ \"GenMsgCycleTime\" BO_ 291 10;", saved);
+        var opened = DbcWorkbenchDocument.Import("example", saved);
+        Assert.Equal(3, opened.Model.FindMessage(291).Signals.Length);
+    }
+
+    [Fact] public void SourcePreservingDbc_CanDeleteUnreferencedSignalButNotReferenced()
+    {
+        var source = Basic + "\nBA_ \"GenMsgCycleTime\" BO_ 291 10;\n";
+        var doc = DbcWorkbenchDocument.Import("example", source);
+        doc.DeleteSignal(291, "Temp");
+        var saved = DbcWorkbenchDocument.Import("example", doc.ExportText());
+        Assert.Single(saved.Model.FindMessage(291).Signals);
+        Assert.Equal("Speed", saved.Model.FindMessage(291).Signals.Single().Name);
+        Assert.Contains("BA_ \"GenMsgCycleTime\" BO_ 291 10;", saved.ExportText());
+
+        var guarded = DbcWorkbenchDocument.Import("example", source);
+        var error = Assert.Throws<ProjectDataException>(() => guarded.DeleteSignal(291, "Speed"));
         Assert.Equal("DBC_SOURCE_PRESERVE", error.Code);
+        Assert.Equal(source, guarded.ExportText());
+    }
+
+    [Fact] public void SourcePreservingDbc_CanAddMessageAndRetainOriginalComments()
+    {
+        var source = Basic + "\nCM_ SG_ 291 Speed \"Original comment\";\n";
+        var doc = DbcWorkbenchDocument.Import("example", source);
+        doc.AddMessage(new DbcMessage(0x701, "Added", 8, "ECU",
+            System.Collections.Immutable.ImmutableArray<DbcSignal>.Empty));
+        var saved = doc.ExportText();
+        Assert.Contains("CM_ SG_ 291 Speed \"Original comment\";", saved);
+        Assert.Contains("BO_ 1793 Added: 8 ECU", saved);
+        Assert.Equal(2, DbcWorkbenchDocument.Import("example", saved).Model.Messages.Length);
     }
     [Fact] public void EditingSignalsAndValueTables_RoundTripsSemantics()
     {

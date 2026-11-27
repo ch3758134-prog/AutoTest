@@ -138,7 +138,14 @@ public sealed class DbcWorkbenchDocument
     }
 
     public void AddNode(string name) { RejectShapeEdits(); Mutate(e => e.AddNode(name)); }
-    public void AddMessage(DbcMessage message) { RejectShapeEdits(); Mutate(e => e.AddMessage(message)); }
+    public void AddMessage(DbcMessage message)
+    {
+        RequireEditable();
+        if (_sourcePreserving && Model.Messages.IsEmpty)
+            throw new ProjectDataException("DBC_SOURCE_PRESERVE",
+                "此文件没有可定位的报文区域，不能安全插入新报文。");
+        Mutate(e => e.AddMessage(message));
+    }
     public void UpdateMessage(uint previousId, DbcMessage replacement)
     {
         RequireEditable();
@@ -156,12 +163,17 @@ public sealed class DbcWorkbenchDocument
     }
     public void DeleteMessage(uint id)
     {
-        RejectShapeEdits();
+        RequireEditable();
+        if (_sourcePreserving) DbcSourcePreservingExporter.AssertMayDeleteMessage(_original, id);
         Mutate(e => e.RemoveMessage(id));
         _tables = _tables.RemoveAll(v => v.MessageId == id);
         _displayNames.RemoveMessage(id);
     }
-    public void AddSignal(uint messageId, DbcSignal signal) { RejectShapeEdits(); Mutate(e => e.AddSignal(messageId, signal)); }
+    public void AddSignal(uint messageId, DbcSignal signal)
+    {
+        RequireEditable();
+        Mutate(e => e.AddSignal(messageId, signal));
+    }
     public void UpdateSignal(uint messageId, string previousName, DbcSignal updated)
     {
         if (_sourcePreserving && previousName != updated.Name)
@@ -173,7 +185,9 @@ public sealed class DbcWorkbenchDocument
     }
     public void DeleteSignal(uint messageId, string name)
     {
-        RejectShapeEdits();
+        RequireEditable();
+        if (_sourcePreserving)
+            DbcSourcePreservingExporter.AssertMayDeleteSignal(_original, messageId, name);
         Mutate(e => e.RemoveSignal(messageId, name));
         _tables = _tables.RemoveAll(v => v.MessageId == messageId && v.SignalName == name);
         _displayNames.RemoveSignal(messageId, name);

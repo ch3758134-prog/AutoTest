@@ -162,7 +162,11 @@ public sealed class DbcWorkbenchViewModel : BindableBase
 {
     private readonly Stack<DbcWorkbenchDocument.EditCheckpoint> _undo = new();
     private readonly Stack<DbcWorkbenchDocument.EditCheckpoint> _redo = new();
-    public bool CanChangeStructure => CanEdit && !_session.Document.IsSourcePreserving;
+    // Source-preserving documents can add or remove unreferenced records.
+    // Identity renaming and existing enum changes remain guarded separately.
+    public bool CanChangeStructure => CanEdit;
+    public bool CanChangeIdentity => CanEdit && !_session.Document.IsSourcePreserving;
+    public bool CanEditValueTables => CanEdit && !_session.Document.IsSourcePreserving;
     public bool CanUndo => _undo.Count > 0 && !IsBusy;
     public bool CanRedo => _redo.Count > 0 && !IsBusy;
     public bool HasOpenEditor { get; set; }
@@ -251,7 +255,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
 
     public bool TrySaveEnums(IReadOnlyDictionary<long, string> values)
     {
-        if (!CanChangeStructure || IsBusy || SelectedMessage is not { } m || SelectedSignal is not { } sg) return false;
+        if (!CanEditValueTables || IsBusy || SelectedMessage is not { } m || SelectedSignal is not { } sg) return false;
         if (SelectedEnums.Count == values.Count && SelectedEnums.All(p => values.TryGetValue(p.Key, out var v) && v == p.Value)) return true;
         var before = _session.Document.CaptureCheckpoint();
         try
@@ -414,7 +418,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         ? "部分结构操作不可用"
         : _session.Document.CanEdit ? "可编辑" : "只读";
     public string UnsupportedDescription => _session.Document.IsSourcePreserving
-        ? "此文件包含附加属性或引用；当前不能安全地新增、删除报文或信号。"
+        ? "可新增报文与信号；删除被注释、枚举或属性引用的对象时需先处理引用，CAN ID 和信号技术名称暂不可更改。"
         : _session.Document.CanEdit ? ""
         : "原始 DBC 存在不支持的结构；只允许安全修改中文别名和可识别 CM_ 注释。原因：" +
           string.Join("、", _session.Document.UnsupportedDirectives.Take(12));
@@ -696,7 +700,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         if (!CanEdit || IsBusy || SelectedMessage is not { } chosen) return;
         if (!TryCommitPendingSignal()) return;
         var edited = _dialogs.EditMessage(CurrentMessageModel ?? chosen.Message,
-            CanChangeStructure && !_session.Document.ValueTables.Any(t => t.MessageId == chosen.Message.Id));
+            CanChangeIdentity && !_session.Document.ValueTables.Any(t => t.MessageId == chosen.Message.Id));
         if (edited is null || edited == (CurrentMessageModel ?? chosen.Message)) return;
         try
         {
@@ -717,7 +721,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         if (!CanEdit || IsBusy || SelectedMessage is not { } message || SelectedSignal is not { } chosen)
             return;
         if (!TryCommitPendingSignal()) return;
-        var edited = _dialogs.EditSignal(chosen.Signal, !CanChangeStructure || SelectedEnums.Count > 0);
+        var edited = _dialogs.EditSignal(chosen.Signal, !CanChangeIdentity || SelectedEnums.Count > 0);
         if (edited is null || edited == chosen.Signal) return;
         try
         {
@@ -1142,5 +1146,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         RaisePropertyChanged(nameof(CanUndo));
         RaisePropertyChanged(nameof(CanRedo));
         RaisePropertyChanged(nameof(CanChangeStructure));
+        RaisePropertyChanged(nameof(CanChangeIdentity));
+        RaisePropertyChanged(nameof(CanEditValueTables));
     }
 }

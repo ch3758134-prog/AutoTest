@@ -282,7 +282,7 @@ public partial class DbcWorkbenchView : UserControl
         _enums.Clear();
         foreach (var entry in _viewModel.SelectedEnums.OrderBy(x => x.Key))
             _enums.Add(new EnumEditRow { Raw = entry.Key.ToString(CultureInfo.InvariantCulture), Label = entry.Value });
-        var editable = _viewModel.CanChangeStructure;
+        var editable = _viewModel.CanEditValueTables;
         EnumGrid.IsReadOnly = !editable;
         AddEnumButton.IsEnabled = DeleteEnumButton.IsEnabled = editable;
         EnumPolicy.Text = editable ? "使用原始整数值；应用时检查位长、有符号范围和重复值。"
@@ -292,14 +292,14 @@ public partial class DbcWorkbenchView : UserControl
 
     private void AddEnum_Click(object sender, RoutedEventArgs e)
     {
-        if (!_viewModel.CanChangeStructure) return;
+        if (!_viewModel.CanEditValueTables) return;
         var n = 0L; while (_enums.Any(r => r.Raw == n.ToString(CultureInfo.InvariantCulture))) n++;
         var row = new EnumEditRow { Raw = n.ToString(CultureInfo.InvariantCulture) };
         _enums.Add(row); EnumGrid.SelectedItem = row; EnumGrid.ScrollIntoView(row);
     }
     private void DeleteEnum_Click(object sender, RoutedEventArgs e)
     {
-        if (_viewModel.CanChangeStructure && EnumGrid.SelectedItem is EnumEditRow row) _enums.Remove(row);
+        if (_viewModel.CanEditValueTables && EnumGrid.SelectedItem is EnumEditRow row) _enums.Remove(row);
     }
 
     private void Overlay_Backdrop(object sender, MouseButtonEventArgs e)
@@ -319,7 +319,7 @@ public partial class DbcWorkbenchView : UserControl
         if (_overlayKind == "notes" &&
             !_viewModel.TrySaveNotes(_messageNotes, AliasBox.Text, SummaryBox.Text, CommentBox.Text))
         { OverlayError.Text = _viewModel.StatusMessage; return false; }
-        if (_overlayKind == "enums" && _viewModel.CanChangeStructure)
+        if (_overlayKind == "enums" && _viewModel.CanEditValueTables)
         {
             if (!EnumGrid.CommitEdit(DataGridEditingUnit.Cell, true) ||
                 !EnumGrid.CommitEdit(DataGridEditingUnit.Row, true)) return false;
