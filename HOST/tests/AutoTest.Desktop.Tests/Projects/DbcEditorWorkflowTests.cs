@@ -84,6 +84,54 @@ public sealed class DbcEditorWorkflowTests
     }
 
     [Fact]
+    public async Task ImportedDbcUsesReadableFilenameAndRenamePreservesTestMappings()
+    {
+        var parent = NewParent();
+        try
+        {
+            var original = Path.Combine(parent, "matrix.dbc");
+            await File.WriteAllTextAsync(original, Basic);
+            var workspace = new ProjectWorkspaceService();
+            var project = await workspace.CreateAsync("ECU", parent);
+            var dbc = await workspace.ImportDbcAsync(original);
+            Assert.Equal("matrix.dbc", Path.GetFileName(dbc.RelativePath));
+            Assert.True(File.Exists(Path.Combine(project.RootDirectory, dbc.RelativePath)));
+
+            var test = await workspace.CreateTestProgramAsync("SignalTest");
+            var opened = await workspace.OpenTestEditorAsync(test.Id);
+            var map = new TestTargetMapping("Status", TestTargetKind.CanMessage,
+                dbc.Id, dbc.Revision, dbc.Sha256, CanId: 291);
+            var step = StepNode.Create("Write", "发送状态报文")
+                .WithProperty("target", map.Name)
+                .WithProperty("value", "HEX:0000000000000000");
+            var transaction = new StepEditTransaction(opened.Document);
+            transaction.InsertWithMapping(TestPhase.Test, null, null, 0, step, map);
+            await workspace.SaveTestEditorAsync(opened, transaction.Current);
+
+            await workspace.RenameAssetAsync(dbc.Id, "HydEPB");
+            var renamed = workspace.Current!.Definition.Assets.Single(a => a.Id == dbc.Id);
+            Assert.Equal("HydEPB", renamed.Name);
+            Assert.Equal("HydEPB.dbc", Path.GetFileName(renamed.RelativePath));
+            Assert.Equal(dbc.Id, renamed.Id);
+            Assert.Equal(dbc.Sha256, renamed.Sha256);
+            Assert.Equal(dbc.Revision, renamed.Revision);
+            Assert.True(File.Exists(Path.Combine(project.RootDirectory, renamed.RelativePath)));
+            Assert.False(File.Exists(Path.Combine(project.RootDirectory, dbc.RelativePath)));
+
+            var reopened = new ProjectWorkspaceService();
+            await reopened.OpenAsync(project.ManifestPath);
+            var edited = await reopened.OpenDbcEditorAsync(dbc.Id);
+            Assert.Equal("Status", edited.Document.Model.FindMessage(291).Name);
+            var actual = await reopened.OpenTestEditorAsync(test.Id);
+            var linked = Assert.Single(actual.Document.Mappings);
+            Assert.Equal(map.Asset, linked.Asset);
+            Assert.Equal(map.AssetSha256, linked.AssetSha256);
+            Assert.Equal(map.AssetRevision, linked.AssetRevision);
+        }
+        finally { Directory.Delete(parent, recursive: true); }
+    }
+
+    [Fact]
     public async Task InvalidDbc_RejectsImportWithoutCreatingFakeAsset()
     {
         var parent = NewParent();
