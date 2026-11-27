@@ -143,8 +143,6 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
             () => IsControllerOverview && !IsBusy);
         AddStateCommand = new DelegateCommand(AddState, () => IsController && SelectedControllerId.HasValue && !IsBusy);
         SetDefaultCommand = new DelegateCommand(SetDefault, () => IsController && SelectedStateId.HasValue && !IsBusy);
-        AddRuleCommand = new DelegateCommand(AddRule, () => IsScan && !IsBusy);
-        AddRecipeCommand = new DelegateCommand(AddRecipe, () => IsScan && !IsBusy);
         RemoveEntryCommand = new DelegateCommand(RemoveSelected,
             () => !IsBusy && _selectedNode is not null && _selectedNode.Key != "profile");
         RebuildNodes();
@@ -218,7 +216,6 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
     public bool IsController => _session.Kind == ProjectConfigurationCodec.ControllerKind;
     public bool IsControllerOverview => IsController && _selectedNode?.Key == "profile";
     public bool IsControllerState => IsController && SelectedStateId.HasValue;
-    public bool IsScan => _session.Kind == ProjectConfigurationCodec.ScanSettingsKind;
     public bool IsWave => _session.Kind == ProjectConfigurationCodec.WaveSettingsKind;
     public bool IsFlash => _session.Kind == ProjectConfigurationCodec.FlashSettingsKind;
     public string TypeLabel => _session.Kind switch
@@ -226,7 +223,6 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
         ProjectConfigurationCodec.ControllerKind => "旧控制器资源（仅兼容既有工程）",
         ProjectConfigurationCodec.WaveSettingsKind => "波形判定配置",
         ProjectConfigurationCodec.FlashSettingsKind => "烧录配置",
-        ProjectConfigurationCodec.ScanSettingsKind => "扫码匹配配置",
         _ => "工程配置"
     };
     public string ExecutionBoundary => _session.Kind switch
@@ -237,8 +233,6 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
             "从 DBC 选择信号，再填写波形分析条件；采集、分析、判定由测试步骤明确组织，证据不会自动变成参考。",
         ProjectConfigurationCodec.FlashSettingsKind =>
             "这里只保存 ECU/UDS/固件与安全参数，不执行烧录；真实 UDS/Flash 现场执行需另行接通验证。",
-        ProjectConfigurationCodec.ScanSettingsKind =>
-            "只有已发布且校验通过的规则和配方才会参与扫码匹配；匹配不自动触发测试或烧录。",
         _ => ""
     };
     public bool IsBusy
@@ -303,8 +297,6 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
     public DelegateCommand PickSupportedKeysCommand { get; }
     public DelegateCommand AddStateCommand { get; }
     public DelegateCommand SetDefaultCommand { get; }
-    public DelegateCommand AddRuleCommand { get; }
-    public DelegateCommand AddRecipeCommand { get; }
     public DelegateCommand RemoveEntryCommand { get; }
 
     private void AddField(string key, string label, string? value, string hint = "",
@@ -567,64 +559,6 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
             AddField("memory", "允许写入的地址范围", flash.MemoryRanges,
                 "明确目标 Flash 映射之前不可实际烧录。");
         }
-        else if (_working is ScanMatchSettingsDocument scan)
-        {
-            if (key == "profile")
-            {
-                AddField("name", "配置名称", scan.Name);
-                AddField("published", "发布规则与配方", scan.Published ? "是" : "否", "",
-                    YesNo);
-            }
-            else if (key.StartsWith("rule|", StringComparison.Ordinal))
-            {
-                var r = scan.Rules[ParseIndex(key)];
-                AddField("id", "规则编号", r.RuleId);
-                AddField("regex", "扫码完整匹配正则表达式", r.Pattern,
-                    "填写扫码匹配表达式；可使用命名字段 model（车型）和 serial（编号）。");
-                AddField("keys", "身份字段（英文逗号分隔）", r.IdentityFields,
-                    "填写需要提取的字段，例如 serial 或 model,serial。字段名称应与扫码匹配规则一致。");
-                AddField("published", "发布此规则", r.Published ? "是" : "否", "", YesNo);
-            }
-            else if (key.StartsWith("recipe|", StringComparison.Ordinal))
-            {
-                var r = scan.Recipes[ParseIndex(key)];
-                AddField("id", "配方编号", r.RecipeId);
-                AddField("model", "产品代码（UT1 的 ProductCode）", r.Model,
-                    "例如 EPBA；仅当扫码规则确实解析出 model 字段时才用于配方路由。");
-                AddField("hardware", "硬件版号（UT1 的 HardwareCode）", r.HardwareCode ?? "",
-                    "例如 H02；此值必须与条码中独立解析出的硬件版本相同。");
-                AddField("customer", "客户标识", r.Customer);
-                AddField("testProject", "运行的测试项目（有序用例）", AssetNameFor(r.TestProjectAssetId),
-                    "推荐选择已有测试项目，按工程中固定的用例顺序执行；不会因扫码立刻运行。",
-                    AssetNames(ProjectWorkspaceService.TestProjectKind));
-                AddField("test", "关联单个 TEST 程序（可选）", AssetNameFor(r.TestProgramAssetId),
-                    "不使用测试项目时选择单个 TEST；也可用于核对项目中的目标用例。",
-                    AssetNames(ProjectWorkspaceService.TestProgramKind));
-                AddField("dbc", "关联 DBC", AssetNameFor(r.DbcAssetId),
-                    "可选。引用当前工程 DBC 版本", AssetNames(ProjectWorkspaceService.DbcKind));
-                AddField("flashPolicy", "本次烧录策略",
-                    r.EffectiveFlashPolicy == "LegacyFlashUnbound" ? "" : r.EffectiveFlashPolicy,
-                    "首版仅支持不烧录和必须烧录；不会按条码自动跳过或执行 FLASH。",
-                    ["", ScanFlashPolicy.NoFlash, ScanFlashPolicy.FlashRequired]);
-                AddField("flash", "软件目标 · 工程 HEX/S19 资源", AssetNameFor(r.FirmwareAssetId),
-                    "引用工程固件的版本和 SHA；不按文件修改时间自动选最新。",
-                    AssetNames(ProjectWorkspaceService.FirmwareKind));
-                AddField("firmwareRelease", "软件发布名称／目标版本", r.FirmwareReleaseLabel ?? "",
-                    "例如 EPB-R5；这是人类可读标识，软件实际版本仍需 ECU 专门验收。");
-                AddField("flashSettings", "烧录工艺配置（元数据）", AssetNameFor(r.FlashSettingsAssetId),
-                    "使用工程内已保存的烧录设置。",
-                    AssetNames(ProjectWorkspaceService.FlashSettingsKind));
-                AddField("ecuCanBaud", "目标 ECU CAN 波特率 kbit/s",
-                    r.TargetEcuCanKbps?.ToString(CultureInfo.InvariantCulture) ?? "",
-                    "须与主控波特率读回一致；当前配方支持 250/500 kbit/s。",
-                    new[] { "" }.Concat(ScanFlashPolicy.SupportedEcuCanKbps.Select(
-                        x => x.ToString(CultureInfo.InvariantCulture))).ToArray());
-                AddField("flashJob", "已冻结的 CanTool 任务 SHA256", r.FlashJobFingerprint ?? "",
-                    "发布前自动校验并冻结；内容变化须重新发布。", readOnly: true);
-                AddField("published", "发布此配方", r.Published ? "是" : "否",
-                    "自动保存草稿不等于批准生产配方；扫码仅做配置识别，不自动烧录。", YesNo);
-            }
-        }
         RefreshControllerDesigner();
         RaisePropertyChanged(nameof(IsDirty));
     }
@@ -833,49 +767,6 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                     ApprovedByOperator = false
                 };
             }
-            else if (_working is ScanMatchSettingsDocument scan)
-            {
-                if (key == "profile") next = scan with
-                { Name = F("name"), Published = Yes(F("published")) };
-                else if (key.StartsWith("rule|", StringComparison.Ordinal))
-                {
-                    var rules = scan.Rules.ToList();
-                    rules[ParseIndex(key)] = new ScanRuleDraft(F("id"), F("regex"),
-                        F("keys"), Yes(F("published")));
-                    next = scan with { Rules = rules };
-                }
-                else if (key.StartsWith("recipe|", StringComparison.Ordinal))
-                {
-                    var recipes = scan.Recipes.ToList();
-                    var test = ResolvePinnedAsset(F("test"), ProjectWorkspaceService.TestProgramKind);
-                    var testProject = ResolvePinnedAsset(F("testProject"), ProjectWorkspaceService.TestProjectKind);
-                    var firmware = ResolvePinnedAsset(F("flash"), ProjectWorkspaceService.FirmwareKind);
-                    var flashSettings = ResolvePinnedAsset(F("flashSettings"), ProjectWorkspaceService.FlashSettingsKind);
-                    var dbc = ResolvePinnedAsset(F("dbc"), ProjectWorkspaceService.DbcKind);
-                    var policy = F("flashPolicy");
-                    if (policy.Length == 0)
-                        throw new ProjectDataException("SCAN_FLASH_POLICY",
-                            "请明确选择“不烧录”或“必须烧录”，不要沿用旧的单个烧录勾选。");
-                    int? rate = F("ecuCanBaud").Length == 0 ? null :
-                        int.Parse(F("ecuCanBaud"), CultureInfo.InvariantCulture);
-                    var old = scan.Recipes[ParseIndex(key)];
-                    recipes[ParseIndex(key)] = new ScanRecipeDraft(F("id"), F("model"),
-                        F("customer"), test.Id, firmware.Id, dbc.Id,
-                        policy == ScanFlashPolicy.FlashRequired, Yes(F("published")),
-                        test.Revision, test.Sha256,
-                        firmware.Revision, firmware.Sha256, dbc.Revision, dbc.Sha256,
-                        testProject.Id, testProject.Revision, testProject.Sha256,
-                        flashSettings.Id, flashSettings.Revision, flashSettings.Sha256,
-                        policy, rate, F("firmwareRelease"),
-                        // Any change to selected resources invalidates the old
-                        // approval; the publish step recomputes from real files.
-                        null, F("hardware"));
-                    if (!recipes[ParseIndex(key)].Published &&
-                        old.FlashJobFingerprint is not null)
-                        StatusMessage = "新草稿已解除原 Flash Job 冻结；再次发布时重新读取文件。";
-                    next = scan with { Recipes = recipes };
-                }
-            }
             ProjectConfigurationCodec.Validate(_session.Kind, next);
             _working = next;
             _fieldEdited = false;
@@ -902,13 +793,6 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                     items.Add(new("state|" + controller.Id + "|" + state.Id,
                         state.Name + (state.Id == controller.DefaultStateId ? " · 默认" : "")));
             }
-        if (_working is ScanMatchSettingsDocument scan)
-        {
-            for (int i = 0; i < scan.Rules.Count; i++)
-                items.Add(new("rule|" + i, "规则 · " + scan.Rules[i].RuleId));
-            for (int i = 0; i < scan.Recipes.Count; i++)
-                items.Add(new("recipe|" + i, "配方 · " + scan.Recipes[i].RecipeId));
-        }
         var key = preferredKey ?? _selectedNode?.Key ?? "profile";
         _fieldEdited = false;
         _selectedNode = null;
@@ -1088,34 +972,6 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
         }
         catch (ProjectDataException error) { StatusMessage = error.Message; }
     }
-    private void AddRule()
-    {
-        if (!ApplyFields()) return;
-        var scan = (ScanMatchSettingsDocument)_working;
-        if (scan.Published) { StatusMessage = "请先取消总发布状态，再添加未配置规则。"; return; }
-        var ruleId = "Rule" + Guid.NewGuid().ToString("N")[..6];
-        // A usable but unpublished starter for the optional UT1 label.
-        // Change the pattern to keep existing externally-issued legacy SN.
-        var ut1Pattern = scan.Rules.Count == 0
-            ? @"^UT1-(?<model>[A-Z0-9]{4,8})-(?<hardware>H[0-9]{2})-(?<serial>[A-Z0-9]{8,20})-(?<crc>[0-9A-F]{4})$"
-            : "";
-        var identity = scan.Rules.Count == 0 ? "serial" : "";
-        _working = scan with { Rules = scan.Rules.Append(
-            new ScanRuleDraft(ruleId, ut1Pattern, identity, false)).ToList() };
-        RebuildNodes("rule|" + scan.Rules.Count);
-        RaisePropertyChanged(nameof(IsDirty));
-    }
-    private void AddRecipe()
-    {
-        if (!ApplyFields()) return;
-        var scan = (ScanMatchSettingsDocument)_working;
-        if (scan.Published) { StatusMessage = "请先取消总发布状态，再添加未配置配方。"; return; }
-        var id = "Recipe" + Guid.NewGuid().ToString("N")[..6];
-        _working = scan with { Recipes = scan.Recipes.Append(new ScanRecipeDraft(id, "", "", null,
-            null, null, false, false)).ToList() };
-        RebuildNodes("recipe|" + scan.Recipes.Count);
-        RaisePropertyChanged(nameof(IsDirty));
-    }
     private void RemoveSelected()
     {
         if (!ApplyFields() || _selectedNode is null || _selectedNode.Key == "profile") return;
@@ -1130,20 +986,6 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
                 else if (SelectedStateId is Guid stateId)
                     edit.RemoveState(controllerId, stateId);
                 _working = edit.Current;
-            }
-            else if (_working is ScanMatchSettingsDocument scan)
-            {
-                if (key.StartsWith("rule|", StringComparison.Ordinal))
-                {
-                    var list = scan.Rules.ToList(); list.RemoveAt(ParseIndex(key));
-                    _working = scan with { Rules = list };
-                }
-                else if (key.StartsWith("recipe|", StringComparison.Ordinal))
-                {
-                    var list = scan.Recipes.ToList(); list.RemoveAt(ParseIndex(key));
-                    _working = scan with { Recipes = list };
-                }
-                ProjectConfigurationCodec.Validate(_session.Kind, _working);
             }
             RebuildNodes("profile");
             RaisePropertyChanged(nameof(IsDirty));
@@ -1172,14 +1014,6 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
         IsBusy = true;
         try
         {
-            if (_working is ScanMatchSettingsDocument scan && scan.Published)
-            {
-                // Auto-freeze the SAME CanTool job that the real TEST Flash
-                // step will execute; no scanner or file metadata can trigger
-                // an extra physical programming path.
-                _working = await ScanRecipePreparationService.FreezePublishedAsync(
-                    _workspace, scan);
-            }
             _session = await _workspace.SaveConfigurationAsync(_session, _working);
             _working = _session.Document;
             RebuildNodes();
@@ -1230,8 +1064,6 @@ public sealed class ConfigurationWorkbenchViewModel : BindableBase
         PickSupportedKeysCommand.RaiseCanExecuteChanged();
         AddStateCommand.RaiseCanExecuteChanged();
         SetDefaultCommand.RaiseCanExecuteChanged();
-        AddRuleCommand.RaiseCanExecuteChanged();
-        AddRecipeCommand.RaiseCanExecuteChanged();
         RemoveEntryCommand.RaiseCanExecuteChanged();
     }
 }

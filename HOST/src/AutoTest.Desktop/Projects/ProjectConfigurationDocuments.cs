@@ -133,121 +133,6 @@ public sealed record FlashSettingsDocument(int SchemaVersion, string Name, strin
     }
 }
 
-public sealed record ScanRuleDraft(string RuleId, string Pattern, string IdentityFields,
-    bool Published);
-public sealed record ScanRecipeDraft(string RecipeId, string Model, string Customer,
-    Guid? TestProgramAssetId, Guid? FirmwareAssetId, Guid? DbcAssetId,
-    bool RequiresFlash, bool Published,
-    int? TestProgramRevision = null, string? TestProgramFingerprint = null,
-    int? FirmwareRevision = null, string? FirmwareFingerprint = null,
-    int? DbcRevision = null, string? DbcFingerprint = null,
-    Guid? TestProjectAssetId = null, int? TestProjectRevision = null,
-    string? TestProjectFingerprint = null,
-    Guid? FlashSettingsAssetId = null, int? FlashSettingsRevision = null,
-    string? FlashSettingsFingerprint = null,
-    string? FlashPolicy = null, int? TargetEcuCanKbps = null,
-    string? FirmwareReleaseLabel = null, string? FlashJobFingerprint = null,
-    string? HardwareCode = null)
-{
-    /// <summary>Legacy scan profiles are readable; legacy "requiresFlash" is
-    /// NOT a verified CanTool production bundle.</summary>
-    public string EffectiveFlashPolicy =>
-        FlashPolicy is "NoFlash" or "FlashRequired" ? FlashPolicy :
-        RequiresFlash ? "LegacyFlashUnbound" : "NoFlash";
-}
-
-public static class ScanFlashPolicy
-{
-    public const string NoFlash = "NoFlash";
-    public const string FlashRequired = "FlashRequired";
-    public static readonly int[] SupportedEcuCanKbps =
-        [20, 50, 100, 125, 250, 500, 800, 1000];
-}
-
-
-public sealed record ScanMatchSettingsDocument(int SchemaVersion, string Name, bool Published,
-    List<ScanRuleDraft> Rules, List<ScanRecipeDraft> Recipes)
-{
-    public static ScanMatchSettingsDocument Create(string name) => new(1, name, false, [], []);
-
-    public void Validate()
-    {
-        if (SchemaVersion != 1 || string.IsNullOrWhiteSpace(Name) ||
-            Rules is null || Recipes is null || Rules.Count > 100 || Recipes.Count > 1000 ||
-            Rules.Any(r => r is null) || Recipes.Any(r => r is null))
-            throw new ProjectDataException("SCAN_CONFIG", "扫码规则或配方配置不完整。");
-        if (Rules.GroupBy(x => x.RuleId, StringComparer.OrdinalIgnoreCase).Any(g => g.Count() > 1) ||
-            Recipes.GroupBy(x => x.RecipeId, StringComparer.OrdinalIgnoreCase).Any(g => g.Count() > 1))
-            throw new ProjectDataException("SCAN_CONFIG_DUPLICATE", "扫码规则或配方编号不能重复。");
-        if (!Published) return; // Drafts can be saved but may never select a production recipe.
-        if (!Rules.Any(r => r.Published))
-            throw new ProjectDataException("SCAN_RULE_MISSING", "发布前至少需要一条已发布的有效规则。");
-        var rules = ToRules();
-        var errors = rules.Validate();
-        if (errors.Length > 0)
-            throw new ProjectDataException("SCAN_RULE_INVALID", string.Join("; ", errors.Take(8)));
-        if (!Recipes.Any(r => r.Published))
-            throw new ProjectDataException("SCAN_RECIPE_MISSING", "正式发布前必须指定至少一个配方。");
-        foreach (var recipe in Recipes.Where(r => r.Published))
-        {
-            if (string.IsNullOrWhiteSpace(recipe.RecipeId) ||
-                (recipe.TestProgramAssetId is null && recipe.TestProjectAssetId is null) ||
-                (recipe.TestProgramAssetId.HasValue &&
-                 !ProjectConfigurationCodec.ValidPin(recipe.TestProgramRevision, recipe.TestProgramFingerprint)) ||
-                (recipe.TestProjectAssetId.HasValue &&
-                 !ProjectConfigurationCodec.ValidPin(recipe.TestProjectRevision, recipe.TestProjectFingerprint)) ||
-                (recipe.FirmwareAssetId.HasValue &&
-                 !ProjectConfigurationCodec.ValidPin(recipe.FirmwareRevision, recipe.FirmwareFingerprint)) ||
-                (recipe.DbcAssetId.HasValue &&
-                 !ProjectConfigurationCodec.ValidPin(recipe.DbcRevision, recipe.DbcFingerprint)) ||
-                (recipe.FlashSettingsAssetId.HasValue &&
-                 !ProjectConfigurationCodec.ValidPin(recipe.FlashSettingsRevision, recipe.FlashSettingsFingerprint)))
-                throw new ProjectDataException("SCAN_RECIPE_INVALID",
-                    "发布配方必须引用已保存的测试项目或测试程序，以及所选资源的确定修订与 SHA。");
-            if (!string.IsNullOrWhiteSpace(recipe.HardwareCode) &&
-                (recipe.HardwareCode.Length != 3 || recipe.HardwareCode[0] != 'H' ||
-                 !char.IsAsciiDigit(recipe.HardwareCode[1]) ||
-                 !char.IsAsciiDigit(recipe.HardwareCode[2])))
-                throw new ProjectDataException("SCAN_HARDWARE",
-                    "UT1 产品硬件版号应为 H00～H99；旧无版本条码可以不填。");
-            if (recipe.FlashPolicy is not null and not ("NoFlash" or "FlashRequired"))
-                throw new ProjectDataException("SCAN_FLASH_POLICY", "烧录策略只能选不烧录或必须烧录。");
-            if (recipe.TargetEcuCanKbps is int rate &&
-                !ScanFlashPolicy.SupportedEcuCanKbps.Contains(rate))
-                throw new ProjectDataException("SCAN_ECU_CAN_BAUD", "目标 ECU CAN 波特率不在主控支持列表中。");
-            if (recipe.FlashPolicy == ScanFlashPolicy.NoFlash && recipe.RequiresFlash ||
-                recipe.FlashPolicy == ScanFlashPolicy.FlashRequired && !recipe.RequiresFlash)
-                throw new ProjectDataException("SCAN_FLASH_POLICY",
-                    "已发布配方的烧录策略和是否烧录标记不一致。");
-            if (recipe.FlashPolicy == ScanFlashPolicy.FlashRequired &&
-                (recipe.FirmwareAssetId is null || recipe.FlashSettingsAssetId is null ||
-                 recipe.TargetEcuCanKbps is not (250 or 500) ||
-                 string.IsNullOrWhiteSpace(recipe.FirmwareReleaseLabel)))
-                throw new ProjectDataException("SCAN_FLASH_BUNDLE",
-                    "请选择目标固件、烧录配置、250/500 kbit/s 及软件版本名称。");
-            if (recipe.FlashJobFingerprint is { Length: > 0 } sha &&
-                (sha.Length != 64 || !sha.All(Uri.IsHexDigit)))
-                throw new ProjectDataException("SCAN_FLASH_SHA",
-                    "冻结烧录任务 SHA256 无效。");
-        }
-    }
-
-    public IdentityRuleSet ToRules()
-    {
-        var list = Rules.Select(r => new IdentityRule(r.RuleId, r.Pattern,
-            (r.IdentityFields ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .ToImmutableArray(), r.Published ? RulePublication.Published : RulePublication.Draft));
-        var fingerprint = RevisionFingerprint.FromBytes(JsonSerializer.SerializeToUtf8Bytes(Rules));
-        return new IdentityRuleSet(list, fingerprint, Published);
-    }
-}
-
-/// <summary>
-/// A narrow station process definition for this ECU. These are verified
-/// physical capabilities, not a second TEST DSL. This authored file cannot
-/// authorize live outputs; real production requires a separate stage executor,
-/// station evidence and an immutable release snapshot.
-/// </summary>
 public sealed record InspectionStationAction(Guid ActionId, string Kind, int WaitAfterMilliseconds)
 {
     public static readonly string[] Kinds =
@@ -295,7 +180,6 @@ public static class ProjectConfigurationCodec
     public const string ControllerKind = "controller";
     public const string WaveSettingsKind = "wave-settings";
     public const string FlashSettingsKind = "flash-settings";
-    public const string ScanSettingsKind = "scan-rules";
     public const string InspectionKind = "inspection-station";
     private static readonly JsonSerializerOptions Json = new()
     {
@@ -305,15 +189,13 @@ public static class ProjectConfigurationCodec
     public static bool ValidPin(int? revision, string? sha) =>
         revision is > 0 && sha is { Length: 64 } && sha.All(Uri.IsHexDigit);
     public static bool IsConfiguration(string kind) => kind is
-        ControllerKind or WaveSettingsKind or FlashSettingsKind or ScanSettingsKind or
-        InspectionKind;
+        ControllerKind or WaveSettingsKind or FlashSettingsKind or InspectionKind;
 
     public static byte[] Create(string kind, string name) => Encode(kind, kind switch
     {
         ControllerKind => EcuControlProfile.Create(name, "待绑定硬件", Guid.NewGuid()),
         WaveSettingsKind => WaveSettingsDocument.Create(name),
         FlashSettingsKind => FlashSettingsDocument.Create(name),
-        ScanSettingsKind => ScanMatchSettingsDocument.Create(name),
         InspectionKind => InspectionStationProcedureDocument.Create(name),
         _ => throw new ArgumentException("不支持的配置类型：" + kind)
     });
@@ -331,8 +213,6 @@ public static class ProjectConfigurationCodec
                     ?? throw new ProjectDataException("CONFIG_JSON", "空波形配置。"),
                 FlashSettingsKind => JsonSerializer.Deserialize<FlashSettingsDocument>(bytes, Json)
                     ?? throw new ProjectDataException("CONFIG_JSON", "空烧录配置。"),
-                ScanSettingsKind => JsonSerializer.Deserialize<ScanMatchSettingsDocument>(bytes, Json)
-                    ?? throw new ProjectDataException("CONFIG_JSON", "空扫码配置。"),
                 InspectionKind => JsonSerializer.Deserialize<InspectionStationProcedureDocument>(bytes, Json)
                     ?? throw new ProjectDataException("CONFIG_JSON", "空工位动作配置。"),
                 _ => throw new ArgumentException("不支持的配置资源：" + kind)
@@ -361,7 +241,6 @@ public static class ProjectConfigurationCodec
             case ControllerKind: ((EcuControlProfile)document).Validate(); break;
             case WaveSettingsKind: ((WaveSettingsDocument)document).Validate(); break;
             case FlashSettingsKind: ((FlashSettingsDocument)document).Validate(); break;
-            case ScanSettingsKind: ((ScanMatchSettingsDocument)document).Validate(); break;
             case InspectionKind: ((InspectionStationProcedureDocument)document).Validate(); break;
             default: throw new ArgumentException("不支持的配置资源：" + kind);
         }

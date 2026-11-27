@@ -2117,7 +2117,6 @@ public sealed partial class MainWindowViewModel : BindableBase
             ProjectWorkspaceService.WaveKind => ImportWaveAsync(),
             ProjectWorkspaceService.WaveSettingsKind => CreateConfigurationAsync(ProjectWorkspaceService.WaveSettingsKind),
             ProjectWorkspaceService.FlashSettingsKind => Task.CompletedTask, // legacy read only
-            ProjectWorkspaceService.ScanSettingsKind => Task.CompletedTask, // legacy read only
             _ => Task.CompletedTask
         };
     }
@@ -2130,7 +2129,6 @@ public sealed partial class MainWindowViewModel : BindableBase
             ProjectWorkspaceService.ControllerKind => "旧控制器资源",
             ProjectWorkspaceService.WaveSettingsKind => "波形判定配置",
             ProjectWorkspaceService.FlashSettingsKind => "烧录配置",
-            ProjectWorkspaceService.ScanSettingsKind => "扫码匹配配置",
             _ => "工程配置"
         };
         var name = _fileDialogs.AskResourceName("新建" + display, "新建" + display);

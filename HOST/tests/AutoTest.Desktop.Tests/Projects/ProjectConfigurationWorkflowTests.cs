@@ -25,7 +25,6 @@ public sealed class ProjectConfigurationWorkflowTests
     [InlineData(ProjectWorkspaceService.ControllerKind)]
     [InlineData(ProjectWorkspaceService.WaveSettingsKind)]
     [InlineData(ProjectWorkspaceService.FlashSettingsKind)]
-    [InlineData(ProjectWorkspaceService.ScanSettingsKind)]
     public async Task CreateReopen_AllConfigKinds_AreFormalAssets(string kind)
     {
         var parent = Parent();
@@ -72,49 +71,6 @@ public sealed class ProjectConfigurationWorkflowTests
             Assert.Equal(0x00012u, profile.Controllers.Single().States.Last().KeyMask);
             Assert.Equal(1.3, profile.Controllers.Single().States.Last().Windows.Single().TargetVolts);
             Assert.Equal(saved.FileSha256, loaded.FileSha256);
-        }
-        finally { Directory.Delete(parent, true); }
-    }
-
-    [Fact]
-    public async Task ScanRule_RequiresPublishedRecipeAndPinnedTestForMatch()
-    {
-        var parent = Parent();
-        try
-        {
-            var workspace = new ProjectWorkspaceService();
-            var project = await workspace.CreateAsync("Lab", parent);
-            var test = await workspace.CreateTestProgramAsync("EOL");
-            var scan = await workspace.CreateConfigurationAsync(ProjectWorkspaceService.ScanSettingsKind, "工厂扫码");
-            var opened = await workspace.OpenConfigurationAsync(scan.Id);
-            var edited = new ScanMatchSettingsDocument(1, "工厂扫码", true,
-                [new ScanRuleDraft("Serial", "^(?<serial>[A-Z]{2}[0-9]{3})$", "serial", true)],
-                [new ScanRecipeDraft("EOL_A", "", "", test.Id.Value, null, null, false, true,
-                    test.Revision, test.Sha256)]);
-            var saved = await workspace.SaveConfigurationAsync(opened, edited);
-            Assert.Equal(2, saved.AssetRevision);
-
-            var matcher = new ProjectScanMatcher(workspace);
-            var scanEvent = new BarcodeScanEvent(new RawScan("AB123", "keyboard",
-                TimePoint.FromHostArrival(DateTimeOffset.UtcNow, Stopwatch.GetTimestamp()), true),
-                EvidenceRef.New());
-            var matched = await matcher.MatchAsync(scanEvent);
-            Assert.True(matched.Accepted);
-            Assert.Equal("EOL_A", matched.RecipeId);
-
-            var rejected = await matcher.MatchAsync(scanEvent with
-            { Scan = scanEvent.Scan with { Text = "BAD" } });
-            Assert.False(rejected.Accepted);
-            Assert.Equal("IDENTITY_NO_MATCH", rejected.Code);
-
-            var wrong = edited with
-            {
-                Recipes = [edited.Recipes[0] with { TestProgramRevision = test.Revision + 1 }]
-            };
-            var error = await Assert.ThrowsAsync<ProjectDataException>(
-                () => workspace.SaveConfigurationAsync(saved, wrong));
-            // The schema accepts authoring a future revision but matching must reject stale asset refs.
-            Assert.Equal("CONFIG_ASSET_STALE", error.Code);
         }
         finally { Directory.Delete(parent, true); }
     }

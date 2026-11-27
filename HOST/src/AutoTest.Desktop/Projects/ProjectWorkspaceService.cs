@@ -33,7 +33,6 @@ public sealed partial class ProjectWorkspaceService
     public const string ControllerKind = ProjectConfigurationCodec.ControllerKind;
     public const string WaveSettingsKind = ProjectConfigurationCodec.WaveSettingsKind;
     public const string FlashSettingsKind = ProjectConfigurationCodec.FlashSettingsKind;
-    public const string ScanSettingsKind = ProjectConfigurationCodec.ScanSettingsKind;
     public const string InspectionKind = ProjectConfigurationCodec.InspectionKind;
     public const string KeyActionsKind = "bench-key-actions";
     private readonly SemaphoreSlim _writeLock = new(1, 1);
@@ -485,7 +484,7 @@ public sealed partial class ProjectWorkspaceService
         // Destructive R1 authoring contract: the ECU project owns one TEST,
         // one DBC and one native FLASH. Scanner routes and fixture control
         // never become project assets or a second recipe/configuration.
-        if (kind is ScanSettingsKind or FlashSettingsKind or InspectionKind)
+        if (kind is FlashSettingsKind or InspectionKind)
             throw new ProjectDataException("LEGACY_CONFIGURATION_RETIRED",
                 "旧扫码配方、工位工艺和重复 FLASH 配置已废弃。" +
                 "当前工程只维护 TEST、唯一 DBC、波形和原生烧录工艺。");
@@ -539,15 +538,6 @@ public sealed partial class ProjectWorkspaceService
         }
         else if (kind == FlashSettingsKind && document is FlashSettingsDocument flash)
             Check(flash.FirmwareAssetId, FirmwareKind, flash.FirmwareRevision, flash.FirmwareFingerprint);
-        else if (kind == ScanSettingsKind && document is ScanMatchSettingsDocument scan && scan.Published)
-            foreach (var recipe in scan.Recipes.Where(x => x.Published))
-            {
-                Check(recipe.TestProgramAssetId, TestProgramKind,
-                    recipe.TestProgramRevision, recipe.TestProgramFingerprint);
-                Check(recipe.DbcAssetId, DbcKind, recipe.DbcRevision, recipe.DbcFingerprint);
-                Check(recipe.FirmwareAssetId, FirmwareKind,
-                    recipe.FirmwareRevision, recipe.FirmwareFingerprint);
-            }
     }
 
     /// <summary>Store validated typed configuration, then atomically advance project revision.</summary>
@@ -650,7 +640,6 @@ public sealed partial class ProjectWorkspaceService
                     KeyActionsKind => "key-actions",
                     WaveSettingsKind => "wave",
                     FlashSettingsKind => "flash",
-                    ScanSettingsKind => "scan",
                     _ => throw new ArgumentException("不支持的工程资源类型：" + kind)
                 };
                 // DBC is a real user-managed database file, not a GUID-named
