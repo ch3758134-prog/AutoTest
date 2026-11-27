@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using AutoTest.FlashLab.Programming;
 using AutoTest.Projects.Project;
+using AutoTest.Specialists.Wave;
 
 namespace AutoTest.Desktop.Projects;
 
@@ -56,6 +57,28 @@ public static class ProductionProjectPackageService
         foreach (var item in project.Assets) paths.Add(item.RelativePath.Replace('\\', '/'));
         paths.Add(draft.Profile.FirmwareRelativePath
             ?? throw new InvalidDataException("缺少工程固件资源。"));
+
+        // Reference waveforms live in their own specialized catalog rather
+        // than ProjectDefinition.Assets. Copy the complete, validated standard
+        // catalog into the installed project; TEST and WAVE must see identical
+        // reference IDs, metadata, samples and SHA sidecars after routing.
+        var standardsDir = Path.Combine(root, "wave-records", "references");
+        if (File.Exists(Path.Combine(standardsDir, "index.json")))
+        {
+            var waveCatalog = new WaveReferenceCatalog(standardsDir);
+            var entries = waveCatalog.List();
+            paths.Add("wave-records/references/index.json");
+            foreach (var entry in entries)
+            {
+                ct.ThrowIfCancellationRequested();
+                _ = waveCatalog.Load(entry.Reference);
+                var refName = entry.Reference.Asset.Id.Value.ToString("N") +
+                    "-r" + entry.Reference.Asset.Revision.Value + ".wfm.json";
+                var relative = "wave-records/references/assets/" + refName;
+                paths.Add(relative);
+                paths.Add(relative + ".sha256");
+            }
+        }
         // SafetyFile is embedded in AutoTest itself, not another asset selected
         // for each ECU project or included in the production engineering bundle.
 
@@ -202,6 +225,14 @@ public static class ProductionProjectPackageService
                 throw new InvalidDataException("工程包资源已损坏：" + file.RelativePath);
         }
         await ProjectBundleContractAudit.ValidateAsync(definition, manifestPath, ct);
+        // The saved TEST is the executable authority. Ensure all consumed
+        // wave references actually resolve inside THIS installed package,
+        // not only in the engineer's source directory.
+        var projectSnapshot = new OpenProjectContext(definition, manifestPath,
+            expected.ManifestSha256);
+        var executable = await AutomaticTestResourceContract.ResolveAsync(
+            projectSnapshot, ct).ConfigureAwait(false);
+        executable.RequireExecutable();
         var profile = await NativeFlashProfileStore.LoadAsync(root, ct)
             ?? throw new InvalidDataException("工程包缺少原生 FLASH 配置。");
         var job = NativeFlashJobBuilder.Freeze(profile.Profile, root);
