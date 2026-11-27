@@ -136,23 +136,46 @@ public sealed partial class ProjectWorkspaceService
                 var definition = ProjectDefinition.Create(name);
                 if (withInitialTest)
                 {
-                // A new project contains one real empty TEST sequence.
-                // No fabricated test case and no extra plan selection.
-                const string sequenceName = "生产 TEST 项目";
-                var sequence = TestProjectDocument.Create(sequenceName);
-                var sequenceBytes = TestProjectCodec.Encode(sequence);
-                var sequencePath = "assets/projects/" +
-                    Guid.NewGuid().ToString("N") + ".prj.json";
-                var sequenceAsset = AssetEntry.Create(TestProjectKind,
-                    sequenceName, sequencePath, sequenceBytes);
-                definition = (definition with
-                {
-                    Assets = definition.Assets.Add(sequenceAsset)
-                }).WithRevision().Validate();
-                var sequenceFull = ProjectPathPolicy.Normalize(staging, sequencePath);
-                Directory.CreateDirectory(Path.GetDirectoryName(sequenceFull)!);
-                await File.WriteAllBytesAsync(sequenceFull, sequenceBytes,
-                    cancellationToken).ConfigureAwait(false);
+                    // One operation creates the complete *editable* object
+                    // relationship: ECU engineering project -> unique ordered
+                    // TEST -> first blank TEST case. Never seed fake operations,
+                    // recorded PASS, CAN frames, firmware or a production recipe.
+                    const string sequenceName = "生产 TEST 项目";
+                    const string firstCaseName = "测试用例 01";
+                    var caseDocument = TestDocument.Create(firstCaseName);
+                    var caseBytes = new UTF8Encoding(false).GetBytes(
+                        TestDocumentCodec.Serialize(caseDocument));
+                    var casePath = "assets/tests/" +
+                        Guid.NewGuid().ToString("N") + ".test.json";
+                    var caseAsset = AssetEntry.Create(TestProgramKind,
+                        firstCaseName, casePath, caseBytes);
+
+                    var sequence = TestProjectDocument.Create(sequenceName) with
+                    {
+                        Packages =
+                        [
+                            new TestProjectEntry(Guid.NewGuid(), caseAsset.Id.Value,
+                                firstCaseName)
+                        ]
+                    };
+                    var sequenceBytes = TestProjectCodec.Encode(sequence);
+                    var sequencePath = "assets/projects/" +
+                        Guid.NewGuid().ToString("N") + ".prj.json";
+                    var sequenceAsset = AssetEntry.Create(TestProjectKind,
+                        sequenceName, sequencePath, sequenceBytes);
+                    definition = (definition with
+                    {
+                        Assets = definition.Assets.Add(sequenceAsset).Add(caseAsset)
+                    }).WithRevision().Validate();
+
+                    var sequenceFull = ProjectPathPolicy.Normalize(staging, sequencePath);
+                    var caseFull = ProjectPathPolicy.Normalize(staging, casePath);
+                    Directory.CreateDirectory(Path.GetDirectoryName(sequenceFull)!);
+                    Directory.CreateDirectory(Path.GetDirectoryName(caseFull)!);
+                    await File.WriteAllBytesAsync(sequenceFull, sequenceBytes,
+                        cancellationToken).ConfigureAwait(false);
+                    await File.WriteAllBytesAsync(caseFull, caseBytes,
+                        cancellationToken).ConfigureAwait(false);
                 }
                 var stagedManifest = Path.Combine(staging, ManifestFileName);
                 await ProjectRepository.SaveDefinitionAsync(definition, stagedManifest,
@@ -162,7 +185,9 @@ public sealed partial class ProjectWorkspaceService
                 var verified = await ProjectRepository.OpenDefinitionAsync(stagedManifest,
                     cancellationToken).ConfigureAwait(false);
                 if (verified.Id != definition.Id || verified.Name != name ||
-                    (withInitialTest && verified.Assets.Length != 1))
+                    (withInitialTest && (verified.Assets.Length != 2 ||
+                        verified.Assets.Count(a => a.Kind == TestProjectKind) != 1 ||
+                        verified.Assets.Count(a => a.Kind == TestProgramKind) != 1)))
                     throw new InvalidDataException("新建 ECU 工程的用例资源未通过保存检查。");
                 cancellationToken.ThrowIfCancellationRequested();
                 Directory.Move(staging, target); // refuses a pre-existing target

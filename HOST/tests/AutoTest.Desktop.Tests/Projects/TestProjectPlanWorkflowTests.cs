@@ -9,6 +9,38 @@ namespace AutoTest.Desktop.Tests.Projects;
 public sealed class TestProjectPlanWorkflowTests
 {
     [Fact]
+    public async Task NewEngineeringProjectOpensDirectlyIntoItsFirstRealEditableCase()
+    {
+        var parent = Path.Combine(Path.GetTempPath(),
+            "at-project-new-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(parent);
+        try
+        {
+            var workspace = new ProjectWorkspaceService();
+            var project = await workspace.CreateReadyToEditAsync("ECU Engineer", parent);
+            Assert.Equal(2, project.Definition.Assets.Length);
+            var ordered = Assert.Single(project.Definition.Assets,
+                asset => asset.Kind == ProjectWorkspaceService.TestProjectKind);
+            var caseAsset = Assert.Single(project.Definition.Assets,
+                asset => asset.Kind == ProjectWorkspaceService.TestProgramKind);
+            var sequence = await workspace.OpenTestProjectEditorAsync(ordered.Id);
+            Assert.Equal(TestProjectDocument.CurrentSchema, sequence.Document.SchemaVersion);
+            var invocation = Assert.Single(sequence.Document.Packages);
+            Assert.Equal(caseAsset.Id.Value, invocation.PackageAssetId);
+            var editor = await workspace.OpenTestEditorAsync(caseAsset.Id);
+            Assert.Equal(TestDocument.CurrentFormat, editor.Document.FormatVersion);
+            Assert.Empty(editor.Document.Walk());
+            Assert.Equal("测试用例 01", editor.Document.Name);
+            var reopened = new ProjectWorkspaceService();
+            await reopened.OpenAsync(project.ManifestPath);
+            var reloaded = await reopened.OpenTestProjectEditorAsync(ordered.Id);
+            Assert.Equal(invocation.PackageAssetId,
+                Assert.Single(reloaded.Document.Packages).PackageAssetId);
+        }
+        finally { Directory.Delete(parent, recursive: true); }
+    }
+
+    [Fact]
     public void ProjectContainsOnlyOrderedCasesAndCanInvokeSameDefinitionTwice()
     {
         var target = Guid.NewGuid();
