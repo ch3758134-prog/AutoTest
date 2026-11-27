@@ -43,6 +43,46 @@ public partial class DbcWorkbenchView : UserControl
         SignalGrid.PreviewMouseRightButtonDown += (_, e) => SelectContextRow(SignalGrid, e);
     }
 
+
+    private void NewDocument_Click(object sender, RoutedEventArgs e)
+    {
+        if (!TryFinishEditing()) return;
+        if (global::System.Windows.Application.Current.MainWindow?.DataContext is
+            AutoTest.Desktop.Shell.MainWindowViewModel shell)
+            shell.NewIndependentDbcCommand.Execute();
+    }
+
+    private void OpenDocument_Click(object sender, RoutedEventArgs e)
+    {
+        if (!TryFinishEditing()) return;
+        if (global::System.Windows.Application.Current.MainWindow?.DataContext is
+            AutoTest.Desktop.Shell.MainWindowViewModel shell)
+            shell.OpenIndependentDbcCommand.Execute();
+    }
+
+    private async void RenameDocument_Click(object sender, RoutedEventArgs e)
+    {
+        if (!TryFinishEditing()) return;
+        await _viewModel.RenameDocumentAsync();
+    }
+
+    private async void SaveCopy_Click(object sender, RoutedEventArgs e)
+    {
+        if (!TryFinishEditing()) return;
+        var owner = Window.GetWindow(this);
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = _viewModel.IsIndependentFile ? "DBC 另存为" : "导出当前工程 DBC",
+            Filter = "CAN 数据库 (*.dbc)|*.dbc",
+            DefaultExt = ".dbc",
+            AddExtension = true,
+            FileName = _viewModel.AssetName + ".dbc",
+            OverwritePrompt = true
+        };
+        if (dialog.ShowDialog(owner) == true)
+            await _viewModel.SaveCopyAsync(dialog.FileName);
+    }
+
     private static T? Ancestor<T>(DependencyObject? source) where T : DependencyObject
     {
         while (source is not null)

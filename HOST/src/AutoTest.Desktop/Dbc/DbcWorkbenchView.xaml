@@ -37,9 +37,15 @@
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
      <TextBlock Text="未保存" Foreground="#9B6423" Visibility="{Binding IsDirty,Converter={StaticResource BoolToVisibility}}"/>
     </StackPanel>
-    <StackPanel><TextBlock Text="{Binding AssetName}" FontSize="19" FontWeight="SemiBold"
-      TextTrimming="CharacterEllipsis" ToolTip="{Binding FilePath}"/>
-     <TextBlock Text="DBC · 报文与信号" Foreground="#62778D" FontSize="12" Margin="0,4,0,0"/>
+    <StackPanel>
+     <Button Content="{Binding AssetName}" Click="RenameDocument_Click"
+      FontSize="19" FontWeight="SemiBold" Background="Transparent"
+      HorizontalAlignment="Left" HorizontalContentAlignment="Left"
+      BorderThickness="0" Padding="0" Foreground="#20394F"
+      ToolTip="单击重命名 DBC；独立文件会真正修改磁盘文件名"/>
+     <TextBlock Text="{Binding FileLocationDescription}" Foreground="#62778D"
+      FontSize="12" TextTrimming="CharacterEllipsis" Margin="0,4,0,0"
+      ToolTip="{Binding FilePath}"/>
     </StackPanel>
    </DockPanel>
   </Border>
@@ -48,6 +54,15 @@
     <Button DockPanel.Dock="Right" Content="编辑限制" Click="ShowPolicy_Click"
       ToolTip="{Binding StateDescription}" Margin="8,0,0,0"/>
     <WrapPanel VerticalAlignment="Center">
+     <Menu Background="Transparent" VerticalAlignment="Center" Margin="0,0,10,0">
+      <MenuItem Header="文件">
+       <MenuItem Header="新建 DBC…" Click="NewDocument_Click"/>
+       <MenuItem Header="打开 DBC…" Click="OpenDocument_Click"/>
+       <Separator/>
+       <MenuItem Header="重命名当前 DBC…" Click="RenameDocument_Click"/>
+       <MenuItem Header="{Binding DbcSaveCopyLabel}" Click="SaveCopy_Click"/>
+      </MenuItem>
+     </Menu>
      <TextBlock Text="自动保存" Foreground="#567766" VerticalAlignment="Center" Margin="0,0,9,0" ToolTip="合法编辑自动保存；Ctrl+S 可立即保存"/>
      <Button Content="撤销" Click="Undo_Click" IsEnabled="{Binding CanUndo}" Margin="0,0,4,0"/>
      <Button Content="重做" Click="Redo_Click" IsEnabled="{Binding CanRedo}" Margin="0,0,12,0"/>

@@ -365,13 +365,17 @@ public sealed class DbcWorkbenchViewModel : BindableBase
 
     public bool IsIndependentFile => _workspace is null;
     public string SourceDescription => IsIndependentFile
-        ? "独立 DBC 文件 · 修改自动保存回原文件，不加入 ECU 工程"
-        : "当前 ECU 工程 DBC · 有效修改自动保存并更新资源修订";
+        ? "独立 DBC 文件 · 自动保存"
+        : "当前工程 DBC · 自动保存，全部 TEST 共用";
+    public string FileLocationDescription => IsIndependentFile
+        ? FilePath
+        : "当前工程中的 DBC；从文件菜单可导出到任意位置";
 
     public ObservableCollection<DbcMessageRow> Messages { get; } = new();
     public ObservableCollection<DbcSignalRow> Signals { get; } = new();
 
     public string AssetName => _session.AssetName;
+    public string DbcSaveCopyLabel => IsIndependentFile ? "另存为…" : "导出 DBC…";
     public string FilePath => _session.FileReceipt.Path;
     public int AssetRevision => _session.AssetRevision;
     public string MessageCount => Messages.Count + "/" +
@@ -820,6 +824,127 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         }
     }
 
+    /// <summary>
+    /// Rename the actual independent .dbc filename, or the project-owned
+    /// document name. The latter retains its stable internal identity/path.
+    /// Both operations use the same editor, without another asset registry.
+    /// </summary>
+    public async Task RenameDocumentAsync()
+    {
+        if (IsBusy || HasOpenEditor || HasActiveGridEdit) return;
+        if (!await SaveForCloseAsync())
+        {
+            StatusMessage = "请先完成当前信号编辑并保存，再重命名 DBC。";
+            return;
+        }
+        var name = _dialogs.AskDocumentName(AssetName);
+        if (name is null || name == AssetName) return;
+        IsBusy = true;
+        try
+        {
+            if (_workspace is not null)
+            {
+                await _workspace.RenameAssetAsync(_session.AssetId, name);
+                _session = await _workspace.OpenDbcEditorAsync(_session.AssetId);
+            }
+            else
+            {
+                var previous = _session.FileReceipt.Path;
+                var destination = Path.Combine(Path.GetDirectoryName(previous)!,
+                    name + ".dbc");
+                if (File.Exists(destination))
+                    throw new IOException("同名 DBC 文件已存在，不能覆盖。");
+                File.Move(previous, destination);
+                var reopened = await DbcDocumentStore.OpenAsync(destination);
+                _session = _session with
+                {
+                    AssetName = name,
+                    Document = reopened.Document,
+                    FileReceipt = reopened.Receipt,
+                    AssetRevision = reopened.Receipt.Revision
+                };
+            }
+            RefreshDocument(SelectedMessage?.Message.Id, SelectedSignal?.Name);
+            RaisePropertyChanged(nameof(FileLocationDescription));
+            StatusMessage = "DBC 已重命名为 " + name + ".dbc";
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or
+            ProjectDataException or InvalidDataException or FormatException or ArgumentException)
+        {
+            StatusMessage = "DBC 重命名失败：" + error.Message;
+            _dialogs.ShowError(StatusMessage);
+        }
+        finally { IsBusy = false; RefreshCommands(); }
+    }
+
+    /// <summary>
+    /// Full DBC export preserves the validated source text. Standalone
+    /// "Save As" changes the edited document to the chosen new filename;
+    /// project DBC export leaves the ECU project's current binding untouched.
+    /// </summary>
+    public async Task SaveCopyAsync(string destination)
+    {
+        if (IsBusy || HasOpenEditor || HasActiveGridEdit) return;
+        if (HasPendingSignalDraft)
+        {
+            ApplySignalParameters();
+            if (HasPendingSignalDraft) return;
+        }
+        IsBusy = true;
+        try
+        {
+            var target = Path.GetFullPath(destination);
+            if (!string.Equals(Path.GetExtension(target), ".dbc",
+                    StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("请选择 .dbc 文件名。");
+            if (string.Equals(target, FilePath, StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("这就是当前文件。请直接保存。");
+            var bytes = new System.Text.UTF8Encoding(false).GetBytes(
+                _session.Document.ExportText());
+            // Parse before touching the destination. No unknown DBC constructs
+            // are silently discarded by export.
+            _ = DbcWorkbenchDocument.Import(
+                Path.GetFileNameWithoutExtension(target),
+                new System.Text.UTF8Encoding(false, true).GetString(bytes));
+            var folder = Path.GetDirectoryName(target)
+                ?? throw new ArgumentException("无效保存目录。");
+            Directory.CreateDirectory(folder);
+            var temporary = Path.Combine(folder, "." + Path.GetFileName(target) +
+                "." + Guid.NewGuid().ToString("N") + ".tmp");
+            try
+            {
+                await File.WriteAllBytesAsync(temporary, bytes);
+                File.Move(temporary, target, overwrite: true);
+            }
+            finally { if (File.Exists(temporary)) File.Delete(temporary); }
+            var reopened = await DbcDocumentStore.OpenAsync(target);
+            if (IsIndependentFile)
+            {
+                _session = _session with
+                {
+                    AssetName = Path.GetFileNameWithoutExtension(target),
+                    Document = reopened.Document,
+                    FileReceipt = reopened.Receipt,
+                    AssetRevision = reopened.Receipt.Revision
+                };
+                RefreshDocument(SelectedMessage?.Message.Id, SelectedSignal?.Name);
+                StatusMessage = "已另存并切换到 " + Path.GetFileName(target);
+            }
+            else
+                StatusMessage = "已导出 DBC：" + Path.GetFileName(target) +
+                    "。当前工程仍使用原数据库。";
+            RaisePropertyChanged(nameof(FileLocationDescription));
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or
+            ProjectDataException or InvalidDataException or FormatException or
+            ArgumentException or NotSupportedException)
+        {
+            StatusMessage = "DBC 文件保存失败：" + error.Message;
+            _dialogs.ShowError(StatusMessage);
+        }
+        finally { IsBusy = false; RefreshCommands(); }
+    }
+
     public bool ConfirmClose() =>
         !IsBusy && (!IsDirty || _dialogs.ConfirmDiscard("DBC 尚有未保存修改。确定关闭并放弃这些修改吗？"));
 
@@ -950,6 +1075,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
         RaisePropertyChanged(nameof(SignalCount));
         RaisePropertyChanged(nameof(AssetName));
         RaisePropertyChanged(nameof(FilePath));
+        RaisePropertyChanged(nameof(FileLocationDescription));
         RaisePropertyChanged(nameof(AssetRevision));
         RaisePropertyChanged(nameof(SourceDescription));
         RaisePropertyChanged(nameof(SelectedValueDescriptions));

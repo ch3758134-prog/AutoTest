@@ -24,6 +24,13 @@ public sealed class DbcEditorDialogs
         return dialog.ShowDialog() == true ? dialog.Result : null;
     }
 
+    public string? AskDocumentName(string current)
+    {
+        var dialog = new AutoTest.Desktop.Projects.ResourceNameDialog("重命名 DBC", current);
+        if (ActiveOwner is { IsLoaded: true } owner) dialog.Owner = owner;
+        return dialog.ShowDialog() == true ? dialog.ResourceName : null;
+    }
+
     public bool ConfirmDiscard(string message)
     {
         var owner = ActiveOwner;
