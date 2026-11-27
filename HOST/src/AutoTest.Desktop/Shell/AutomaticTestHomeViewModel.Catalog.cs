@@ -90,7 +90,7 @@ public sealed partial class AutomaticTestHomeViewModel
 
             // Device configuration is independent of product mapping.
             // It is checked here but cannot itself authorize formal START.
-            var station = await StationProductionConfigurationStore.LoadDraftAsync();
+            var station = await StationDeviceConfigurationStore.LoadAsync();
             station.Fixture.Validate();
             _ = StationFixtureExecutionPlan.From(station.Fixture);
             var device = await Task.Run(() =>
