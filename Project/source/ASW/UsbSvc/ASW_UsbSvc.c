@@ -19,6 +19,7 @@
 #include "ASW_BusProxy.h"
 #include "ASW_EcuEmu.h"
 #include "EAL_USB.h"
+#include "EAL_GPIO.h"
 #include <stddef.h>     /* NULL */
 
 /* ============================================
@@ -84,6 +85,24 @@ static void HandleCommand(uint16_t seq, uint8_t cmd,
             ASW_BusProxy_HandleEcuBaudCmd(seq, cmd, payload, len);
             return;
 
+        /* 只读查询外部 KEY1~KEY3 的消抖 GPIO 电平、事件计数。 */
+        case CDD_USB_CMD_GET_KEY_INPUTS:
+        {
+            uint8_t snapshot[3];
+            uint16_t count;
+            if (len != 0U)
+            {
+                CDD_USB_SendFrame(seq, cmd, CDD_USB_STS_ERR_FMT, NULL, 0U);
+                return;
+            }
+            count = EAL_GPIO_KeySequence();
+            snapshot[0] = EAL_GPIO_KeyLevels();
+            snapshot[1] = (uint8_t)count;
+            snapshot[2] = (uint8_t)(count >> 8);
+            CDD_USB_SendFrame(seq, cmd, CDD_USB_STS_OK, snapshot, 3U);
+            return;
+        }
+
         /* ECU 模拟(0x50~0x53) */
         case CDD_USB_CMD_SET_BROADCAST:
         case CDD_USB_CMD_BROADCAST_START:
@@ -121,4 +140,24 @@ void ASW_UsbSvc_Task(void)
     ASW_IoCtrl_Task();    /* USB丢失枚举时撤销夹具压紧输出 */
     ASW_BusProxy_Task();   /* 当前无任务,接口预留 */
     ASW_EcuEmu_Task();     /* 广播帧表调度 + USB 断开停广播 */
+
+    /* 外部实体按钮：在主循环读取中断标记并完成消抖；ISR 不发送 USB。
+     * 即使未枚举，已确认的 GPIO 变化也推进 sequence；上位机可用 0x45 查询。
+     * SEQ=0 的异步上报走现有低优先级 USB 队列，可能丢失，使用 sequence 检测。
+     */
+    {
+        EAL_GPIO_KeyEventType evt;
+        while (EAL_GPIO_KeyPopEvent(&evt) != 0U)
+        {
+            if (EAL_USB_IsEnumReady() != 0U)
+            {
+                const uint8_t data[5] = {
+                    evt.key, evt.level, evt.levels,
+                    (uint8_t)evt.sequence, (uint8_t)(evt.sequence >> 8)
+                };
+                CDD_USB_SendFrame(0U, CDD_USB_CMD_KEY_INPUT_EVENT,
+                                  CDD_USB_STS_OK, data, 5U);
+            }
+        }
+    }
 }
