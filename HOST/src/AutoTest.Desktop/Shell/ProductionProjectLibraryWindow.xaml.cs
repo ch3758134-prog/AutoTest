@@ -83,7 +83,7 @@ public partial class ProductionProjectLibraryWindow : Window
                     package?.ProjectName ?? "已失效的工程",
                     package?.ProjectRevision ?? 0, binding.Revision);
             }).ToArray();
-            Say("本机有 " + packages.Count + " 份生产工程版本，"
+            Say("本机有 " + packages.Count + " 份生产工程版本，" +
                 bindings.Count + " 个固定扫码标记。");
         }
         catch (Exception error) when (error is not OutOfMemoryException)
