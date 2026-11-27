@@ -184,7 +184,8 @@
     </Menu>
     <!-- Specialist and device workflows retain their own real tool windows. -->
     <Menu Background="Transparent" VerticalAlignment="Center" FontSize="13"
-     chrome:WindowChrome.IsHitTestVisibleInChrome="True">
+     chrome:WindowChrome.IsHitTestVisibleInChrome="True"
+     Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}">
      <MenuItem Header="专业工具">
       <MenuItem Header="DBC 文件编辑" Command="{Binding OpenDbcToolCommand}"/>
       <MenuItem Header="新建独立 DBC" Command="{Binding NewIndependentDbcCommand}"/>
@@ -195,7 +196,8 @@
      </MenuItem>
     </Menu>
     <Menu Background="Transparent" VerticalAlignment="Center" FontSize="13"
-     chrome:WindowChrome.IsHitTestVisibleInChrome="True">
+     chrome:WindowChrome.IsHitTestVisibleInChrome="True"
+     Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}">
      <MenuItem Header="设备调试">
       <MenuItem Header="手动台架" Command="{Binding OpenManualBenchCommand}"/>
       <MenuItem Header="CAN 监视" Command="{Binding OpenCanMonitorCommand}"/>
@@ -205,10 +207,7 @@
     </Menu>
     <Menu Background="Transparent" VerticalAlignment="Center" FontSize="13"
      chrome:WindowChrome.IsHitTestVisibleInChrome="True">
-     <MenuItem Header="设置">
-      <MenuItem Header="扫码标记与工程匹配…" Command="{Binding OpenProductionProjectLibraryCommand}"/>
-      <MenuItem Header="扫码枪连接诊断…" Command="{Binding OpenSerialScannerCommand}"/>
-     </MenuItem>
+     
      <MenuItem Header="帮助" Command="{Binding HelpCommand}"/>
     </Menu>
    </DockPanel>
