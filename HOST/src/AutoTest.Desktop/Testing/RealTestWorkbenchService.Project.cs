@@ -25,21 +25,29 @@ public sealed partial class RealTestWorkbenchService
         var project = _projects.Current ??
             throw new InvalidOperationException("未打开完整 ECU 工程。");
         var waveMappings = new HashSet<TestTargetMapping>();
+        var upstreamVariables = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var source in orderedCases)
         {
             ct.ThrowIfCancellationRequested();
-            var plan = Prepare(source);
+            var plan = Prepare(source, upstreamVariables);
             if (!plan.Diagnostics.IsEmpty)
                 throw new InvalidDataException("真实 TEST 执行前检查失败：" +
                     source.Name + " · " + string.Join("；", plan.Diagnostics));
+            var preparedCase = plan.RestoreDocument();
             foreach (var mapping in TestRunStepScope.RequiredMappings(
-                         plan.RestoreDocument()).Where(x =>
+                         preparedCase).Where(x =>
                          x.Kind == TestTargetKind.WaveProfile))
             {
                 await AutomaticTestResourceContract.ValidateMappingAsync(
                     project, mapping, ct).ConfigureAwait(false);
                 waveMappings.Add(mapping);
             }
+            // WAVE profile preflight happens before any physical fixture/FLASH.
+            // It must use the same inherited TEST variables as resource
+            // resolution and the real continuous project executor.
+            upstreamVariables.UnionWith(
+                TestVariableFlowValidator.GuaranteedAfter(
+                    preparedCase, upstreamVariables));
         }
         if (waveMappings.Count != 0)
         {
