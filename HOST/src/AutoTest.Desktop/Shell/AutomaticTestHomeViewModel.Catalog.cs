@@ -73,15 +73,6 @@ public sealed partial class AutomaticTestHomeViewModel
             // physical START and mechanical feedback connected. Present it,
             // but do not create a formal run or claim admission.
             _dutSerial = routed.FullBarcode;
-            _scanMappedFields = new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                ["DutSerial"] = routed.FullBarcode,
-                ["RecognitionMarker"] = routed.Marker,
-                ["FullBarcode"] = routed.FullBarcode,
-                ["ProjectId"] = routed.Package.ProjectId.ToString("D"),
-                ["PackageSha256"] = routed.Package.PackageSha256,
-                ["ProjectDecisionBasis"] = "FIXED_MARKER"
-            };
             _scanStatus = "已识别 ECU " + routed.FullBarcode +
                 " · 检测工程：" + routed.Package.ProjectName +
                 "（修订 " + routed.Package.ProjectRevision + "）。";
@@ -172,8 +163,7 @@ public sealed partial class AutomaticTestHomeViewModel
         {
             _prepared = null;
             _acceptedStationEpoch = 0;
-            _scanMappedFields = new Dictionary<string, string>(StringComparer.Ordinal);
-            _dutSerial = "等待扫码";
+                _dutSerial = "等待扫码";
             _scanStatus = reason;
             _scanAlertRequired = true;
             Notify();
