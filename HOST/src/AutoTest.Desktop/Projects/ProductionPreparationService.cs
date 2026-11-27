@@ -37,8 +37,6 @@ public sealed record FrozenProductionPreparation(
     string SecuritySha256, int EcuCanKbps, string PreparationFingerprint,
     CanToolFlashJob Job)
 {
-    public FrozenProductionCase? ProjectSetup { get; init; }
-    public FrozenProductionCase? ProjectTeardown { get; init; }
     public FrozenScanIdentity? AcceptedScannerObservation { get; init; }
 };
 
@@ -133,10 +131,6 @@ public static class ProductionPreparationService
             new(item.Entry.ItemId, item.Asset.Id.Value, item.Entry.DisplayName,
                 item.Asset.Revision, item.ContentSha256);
         var frozenCases = resolved.Cases.Select(FreezeInvocation).ToList();
-        var frozenSetup = resolved.ProjectSetup is null ? null :
-            FreezeInvocation(resolved.ProjectSetup);
-        var frozenTeardown = resolved.ProjectTeardown is null ? null :
-            FreezeInvocation(resolved.ProjectTeardown);
         // No fixture or IGN station scripts are accepted from a product
         // project. Fixed clamp control is strictly station-owned, while
         // product-specific IGN belongs in TEST.
@@ -177,12 +171,6 @@ public static class ProductionPreparationService
             recognitionMarker, fullBarcode, actual.Id.Value.ToString("D"), manifestSha,
             testAsset.Id.Value.ToString("D"), testAsset.Sha256,
             profileSha, frozenJob.Fingerprint,
-            "PROJECT_SETUP:" + (frozenSetup is null ? "NONE" :
-                frozenSetup.EntryId + ":" + frozenSetup.TestAssetId + ":" +
-                frozenSetup.Revision + ":" + frozenSetup.Sha256),
-            "PROJECT_TEARDOWN:" + (frozenTeardown is null ? "NONE" :
-                frozenTeardown.EntryId + ":" + frozenTeardown.TestAssetId + ":" +
-                frozenTeardown.Revision + ":" + frozenTeardown.Sha256),
             string.Join("\n", frozenCases.Select(c =>
                 c.EntryId.ToString("D") + ":" + c.TestAssetId.ToString("D") +
                 ":" + c.Revision + ":" + c.Sha256)));
@@ -197,10 +185,6 @@ public static class ProductionPreparationService
             opened.ManifestPath, manifestSha, testAsset.Id.Value, testAsset.Sha256,
             frozenCases.ToArray(), profileSha, frozenJob.Fingerprint,
             frozenJob.FirmwareSha256, frozenJob.SecuritySha256,
-            profile.EcuCanKbps, fingerprint, frozenJob)
-        {
-            ProjectSetup = frozenSetup,
-            ProjectTeardown = frozenTeardown
-        };
+            profile.EcuCanKbps, fingerprint, frozenJob);
     }
 }

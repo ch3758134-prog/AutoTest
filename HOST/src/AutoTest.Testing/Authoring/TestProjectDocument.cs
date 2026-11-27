@@ -20,23 +20,11 @@ public sealed record TestProjectEntry(Guid ItemId, Guid PackageAssetId,
 public sealed record TestProjectDocument(int SchemaVersion, Guid Id, string Name,
     List<TestProjectEntry> Packages)
 {
-    /// <summary>Optional project-wide vehicle-environment stages. Each stage
-    /// is a pinned invocation of the SAME TestDocument DSL/RealRunCoordinator.
-    /// No scanner, fixture, FLASH or new test-program language is introduced.
-    /// Separate stages are not ordinary product-judgement cases.</summary>
-    public TestProjectEntry? ProjectSetup { get; init; }
-    public TestProjectEntry? ProjectTeardown { get; init; }
+    public static TestProjectDocument Create(string name) => new(3, Guid.NewGuid(), name, []);
 
-    public static TestProjectDocument Create(string name) => new(2, Guid.NewGuid(), name, []);
-
-    public IReadOnlyList<TestProjectEntry> OrderedExecutionEntries()
-    {
-        var stages = new List<TestProjectEntry>(Packages.Count + 2);
-        if (ProjectSetup is not null) stages.Add(ProjectSetup);
-        stages.AddRange(Packages);
-        if (ProjectTeardown is not null) stages.Add(ProjectTeardown);
-        return stages;
-    }
+    // One TEST project is an ordered list of case invocations. Preparatory
+    // and cleanup actions are ordinary authored steps/cases, not extra stages.
+    public IReadOnlyList<TestProjectEntry> OrderedExecutionEntries() => Packages.ToArray();
 
     /// <summary>
     /// The ONE authoritative production scope is the COMPLETE ordered entry
@@ -51,8 +39,7 @@ public sealed record TestProjectDocument(int SchemaVersion, Guid Id, string Name
 
     public void Validate()
     {
-        if (SchemaVersion is not (1 or 2) || Id == Guid.Empty ||
-            (SchemaVersion == 1 && (ProjectSetup is not null || ProjectTeardown is not null)) ||
+        if (SchemaVersion != 3 || Id == Guid.Empty ||
             string.IsNullOrWhiteSpace(Name) ||
             Name.Length > 120 || Packages is null || Packages.Count > 1000)
             throw new InvalidDataException("测试项目身份或用例数量无效。");

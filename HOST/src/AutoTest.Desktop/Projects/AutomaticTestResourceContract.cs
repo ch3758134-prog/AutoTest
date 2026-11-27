@@ -23,21 +23,10 @@ public sealed record AutomaticTestResourceSnapshot(
     AssetEntry TestProjectAsset, IReadOnlyList<AutomaticTestCaseBinding> Cases,
     IReadOnlyList<string> Issues)
 {
-    /// <summary>Project-wide physical environment stages are distinct from
-    /// judged TEST cases yet reuse the same pinned TestDocument DSL.</summary>
-    public AutomaticTestCaseBinding? ProjectSetup { get; init; }
-    public AutomaticTestCaseBinding? ProjectTeardown { get; init; }
     public IReadOnlyList<ResourceDependencyGroup> DependencyGroups { get; init; } =
         Array.Empty<ResourceDependencyGroup>();
 
-    public IReadOnlyList<AutomaticTestCaseBinding> OrderedExecutions()
-    {
-        var result = new List<AutomaticTestCaseBinding>(Cases.Count + 2);
-        if (ProjectSetup is not null) result.Add(ProjectSetup);
-        result.AddRange(Cases);
-        if (ProjectTeardown is not null) result.Add(ProjectTeardown);
-        return result;
-    }
+    public IReadOnlyList<AutomaticTestCaseBinding> OrderedExecutions() => Cases;
 
     public bool CanExecute => Cases.Count > 0 && Issues.Count == 0;
     public void RequireExecutable()
@@ -157,86 +146,12 @@ public static class AutomaticTestResourceContract
                     entry.ItemId);
             }
         }
-        var projectSetup = tree.ProjectSetup is null ? null :
-            await ResolveProjectStageAsync(project, tree.ProjectSetup,
-                "项目准备", issues, details, ct).ConfigureAwait(false);
-        var projectTeardown = tree.ProjectTeardown is null ? null :
-            await ResolveProjectStageAsync(project, tree.ProjectTeardown,
-                "项目收尾", issues, details, ct).ConfigureAwait(false);
         return new(projectAsset, cases.AsReadOnly(), issues.AsReadOnly())
         {
-            ProjectSetup = projectSetup, ProjectTeardown = projectTeardown,
             DependencyGroups = ResourceDependencyGroup.Group(details)
         };
     }
 
-    private static async Task<AutomaticTestCaseBinding?> ResolveProjectStageAsync(
-        OpenProjectContext project, TestProjectEntry entry, string phaseName,
-        List<string> issues, List<ResourceDependencyIssue> details,
-        CancellationToken ct)
-    {
-        void StageProblem(string reason, string key, string category,
-            string title, Guid? resource = null)
-        {
-            issues.Add(phaseName + "：" + reason);
-            details.Add(new ResourceDependencyIssue(key, category, title,
-                phaseName + " · " + entry.DisplayName, reason,
-                resource ?? entry.PackageAssetId, entry.ItemId));
-        }
-        try
-        {
-            if (!entry.Enabled)
-                throw new InvalidDataException("项目级阶段不能使用历史排除开关；请显式移除或恢复。");
-            var asset = project.Definition.Assets.SingleOrDefault(a =>
-                a.Kind == ProjectWorkspaceService.TestProgramKind &&
-                a.Id.Value == entry.PackageAssetId)
-                ?? throw new InvalidDataException("项目级阶段的 TEST 定义资源不存在。");
-            RequirePinnedInvocation(entry, asset);
-            var bytes = await ReadPinnedAsync(project, asset, ct).ConfigureAwait(false);
-            var program = TestDocumentCodec.Deserialize(
-                new UTF8Encoding(false, true).GetString(bytes));
-            var prepared = new PlanCompiler().Prepare(program, allowRealOperations: true);
-            foreach (var diag in prepared.Diagnostics)
-                StageProblem(diag, "PLAN:" + entry.PackageAssetId.ToString("N"),
-                    "TEST 步骤", "项目阶段步骤预检失败");
-            if (TestRunStepScope.EnabledSteps(program).Any(s => s.Type == "Flash"))
-                StageProblem("不可内嵌 FLASH；每台 ECU 前置烧录由工位工艺负责。",
-                    "FLASH:" + entry.PackageAssetId.ToString("N"),
-                    "执行冲突", "项目阶段包含重复 FLASH");
-            foreach (var mapping in TestRunStepScope.RequiredMappings(program))
-            {
-                try { await ValidateMappingAsync(project, mapping, ct).ConfigureAwait(false); }
-                catch (Exception error) when (error is InvalidDataException or
-                    IOException or ArgumentException or ProjectDataException or
-                    FormatException or NotSupportedException)
-                {
-                    issues.Add(phaseName + " 资源「" + mapping.Name + "」：" + error.Message);
-                    details.Add(new ResourceDependencyIssue(
-                        MappingCauseKey(mapping),
-                        "工程资源", MappingRootTitle(project, mapping),
-                        phaseName + " · " + mapping.Name, error.Message,
-                        mapping.Asset.Value == Guid.Empty ? null : mapping.Asset.Value,
-                        entry.ItemId));
-                }
-            }
-            return new(entry, asset, program, asset.Sha256);
-        }
-        catch (Exception error) when (error is InvalidDataException or IOException or
-            UnauthorizedAccessException or ArgumentException or ProjectDataException or
-            FormatException or NotSupportedException)
-        {
-            StageProblem(error.Message,
-                "CASE:" + entry.PackageAssetId.ToString("N"),
-                "TEST 引用", "项目阶段引用未通过检查");
-            return null;
-        }
-    }
-
-    /// <summary>
-    /// Production project entry provenance is independent from the physical
-    /// source asset's own verified hash. Both sides must agree; only the
-    /// engineer may explicitly adopt a new revision in TEST Project editor.
-    /// </summary>
     public static void RequirePinnedInvocation(TestProjectEntry entry, AssetEntry asset)
     {
         ArgumentNullException.ThrowIfNull(entry);

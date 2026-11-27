@@ -638,19 +638,6 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
 
             var programs = await AutomaticTestResourceContract.ResolveAsync(plan.Project, ct);
             programs.RequireExecutable();
-            static bool StageMatches(AutomaticTestCaseBinding? actual,
-                FrozenProductionCase? pin) => actual is null
-                    ? pin is null
-                    : pin is not null &&
-                      actual.Entry.ItemId == pin.EntryId &&
-                      actual.Asset.Id.Value == pin.TestAssetId &&
-                      actual.Asset.Revision == pin.Revision &&
-                      string.Equals(actual.ContentSha256, pin.Sha256,
-                          StringComparison.OrdinalIgnoreCase);
-            if (!StageMatches(programs.ProjectSetup, frozen.ProjectSetup) ||
-                !StageMatches(programs.ProjectTeardown, frozen.ProjectTeardown))
-                throw new InvalidDataException(
-                    "项目准备或项目收尾的调用 ID/资源版本已变化，不能沿用旧的整组预检。");
             if (programs.Cases.Count != frozen.OrderedEnabledCases.Count ||
                 programs.Cases.Where((x, i) =>
                     x.Entry.ItemId != frozen.OrderedEnabledCases[i].EntryId ||
@@ -737,40 +724,14 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
             Snapshot();
             AddOperatorEvent(flashState);
 
-            // Project setup, every case invocation and project teardown
-            // borrow the SAME continuous physical scope, but each creates
-            // its own real RECORD occurrence. No giant TestDocument or
-            // separate station recipe is invented.
+            // All ordered invocations use one physical TEST scope and preserve
+            // cross-case periodic CAN tasks; each case retains its own evidence.
             var anyFunctionalFail = false;
             await using (var projectScope = await _operatorEngine.OpenProjectSessionAsync(
                 programs.OrderedExecutions().Select(x => x.Program).ToArray(),
                 _operatorRunId, scan.RawBarcode, ct))
             {
-            AddOperatorEvent("连续整组 TEST 会话：项目准备 → 所有用例 → 项目收尾；" +
-                "周期 CAN 跨用例保持。所有动作使用真实步骤执行器。");
-            if (programs.ProjectSetup is { } setup)
-            {
-                ct.ThrowIfCancellationRequested();
-                activeCaseIndex = -1;
-                _operatorActiveCaseIndex = -1;
-                OperatorCurrentCase = "项目准备 · " + setup.Entry.DisplayName;
-                OperatorCurrentStep = "正在准备测试环境";
-                OperatorRunState = OperatorCurrentCase;
-                AddOperatorEvent("项目准备开始 · 使用固定 TEST 资产 r" +
-                    setup.Asset.Revision);
-                var stage = await projectScope.ExecuteCaseAsync(setup.Program, ct);
-                results.Add(new RealOperatorCaseEvidence(
-                    "项目准备 · " + setup.Entry.DisplayName,
-                    stage.Run.Value, stage.Verdict.ToString(), stage.EvidencePath ?? ""));
-                if (stage.Verdict is not (RealTestVerdict.CompletedNoAssertion or
-                    RealTestVerdict.Passed))
-                    throw new InvalidDataException("项目准备未完成，禁止执行任何后续功能用例：" +
-                        stage.Verdict + "；请查看独立的步骤及设备证据。");
-                await projectScope.Actions.CheckHealthAsync(ct);
-                AddOperatorEvent("项目准备执行完成（非 ECU 产品 PASS） · " +
-                    stage.Run.Value.ToString("N")[..8] +
-                    "；周期任务保留至显式停止或整个项目结束。");
-            }
+            AddOperatorEvent("连续整组 TEST 会话：按工程顺序执行全部用例，周期 CAN 跨用例保持。");
             for (var i = 0; i < programs.Cases.Count; i++)
             {
                 ct.ThrowIfCancellationRequested();
@@ -872,27 +833,6 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
                 }
                 AddOperatorEvent("项目周期 CAN · " + OperatorPeriodicStatus +
                     "（ACK 不是 ECU 接收证据）");
-            }
-            if (programs.ProjectTeardown is { } teardown)
-            {
-                ct.ThrowIfCancellationRequested();
-                activeCaseIndex = -1;
-                _operatorActiveCaseIndex = -1;
-                OperatorCurrentCase = "项目收尾 · " + teardown.Entry.DisplayName;
-                OperatorCurrentStep = "正在执行测试收尾步骤";
-                OperatorRunState = OperatorCurrentCase;
-                AddOperatorEvent("项目收尾开始（不是工装安全释放）");
-                var stage = await projectScope.ExecuteCaseAsync(teardown.Program, ct);
-                results.Add(new RealOperatorCaseEvidence(
-                    "项目收尾 · " + teardown.Entry.DisplayName,
-                    stage.Run.Value, stage.Verdict.ToString(), stage.EvidencePath ?? ""));
-                if (stage.Verdict is not (RealTestVerdict.CompletedNoAssertion or
-                    RealTestVerdict.Passed))
-                    throw new InvalidDataException("项目收尾出现真实故障，不能作为正常完结：" +
-                        stage.Verdict + "；工位物理 Scope 仍会强制停止周期任务。");
-                await projectScope.Actions.CheckHealthAsync(ct);
-                AddOperatorEvent("项目收尾完成（非 ECU 产品 PASS） · " +
-                    stage.Run.Value.ToString("N")[..8]);
             }
             projectScope.MarkCompleted();
             } // One project-level disposal stops senders/revokes the fence.
