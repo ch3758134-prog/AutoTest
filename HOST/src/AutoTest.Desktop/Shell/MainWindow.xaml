@@ -156,6 +156,7 @@
      <MenuItem Header="文件">
       <MenuItem Header="新建工程" Command="{Binding NewProjectCommand}" InputGestureText="Ctrl+N"/>
       <MenuItem Header="打开工程" Command="{Binding OpenProjectCommand}" InputGestureText="Ctrl+O"/>
+      <MenuItem Header="重命名当前工程" Command="{Binding RenameProjectCommand}"/>
       <MenuItem Header="保存修改" Command="{Binding SaveActiveCommand}" InputGestureText="Ctrl+S"/>
       <Separator/>
       <MenuItem Header="打开检测流程" Command="{Binding OpenFirstTestProjectCommand}"/>
@@ -167,7 +168,8 @@
       <MenuItem Header="撤销" Command="{Binding UndoActiveCommand}" InputGestureText="Ctrl+Z"/>
       <MenuItem Header="重做" Command="{Binding RedoActiveCommand}" InputGestureText="Ctrl+Y"/>
       <Separator/>
-      <MenuItem Header="重命名选中资源" Command="{Binding RenameResourceCommand}" InputGestureText="F2"/>
+      <MenuItem Header="重命名测试用例/公共流程" Command="{Binding RenameResourceCommand}" InputGestureText="F2"/>
+      <MenuItem Header="重命名当前 DBC" Command="{Binding RenameCurrentDbcCommand}"/>
       <MenuItem Header="移除工程引用（保留源文件）" Command="{Binding RemoveReferenceCommand}"/>
      </MenuItem>
      <MenuItem Header="调试">
@@ -212,13 +214,17 @@
       ToolTip="核对当前工程的完整 TEST、DBC、波形和 FLASH 后固定生产版本"/>
     </StackPanel>
     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
-     <TextBlock Text="{Binding CurrentProjectName}" FontSize="15" FontWeight="SemiBold"
+     <Button Content="{Binding CurrentProjectName}" Command="{Binding RenameProjectCommand}"
+      Style="{StaticResource AtQuietButton}" FontSize="15" FontWeight="SemiBold"
       Foreground="#21384F" VerticalAlignment="Center" MaxWidth="220"
-      TextTrimming="CharacterEllipsis" ToolTip="{Binding CurrentProjectPath}"/>
+      ToolTip="单击重命名工程；工程身份和已保存测试内容不会改变"/>
      <Border Width="1" Height="21" Background="#DEE7F1" Margin="13,0,9,0"/>
      <Button Content="{Binding ActiveDbcLabel}" Command="{Binding OpenDbcToolCommand}"
-      Style="{StaticResource AtQuietButton}" Margin="0,0,5,0" Padding="9,5"
-      ToolTip="编辑当前工程唯一的 ECU DBC；用例信号引用共享此数据库"/>
+      Style="{StaticResource AtQuietButton}" Margin="0,0,0,0" Padding="9,5"
+      ToolTip="打开当前工程唯一的 DBC 文档"/>
+     <Button Content="✎" Command="{Binding RenameCurrentDbcCommand}"
+      Style="{StaticResource AtQuietButton}" Margin="0,0,6,0" Padding="5,5"
+      ToolTip="重命名当前工程 DBC（不改变报文和信号）"/>
      <Button Content="FLASH 烧录" Command="{Binding OpenNativeFlashProfileCommand}"
       Style="{StaticResource AtQuietButton}" Margin="0,0,5,0" Padding="9,5"
       ToolTip="编辑当前工程唯一的烧录工艺；独立实测可从工具菜单进入"/>

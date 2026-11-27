@@ -739,6 +739,34 @@ public sealed partial class ProjectWorkspaceService
         finally { _writeLock.Release(); }
     }
 
+    /// <summary>
+    /// Rename the ECU project itself. The internal manifest filename and
+    /// resource locations remain stable; editor sessions and exported bundles
+    /// continue to refer to the same project identity.
+    /// </summary>
+    public async Task RenameProjectAsync(string name, CancellationToken ct = default)
+    {
+        ValidateResourceName(name);
+        await _writeLock.WaitAsync(ct);
+        try
+        {
+            var current = Current ?? throw new InvalidOperationException("请先打开工程。");
+            if (string.Equals(current.Definition.Name, name, StringComparison.Ordinal))
+                return;
+            await EnsureManifestUnchangedAsync(current, ct).ConfigureAwait(false);
+            var renamed = (current.Definition with { Name = name })
+                .WithRevision().Validate();
+            await ProjectRepository.SaveDefinitionAsync(renamed, current.ManifestPath, ct)
+                .ConfigureAwait(false);
+            var verified = await ProjectRepository.OpenDefinitionAsync(current.ManifestPath, ct)
+                .ConfigureAwait(false);
+            var hash = await HashFileAsync(current.ManifestPath, ct).ConfigureAwait(false);
+            Current = new OpenProjectContext(verified, current.ManifestPath, hash);
+            CurrentChanged?.Invoke(this, EventArgs.Empty);
+        }
+        finally { _writeLock.Release(); }
+    }
+
     public Task RenameAssetAsync(AssetId id, string name, CancellationToken ct = default)
     {
         ValidateResourceName(name);

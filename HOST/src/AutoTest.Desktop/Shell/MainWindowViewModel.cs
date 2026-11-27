@@ -157,6 +157,10 @@ public sealed partial class MainWindowViewModel : BindableBase
             () => SelectedResourceIsDbc && !IsBusy);
         OpenTestProgramCommand = new DelegateCommand(async () => await OpenSelectedTestProgramAsync(),
             () => SelectedResourceIsTestProgram && !IsBusy);
+        RenameProjectCommand = new DelegateCommand(async () => await RenameProjectAsync(),
+            () => HasProject && !IsBusy);
+        RenameCurrentDbcCommand = new DelegateCommand(async () => await RenameCurrentDbcAsync(),
+            () => HasProject && !IsBusy);
         RenameResourceCommand = new DelegateCommand(async () => await RenameResourceAsync(),
             () => _selectedResource?.Asset is not null && !IsBusy);
         RemoveReferenceCommand = new DelegateCommand(async () => await RemoveReferenceAsync(),
@@ -1348,6 +1352,8 @@ public sealed partial class MainWindowViewModel : BindableBase
     public DelegateCommand OpenConfigurationCommand { get; }
     public DelegateCommand OpenDbcCommand { get; }
     public DelegateCommand OpenTestProgramCommand { get; }
+    public DelegateCommand RenameProjectCommand { get; }
+    public DelegateCommand RenameCurrentDbcCommand { get; }
     public DelegateCommand RenameResourceCommand { get; }
     public DelegateCommand RemoveReferenceCommand { get; }
 
@@ -2368,6 +2374,54 @@ public sealed partial class MainWindowViewModel : BindableBase
         return true;
     }
 
+    private async Task RenameProjectAsync()
+    {
+        if (_workspace.Current is null) return;
+        if (_realTest.IsRunning || _hardware.IsTestRunApproved)
+        {
+            StatusMessage = "测试运行期间不能重命名工程。";
+            return;
+        }
+        var current = _workspace.Current.Definition.Name;
+        var name = _fileDialogs.AskResourceName("重命名测试工程", current);
+        if (name is null || name == current) return;
+        await RunOperationAsync(async () =>
+        {
+            await _workspace.RenameProjectAsync(name);
+            StatusMessage = "工程已重命名：" + name;
+        });
+    }
+
+    private async Task RenameCurrentDbcAsync()
+    {
+        var databases = _workspace.Current?.Definition.Assets
+            .Where(a => a.Kind == ProjectWorkspaceService.DbcKind).ToArray();
+        if (databases is not { Length: 1 })
+        {
+            StatusMessage = "请先为当前工程选择唯一 DBC。";
+            return;
+        }
+        var asset = databases[0];
+        if (_dbcToolWindows.TryGetValue(asset.Id.Value, out var opened) &&
+            opened.Window.IsVisible)
+        {
+            StatusMessage = "请先保存并关闭正在编辑的 DBC，再修改数据库名称。";
+            return;
+        }
+        if (_realTest.IsRunning || _hardware.IsTestRunApproved)
+        {
+            StatusMessage = "测试运行期间不能重命名 DBC。";
+            return;
+        }
+        var name = _fileDialogs.AskResourceName("重命名 DBC", asset.Name);
+        if (name is null || name == asset.Name) return;
+        await RunOperationAsync(async () =>
+        {
+            await _workspace.RenameAssetAsync(asset.Id, name);
+            StatusMessage = "DBC 已重命名：" + name;
+        });
+    }
+
     private async Task RenameResourceAsync()
     {
         var asset = _selectedResource?.Asset;
@@ -2492,6 +2546,8 @@ public sealed partial class MainWindowViewModel : BindableBase
         OpenConfigurationCommand?.RaiseCanExecuteChanged();
         OpenDbcCommand?.RaiseCanExecuteChanged();
         OpenTestProgramCommand?.RaiseCanExecuteChanged();
+        RenameProjectCommand?.RaiseCanExecuteChanged();
+        RenameCurrentDbcCommand?.RaiseCanExecuteChanged();
         RenameResourceCommand?.RaiseCanExecuteChanged();
         RemoveReferenceCommand?.RaiseCanExecuteChanged();
     }
