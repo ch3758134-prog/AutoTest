@@ -30,7 +30,7 @@ public sealed class ProductionWorkflow
     }
 
     public ProductionPreflightResult Prepare(ProductionSession session,
-        ProductionConfiguration configuration, ProductionStationReadiness station) =>
+        ProductionProjectExecution configuration, ProductionStationReadiness station) =>
         _preflight.Validate(session, configuration, station);
 
     public async ValueTask<ProductionRunResult> ExecuteAsync(ProductionSession session,
@@ -54,7 +54,7 @@ public sealed class ProductionWorkflow
         var stage = "PREFLIGHT";
         try
         {
-            if (!job.IsMock && !job.Configuration.RequiresFlash)
+            if (!job.IsMock && !job.ProjectExecution.RequiresFlash)
             {
                 session.Mark(ProductionState.Unknown, "PRODUCTION_FLASH_REQUIRED");
                 return new(job.Run, ProductionState.Unknown, Verdict.Inconclusive,
@@ -136,7 +136,7 @@ public sealed class ProductionWorkflow
                         "PHYSICAL_START_FACT_NOT_DURABLE");
                 }
             }
-            if (job.Configuration.RequiresFlash)
+            if (job.ProjectExecution.RequiresFlash)
             {
                 stage = "FLASH";
                 // Persist a pre-side-effect intent before any destructive ECU
