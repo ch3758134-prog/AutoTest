@@ -73,6 +73,8 @@
      <TextBlock Text="{Binding ProjectName,StringFormat='匹配工程：{0}'}"
       Foreground="#52677D" FontSize="13" TextWrapping="Wrap"
       ToolTip="{Binding ProjectName}"/>
+     <TextBlock Text="{Binding ProductionBatchToday}"
+      Foreground="#52677D" FontSize="12" Margin="0,9,0,0"/>
     </StackPanel>
     <StackPanel Grid.Column="1" VerticalAlignment="Center">
      <Border Background="#F4F8FC" CornerRadius="6" Padding="13,10">
