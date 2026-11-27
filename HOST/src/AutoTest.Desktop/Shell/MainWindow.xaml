@@ -183,7 +183,6 @@
      </MenuItem>
      <MenuItem Header="工具">
       <MenuItem Header="手动台架" Command="{Binding OpenManualBenchCommand}"/>
-      <MenuItem Header="CAN 监视（手动台架）" Command="{Binding OpenManualBenchCommand}"/>
       <Separator/>
       <MenuItem Header="UDS 诊断" Command="{Binding OpenUdsWorkbenchCommand}"/>
       <MenuItem Header="独立 ECU 烧录" Command="{Binding OpenFlashWorkbenchCommand}"/>
@@ -197,10 +196,8 @@
     <Menu Background="Transparent" VerticalAlignment="Center" FontSize="13"
      chrome:WindowChrome.IsHitTestVisibleInChrome="True">
      <MenuItem Header="设置">
-      <MenuItem Header="工位设备与扫码枪…" Command="{Binding NavigateProductionPreparationCommand}"/>
-      <MenuItem Header="检测工程库与识别标记…" Command="{Binding OpenProductionProjectLibraryCommand}"/>
-      <Separator/>
-      <MenuItem Header="扫码枪连接与诊断…" Command="{Binding OpenSerialScannerCommand}"/>
+      <MenuItem Header="扫码标记与工程匹配…" Command="{Binding OpenProductionProjectLibraryCommand}"/>
+      <MenuItem Header="扫码枪连接诊断…" Command="{Binding OpenSerialScannerCommand}"/>
      </MenuItem>
      <MenuItem Header="帮助" Command="{Binding HelpCommand}"/>
     </Menu>
@@ -250,45 +247,30 @@
     HorizontalAlignment="Stretch" ShowsPreview="True"/>
    <Grid Grid.Column="2">
     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-    <Border Grid.Row="0" Height="39" Background="#EDF2F7"
-     BorderBrush="#E1E5E9" BorderThickness="0,0,0,1"
+    <!-- A focused work surface, not a second IDE tab strip. A compact
+         document switcher remains available for editing several definitions. -->
+    <Border Grid.Row="0" Height="38" Background="#F6F9FC"
+     BorderBrush="#E1E7EE" BorderThickness="0,0,0,1"
      Visibility="{Binding HasActiveEditor,Converter={StaticResource BoolToVisibility}}">
-     <DockPanel LastChildFill="True">
-      <TabControl x:Name="DocumentTabs" ItemsSource="{Binding OpenEditors}"
+     <DockPanel Margin="10,0" LastChildFill="True">
+      <ComboBox DockPanel.Dock="Right" Width="220" Height="28"
+       Margin="7,4,5,4" VerticalAlignment="Center"
+       ItemsSource="{Binding OpenEditors}" DisplayMemberPath="Title"
        SelectedItem="{Binding ActiveEditorTab,Mode=TwoWay}"
-       SelectionChanged="DocumentTabs_SelectionChanged"
-       Background="Transparent" BorderThickness="0" Margin="0" Padding="0"
-       ItemContainerStyle="{StaticResource DocumentTabItem}">
-       <TabControl.Template>
-        <ControlTemplate TargetType="{x:Type TabControl}">
-         <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-          <TabPanel IsItemsHost="True" Background="Transparent" HorizontalAlignment="Left"/>
-         </ScrollViewer>
-        </ControlTemplate>
-       </TabControl.Template>
-       <TabControl.ItemTemplate>
-        <DataTemplate>
-         <StackPanel Orientation="Horizontal">
-          <TextBlock Text="{Binding Title}" MaxWidth="190" TextTrimming="CharacterEllipsis"
-           VerticalAlignment="Center" Foreground="#334A62" FontSize="13"/>
-          <Button Content="×" Tag="{Binding}" Click="CloseEditorTab_Click"
-           Width="19" Height="19" MinWidth="0" MinHeight="0"
-           Padding="0" Margin="4,0,0,0" Focusable="False"
-           ToolTip="关闭此资源页签">
-           <Button.Style>
-            <Style TargetType="{x:Type Button}" BasedOn="{StaticResource AtQuietButton}">
-             <Style.Triggers>
-              <DataTrigger Binding="{Binding Key}" Value="config-overview">
-               <Setter Property="Visibility" Value="Collapsed"/>
-              </DataTrigger>
-             </Style.Triggers>
-            </Style>
-           </Button.Style>
-          </Button>
-         </StackPanel>
-        </DataTemplate>
-       </TabControl.ItemTemplate>
-      </TabControl>
+       ToolTip="切换已打开的测试用例、公共流程或检查内容"/>
+      <Button DockPanel.Dock="Right" Content="关闭当前"
+       Tag="{Binding ActiveEditorTab}" Click="CloseEditorTab_Click"
+       Style="{StaticResource AtQuietButton}" Margin="0,4,6,4"
+       Padding="8,3" ToolTip="关闭当前编辑内容，不删除工程资源"/>
+      <TextBlock Text="{Binding ActiveEditorTitle}" FontSize="13"
+       FontWeight="SemiBold" Foreground="#3B536C" VerticalAlignment="Center"
+       TextTrimming="CharacterEllipsis" Margin="3,0,8,0"/>
+      <!-- Keep the native TabControl selection event contract for draft
+           validation while removing its visible multirow chrome. -->
+      <TabControl x:Name="DocumentTabs" Visibility="Collapsed"
+       ItemsSource="{Binding OpenEditors}"
+       SelectedItem="{Binding ActiveEditorTab,Mode=TwoWay}"
+       SelectionChanged="DocumentTabs_SelectionChanged"/>
      </DockPanel>
     </Border>
     <Grid Grid.Row="1">

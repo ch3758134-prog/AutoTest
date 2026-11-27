@@ -287,7 +287,7 @@ public partial class MainWindow : Window
         }
         else if (ActualWidth >= 1150 && _treeAutoNarrow)
         {
-            TreeColumn.Width = new GridLength(296);
+            TreeColumn.Width = new GridLength(266);
             _treeAutoNarrow = false;
         }
         ApplyPanelLayout();
