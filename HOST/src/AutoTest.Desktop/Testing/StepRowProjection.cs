@@ -39,7 +39,7 @@ public sealed class StepRowProjection : BindableBase
         "WaveStop" or "WaveAnalyze" or "WaveCompare" => "≋",
         "If" or "Switch" or "Case" => "⑂",
         "Loop" => "⟳",
-        "        "SetVariable" or "Calculate" => "𝑥",
+        "SetVariable" or "Calculate" => "𝑥",
         "Expect" => "✓",
         _ => Item.Icon
     };
@@ -50,7 +50,6 @@ public sealed class StepRowProjection : BindableBase
         "Write" when _draftActionKey is "ign" or "key" => "Hardware",
         "Write" when _targetKind is TestTargetKind.Ignition or
             TestTargetKind.Button or TestTargetKind.RawKey => "Hardware",
-        "Write" when _targetKind is TestTargetKind.RawKey or TestTargetKind.Button or TestTargetKind.Ignition => "Hardware",
         "Write" or "Read" or "WaitUntil" or "AssertSignal" or "CanStopPeriodic" => "Can",
         "WaveStart" or "WaveStop" or "WaveAnalyze" or "WaveCompare" => "Wave",
         "If" or "Switch" or "Case" or "Loop" or "Sequence" => "Flow",
@@ -172,14 +171,14 @@ public sealed class StepRowProjection : BindableBase
             "Wait" => Prop("milliseconds") + " ms",
             "Loop" => "重复 " + Prop("count") + " 次",
             "If" => "IF " + Prop("variable") + " " +
-                (Prop("operator").Length == 0 ? "==" : Prop("operator")) +
-                " " + Prop("equals"),
+                Prop("operator") + " " + Prop("equals"),
                         "Switch" => "按变量 " + Prop("variable") + " 分派",
             "Case" => "匹配值 " + Prop("equals"),
             "Write" => HumanWriteSummary(Prop("target"), Prop("value"), _targetKind),
                         "Read" => "读取 " + displayTarget + " → " + Prop("variable") +
                 " · " + (Prop("mode") == "Latest" ? "最新有效值" : "等待新数据"),
-            "WaitUntil" => "信号 " + displayTarget + " · 超时 " + Prop("timeoutMs") + " ms",
+            "WaitUntil" => "等待 " + displayTarget + " " + Prop("operator") + " " +
+                Prop("expected") + " · 超时 " + Prop("timeoutMs") + " ms",
             "CanStopPeriodic" => "停止本次测试的全部 ECU CAN 周期发送",
             "AssertSignal" => "判定 " + displayTarget + " " +
                 Prop("operator") + " " + Prop("expected") + " · " +
@@ -191,8 +190,8 @@ public sealed class StepRowProjection : BindableBase
             "WaveStart" => "采集 " + Prop("captureKey") +
                 " · " + Prop("durationMs") + " ms",
             "WaveStop" => "停止采集 " + Prop("captureKey"),
-            "WaveAnalyze" or "WaveCompare" => "参考 " + (Prop("reference").Length > 0
-                ? Prop("reference") : "未选择") + " · 波形判定",
+            "WaveAnalyze" or "WaveCompare" => "波形配置 " +
+                (Prop("profile").Length > 0 ? Prop("profile") : "未选择"),
                         "Sequence" => "按顺序执行子步骤",
             _ => StepUiCatalog.Label(step, _mappings) + " · 打开属性查看参数"
         };
@@ -296,21 +295,17 @@ public sealed class StepRowProjection : BindableBase
             target.Contains("IGN", StringComparison.OrdinalIgnoreCase))
             return "IGN " + (value.Equals("ON", StringComparison.OrdinalIgnoreCase) ? "开启" :
                 value.Equals("OFF", StringComparison.OrdinalIgnoreCase) ? "关闭" : value);
-        if (kind is TestTargetKind.Button or TestTargetKind.RawKey ||
-            target.Contains("KEY", StringComparison.OrdinalIgnoreCase))
+        if (kind is TestTargetKind.Button or TestTargetKind.RawKey)
         {
             var parts = value.Split(':', StringSplitOptions.TrimEntries);
             if (parts.Length > 0 && parts[0].Equals("Wait", StringComparison.OrdinalIgnoreCase))
                 return "纯等待 · " + (parts.Length > 1 ? parts[1] : "?") + " ms";
             if (value.Equals("Release", StringComparison.OrdinalIgnoreCase))
                 return "KEY · 全部断开";
-            if (parts.Length > 0 && parts[0] is "Hold" or "Pulse" && parts.Length > 1)
+            if (parts.Length > 0 && parts[0] == "Hold" && parts.Length > 1)
             {
-                var combination = kind == TestTargetKind.RawKey
-                    ? FriendlyKeyMask(parts[1]) : target;
+                var combination = FriendlyKeyMask(parts[1]);
                 var duration = parts.Length > 2 ? parts[2] + " ms" : "持续";
-                if (parts[0] == "Pulse")
-                    return combination + " · 短按 " + duration;
                 return combination == "全部断开"
                     ? "KEY 全部断开 · " + duration
                     : combination + " · 保持 · " + duration;
