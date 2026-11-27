@@ -46,32 +46,14 @@
      Padding="8,5" ToolTip="编辑正式执行顺序；单步和临时调试勾选不修改生产顺序"/>
    </StackPanel>
   </Border>
-  <StackPanel DockPanel.Dock="Bottom">
-   <Expander Header="公共流程 · 按需编辑" IsExpanded="False"
-    Margin="8,5,8,0" Foreground="#3C5772">
-    <StackPanel Margin="4,8,4,8">
-     <ItemsControl ItemsSource="{Binding PublicFlowNodes}">
-      <ItemsControl.ItemTemplate>
-       <DataTemplate>
-        <Button Content="{Binding Label}" ToolTip="{Binding Description}"
-         Click="PublicFlow_Click" HorizontalContentAlignment="Left"
-         Style="{StaticResource AtQuietButton}" Padding="8,5"
-         HorizontalAlignment="Stretch" Margin="0,1"/>
-       </DataTemplate>
-      </ItemsControl.ItemTemplate>
-     </ItemsControl>
-     <Button Content="＋ 新建公共流程"
-      Command="{Binding DataContext.NewPublicFlowCommand,RelativeSource={RelativeSource AncestorType=UserControl}}"
-      Style="{StaticResource AtQuietButton}" HorizontalContentAlignment="Left"
-      Padding="8,5" Margin="0,4,0,0" HorizontalAlignment="Stretch"/>
-    </StackPanel>
-   </Expander>
-   <Border BorderBrush="#DFE8F1" BorderThickness="0,1,0,0" Padding="12,9"
-    Background="White">
-    <TextBlock Text="DBC、FLASH、波形属于当前工程；从顶部工程栏进入。"
-     Foreground="#6D7E91" FontSize="11" TextWrapping="Wrap"/>
-   </Border>
-  </StackPanel>
+  <Border DockPanel.Dock="Bottom" Background="White"
+   BorderBrush="#DFE8F1" BorderThickness="0,1,0,0" Padding="10,10">
+   <Button Content="工程资源 · DBC / 波形 / 公共流程"
+    Command="{Binding OpenEngineeringResourcesCommand}"
+    Style="{StaticResource AtQuietButton}" HorizontalAlignment="Stretch"
+    HorizontalContentAlignment="Left" Padding="9,7"
+    ToolTip="专业资源分别在各自的工具中创建和编辑"/>
+  </Border>
   <Grid>
    <ListBox x:Name="CaseList" ItemsSource="{Binding OrderedCaseNodes}"
     ItemContainerStyle="{StaticResource CaseRow}"
