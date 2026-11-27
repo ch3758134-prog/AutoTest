@@ -26,7 +26,7 @@ public partial class MainWindow : Window
     private Task? _shutdownTask;
     private bool _closeAttemptPending;
     private bool _bottomVisible; // On entry: no real event rows => dock closed, tab remains recoverable.
-    private bool _inspectorVisible = true;
+    private bool _inspectorVisible; // Full-width test table first; inspector is opt-in.
     private bool _restoringDocumentTab;
     private bool _inspectorManualLayout;
     private bool _bottomManualLayout;
@@ -277,7 +277,7 @@ public partial class MainWindow : Window
         _viewModel.SetCompactShell(ActualWidth < 1150 || ActualHeight < 625);
         // 1366×768 at 150% provides fewer than 920×500 effective DIPs.
         // Preserve the editing surface instead of squeezing controls/fonts.
-        if (!_inspectorManualLayout) _inspectorVisible = ActualWidth >= 1120;
+        if (!_inspectorManualLayout) _inspectorVisible = false;
         if (!_bottomManualLayout)
             _bottomVisible = ActualHeight >= 690 && _activeRunFacts?.RunFacts.Count > 0;
         if (ActualWidth < 1050 && !_treeAutoNarrow && TreeColumn.Width.Value > 240)
