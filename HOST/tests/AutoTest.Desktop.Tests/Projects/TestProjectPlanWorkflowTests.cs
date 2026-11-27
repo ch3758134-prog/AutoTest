@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text;
 using AutoTest.Desktop.Projects;
+using AutoTest.Desktop.Testing;
 using AutoTest.Testing.Authoring;
 using Xunit;
 
