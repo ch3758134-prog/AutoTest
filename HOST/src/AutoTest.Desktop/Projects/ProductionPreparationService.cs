@@ -1,21 +1,15 @@
 using System.IO;
-using System.Collections.Immutable;
 using System.Text.Json;
 using System.Security.Cryptography;
 using System.Text;
 using AutoTest.FlashLab.Programming;
 using AutoTest.Projects.Project;
-using AutoTest.Projects.Resources;
 using AutoTest.Testing.Authoring;
 
 namespace AutoTest.Desktop.Projects;
 
 public sealed record FrozenProductionCase(
     Guid EntryId, Guid TestAssetId, string DisplayName, int Revision, string Sha256);
-public sealed record FrozenStationProcedure(
-    ImmutableArray<InspectionStationAction> BeforeStart,
-    ImmutableArray<InspectionStationAction> AfterFinish);
-
 /// <summary>
 /// Accepted REAL scanner observation fixed to its exact interpretation-rule
 /// JSON and checksum. This is a pre-run observation, NOT a claimed formal
@@ -50,9 +44,6 @@ public sealed record FrozenProductionPreparation(
 {
     public FrozenProductionCase? ProjectSetup { get; init; }
     public FrozenProductionCase? ProjectTeardown { get; init; }
-    public Guid FixtureAssetId { get; init; }
-    public string FixtureContentSha256 { get; init; } = "";
-    public FrozenStationProcedure? Fixture { get; init; }
     public FrozenScanIdentity? AcceptedScannerObservation { get; init; }
 };
 
@@ -151,22 +142,13 @@ public static class ProductionPreparationService
             FreezeInvocation(resolved.ProjectSetup);
         var frozenTeardown = resolved.ProjectTeardown is null ? null :
             FreezeInvocation(resolved.ProjectTeardown);
-        // Freeze this model's explicit station procedure, never an implicit
-        // clamp/IGN operation hidden in a UI or duplicated TEST script.
-        var fixtureAssets = actual.Assets.Where(x =>
-            x.Kind == ProjectWorkspaceService.InspectionKind).ToArray();
-        if (fixtureAssets.Length > 1)
-            throw new InvalidDataException("工程存在多个工位动作定义，不能猜选其一。");
-        var fixtureAsset = fixtureAssets.SingleOrDefault();
-        InspectionStationProcedureDocument? fixture = null;
-        if (fixtureAsset is not null)
-        {
-            var bytes = await AutomaticTestResourceContract.ReadPinnedAsync(
-                opened, fixtureAsset, ct).ConfigureAwait(false);
-            fixture = (InspectionStationProcedureDocument)
-                ProjectConfigurationCodec.Decode(fixtureAsset.Kind, bytes);
-            fixture.Validate();
-        }
+        // No fixture or IGN station scripts are accepted from a product
+        // project. Fixed clamp control is strictly station-owned, while
+        // product-specific IGN belongs in TEST.
+        if (actual.Assets.Any(x =>
+                x.Kind == ProjectWorkspaceService.InspectionKind))
+            throw new InvalidDataException(
+                "该工程包含旧工位动作资源，请删除并将产品专属动作改为 TEST 步骤。");
 
         // Formal production requires a published immutable FLASH profile;
         // engineering verification remains entitled to its saved draft.
@@ -206,10 +188,6 @@ public static class ProductionPreparationService
             "PROJECT_TEARDOWN:" + (frozenTeardown is null ? "NONE" :
                 frozenTeardown.EntryId + ":" + frozenTeardown.TestAssetId + ":" +
                 frozenTeardown.Revision + ":" + frozenTeardown.Sha256),
-            "FIXTURE:" + (fixtureAsset is null
-                ? "NO_EXTRA_ACTIONS:" + StationDeploymentStore.NoProcedureSha256
-                : fixtureAsset.Id.Value.ToString("D") + ":" + fixtureAsset.Revision +
-                  ":" + fixtureAsset.Sha256),
             string.Join("\n", frozenCases.Select(c =>
                 c.EntryId.ToString("D") + ":" + c.TestAssetId.ToString("D") +
                 ":" + c.Revision + ":" + c.Sha256)));
@@ -227,15 +205,7 @@ public static class ProductionPreparationService
             profile.EcuCanKbps, fingerprint, frozenJob)
         {
             ProjectSetup = frozenSetup,
-            ProjectTeardown = frozenTeardown,
-            FixtureAssetId = fixtureAsset?.Id.Value ?? Guid.Empty,
-            FixtureContentSha256 = fixtureAsset?.Sha256 ??
-                StationDeploymentStore.NoProcedureSha256,
-            Fixture = new FrozenStationProcedure(
-                fixture?.BeforeStart.ToImmutableArray() ??
-                    ImmutableArray<InspectionStationAction>.Empty,
-                fixture?.AfterFinish.ToImmutableArray() ??
-                    ImmutableArray<InspectionStationAction>.Empty)
+            ProjectTeardown = frozenTeardown
         };
     }
 }
