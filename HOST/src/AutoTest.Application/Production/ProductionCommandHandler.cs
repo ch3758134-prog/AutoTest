@@ -130,8 +130,9 @@ public sealed class ProductionCommandHandler
         {
             var result = await _workflow.ExecuteAsync(_session, linked.Token)
                 .ConfigureAwait(false);
-            if (result.State != ProductionState.Ready)
-                LastStartSource = ProductionStartSource.PhysicalButton;
+            // Do not claim a verified physical START from a terminal
+            // Unknown/Failed state. This field remains unset until an
+            // explicit trusted start receipt can be surfaced.
             return Feedback(result.Code, result.Verdict);
         }
         finally { lock (_sync) _runCancellation = null; }
