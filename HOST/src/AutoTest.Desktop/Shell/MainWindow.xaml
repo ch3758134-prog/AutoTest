@@ -115,86 +115,91 @@
      <TextBlock Text="{Binding RuntimeBuildLabel}" Margin="8,0,0,0"
       FontSize="10" Foreground="#768A9B" VerticalAlignment="Center"
       ToolTip="{Binding RuntimeBuildDetails}" />
-     <Border Margin="6,0,0,0" Background="#EAF4F0" BorderBrush="#E7EFFB"
-      BorderThickness="1" CornerRadius="3" Padding="4,1" VerticalAlignment="Center"
-      Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}">
-      <TextBlock Text="开发" Foreground="#3478D6" FontSize="10"/>
-     </Border>
-     <TextBlock Text="· 自动测试" Margin="8,0,0,0" Foreground="#51667A"
-      FontSize="12" VerticalAlignment="Center"
-      Visibility="{Binding IsProductionWorkspace,Converter={StaticResource BoolToVisibility}}"/>
+     <TextBlock Text="ECU 测试工作台" Margin="9,0,0,0" Foreground="#60758B"
+      FontSize="11" VerticalAlignment="Center"/>
     </StackPanel>
-    <!-- Product workspaces are first-level tasks, not hidden branches of
-         scanner settings or the TEST inspector. These commands reuse the
-         established actual production, engineering, preparation and RECORD
-         services, never a second test executor. -->
-    <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="9,0,8,0"
+    <!-- Primary tasks. Production and engineering share the real station,
+         scanner and TEST/FLASH execution services; RECORD is a direct task. -->
+    <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="10,0,8,0"
      VerticalAlignment="Center" chrome:WindowChrome.IsHitTestVisibleInChrome="True">
      <Button Content="生产检测" Command="{Binding ShowProductionWorkspaceCommand}"
-      Style="{StaticResource AtQuietButton}" FontSize="13" FontWeight="SemiBold"
-      Padding="13,5" Margin="0,0,4,0"
-      ToolTip="扫码自动匹配检测工程并查看检测状态"/>
-     <Button Content="工程" Command="{Binding ShowEngineerWorkspaceCommand}"
-      Style="{StaticResource AtQuietButton}" FontSize="13" FontWeight="SemiBold"
-      Padding="13,5" ToolTip="编辑测试用例并进行工程调试"/>
+      Padding="15,5" Margin="0,0,4,0" FontSize="13" FontWeight="SemiBold"
+      ToolTip="扫码识别 ECU，查看真实生产流程和结果">
+      <Button.Style>
+       <Style TargetType="Button" BasedOn="{StaticResource AtQuietButton}">
+        <Style.Triggers>
+         <DataTrigger Binding="{Binding IsProductionWorkspace}" Value="True">
+          <Setter Property="Background" Value="#E6F1FD"/>
+          <Setter Property="Foreground" Value="#185FAD"/>
+         </DataTrigger>
+        </Style.Triggers>
+       </Style>
+      </Button.Style>
+     </Button>
+     <Button Content="测试工程" Command="{Binding ShowEngineerWorkspaceCommand}"
+      Padding="15,5" Margin="0,0,4,0" FontSize="13" FontWeight="SemiBold"
+      ToolTip="编辑工程和用例，在真实工位调试测试步骤">
+      <Button.Style>
+       <Style TargetType="Button" BasedOn="{StaticResource AtQuietButton}">
+        <Style.Triggers>
+         <DataTrigger Binding="{Binding IsEngineerWorkspace}" Value="True">
+          <Setter Property="Background" Value="#E6F1FD"/>
+          <Setter Property="Foreground" Value="#185FAD"/>
+         </DataTrigger>
+        </Style.Triggers>
+       </Style>
+      </Button.Style>
+     </Button>
+     <Button Content="检测记录" Command="{Binding OpenRecordHistoryCommand}"
+      Style="{StaticResource AtQuietButton}" FontSize="13"
+      Padding="15,5" ToolTip="按完整扫码编号查询历次检测、证据和报告"/>
     </StackPanel>
-    <Menu Background="Transparent" VerticalAlignment="Center" FontSize="13"
-     chrome:WindowChrome.IsHitTestVisibleInChrome="True">
-     <MenuItem Header="管理">
-      <MenuItem Header="生产工程库…" Command="{Binding OpenProductionProjectLibraryCommand}"/>
-      <MenuItem Header="工位设备设置…" Command="{Binding NavigateProductionPreparationCommand}"/>
-      <MenuItem Header="记录与报告" Command="{Binding OpenRecordHistoryCommand}"/>
-     </MenuItem>
-    </Menu>
     <Menu Background="Transparent" VerticalAlignment="Center" FontSize="13"
      Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}"
      chrome:WindowChrome.IsHitTestVisibleInChrome="True">
      <MenuItem Header="文件">
       <MenuItem Header="新建工程" Command="{Binding NewProjectCommand}" InputGestureText="Ctrl+N"/>
       <MenuItem Header="打开工程" Command="{Binding OpenProjectCommand}" InputGestureText="Ctrl+O"/>
-      <MenuItem Header="保存当前" Command="{Binding SaveActiveCommand}" InputGestureText="Ctrl+S"/>
+      <MenuItem Header="保存修改" Command="{Binding SaveActiveCommand}" InputGestureText="Ctrl+S"/>
       <Separator/>
-      <MenuItem Header="打开测试项目" Command="{Binding OpenFirstTestProjectCommand}"/>
+      <MenuItem Header="打开检测流程" Command="{Binding OpenFirstTestProjectCommand}"/>
       <MenuItem Header="新建测试用例" Command="{Binding NewTestProgramCommand}"/>
-      <MenuItem Header="导入 DBC" Command="{Binding ImportDbcCommand}"/>
       <Separator/>
-      <MenuItem Header="退出 AutoTest" Click="Exit_Click" InputGestureText="Alt+F4"/>
+      <MenuItem Header="退出" Click="Exit_Click" InputGestureText="Alt+F4"/>
      </MenuItem>
      <MenuItem Header="编辑">
       <MenuItem Header="撤销" Command="{Binding UndoActiveCommand}" InputGestureText="Ctrl+Z"/>
       <MenuItem Header="重做" Command="{Binding RedoActiveCommand}" InputGestureText="Ctrl+Y"/>
       <Separator/>
       <MenuItem Header="重命名选中资源" Command="{Binding RenameResourceCommand}" InputGestureText="F2"/>
-      <MenuItem Header="从工程移除选中资源（保留源文件）" Command="{Binding RemoveReferenceCommand}"/>
+      <MenuItem Header="移除工程引用（保留源文件）" Command="{Binding RemoveReferenceCommand}"/>
      </MenuItem>
-     <MenuItem Header="视图">
-      <MenuItem Header="工程开发" Command="{Binding ShowEngineerWorkspaceCommand}"/>
-      <MenuItem Header="生产检测" Command="{Binding ShowProductionWorkspaceCommand}"/>
+     <MenuItem Header="调试">
+      <MenuItem Header="当前内容运行条件检查" Command="{Binding CheckActiveCommand}"/>
+      <MenuItem Header="整套工程实测…" Command="{Binding EnterEngineeringVerificationCommand}"/>
       <Separator/>
-      <MenuItem Header="显示／隐藏观察区" Click="ToggleBottom_Click"/>
-      <MenuItem Header="显示／隐藏属性区" Click="ToggleInspector_Click"/>
-      <Separator/>
-      <MenuItem Header="检查工程资源" Command="{Binding OpenProjectConfigurationOverviewCommand}"/>
-     </MenuItem>
-     <MenuItem Header="运行">
-      <MenuItem Header="检查运行条件" Command="{Binding CheckActiveCommand}"/>
-      <Separator/>
-      <MenuItem Header="工程测试" Command="{Binding EnterEngineeringVerificationCommand}"
-       ToolTip="打开当前工程的测试运行窗口"/>
+      <MenuItem Header="显示／隐藏实时观察" Click="ToggleBottom_Click"/>
+      <MenuItem Header="显示／隐藏参数面板" Click="ToggleInspector_Click"/>
      </MenuItem>
      <MenuItem Header="工具">
       <MenuItem Header="手动台架" Command="{Binding OpenManualBenchCommand}"/>
-      <MenuItem Header="扫码枪" Command="{Binding OpenSerialScannerCommand}"/>
-      <MenuItem Header="DBC 编辑器" Command="{Binding OpenDbcToolCommand}"/>
-      <MenuItem Header="打开独立 DBC 文件…" Command="{Binding OpenIndependentDbcCommand}"/>
-      <MenuItem Header="UDS 诊断" Command="{Binding OpenUdsWorkbenchCommand}"
-       ToolTip="编辑诊断序列、查看回放；实际可执行服务以工具状态为准"/>
-
-      <MenuItem Header="波形分析" Command="{Binding OpenWaveWorkbenchCommand}"/>
+      <MenuItem Header="CAN 监视（手动台架）" Command="{Binding OpenManualBenchCommand}"/>
       <Separator/>
-
-
-      <MenuItem Header="ECU 烧录工具" Command="{Binding OpenFlashWorkbenchCommand}" ToolTip="独立烧录工具；使用前应释放其他窗口的主控连接"/>
+      <MenuItem Header="UDS 诊断" Command="{Binding OpenUdsWorkbenchCommand}"/>
+      <MenuItem Header="独立 ECU 烧录" Command="{Binding OpenFlashWorkbenchCommand}"/>
+      <Separator/>
+      <MenuItem Header="波形采集与分析" Command="{Binding OpenWaveWorkbenchCommand}"/>
+      <MenuItem Header="DBC 编辑器" Command="{Binding OpenDbcToolCommand}"/>
+      <MenuItem Header="打开独立 DBC…" Command="{Binding OpenIndependentDbcCommand}"/>
+     </MenuItem>
+    </Menu>
+    <Menu Background="Transparent" VerticalAlignment="Center" FontSize="13"
+     chrome:WindowChrome.IsHitTestVisibleInChrome="True">
+     <MenuItem Header="设置">
+      <MenuItem Header="工位设备与扫码枪…" Command="{Binding NavigateProductionPreparationCommand}"/>
+      <MenuItem Header="检测工程库与识别标记…" Command="{Binding OpenProductionProjectLibraryCommand}"/>
+      <Separator/>
+      <MenuItem Header="扫码枪连接与诊断…" Command="{Binding OpenSerialScannerCommand}"/>
      </MenuItem>
      <MenuItem Header="帮助" Command="{Binding HelpCommand}"/>
     </Menu>
@@ -219,13 +224,8 @@
    </Border.Style>
    <DockPanel Margin="10,0" LastChildFill="False">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-     <!-- Specialist tools remain in the main Tools menu; the toolbar
-          emphasizes two frequent engineering workbenches and live connection. -->
-     <Button Content="手动台架" Command="{Binding OpenManualBenchCommand}"
-      ToolTip="打开独立手动台架" Margin="0,0,5,0"/>
-     <Button Content="波形" Command="{Binding OpenWaveWorkbenchCommand}"
-      ToolTip="打开多信号波形工作台" Margin="0,0,8,0"/>
-     <Border Background="#E1E5E9" Width="1" Height="18" Margin="0,0,8,0"/>
+     <!-- The contextual engineering toolbar keeps only controller CAN settings;
+          specialist workbenches have one stable entry in Tools. -->
      <TextBlock Text="ECU CAN" VerticalAlignment="Center" Foreground="#526172"
       Margin="0,0,5,0" ToolTip="{Binding EcuCanRateStatus}"/>
      <ComboBox Width="137" MinHeight="28" VerticalAlignment="Center" Margin="0,0,8,0"
@@ -258,19 +258,21 @@
     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
      <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
       Visibility="{Binding IsEngineerWorkspace,Converter={StaticResource BoolToVisibility}}">
-     <Button Content="依赖审查" Command="{Binding OpenProjectConfigurationOverviewCommand}"
+     <Button Content="检查工程" Command="{Binding OpenProjectConfigurationOverviewCommand}"
        Margin="0,0,5,0" ToolTip="TEST 项目、原生 FLASH、DBC 与波形"/>
-      <Button Content="测试项目" Command="{Binding OpenFirstTestProjectCommand}"
+      <Button Content="检测流程" Command="{Binding OpenFirstTestProjectCommand}"
        Margin="0,0,9,0" ToolTip="打开本 ECU 工程唯一的有序用例列表"/>
+     <Button Content="用于生产…" Command="{Binding ConfirmProductionConfigurationCommand}"
+       ToolTip="校验保存的测试工程并在本机建立稳定生产版本，随后关联扫码标记"
+       Margin="0,0,9,0" Padding="9,4"/>
+     <Button Content="参数面板" Click="ToggleInspector_Click" Margin="0,0,7,0"
+       ToolTip="按需显示当前步骤的参数；复杂步骤可在独立编辑窗口修改"/>
      <TextBlock Text="{Binding CurrentProjectName}" FontWeight="SemiBold"
       VerticalAlignment="Center" MaxWidth="160" TextTrimming="CharacterEllipsis"
       ToolTip="{Binding CurrentProjectPath}"/>
      <Border Background="#E1E5E9" Width="1" Height="18" Margin="10,0"/>
-     <Button Content="▣ 保存" Command="{Binding SaveActiveCommand}" Margin="0,0,5,0"/>
-     <Button Content="↶" Command="{Binding UndoActiveCommand}" Width="28" MinWidth="0"
-      ToolTip="撤销 Ctrl+Z" Margin="0,0,4,0"/>
-     <Button Content="↷" Command="{Binding RedoActiveCommand}" Width="28" MinWidth="0"
-      ToolTip="重做 Ctrl+Y" Margin="0,0,6,0"/>
+     <TextBlock Text="自动保存" FontSize="11" Foreground="#60758B"
+      VerticalAlignment="Center" Margin="4,0,0,0"/>
       <!-- Contextual preflight stays inside the current TEST editor. -->
      </StackPanel>
     </StackPanel>
@@ -364,7 +366,7 @@
       </Grid>
       <GridSplitter Grid.Row="1" Background="#E4E8E9" HorizontalAlignment="Stretch"
        ResizeDirection="Rows" ShowsPreview="True"/>
-      <!-- HTML: bottom dock contains its tabs on the first line, not a nested native tab row. -->
+      <!-- Observation is collapsible and shows only real execution evidence. -->
       <Grid Grid.Row="2" Background="#FAFBFB">
        <TabControl BorderThickness="0" Background="#FAFBFB" FontSize="11"
         ItemContainerStyle="{StaticResource ObservationTabItem}">
@@ -405,10 +407,8 @@
           </DataGrid.Columns>
          </DataGrid>
         </TabItem>
-        <TabItem Header="变量观察">
-         <TextBlock Margin="13" TextWrapping="Wrap" Foreground="#64758C"
-          Text="暂无真实项目级变量观察事实；仅显示运行器实际发布的数据。"/>
-        </TabItem>
+        <!-- Variable inspection will return only with a real engine-backed
+             variable observation model; no static pretend panel. -->
         <TabItem Header="问题列表">
          <TextBlock Margin="13" Foreground="#9B6A22" TextWrapping="Wrap"
           Text="{Binding ActiveEditorTab.Editor.StatusMessage}"/>
