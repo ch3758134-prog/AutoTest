@@ -545,6 +545,7 @@ public sealed partial class MainWindowViewModel : BindableBase
             {
                 _waveWorkbenchWindow = null;
                 await ReturnUsbFromToolAsync("波形工作台");
+                await RefreshEngineeringResourcesAsync();
             };
             view.Show();
         }
@@ -664,6 +665,7 @@ public sealed partial class MainWindowViewModel : BindableBase
                 _nativeFlashProfileWindow = null;
             await SynchronizeProjectEcuCanAsync();
             await RefreshEngineeringSetupAsync();
+            await RefreshEngineeringResourcesAsync();
         };
         window.Show();
     }

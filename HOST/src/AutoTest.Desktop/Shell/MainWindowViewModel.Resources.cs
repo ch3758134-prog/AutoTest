@@ -24,6 +24,9 @@ public sealed partial class MainWindowViewModel
     private string _engineeringWaveStatus = "打开工程后查看标准波形";
     private string _engineeringFlashStatus = "打开工程后查看烧录设置";
 
+    public bool CanCreateEngineeringDbc => _workspace.Current is { } project &&
+        project.Definition.Assets.All(a => a.Kind != ProjectWorkspaceService.DbcKind);
+
     public string EngineeringDbcName
     {
         get
@@ -67,7 +70,8 @@ public sealed partial class MainWindowViewModel
         RefreshEngineeringResourcesCommand =
             new DelegateCommand(async () => await RefreshEngineeringResourcesAsync());
         NewEngineeringDbcCommand = new DelegateCommand(async () =>
-            await CreateDbcForProjectAsync(), () => HasProject && !IsBusy);
+            await CreateDbcForProjectAsync(), () => HasProject && !IsBusy &&
+                CanCreateEngineeringDbc);
         OpenEngineeringFlowCommand = new DelegateCommand<ResourceTreeNode>(
             async node =>
             {
@@ -78,6 +82,7 @@ public sealed partial class MainWindowViewModel
         _workspace.CurrentChanged += (_, _) =>
         {
             RaisePropertyChanged(nameof(EngineeringDbcName));
+            RaisePropertyChanged(nameof(CanCreateEngineeringDbc));
             RaisePropertyChanged(nameof(EngineeringDbcDescription));
             RaisePropertyChanged(nameof(EngineeringFlowStatus));
             OpenEngineeringResourcesCommand.RaiseCanExecuteChanged();
@@ -135,6 +140,8 @@ public sealed partial class MainWindowViewModel
             EngineeringFlashStatus = "请在 FLASH 工具中检查当前参数";
         }
         RaisePropertyChanged(nameof(EngineeringDbcName));
+        RaisePropertyChanged(nameof(CanCreateEngineeringDbc));
+        NewEngineeringDbcCommand.RaiseCanExecuteChanged();
         RaisePropertyChanged(nameof(EngineeringFlowStatus));
     }
 }

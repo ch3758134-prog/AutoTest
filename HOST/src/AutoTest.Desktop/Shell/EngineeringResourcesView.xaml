@@ -70,6 +70,7 @@
        <Button Content="导入 / 更换文件" Command="{Binding ImportDbcCommand}"
         Style="{StaticResource ResourceAction}"/>
        <Button Content="新建 DBC" Command="{Binding NewEngineeringDbcCommand}"
+        Visibility="{Binding CanCreateEngineeringDbc,Converter={StaticResource BoolToVisibility}}"
         Style="{StaticResource ResourceAction}"/>
       </WrapPanel>
      </StackPanel>
