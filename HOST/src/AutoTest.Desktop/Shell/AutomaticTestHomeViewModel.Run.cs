@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
@@ -56,7 +57,11 @@ public sealed partial class AutomaticTestHomeViewModel
     public string OperatorHtmlReportPath
     {
         get => _operatorHtmlReportPath;
-        private set => SetProperty(ref _operatorHtmlReportPath, value);
+        private set
+        {
+            if (SetProperty(ref _operatorHtmlReportPath, value))
+                OpenCurrentReportCommand?.RaiseCanExecuteChanged();
+        }
     }
     private string _operatorFlashState = "尚未开始";
     private string _operatorRecordState = "尚无工程验证记录";
@@ -81,6 +86,7 @@ public sealed partial class AutomaticTestHomeViewModel
     private long _operatorEventTotal;
     private Task? _operatorExecutionTask;
 
+    public DelegateCommand OpenCurrentReportCommand { get; private set; } = null!;
     public DelegateCommand ArmOperatorVerificationCommand { get; private set; } = null!;
     public DelegateCommand StartOperatorVerificationCommand { get; private set; } = null!;
     public DelegateCommand StopOperatorVerificationCommand { get; private set; } = null!;
@@ -225,6 +231,29 @@ public sealed partial class AutomaticTestHomeViewModel
     private void InitializeOperatorExecution(RealTestWorkbenchService engine)
     {
         _operatorEngine = engine;
+        OpenCurrentReportCommand = new DelegateCommand(() =>
+        {
+            if (string.IsNullOrWhiteSpace(OperatorHtmlReportPath) ||
+                !File.Exists(OperatorHtmlReportPath))
+            {
+                StartRequestStatus = "当前尚无可打开的完整检测报告。";
+                return;
+            }
+            try
+            {
+                Process.Start(new ProcessStartInfo(OperatorHtmlReportPath)
+                {
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception error) when (error is IOException or
+                                          System.ComponentModel.Win32Exception or
+                                          UnauthorizedAccessException or InvalidOperationException)
+            {
+                StartRequestStatus = "检测报告无法打开：" + error.Message;
+            }
+        }, () => !string.IsNullOrWhiteSpace(OperatorHtmlReportPath) &&
+                  File.Exists(OperatorHtmlReportPath));
         ArmOperatorVerificationCommand = new DelegateCommand(
             () => ArmEngineeringVerification(),
             () => !_isProductionWorkspace() && !IsOperatorRunning);

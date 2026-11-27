@@ -94,7 +94,10 @@
        IsEnabled="{Binding CanStartOperatorVerification}"/>
       <Button Content="停止" Command="{Binding StopOperatorVerificationCommand}"
        MinWidth="72" Height="34" Background="White" BorderBrush="#C7D4DF"
-       Foreground="#A1382B"/>
+       Foreground="#A1382B" Margin="0,0,8,0"/>
+      <Button Content="查看报告" Command="{Binding OpenCurrentReportCommand}"
+       MinWidth="88" Height="34" Background="White" BorderBrush="#C7D4DF"
+       Foreground="#31516C"/>
      </StackPanel>
      <TextBlock Text="{Binding StartRequestStatus}" FontSize="11"
       Foreground="#65788B" TextWrapping="Wrap" Margin="0,5,0,0"/>
