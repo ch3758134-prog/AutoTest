@@ -143,7 +143,8 @@ void ASW_UsbSvc_Task(void)
 
     /* 外部实体按钮：在主循环读取中断标记并完成消抖；ISR 不发送 USB。
      * 即使未枚举，已确认的 GPIO 变化也推进 sequence；上位机可用 0x45 查询。
-     * SEQ=0 的异步上报走现有低优先级 USB 队列，可能丢失，使用 sequence 检测。
+     * KEY 事件 SEQ=0 仍是异步帧，但优先于 CAN 监视队列。
+     * 可能拥堵丢失，使用 sequence 检测并可用 0x45 查询实际稳定电平。
      */
     {
         EAL_GPIO_KeyEventType evt;
