@@ -2392,7 +2392,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         window.PreviewTextInput += (_, _) => lastEdit = DateTime.UtcNow;
         timer.Tick += async (_, _) =>
         {
-            if (saving || closing || !window.IsActive || !editor.IsDirty || editor.IsBusy ||
+            if (saving || closing || !editor.IsDirty || editor.IsBusy ||
                 editor.HasOpenEditor || editor.HasActiveGridEdit || editor.HasPendingSignalDraft ||
                 DateTime.UtcNow - lastEdit < TimeSpan.FromSeconds(3)) return;
             saving = true;

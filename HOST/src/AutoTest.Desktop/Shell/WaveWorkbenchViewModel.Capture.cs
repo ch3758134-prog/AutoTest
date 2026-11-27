@@ -111,7 +111,7 @@ public sealed partial class WaveWorkbenchViewModel
         : IsObserving
             ? IsPreviewPaused ? "画面已暂停 · 不影响后台原始记录" :
                 "正在观察 · " + Tracks.Count + " 信号"
-            : "未开始观察 · 不使用模拟数据";
+            : "未开始观察";
     public string LiveSourceStatus => !_hardware.IsConnected
         ? "USB 未连接" : IsObserving ? "共享 CAN / DBC 真实接收" : "USB 已连接 · 待开始观察";
 

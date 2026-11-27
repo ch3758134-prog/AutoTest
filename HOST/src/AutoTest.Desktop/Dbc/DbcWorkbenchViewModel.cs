@@ -708,7 +708,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
             _session.Document.UpdateMessage(chosen.Message.Id, edited);
             RefreshDocument(edited.Id, null);
             Remember(before);
-            StatusMessage = "报文参数已修改，等待自动保存。";
+            StatusMessage = "报文参数已修改。";
         }
         catch (Exception error) when (error is ProjectDataException or ArgumentException)
         {
@@ -729,7 +729,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
             _session.Document.UpdateSignal(message.Message.Id, chosen.Name, edited);
             RefreshDocument(message.Message.Id, edited.Name);
             Remember(before);
-            StatusMessage = "信号参数已修改，等待自动保存。";
+            StatusMessage = "信号参数已修改。";
         }
         catch (Exception error) when (error is ProjectDataException or ArgumentException)
         {
@@ -814,7 +814,7 @@ public sealed class DbcWorkbenchViewModel : BindableBase
             else row.Accept(original);
             if (ReferenceEquals(row, SelectedSignal)) RefreshAliasInputs();
             RaisePropertyChanged(nameof(CurrentMessageModel));
-            StatusMessage = "信号参数已更新，自动保存后仍可撤销。";
+            StatusMessage = "信号参数已修改。";
             RefreshCommands();
             return true;
         }

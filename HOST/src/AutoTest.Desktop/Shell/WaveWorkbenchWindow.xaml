@@ -134,8 +134,7 @@
        <TextBlock DockPanel.Dock="Right" Text="{Binding LiveSourceStatus}" FontSize="12"
         Foreground="#60758B" HorizontalAlignment="Right"/>
       </DockPanel>
-      <TextBlock Text="从工程 DBC 选择信号；每路独立显示数值和质量"
-       FontSize="12" Foreground="#52677D" Margin="0,4,0,8"/>
+
       <ComboBox ItemsSource="{Binding AvailableSignals}" DisplayMemberPath="Label"
        SelectedItem="{Binding SelectedSignal,Mode=TwoWay}" Height="35" IsTextSearchEnabled="True"
        ToolTip="工程 DBC 信号（不使用模拟数据）"/>
@@ -341,8 +340,7 @@
         Foreground="#35536F" FontSize="12" Margin="0,0,0,6"
         ToolTip="人工比较的容差与采样类型，不修改原始测量及标准">
         <StackPanel Margin="0,7,0,2">
-       <TextBlock Text="在左侧“标准波形”页建立多路参考；这里调整人工比较参数。"
-        FontSize="11" Foreground="#63798D" Margin="0,0,0,8"/>
+
        <WrapPanel VerticalAlignment="Center" Margin="0,0,0,8">
         <TextBlock Text="比较类型" Style="{StaticResource WaveLabel}" Margin="0,0,6,0"/>
         <ComboBox Width="204" Height="31" ItemsSource="{Binding CompareModes}"

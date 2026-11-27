@@ -63,7 +63,7 @@ public partial class MainWindow : Window
 
     private async void OnAutosaveTick(object? sender, EventArgs e)
     {
-        if (_autosaveTickActive || _shutdownStarted || _closeAttemptPending || !IsActive ||
+        if (_autosaveTickActive || _shutdownStarted || _closeAttemptPending ||
             DateTime.UtcNow - _lastInteractionUtc < TimeSpan.FromSeconds(3))
             return;
         _autosaveTickActive = true;

@@ -129,8 +129,8 @@ public sealed partial class WaveWorkbenchViewModel : BindableBase
     public WaveSeries? Series => _series;
     public string EmptyWaveMessage => GetPlotLanes().Count > 0
         ? "" : IsLiveView
-            ? "请选择工程 DBC 信号并添加到观察列表。\\n连接主控后点击开始观察。"
-            : "从左侧打开一次真实采集、原始记录或参考波形。";
+            ? "请从左侧选择要观察的 DBC 信号。"
+            : "请选择一条采集记录或参考波形。";
     public string EmptyListMessage { get => _emptyListMessage; private set => SetProperty(ref _emptyListMessage, value); }
     private void NotifyChartChanged()
     {
