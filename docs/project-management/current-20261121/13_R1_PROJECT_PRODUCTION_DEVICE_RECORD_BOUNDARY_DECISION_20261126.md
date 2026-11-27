@@ -97,3 +97,30 @@
 - 旧工位混合配置不会自动迁移或授权夹具；工位设备设置需要根据真实接线重新确认。首次实测应先验证扫码原文和工程匹配，然后核对主控、CAN 速率、夹具安全，再运行真实开发调试链。正式生产门禁仍应阻断。
 
 当前阶段标志：**SOURCE_REFACTOR_APPLIED / BUILD_NOT_VERIFIED / FIELD_NOT_VERIFIED / FORMAL_PRODUCTION_BLOCKED**。
+
+
+## 八｜第二批破坏性施工：真正生产过程合同与记录边界（2026-11-26）
+
+**覆盖此前待施工口径：** 本节记录自 R1 `d19aef685249913691b7a02005b58179db941046` 起已写入 GitHub 的第二批源码，当前核对 HEAD `06fcf6947d4f7be7bce448d126aef0928188cf2d`。本批次 47 次提交、17 文件、+790/-695；**仅源码及静态检查，不代表编译或真机验收**。
+
+### 执行过程已经修改的事实
+
+1. 没有再创建第三套运行器：直接改造现有 `AutoTest.Application/Production/ProductionWorkflow`、`ProductionCommandHandler`、`ProductionSession` 和 `ProductionResultCoordinator`，与桌面端工程实测流程分开。桌面工程实测仍保留已有真实 FLASH/TEST 路径；正式生产尚未接入 MCU 实体 START/证据写入端口。
+2. 正式执行对象从旧 `ProductionConfiguration(RecipeId,RecipeVersion)` 改成 `ProductionProjectExecution(ProjectId,ProjectRevision,PackageFingerprint,RequiresFlash,ExpectedSupply,Assets)`，杜绝生产层第二份测试配方。预检严格检查工程版本与依赖闭包。
+3. 正式生产彻底删除 `IsMock`/模拟流程分支，`ProductionCommandHandler` 删除 `StartAsync` 软件 START 和对外 `PhysicalStartSignalAsync(bool)` 入口。正式扫码仅准备项目，`BeginStationCycleAsync` 只启动工位过程，不等同 FLASH 许可；真实接线适配不存在时返回 `PHYSICAL_STATION_ADAPTER_NOT_CONNECTED`，不碰硬件、不创建假 PASS。
+4. 新增 `IProductionPhysicalStation` 与夹具/按钮结构化回执。受控顺序：持久化运行范围 → 持久化夹具输出意图 → 请求压紧并验证实际机械到位及联锁 → 等待可信实体 START 新边沿 → 记录已验证证据 → FLASH 输入意图持久化 → 真实 FLASH/APP → TEST → 正式 RECORD。任何证据缺失、写盘失败、模拟阶段声明都 fail closed，发生潜在实物副作用后保持 UNKNOWN/ABORTED，不能盲目复位/释放。
+5. 在 `ProductionStartGate` 中删除软件抢占入口。新一台必须先明确 Disarm、观察按钮释放，再允许不同 RunId 的新按下；保持按钮与重复上升沿不会再启动两次。**此纯模型不是传感器适配**。
+6. 增加 MCU 控制会话代次 `ControllerEpoch`，并要求夹具证据和 START 回执同 RunId、StationId 和 Epoch。重连后旧回执不得授权擦写 ECU。
+7. 正式 RunFact 首条 `PRODUCTION_SCOPE` 以 JSON 冻结完整扫码编号、工程 ProjectId、工程修订、不可变包 SHA、扫码规则 SHA、扫码设备来源、StationId 和 MCU Epoch。每次运行独立 RunId，完整扫码身份不会被 matcher 改写。
+8. `ProductionResultCoordinator` 去掉模拟记录提交分支，唯一正式 PASS 前提为 `IVerifiedProductionCommitSink` 真正核验并持久化与同一 RunId 关联的真实证据；普通 `IRunFactSink` 即便 durable=true 仍仅返回 UNKNOWN，`PhysicalReleaseAllowed` 始终为 false（现场受控释放尚未接入）。
+9. 桌面端扫码冻结数据合同 `FrozenScanIdentity` 已精简为工程调试或生产固定标记两种明确来源；删除已废弃的产品硬件字段、工位扫码发布版本、独立序列号及人工映射字段。生产入站新增机械到位与安全联锁门禁（共 13 项），目前实体 START、机械证据、正式记录适配均仍为 false。
+
+### 验证与剩余 P0
+
+- 替换了过去模拟生产/配方主导的应用层单测，覆盖完整扫码不可改写、无硬件适配时零物理命令、夹具意图落盘先于输出、机械到位/联锁、START 可信来源、主控代次错配、FLASH 证据、正式结果写盘、复检独立 RunId 等；测试替身仅存在于 `HOST/tests`，**测试未执行**。
+- 对 18 个直接变动的应用层、桌面层与单测源码文件进行了静态括号/字符串结构检查，未发现明显不匹配；搜索旧 `IsMock`、`RecipeId`、`ProductionConfiguration` 等标识（应用层范围）无业务引用。**这不是 .NET/WPF 编译结果**。
+- 正式生产设备接口 `IProductionPhysicalStation` 当前没有真实实现和依赖注入；测试套件中的 `TestPhysicalStation` 仅为纯接口契约验证，绝不能被 Desktop 或发布包注册为正式硬件。
+- 桌面端仍未将 `ProductionCommandHandler` 接入正式硬件扫码/夹具/START/FLASH/TEST/RECORD 的全链生产路径；真实的 `InspectionWriter` 还缺与 StepOccurrence/原始测量/波形/实际 FLASH 同一 RunId 的可验收适配。所有 P0 真机门禁保持。
+- 当前无 Windows .NET SDK 环境可编译，用户本地 Codex 负责拉取构建/运行；不能凭本节文字宣称发布准备完成。下一步必须处理编译反馈、连接真实物理输入与设备动作，再进行 HydEPB 整机台架验收。
+
+状态：**SOURCE_CONTRACT_RESTRUCTURED / STATIC_CHECK_ONLY / BUILD_NOT_VERIFIED / PHYSICAL_START_NOT_CONNECTED / FORMAL_RECORD_NOT_CONNECTED / PRODUCTION_PASS_BLOCKED**。
