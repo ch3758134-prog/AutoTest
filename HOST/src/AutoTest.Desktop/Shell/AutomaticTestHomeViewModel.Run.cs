@@ -597,6 +597,9 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
         var periodicSessionClosed = false;
         var operatorCancelled = false;
         var outcome = "未完成";
+        // A production PASS/FAIL is a candidate until fixture release and the
+        // complete HTML+JSON report succeed. Never persist terminal PASS early.
+        string? productionOutcomeCandidate = null;
         string? failure = null;
         _operatorRunId = Guid.NewGuid();
         _operatorStop = new CancellationTokenSource();
@@ -928,8 +931,11 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
             completedNormally = true;
             periodicSessionClosed = true;
             OperatorPeriodicStatus = "测试已结束，周期 CAN 发送已停止";
-            outcome = formalProduction
+            productionOutcomeCandidate = formalProduction
                 ? anyFunctionalFail ? "生产检测 FAIL" : "生产检测 PASS"
+                : null;
+            outcome = formalProduction
+                ? "测试已完成，正在收尾并归档正式检测"
                 : anyFunctionalFail
                     ? "工程整组完成 · 存在功能 FAIL"
                     : "工程整组真实实测完成";
@@ -1038,9 +1044,19 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
             var jsonSaved = false;
             try
             {
+                // The snapshot before HTML remains pending, so a process
+                // crash or a report failure cannot leave a stored final PASS.
                 Snapshot();
                 jsonSaved = true;
-                var htmlReport = SaveOperatorHtmlReceipt(opened.RootDirectory, CurrentReceipt());
+                var reportOutcome = formalProduction && failure is null &&
+                    productionOutcomeCandidate is not null
+                    ? productionOutcomeCandidate : outcome;
+                var htmlReport = SaveOperatorHtmlReceipt(opened.RootDirectory,
+                    CurrentReceipt() with { Outcome = reportOutcome });
+                // Final JSON is the single durable parent verdict. Only commit
+                // the candidate AFTER report creation and fixture cleanup.
+                outcome = reportOutcome;
+                Snapshot();
                 OperatorHtmlReportPath = htmlReport;
                 OperatorRecordState = formalProduction
                     ? "生产检测记录与报告已保存" : "工程测试记录与报告已保存";
@@ -1059,6 +1075,8 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
                 if (jsonSaved)
                 {
                     if (formalProduction) _productionVerdict = "记录失败";
+                    // Do not overwrite the last pending/unknown parent snapshot
+                    // with a candidate PASS after an archive failure.
                     OperatorRecordState = "测试记录已保存，但报告生成失败：" +
                         error.Message;
                     OperatorRunEvidence = "原始 JSON：" +
