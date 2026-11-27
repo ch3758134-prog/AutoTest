@@ -22,105 +22,38 @@ public sealed record TestProjectPackageChoice(AssetEntry Asset)
 
 public sealed class TestProjectPackageRow : BindableBase
 {
-    private bool _enabled;
-    private bool _runSelected;
     private int _order;
+    private bool _runSelected = true;
+    private bool _resourceAvailable = true;
     private string _stepCountLabel = "读取中";
-    private int _revision;
-    private string _sha256;
-    private int? _latestRevision;
-    private string? _latestSha256;
-    public string StepCountLabel { get => _stepCountLabel; set => SetProperty(ref _stepCountLabel, value); }
-    public int Order { get => _order; set => SetProperty(ref _order, value); }
     public Guid ItemId { get; }
     public Guid AssetId { get; }
-    public int Revision { get => _revision; private set => SetProperty(ref _revision, value); }
-    public string Sha256 { get => _sha256; private set => SetProperty(ref _sha256, value); }
-    public int? LatestRevision => _latestRevision;
-    public string? LatestSha256 => _latestSha256;
-    // Only strictly newer revisions can be adopted by the formal project.
-    // An unchanged revision with a different SHA256 is a broken provenance.
-    public bool CanAdoptLatest => _latestRevision > Revision &&
-        !string.IsNullOrWhiteSpace(_latestSha256);
-    public bool HasReferenceMismatch => _latestRevision is null ||
-        !MatchesPinnedRevision(_latestRevision.Value, _latestSha256);
-    public string PinStatus => _latestRevision is null ? "资源已移除" :
-        _latestRevision < Revision ? "资源修订倒退 · 禁止自动回退" :
-        _latestRevision == Revision && !MatchesPinnedRevision(_latestRevision.Value, _latestSha256)
-            ? "同修订 SHA256 不一致 · 需修复" :
-        CanAdoptLatest ? "绑定 r" + Revision + " → 当前 r" + _latestRevision + " · 待确认" : "修订一致";
-    public string PinDetail => _latestRevision is null ? "当前工程已找不到此 TEST 定义" :
-        "项目固定 r" + Revision + " / " + Sha256 +
-        "；当前资源 r" + _latestRevision + " / " + _latestSha256;
-    public bool MatchesPinnedRevision(int revision, string? sha256) =>
-        revision == Revision && !string.IsNullOrWhiteSpace(sha256) &&
-        string.Equals(sha256, Sha256, StringComparison.OrdinalIgnoreCase);
-
-    public void RefreshAvailableRevision(int? revision, string? sha256)
-    {
-        // A background count/metadata refresh must not invalidate an already
-        // prepared physical run when its actual resource revision did not change.
-        if (_latestRevision == revision &&
-            string.Equals(_latestSha256, sha256, StringComparison.OrdinalIgnoreCase))
-            return;
-        _latestRevision = revision;
-        _latestSha256 = sha256;
-        RaisePropertyChanged(nameof(LatestRevision));
-        RaisePropertyChanged(nameof(LatestSha256));
-        RaisePropertyChanged(nameof(CanAdoptLatest));
-        RaisePropertyChanged(nameof(HasReferenceMismatch));
-        RaisePropertyChanged(nameof(PinStatus));
-        RaisePropertyChanged(nameof(PinDetail));
-    }
-
-    public void AdoptCurrentRevision()
-    {
-        if (!CanAdoptLatest || _latestRevision is not { } revision ||
-            string.IsNullOrWhiteSpace(_latestSha256)) return;
-        Revision = revision;
-        Sha256 = _latestSha256;
-        RaisePropertyChanged(nameof(CanAdoptLatest));
-        RaisePropertyChanged(nameof(HasReferenceMismatch));
-        RaisePropertyChanged(nameof(PinStatus));
-        RaisePropertyChanged(nameof(PinDetail));
-    }
     public string Name { get; }
-    public TestProjectPackageRow(TestProjectEntry item)
+    public int Order { get => _order; set => SetProperty(ref _order, value); }
+    public string StepCountLabel
     {
-        ItemId = item.ItemId;
-        AssetId = item.PackageAssetId;
-        _revision = item.PackageRevision;
-        _sha256 = item.PackageSha256;
-        Name = item.DisplayName;
-        _enabled = item.Enabled;
-        _runSelected = item.Enabled;
+        get => _stepCountLabel;
+        set => SetProperty(ref _stepCountLabel, value);
     }
-    /// <summary>Engineer-only selection: never serialized as production Enabled.</summary>
     public bool RunSelected
     {
         get => _runSelected;
         set => SetProperty(ref _runSelected, value);
     }
-    /// <summary>
-    /// Persisted project scope: newly added entries are included by default.
-    /// Exclusion is an exceptional engineer decision, not a second enable step.
-    /// It is unrelated to temporary RunSelected debug choices.
-    /// </summary>
-    public bool ExcludedFromAutomaticTest
+    public bool ResourceAvailable
     {
-        get => !_enabled;
-        set => Enabled = !value;
+        get => _resourceAvailable;
+        private set => SetProperty(ref _resourceAvailable, value);
     }
-    public bool Enabled
+    public TestProjectPackageRow(TestProjectEntry entry)
     {
-        get => _enabled;
-        set
-        {
-            if (SetProperty(ref _enabled, value))
-                RaisePropertyChanged(nameof(ExcludedFromAutomaticTest));
-        }
+        ItemId = entry.ItemId;
+        AssetId = entry.PackageAssetId;
+        Name = entry.DisplayName;
     }
-    public TestProjectEntry ToEntry() => new(ItemId, AssetId, Revision, Sha256, Name, Enabled);
+    public TestProjectEntry ToEntry() => new(ItemId, AssetId, Name);
+    public void RefreshAvailableRevision(int? revision, string? sha256) =>
+        ResourceAvailable = revision is > 0 && !string.IsNullOrWhiteSpace(sha256);
 }
 
 public sealed class TestProjectWorkbenchViewModel : BindableBase
@@ -131,26 +64,18 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     private readonly RealTestWorkbenchService? _realTest;
     private readonly HardwareConnectionService? _hardware;
     private sealed record FrozenSelectedCase(TestProjectEntry Entry, TestDocument Document,
-        string PlanSha256, string TestConsent, string FlashConsent);
+        string PlanSha256, int AssetRevision, string AssetSha256);
     private readonly List<FrozenSelectedCase> _frozen = new();
     private long _frozenStationEpoch;
     private string? _frozenManifestSha;
     private string _frozenDut = "";
     private string _dutIdentity = "";
-    private string _flashApproval = "";
-    private string _expectedFlashApproval = "";
     private CancellationTokenSource? _batchCancellation;
     public ObservableCollection<string> BatchResults { get; } = new();
     public string DutIdentity
     {
         get => _dutIdentity;
         set { if (SetProperty(ref _dutIdentity, value) && !IsBusy) ResetFrozenSelection(); }
-    }
-    public string FlashApproval { get => _flashApproval; set => SetProperty(ref _flashApproval, value); }
-    public string ExpectedFlashApproval
-    {
-        get => _expectedFlashApproval;
-        private set => SetProperty(ref _expectedFlashApproval, value);
     }
     public bool IsPrepared => _frozen.Count > 0;
     private TestProjectEditorSession _session;
@@ -295,7 +220,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         if (projectId != _session.AssetId.Value) return;
         foreach (var row in Packages)
         {
-            var value = _selection!.Get(projectId, row.ItemId, row.Enabled).IsSelected;
+            var value = _selection!.Get(projectId, row.ItemId, true).IsSelected;
             if (row.RunSelected != value) row.RunSelected = value;
         }
     }
@@ -308,7 +233,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         {
             var row = new TestProjectPackageRow(item);
             if (_selection is not null)
-                row.RunSelected = _selection.Get(_session.AssetId.Value, row.ItemId, row.Enabled).IsSelected;
+                row.RunSelected = _selection.Get(_session.AssetId.Value, row.ItemId, true).IsSelected;
             row.PropertyChanged += RowChanged;
             Packages.Add(row);
         }
@@ -326,17 +251,13 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     {
         // Step counts and derived labels are informational. A late asynchronous
         // count refresh must NEVER clear a frozen test batch or disable Run.
-        if (e.PropertyName is nameof(TestProjectPackageRow.StepCountLabel) or
-            nameof(TestProjectPackageRow.PinStatus) or
-            nameof(TestProjectPackageRow.PinDetail) or
-            nameof(TestProjectPackageRow.CanAdoptLatest) or
-            nameof(TestProjectPackageRow.HasReferenceMismatch))
+        if (e.PropertyName is nameof(TestProjectPackageRow.StepCountLabel))
             return;
         if (!IsBusy) ResetFrozenSelection();
         if (e.PropertyName == nameof(TestProjectPackageRow.RunSelected))
         {
             if (sender is TestProjectPackageRow row && _selection is not null)
-                _selection.Get(_session.AssetId.Value, row.ItemId, row.Enabled).IsSelected = row.RunSelected;
+                _selection.Get(_session.AssetId.Value, row.ItemId, true).IsSelected = row.RunSelected;
             RaisePropertyChanged(nameof(SelectedCount));
             RaisePropertyChanged(nameof(SelectionSummary));
         }
@@ -356,8 +277,6 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         _frozen.Clear();
         _frozenManifestSha = null;
         _frozenDut = "";
-        ExpectedFlashApproval = "";
-        FlashApproval = "";
         RaisePropertyChanged(nameof(IsPrepared));
         RunSelectedCommand?.RaiseCanExecuteChanged();
     }
@@ -414,19 +333,16 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
             var fixedManifest = context.ManifestSha256;
             var fixedEpoch = _hardware.CurrentStationEpoch;
             var prepared = new List<FrozenSelectedCase>();
-            string flashConsent = "";
             foreach (var row in selected)
             {
                 var asset = context.Definition.Assets.FirstOrDefault(a =>
                     a.Id.Value == row.AssetId && a.Kind == ProjectWorkspaceService.TestProgramKind);
                 if (asset is null)
                     throw new InvalidDataException("用例文件不存在：" + row.Name);
-                if (!row.MatchesPinnedRevision(asset.Revision, asset.Sha256))
-                    throw new InvalidDataException("用例“" + row.Name +
-                        "”尚未同步当前内容，请重新打开用例。");
                 var opened = await _workspace.OpenTestEditorAsync(AssetId.Create(row.AssetId));
-                if (!row.MatchesPinnedRevision(opened.AssetRevision, opened.FileHash))
-                    throw new IOException("准备时测试用例“" + row.Name + "”的内容或修订已变化，请重新检查。");
+                if (opened.AssetRevision != asset.Revision ||
+                    !string.Equals(opened.FileHash, asset.Sha256, StringComparison.OrdinalIgnoreCase))
+                    throw new IOException("准备时 TEST 用例“" + row.Name + "”被外部修改。");
                 var plan = _realTest.Prepare(opened.Document);
                 if (!plan.Diagnostics.IsEmpty)
                     throw new InvalidDataException(row.Name + " 步骤预检：" +
@@ -437,17 +353,10 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
                 await actionCheck.PrepareAsync(mappings, CancellationToken.None);
                 actionCheck.ValidateRunSteps(runDocument);
 
-                var jobs = ConfiguredRealTestFlashPort.FreezeJobs(opened.Document, context.RootDirectory);
-                var caseFlash = jobs.Count == 0 ? "" : jobs.Values.Single().Consent;
-                if (caseFlash.Length > 0)
-                {
-                    if (flashConsent.Length > 0)
-                        throw new NotSupportedException(
-                            "R1 首版一个批次只允许一个 FLASH；请拆为独立批次分别授权。");
-                    flashConsent = caseFlash;
-                }
+                // FLASH belongs to the project-level pre-test operation.
+                _ = ConfiguredRealTestFlashPort.FreezeJobs(opened.Document, context.RootDirectory);
                 prepared.Add(new FrozenSelectedCase(row.ToEntry(), runDocument,
-                    plan.Fingerprint, RealTestWorkbenchService.ExpectedApproval(plan), caseFlash));
+                    plan.Fingerprint, asset.Revision, asset.Sha256));
             }
             if (!ReferenceEquals(context, _workspace.Current) ||
                 context.ManifestSha256 != fixedManifest ||
@@ -459,14 +368,8 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
             _frozenManifestSha = fixedManifest;
             _frozenStationEpoch = fixedEpoch;
             _frozenDut = DutIdentity;
-            ExpectedFlashApproval = flashConsent;
-            FlashApproval = "";
             BatchResults.Clear();
-            StatusMessage = "已冻结 " + _frozen.Count + " 条选中用例的修订、DBC/KEY 和实际步骤资源。" +
-                (flashConsent.Length == 0
-                    ? " 连续运行将自动包含工程项目准备及项目收尾（如已配置），" +
-                      "它们可能发送 CAN/IGN/KEY；启动前请核对项目阶段。"
-                    : " 单独 FLASH 调试不执行工程项目准备/收尾，运行前需手动输入唯一 FLASH 授权。");
+            StatusMessage = "已准备运行 " + _frozen.Count + " 个选中用例。";
             RaisePropertyChanged(nameof(IsPrepared));
         }
         catch (Exception ex)
@@ -519,21 +422,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
             StatusMessage = "工程、用例选择、ECU 编号或主控会话发生变化，请重新核对。";
             return;
         }
-        if (ExpectedFlashApproval.Length > 0 &&
-            !string.Equals(FlashApproval, ExpectedFlashApproval, StringComparison.Ordinal))
-        {
-            StatusMessage = "FLASH 未授权；必须手动输入完整的 AUTHORIZE ECU FLASH + SHA256。";
-            return;
-        }
-
         var batch = _frozen.ToArray();
-        var fixedFlashApproval = FlashApproval;
-        if (batch.Length > 1 && batch.Any(x => x.FlashConsent.Length > 0))
-        {
-            StatusMessage = "开发勾选范围包含内嵌 FLASH。连续 TEST 不得与编程授权混用；" +
-                "请先以独立工程烧录工艺完成 ECU 编程，再执行纯 TEST 勾选范围。";
-            return;
-        }
         _batchCancellation = new CancellationTokenSource();
         var token = _batchCancellation.Token;
         IsBusy = true;
@@ -544,21 +433,11 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         RealTestWorkbenchService.ProjectExecutionSession? shared = null;
         try
         {
-            if (batch.All(x => x.FlashConsent.Length == 0))
-            {
-                var project = _workspace.Current ??
-                    throw new InvalidOperationException("工程已关闭，无法执行冻结的 TEST 范围。");
-                var resolved = await AutomaticTestResourceContract.ResolveAsync(project, token);
-                resolved.RequireExecutable();
-                var ordered = batch.Select(x => x.Document).ToList();
-                shared = await _realTest.OpenProjectSessionAsync(
-                    ordered, Guid.NewGuid(), _frozenDut, token,
-                    allowOrderedSubset: true);
-                BatchResults.Add("开发勾选范围共用一个真实硬件会话：" +
-                    shared.ProjectRunId + "；用例间 CAN 周期发送和运行状态保持。");
-            }
-            else
-                BatchResults.Add("单用例 FLASH 调试：单独物理许可与清理；不作为正式生产。");
+            var ordered = batch.Select(x => x.Document).ToArray();
+            shared = await _realTest.OpenProjectSessionAsync(
+                ordered, Guid.NewGuid(), _frozenDut, token,
+                allowOrderedSubset: true);
+            BatchResults.Add("同一 TEST 会话执行选中用例，CAN 周期发送保持至显式停止或结束。");
 
             foreach (var item in batch)
             {
@@ -569,8 +448,8 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
                     DutIdentity != _frozenDut)
                     throw new IOException("批次中途工程、ECU 编号或 USB 主控会话已变化。");
                 var latest = await _workspace.OpenTestEditorAsync(AssetId.Create(item.Entry.PackageAssetId), token);
-                if (latest.AssetRevision != item.Entry.PackageRevision ||
-                    !latest.FileHash.Equals(item.Entry.PackageSha256, StringComparison.OrdinalIgnoreCase) ||
+                if (latest.AssetRevision != item.AssetRevision ||
+                    !latest.FileHash.Equals(item.AssetSha256, StringComparison.OrdinalIgnoreCase) ||
                     _realTest.Prepare(latest.Document).Fingerprint != item.PlanSha256)
                     throw new IOException("运行前 TEST 资源指纹已变动：" + item.Entry.DisplayName);
 
@@ -590,10 +469,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
                 RealRunResult result;
                 try
                 {
-                    result = shared is not null
-                        ? await shared.ExecuteCaseAsync(item.Document, token)
-                        : await _realTest.ExecuteAsync(item.Document, item.TestConsent,
-                            fixedFlashApproval, _frozenDut, token);
+                    result = await shared.ExecuteCaseAsync(item.Document, token);
                 }
                 finally { _realTest.StepReported -= OnStep; }
                 BatchResults.Add(index + ". " + item.Entry.DisplayName + " · " +
@@ -680,134 +556,20 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         var project = _workspace.Current;
         foreach (var row in Packages)
         {
-            var current = project is null ? null : project.Definition.Assets.FirstOrDefault(asset =>
+            var current = project?.Definition.Assets.FirstOrDefault(asset =>
                 asset.Id.Value == row.AssetId &&
                 asset.Kind == ProjectWorkspaceService.TestProgramKind);
             row.RefreshAvailableRevision(current?.Revision, current?.Sha256);
-            if (row.CanAdoptLatest && !IsBusy && !IsPrepared &&
-                _realTest?.IsRunning != true && _hardware?.IsTestRunApproved != true)
-                row.AdoptCurrentRevision();
         }
         RaisePropertyChanged(nameof(HasStaleReferences));
         _ = RefreshStepCountsAsync();
     }
 
-    public bool HasStaleReferences => Packages.Any(x => x.HasReferenceMismatch);
+    public bool HasStaleReferences => Packages.Any(x => !x.ResourceAvailable);
 
     public AssetEntry? CurrentAssetFor(TestProjectPackageRow row) =>
         _workspace.Current?.Definition.Assets.FirstOrDefault(x =>
             x.Id.Value == row.AssetId && x.Kind == ProjectWorkspaceService.TestProgramKind);
-
-    /// <summary>Review the actual saved NEW TEST definition before changing a
-    /// pinned invocation. The old content may not be retained by the current
-    /// project format; never invent a semantic old/new diff.</summary>
-    public async Task<(bool CanAdopt, string Summary)> ReviewCurrentRevisionAsync(
-        TestProjectPackageRow row, int expectedRevision, string expectedSha)
-    {
-        if (IsBusy || !Packages.Contains(row) || !row.CanAdoptLatest)
-            return (false, "当前调用实例没有可审核的新修订。");
-        var asset = CurrentAssetFor(row);
-        if (asset is null || asset.Revision != expectedRevision ||
-            !string.Equals(asset.Sha256, expectedSha, StringComparison.OrdinalIgnoreCase))
-            return (false, "待采用资源已变化；请重新核对工程资产。");
-        try
-        {
-            var latest = await _workspace.OpenTestEditorAsync(AssetId.Create(row.AssetId));
-            if (latest.AssetRevision != expectedRevision ||
-                !string.Equals(latest.FileHash, expectedSha,
-                    StringComparison.OrdinalIgnoreCase))
-                return (false, "新版 TEST 内容在审查期间发生变化；禁止采用。");
-            var plan = new PlanCompiler().Prepare(latest.Document,
-                allowRealOperations: true);
-            var steps = TestRunStepScope.EnabledSteps(latest.Document).ToArray();
-            var mappings = TestRunStepScope.RequiredMappings(latest.Document).ToArray();
-            // Earlier asset bytes are available only for edits recorded after
-            // the immutable authoring history was introduced. This comparison
-            // never falls back to the mutable current file for the old revision.
-            var oldBytes = await ProjectResourceRevisionArchive.TryReadAsync(
-                _workspace.Current!.RootDirectory, AssetId.Create(row.AssetId),
-                row.Revision, row.Sha256);
-            string diffSummary;
-            if (oldBytes is null)
-            {
-                diffSummary = "旧版内容尚未归档，无法作逐步差异比较；只可预检新定义。";
-            }
-            else
-            {
-                var oldDocument = TestDocumentCodec.Deserialize(
-                    System.Text.Encoding.UTF8.GetString(oldBytes));
-                static IEnumerable<StepNode> Walk(StepNode n)
-                {
-                    yield return n;
-                    foreach (var slot in n.Slots.Values)
-                        foreach (var child in slot)
-                            foreach (var deep in Walk(child)) yield return deep;
-                }
-                static string StepSignature(StepNode n) =>
-                    n.Type + "|" + n.Name + "|" +
-                    string.Join(";", n.Properties.OrderBy(x => x.Key)
-                        .Select(x => x.Key + "=" + x.Value)) + "|" +
-                    string.Join(";", n.Slots.OrderBy(x => x.Key)
-                        .Select(x => x.Key + "=" +
-                            string.Join(",", x.Value.Select(step => step.Id.ToString()))));
-                static Dictionary<string, string> Index(TestDocument doc) =>
-                    Enum.GetValues<TestPhase>()
-                        .SelectMany(phase => doc.Get(phase).SelectMany(Walk))
-                        .ToDictionary(node => node.Id.ToString(), StepSignature);
-                var before = Index(oldDocument);
-                var after = Index(latest.Document);
-                var added = after.Keys.Count(id => !before.ContainsKey(id));
-                var removed = before.Keys.Count(id => !after.ContainsKey(id));
-                var edited = after.Count(item => before.TryGetValue(item.Key,
-                    out var oldValue) && oldValue != item.Value);
-                var mappingChanged = !oldDocument.Mappings.SequenceEqual(latest.Document.Mappings);
-                diffSummary = "已验证旧版历史资产。步骤新增 " + added +
-                    "、移除 " + removed + "、本体或分支编辑 " + edited +
-                    "；映射内容变化：" + (mappingChanged ? "是" : "否") +
-                    "。此摘要不代替信号物理语义的工程师确认。";
-            }
-            var signature = string.Join("、", mappings.Take(7)
-                .Select(x => x.Name + " (" + x.Kind + ")"));
-            var preview = "用例：" + row.Name +
-                "\n项目固定：r" + row.Revision + " / " + row.Sha256 +
-                "\n当前资源：r" + expectedRevision + " / " + expectedSha +
-                "\n当前真实步骤：" + steps.Length + " 个，资源映射：" +
-                mappings.Length + " 项" +
-                (signature.Length == 0 ? "" : "\n映射摘要：" + signature) +
-                "\n\n" + diffSummary +
-                "\n采用新版只修改当前调用实例的修订指针，不修复信号语义、其它用例或生产发布。" +
-                "\n采用后需要重新完成工程资源检查。";
-            if (!plan.Diagnostics.IsEmpty)
-                return (false, preview + "\n\n新版 TEST 步骤预检失败，不能采用：\n" +
-                    string.Join("\n", plan.Diagnostics.Take(8)));
-            return (true, preview);
-        }
-        catch (Exception error) when (error is IOException or InvalidDataException or
-            ArgumentException or InvalidOperationException or UnauthorizedAccessException or
-            AutoTest.Projects.Project.ProjectDataException or FormatException or NotSupportedException)
-        {
-            return (false, "无法验证当前 TEST 资源实际内容：" + error.Message);
-        }
-    }
-
-    public void AdoptCurrentRevision(TestProjectPackageRow row, int expectedRevision, string expectedSha)
-    {
-        if (!Packages.Contains(row) || IsBusy) return;
-        var current = CurrentAssetFor(row);
-        if (current is null || current.Revision != expectedRevision ||
-            !current.Sha256.Equals(expectedSha, StringComparison.OrdinalIgnoreCase))
-        {
-            StatusMessage = "TEST 修订已经变化，未更新引用；请重新查看最新版本。";
-            RefreshReferences();
-            return;
-        }
-        row.RefreshAvailableRevision(current.Revision, current.Sha256);
-        row.AdoptCurrentRevision();
-        StatusMessage = "已选择采用测试用例最新修订 r" + current.Revision +
-            "。该引用将随项目自动保存；历史运行记录不会改变。";
-        RefreshCommands();
-        _ = RefreshStepCountsAsync();
-    }
 
     private async Task RefreshStepCountsAsync()
     {
@@ -860,9 +622,9 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         if (SelectedAvailable is not { } choice || IsBusy) return;
         var asset = choice.Asset;
         var row = new TestProjectPackageRow(new TestProjectEntry(
-            Guid.NewGuid(), asset.Id.Value, asset.Revision, asset.Sha256, asset.Name, true));
+            Guid.NewGuid(), asset.Id.Value, asset.Name));
         if (_selection is not null)
-            row.RunSelected = _selection.Get(_session.AssetId.Value, row.ItemId, row.Enabled).IsSelected;
+            row.RunSelected = _selection.Get(_session.AssetId.Value, row.ItemId, true).IsSelected;
         row.PropertyChanged += RowChanged;
         Packages.Add(row);
         Renumber();

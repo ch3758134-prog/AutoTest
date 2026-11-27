@@ -32,7 +32,7 @@ public sealed record FrozenScanIdentity(
 public sealed record FrozenProductionPreparation(
     string RecognitionMarker, string FullBarcode, Guid ProjectId, string ManifestPath,
     string ManifestSha256, Guid TestProjectAssetId, string TestProjectSha256,
-    IReadOnlyList<FrozenProductionCase> OrderedEnabledCases,
+    IReadOnlyList<FrozenProductionCase> OrderedCases,
     string NativeProfileSha256, string JobFingerprint, string FirmwareSha256,
     string SecuritySha256, int EcuCanKbps, string PreparationFingerprint,
     CanToolFlashJob Job)

@@ -399,18 +399,13 @@ public sealed class ProductionInspectionViewModel : BindableBase, IDisposable
         var testProject = TestProjectCodec.Decode(bytes);
         if (!testProject.Packages.Any())
             throw new InvalidDataException("当前测试项目尚未关联任何测试用例");
-        if (!testProject.Packages.Any(p => p.Enabled))
-            throw new InvalidDataException("当前测试项目的用例全部未启用");
         var result = new List<VerifiedCase>();
-        foreach (var entry in testProject.Packages.Where(p => p.Enabled))
+        foreach (var entry in testProject.Packages)
         {
             var asset = assets.SingleOrDefault(a =>
                 a.Id.Value == entry.PackageAssetId &&
                 a.Kind == ProjectWorkspaceService.TestProgramKind)
-                ?? throw new InvalidDataException("Enabled 用例引用不存在：" + entry.DisplayName);
-            if (entry.PackageRevision != asset.Revision ||
-                !entry.PackageSha256.Equals(asset.Sha256, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException("用例引用修订已过期：" + entry.DisplayName);
+                ?? throw new InvalidDataException("TEST 用例定义不存在：" + entry.DisplayName);
             var data = await ReadPinnedAssetAsync(opened.RootDirectory,
                 asset.RelativePath, asset.Sha256, ct);
             result.Add(new(entry.DisplayName,

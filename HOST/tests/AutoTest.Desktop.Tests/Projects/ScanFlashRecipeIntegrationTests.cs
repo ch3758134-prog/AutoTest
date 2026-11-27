@@ -25,10 +25,8 @@ public sealed class ScanFlashRecipeIntegrationTests
             var opened = await workspace.OpenTestProjectEditorAsync(project.Id);
             var saved = await workspace.SaveTestProjectEditorAsync(opened,
                 opened.Document with { Packages = [
-                    new TestProjectEntry(Guid.NewGuid(), first.Id.Value, first.Revision,
-                        first.Sha256, "驻车", true),
-                    new TestProjectEntry(Guid.NewGuid(), second.Id.Value, second.Revision,
-                        second.Sha256, "释放", true)] });
+                    new TestProjectEntry(Guid.NewGuid(), first.Id.Value, "驻车"),
+                    new TestProjectEntry(Guid.NewGuid(), second.Id.Value, "释放")] });
             var recipe = new ScanRecipeDraft("EPB-EOL", "EPBA", "",
                 null, null, null, false, true,
                 TestProjectAssetId: project.Id.Value,

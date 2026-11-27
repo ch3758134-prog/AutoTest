@@ -1,57 +1,39 @@
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace AutoTest.Testing.Authoring;
 
-/// <summary>
-/// Ordered project-specific instances of reusable TEST definitions, not an
-/// alternative TEST language. Each entry has its own stable ItemId and can
-/// reference a shared TEST definition more than once.
-///
-//// Legacy Enabled=true means the entry participates in the complete automatic
-//// test; false means it was explicitly excluded by persisted project data.
-/// The *temporary* engineer RunSelected checkbox is not this property.
-/// New entries participate immediately (Enabled=true), requiring no second
-/// enable action. Never auto-reactivate old excluded entries during migration.
-/// </summary>
-public sealed record TestProjectEntry(Guid ItemId, Guid PackageAssetId,
-    int PackageRevision, string PackageSha256, string DisplayName, bool Enabled);
+// Only the authored order and definition identity are persisted.
+// The editor always uses the current saved definition; execution captures
+// its immutable content at the moment a real run is admitted.
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record TestProjectEntry(Guid ItemId, Guid PackageAssetId, string DisplayName);
 
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record TestProjectDocument(int SchemaVersion, Guid Id, string Name,
     List<TestProjectEntry> Packages)
 {
-    public static TestProjectDocument Create(string name) => new(3, Guid.NewGuid(), name, []);
+    public const int CurrentSchema = 3;
+    public static TestProjectDocument Create(string name) =>
+        new(CurrentSchema, Guid.NewGuid(), name, []);
 
-    // One TEST project is an ordered list of case invocations. Preparatory
-    // and cleanup actions are ordinary authored steps/cases, not extra stages.
     public IReadOnlyList<TestProjectEntry> OrderedExecutionEntries() => Packages.ToArray();
-
-    /// <summary>
-    /// The ONE authoritative production scope is the COMPLETE ordered entry
-    /// list, never a persisted per-case enable/disable sub-selection.
-    /// Historical Enabled=false data remains readable so the production
-    /// resource contract can fail CLOSED and demand explicit repair; it may
-    /// never silently omit those entries from the proposed execution scope.
-    /// Engineer RunSelected is separate and only affects manual debugging.
-    /// </summary>
-    public IReadOnlyList<TestProjectEntry> AutomaticRunEntries() =>
-        Packages.ToArray();
+    public IReadOnlyList<TestProjectEntry> AutomaticRunEntries() => Packages.ToArray();
 
     public void Validate()
     {
-        if (SchemaVersion != 3 || Id == Guid.Empty ||
-            string.IsNullOrWhiteSpace(Name) ||
-            Name.Length > 120 || Packages is null || Packages.Count > 1000)
-            throw new InvalidDataException("测试项目身份或用例数量无效。");
-        var itemIds = new HashSet<Guid>();
-        foreach (var item in OrderedExecutionEntries())
+        if (SchemaVersion != CurrentSchema || Id == Guid.Empty ||
+            string.IsNullOrWhiteSpace(Name) || Name.Length > 120 ||
+            Packages is null || Packages.Count > 1000)
+            throw new InvalidDataException("TEST 项目格式、名称或用例数量无效。");
+        var ids = new HashSet<Guid>();
+        foreach (var entry in Packages)
         {
-            if (item is null || item.ItemId == Guid.Empty || item.PackageAssetId == Guid.Empty ||
-                !itemIds.Add(item.ItemId) || item.PackageRevision <= 0 ||
-                item.PackageSha256 is not { Length: 64 } ||
-                !item.PackageSha256.All(Uri.IsHexDigit) ||
-                string.IsNullOrWhiteSpace(item.DisplayName) || item.DisplayName.Length > 120)
-                throw new InvalidDataException("测试项目包含缺失身份、重复序号或未固定修订的用例引用。");
+            if (entry is null || entry.ItemId == Guid.Empty ||
+                entry.PackageAssetId == Guid.Empty || !ids.Add(entry.ItemId) ||
+                string.IsNullOrWhiteSpace(entry.DisplayName) || entry.DisplayName.Length > 120)
+                throw new InvalidDataException("TEST 项目包含无效或重复的用例调用。");
         }
     }
 }
@@ -60,31 +42,35 @@ public static class TestProjectCodec
 {
     private static readonly JsonSerializerOptions Options = new()
     {
-        WriteIndented = true, PropertyNameCaseInsensitive = false
+        WriteIndented = true,
+        PropertyNameCaseInsensitive = false,
+        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow
     };
+
     public static byte[] Encode(TestProjectDocument project)
     {
         ArgumentNullException.ThrowIfNull(project);
         project.Validate();
         var bytes = JsonSerializer.SerializeToUtf8Bytes(project, Options);
         if (bytes.Length > 2 * 1024 * 1024)
-            throw new InvalidDataException("测试项目超过 2MB 大小限制。");
+            throw new InvalidDataException("TEST 项目超过 2MB 大小限制。");
         return bytes;
     }
+
     public static TestProjectDocument Decode(ReadOnlySpan<byte> bytes)
     {
         if (bytes.Length is <= 0 or > 2 * 1024 * 1024)
-            throw new InvalidDataException("测试项目数据大小无效。");
+            throw new InvalidDataException("TEST 项目数据大小无效。");
         try
         {
-            var document = JsonSerializer.Deserialize<TestProjectDocument>(bytes, Options)
-                ?? throw new InvalidDataException("测试项目内容为空。");
-            document.Validate();
-            return document;
+            var doc = JsonSerializer.Deserialize<TestProjectDocument>(bytes, Options)
+                ?? throw new InvalidDataException("TEST 项目内容为空。");
+            doc.Validate();
+            return doc;
         }
         catch (JsonException error)
         {
-            throw new InvalidDataException("测试项目 JSON 无法读取。", error);
+            throw new InvalidDataException("TEST 项目不是当前版本的有效数据。", error);
         }
     }
 }

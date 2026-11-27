@@ -78,10 +78,6 @@ public static class AutomaticTestResourceContract
             Flag("自动测试项目尚未添加测试用例。", "PROJECT:EMPTY",
                 "项目结构", "缺少有序测试用例", tree.Name,
                 "在 TEST 项目中添加正式用例实例。", projectAsset.Id.Value);
-        else if (tree.Packages.Any(entry => !entry.Enabled))
-            Flag("工程包含历史排除的用例实例；正式生产必须运行完整有序项目。请在测试项目中逐条确认“恢复历史排除”并保存，或显式从工程顺序中移除不需要的实例。禁止静默跳过。",
-                "PROJECT:EXCLUDED", "项目结构", "历史排除实例待处置", tree.Name,
-                "明确恢复或者从有序项目中移除。", projectAsset.Id.Value);
 
         foreach (var entry in included)
         {
@@ -91,9 +87,8 @@ public static class AutomaticTestResourceContract
                 var target = assets.SingleOrDefault(a => a.Id.Value == entry.PackageAssetId &&
                     a.Kind == ProjectWorkspaceService.TestProgramKind)
                     ?? throw new InvalidDataException("用例源资源不存在。");
-                // Production must not substitute the latest TEST asset for
-                // the entry's explicitly frozen revision and SHA256.
-                RequirePinnedInvocation(entry, target);
+                // The current definition is the project source of truth.
+                // A run will freeze these concrete bytes before physical activity.
                 var source = await ReadPinnedAsync(project, target, ct);
                 // Preserve the authored TEST mapping pins verbatim. Any
                 // change in DBC/wave resource SHA or revision must produce a
@@ -150,21 +145,6 @@ public static class AutomaticTestResourceContract
         {
             DependencyGroups = ResourceDependencyGroup.Group(details)
         };
-    }
-
-    public static void RequirePinnedInvocation(TestProjectEntry entry, AssetEntry asset)
-    {
-        ArgumentNullException.ThrowIfNull(entry);
-        ArgumentNullException.ThrowIfNull(asset);
-        if (entry.PackageAssetId != asset.Id.Value ||
-            entry.PackageRevision != asset.Revision ||
-            !string.Equals(entry.PackageSha256, asset.Sha256, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException(
-                "测试项目调用实例「" + entry.DisplayName + "」固定 r" +
-                entry.PackageRevision + " / " + entry.PackageSha256 +
-                "，当前 TEST 资源 r" + asset.Revision + " / " + asset.Sha256 +
-                "；ID、修订或 SHA256 不一致。必须在工程编辑中核对并更新引用，" +
-                "正式生产禁止静默替换最新版本。");
     }
 
     public static async Task<byte[]> ReadPinnedAsync(OpenProjectContext project,

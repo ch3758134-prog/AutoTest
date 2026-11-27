@@ -1649,7 +1649,7 @@ public sealed partial class MainWindowViewModel : BindableBase
                 var asset = _workspace.Current?.Definition.Assets.FirstOrDefault(x =>
                     x.Id.Value == row.AssetId && x.Kind == ProjectWorkspaceService.TestProgramKind);
                 node.Children.Add(CreateCaseLink(projectAsset, row.ItemId, asset,
-                    row.Name, row.Enabled, row.Order));
+                    row.Name, true, row.Order));
             }
             UpdateProjectCount(node);
             RefreshCaseNavigation();
@@ -1694,7 +1694,7 @@ public sealed partial class MainWindowViewModel : BindableBase
                     x.Id.Value == entry.PackageAssetId &&
                     x.Kind == ProjectWorkspaceService.TestProgramKind);
                 node.Children.Add(CreateCaseLink(project, entry.ItemId, asset,
-                    asset?.Name ?? entry.DisplayName, entry.Enabled, ++order));
+                    asset?.Name ?? entry.DisplayName, true, ++order));
             }
             UpdateProjectCount(node);
             RefreshCaseNavigation();
@@ -1993,7 +1993,7 @@ public sealed partial class MainWindowViewModel : BindableBase
             var caseAsset = await _workspace.CreateTestProgramAsync("测试用例 " + number.ToString("D2"));
             var projectSession = await _workspace.OpenTestProjectEditorAsync(projectAsset.Id);
             var entry = new TestProjectEntry(Guid.NewGuid(), caseAsset.Id.Value,
-                caseAsset.Revision, caseAsset.Sha256, caseAsset.Name, true);
+                caseAsset.Name);
             var linked = new TestProjectDocument(projectSession.Document.SchemaVersion,
                 projectSession.Document.Id, projectSession.Document.Name, [entry]);
             projectSession = await _workspace.SaveTestProjectEditorAsync(projectSession, linked);

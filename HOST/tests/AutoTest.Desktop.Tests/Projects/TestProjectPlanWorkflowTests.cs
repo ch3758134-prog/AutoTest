@@ -1,6 +1,6 @@
 using System.IO;
+using System.Text;
 using AutoTest.Desktop.Projects;
-using AutoTest.Projects.Project;
 using AutoTest.Testing.Authoring;
 using Xunit;
 
@@ -9,139 +9,72 @@ namespace AutoTest.Desktop.Tests.Projects;
 public sealed class TestProjectPlanWorkflowTests
 {
     [Fact]
-    public void TestProjectIsOnlyOneOrderedExecutionList()
+    public void ProjectContainsOnlyOrderedCasesAndCanInvokeSameDefinitionTwice()
     {
-        var first = new TestProjectEntry(Guid.NewGuid(), Guid.NewGuid(), 1,
-            new string('A', 64), "驻车", true);
-        var last = new TestProjectEntry(Guid.NewGuid(), Guid.NewGuid(), 1,
-            new string('B', 64), "释放", true);
+        var target = Guid.NewGuid();
+        var a = new TestProjectEntry(Guid.NewGuid(), target, "驻车");
+        var b = new TestProjectEntry(Guid.NewGuid(), Guid.NewGuid(), "释放");
+        var c = new TestProjectEntry(Guid.NewGuid(), target, "驻车复核");
         var document = TestProjectDocument.Create("HydEPB TEST") with
-        {
-            Packages = [first, last, first with { ItemId = Guid.NewGuid() }]
-        };
+        { Packages = [a, b, c] };
         var reopened = TestProjectCodec.Decode(TestProjectCodec.Encode(document));
-        Assert.Equal(3, reopened.SchemaVersion);
-        Assert.Equal(3, reopened.OrderedExecutionEntries().Count);
-        Assert.Equal(3, reopened.AutomaticRunEntries().Count);
-        Assert.Equal(first.PackageAssetId, reopened.Packages[2].PackageAssetId);
+        Assert.Equal(TestProjectDocument.CurrentSchema, reopened.SchemaVersion);
+        Assert.Equal(new[] { a.ItemId, b.ItemId, c.ItemId },
+            reopened.AutomaticRunEntries().Select(x => x.ItemId).ToArray());
+        Assert.Equal(a.PackageAssetId, reopened.Packages[2].PackageAssetId);
     }
 
     [Fact]
-    public void OldTestProjectSchemasCannotBeOpenedAsProductionProjects()
+    public void OldSchemasAndUnrecognizedLegacyFlagsAreRejected()
     {
-        var old = new TestProjectDocument(2, Guid.NewGuid(), "Old", []);
-        Assert.Throws<InvalidDataException>(() => TestProjectCodec.Encode(old));
+        var v2 = new TestProjectDocument(2, Guid.NewGuid(), "Old TEST", []);
+        Assert.Throws<InvalidDataException>(() => TestProjectCodec.Encode(v2));
+        var newDocument = TestProjectDocument.Create("New TEST");
+        var json = Encoding.UTF8.GetString(TestProjectCodec.Encode(newDocument));
+        var legacy = json.Replace("\"Packages\": []", "\"Packages\": [], \"Enabled\": false");
+        Assert.Throws<InvalidDataException>(() =>
+            TestProjectCodec.Decode(Encoding.UTF8.GetBytes(legacy)));
     }
 
     [Fact]
-    public void DuplicateInvocationIdentityIsRejected()
+    public void InvalidOrDuplicateInvocationIdCannotBePersisted()
     {
-        var id = Guid.NewGuid();
-        var first = new TestProjectEntry(id, Guid.NewGuid(), 1,
-            new string('A', 64), "驻车", true);
+        var entry = new TestProjectEntry(Guid.NewGuid(), Guid.NewGuid(), "驻车");
         Assert.Throws<InvalidDataException>(() =>
             TestProjectCodec.Encode(TestProjectDocument.Create("TEST") with
-            { Packages = [first, first] }));
+            { Packages = [entry, entry] }));
+        Assert.Throws<InvalidDataException>(() =>
+            TestProjectCodec.Encode(TestProjectDocument.Create("TEST") with
+            { Packages = [entry with { ItemId = Guid.Empty }] }));
     }
 
     [Fact]
-    public async Task ProjectRefersToOrderedVersionPinnedPackages_AndSurvivesReopen()
+    public async Task EditedCaseIsAutomaticallyResolvedByCurrentDefinitionWithoutAdoption()
     {
-        var parent = Path.Combine(Path.GetTempPath(), "at-package-project-" + Guid.NewGuid().ToString("N"));
+        var parent = Path.Combine(Path.GetTempPath(),
+            "at-current-test-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(parent);
         try
         {
             var workspace = new ProjectWorkspaceService();
-            var root = await workspace.CreateAsync("Suite", parent);
-            var apply = await workspace.CreateTestProgramAsync("驻车");
-            var release = await workspace.CreateTestProgramAsync("释放");
-            var project = await workspace.CreateTestProjectAsync("出厂测试");
-            var opened = await workspace.OpenTestProjectEditorAsync(project.Id);
+            var created = await workspace.CreateAsync("Suite", parent);
+            var source = await workspace.CreateTestProgramAsync("驻车");
+            var project = await workspace.CreateTestProjectAsync("TEST");
+            var edit = await workspace.OpenTestProjectEditorAsync(project.Id);
+            var item = new TestProjectEntry(Guid.NewGuid(), source.Id.Value, "驻车");
+            await workspace.SaveTestProjectEditorAsync(edit, edit.Document with
+            { Packages = [item] });
 
-            var document = opened.Document with
-            {
-                Packages =
-                [
-                    new TestProjectEntry(Guid.NewGuid(), apply.Id.Value,
-                        apply.Revision, apply.Sha256, "驻车", true),
-                    new TestProjectEntry(Guid.NewGuid(), release.Id.Value,
-                        release.Revision, release.Sha256, "释放", true),
-                    new TestProjectEntry(Guid.NewGuid(), apply.Id.Value,
-                        apply.Revision, apply.Sha256, "驻车复核", true)
-                ]
-            };
-            var saved = await workspace.SaveTestProjectEditorAsync(opened, document);
-            Assert.Equal(2, saved.AssetRevision);
-            var second = new ProjectWorkspaceService();
-            await second.OpenAsync(root.ManifestPath);
-            var reopened = await second.OpenTestProjectEditorAsync(project.Id);
-            Assert.Equal("出厂测试", reopened.Document.Name);
-            Assert.Equal(3, reopened.Document.Packages.Count);
-            Assert.Equal(apply.Id.Value, reopened.Document.Packages[0].PackageAssetId);
-            Assert.Equal(release.Id.Value, reopened.Document.Packages[1].PackageAssetId);
-            Assert.True(reopened.Document.Packages[2].Enabled);
-            Assert.Equal(document.Id, reopened.Document.Id);
-        }
-        finally { Directory.Delete(parent, recursive: true); }
-    }
+            var caseEditor = await workspace.OpenTestEditorAsync(source.Id);
+            await workspace.SaveTestEditorAsync(caseEditor,
+                caseEditor.Document with { Name = "驻车 - 已编辑" });
 
-    [Fact]
-    public async Task EditedTestAutomaticallyUpdatesOrderedProjectPinAndReopensStrictly()
-    {
-        var parent = Path.Combine(Path.GetTempPath(), "at-project-pin-repair-" +
-            Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(parent);
-        try
-        {
-            var workspace = new ProjectWorkspaceService();
-            var root = await workspace.CreateAsync("Suite", parent);
-            var program = await workspace.CreateTestProgramAsync("驻车动作");
-            var project = await workspace.CreateTestProjectAsync("绿通测试项目");
-            var opened = await workspace.OpenTestProjectEditorAsync(project.Id);
-            var pinned = new TestProjectEntry(Guid.NewGuid(), program.Id.Value,
-                program.Revision, program.Sha256, "驻车动作", true);
-            await workspace.SaveTestProjectEditorAsync(opened,
-                opened.Document with { Packages = [pinned] });
-
-            var editor = await workspace.OpenTestEditorAsync(program.Id);
-            var savedTest = await workspace.SaveTestEditorAsync(editor,
-                editor.Document with { Name = "驻车动作 - 已编辑" });
-            Assert.True(savedTest.AssetRevision > pinned.PackageRevision);
-
-            var reopenedWorkspace = new ProjectWorkspaceService();
-            await reopenedWorkspace.OpenAsync(root.ManifestPath);
-            var updatedProject = await reopenedWorkspace.OpenTestProjectEditorAsync(project.Id);
-            var reference = Assert.Single(updatedProject.Document.Packages);
-            Assert.Equal(pinned.ItemId, reference.ItemId);
-            Assert.Equal(pinned.PackageAssetId, reference.PackageAssetId);
-            Assert.Equal(pinned.DisplayName, reference.DisplayName);
-            Assert.Equal(pinned.Enabled, reference.Enabled);
-            Assert.Equal(savedTest.AssetRevision, reference.PackageRevision);
-            Assert.Equal(savedTest.FileHash, reference.PackageSha256, ignoreCase: true);
-            Assert.Equal(3, updatedProject.AssetRevision);
-        }
-        finally { Directory.Delete(parent, recursive: true); }
-    }
-
-    [Fact]
-    public async Task StalePackageRevisionCannotBeSilentlyAddedToProject()
-    {
-        var parent = Path.Combine(Path.GetTempPath(), "at-package-stale-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(parent);
-        try
-        {
-            var workspace = new ProjectWorkspaceService();
-            await workspace.CreateAsync("Suite", parent);
-            var p = await workspace.CreateTestProgramAsync("Drive");
-            var project = await workspace.CreateTestProjectAsync("Plan");
-            var opened = await workspace.OpenTestProjectEditorAsync(project.Id);
-            var item = new TestProjectEntry(Guid.NewGuid(), p.Id.Value,
-                p.Revision + 1, p.Sha256, p.Name, true);
-            var draft = opened.Document with { Packages = [item] };
-            var error = await Assert.ThrowsAsync<ProjectDataException>(
-                () => workspace.SaveTestProjectEditorAsync(opened, draft));
-            Assert.Equal("PROJECT_PACKAGE_STALE", error.Code);
-            Assert.Equal(1, (await workspace.OpenTestProjectEditorAsync(project.Id)).AssetRevision);
+            var reopened = new ProjectWorkspaceService();
+            await reopened.OpenAsync(created.ManifestPath);
+            var selected = await reopened.OpenTestProjectEditorAsync(project.Id);
+            Assert.Equal(item, Assert.Single(selected.Document.Packages));
+            var live = await AutomaticTestResourceContract.ResolveAsync(reopened.Current!);
+            Assert.Equal("驻车 - 已编辑", Assert.Single(live.Cases).Program.Name);
         }
         finally { Directory.Delete(parent, recursive: true); }
     }

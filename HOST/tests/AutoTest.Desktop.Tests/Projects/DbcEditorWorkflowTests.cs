@@ -45,8 +45,7 @@ public sealed class DbcEditorWorkflowTests
             var saved = await workspace.SaveTestEditorAsync(session, tx.Current);
             var plan = await workspace.CreateTestProjectAsync("Plan");
             var planEditor = await workspace.OpenTestProjectEditorAsync(plan.Id);
-            var entry = new TestProjectEntry(Guid.NewGuid(), test.Id.Value, saved.AssetRevision,
-                saved.FileHash, "Case", true);
+            var entry = new TestProjectEntry(Guid.NewGuid(), test.Id.Value, "Case");
             await workspace.SaveTestProjectEditorAsync(planEditor,
                 planEditor.Document with { Packages = [entry] });
             var dbcEditor = await workspace.OpenDbcEditorAsync(dbc.Id);
@@ -64,8 +63,7 @@ public sealed class DbcEditorWorkflowTests
             var reloadedPlan = await reopened.OpenTestProjectEditorAsync(plan.Id);
             var actualEntry = Assert.Single(reloadedPlan.Document.Packages);
             Assert.Equal(entry.ItemId, actualEntry.ItemId);
-            Assert.Equal(reloadedCase.AssetRevision, actualEntry.PackageRevision);
-            Assert.Equal(reloadedCase.FileHash, actualEntry.PackageSha256, ignoreCase: true);
+            Assert.Equal(test.Id.Value, actualEntry.PackageAssetId);
             Assert.Equal(saved.AssetRevision + 1, reloadedCase.AssetRevision);
 
             // A referenced frame cannot disappear or change DLC while the case

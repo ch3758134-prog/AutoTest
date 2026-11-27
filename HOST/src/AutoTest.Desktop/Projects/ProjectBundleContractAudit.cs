@@ -131,8 +131,12 @@ public static class ProjectBundleContractAudit
                     case ProjectWorkspaceService.TestProjectKind:
                         var testProject = TestProjectCodec.Decode(bytes);
                         foreach (var package in testProject.Packages)
-                            Require(package.PackageAssetId, package.PackageRevision, package.PackageSha256,
-                                "项目用例 " + package.DisplayName, ProjectWorkspaceService.TestProgramKind);
+                        {
+                            if (!assets.TryGetValue(package.PackageAssetId, out var linked) ||
+                                linked.Kind != ProjectWorkspaceService.TestProgramKind)
+                                throw new InvalidDataException("项目用例不存在：" + package.DisplayName);
+                            _ = await Read(linked).ConfigureAwait(false);
+                        }
                         break;
                 }
             }

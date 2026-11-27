@@ -49,7 +49,7 @@ public static class EngineeringTestProjectPreviewReader
                 x.Id.Value == entry.PackageAssetId);
             var referenceCurrent = actual is not null;
             return new EngineeringTestCasePreview(entry.PackageAssetId,
-                entry.DisplayName, entry.Enabled, referenceCurrent);
+                entry.DisplayName, true, referenceCurrent);
         }).ToArray();
 
         try

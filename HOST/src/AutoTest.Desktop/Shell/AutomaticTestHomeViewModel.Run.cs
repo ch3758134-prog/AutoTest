@@ -638,13 +638,13 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
 
             var programs = await AutomaticTestResourceContract.ResolveAsync(plan.Project, ct);
             programs.RequireExecutable();
-            if (programs.Cases.Count != frozen.OrderedEnabledCases.Count ||
+            if (programs.Cases.Count != frozen.OrderedCases.Count ||
                 programs.Cases.Where((x, i) =>
-                    x.Entry.ItemId != frozen.OrderedEnabledCases[i].EntryId ||
-                    x.Asset.Id.Value != frozen.OrderedEnabledCases[i].TestAssetId ||
-                    x.Asset.Revision != frozen.OrderedEnabledCases[i].Revision ||
+                    x.Entry.ItemId != frozen.OrderedCases[i].EntryId ||
+                    x.Asset.Id.Value != frozen.OrderedCases[i].TestAssetId ||
+                    x.Asset.Revision != frozen.OrderedCases[i].Revision ||
                     !string.Equals(x.ContentSha256,
-                        frozen.OrderedEnabledCases[i].Sha256,
+                        frozen.OrderedCases[i].Sha256,
                         StringComparison.OrdinalIgnoreCase))
                     .Any())
                 throw new InvalidDataException("本次正式工程用例顺序已改变。");

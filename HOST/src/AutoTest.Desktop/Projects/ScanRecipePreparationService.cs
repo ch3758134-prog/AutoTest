@@ -95,8 +95,13 @@ public static class ScanRecipePreparationService
             scope = opened.Document.Name;
             foreach (var entry in opened.Document.AutomaticRunEntries())
             {
-                CheckPin(entry.PackageAssetId, entry.PackageRevision,
-                    entry.PackageSha256, ProjectWorkspaceService.TestProgramKind);
+                var current = snapshot.Definition.Assets.SingleOrDefault(a =>
+                    a.Id.Value == entry.PackageAssetId &&
+                    a.Kind == ProjectWorkspaceService.TestProgramKind)
+                    ?? throw new ProjectDataException("SCAN_TEST_MISSING",
+                        "TEST 用例定义不存在：" + entry.DisplayName);
+                CheckPin(current.Id.Value, current.Revision, current.Sha256,
+                    ProjectWorkspaceService.TestProgramKind);
                 var package = await workspace.OpenTestEditorAsync(
                     AssetId.Create(entry.PackageAssetId), ct);
                 CheckProject();
