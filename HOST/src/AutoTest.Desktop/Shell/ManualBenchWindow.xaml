@@ -298,22 +298,22 @@
          <Button Content="OFF" Click="IgnOff_Click" IsEnabled="{Binding CanInvokeManualIo}" MinHeight="30"/>
         </StackPanel>
        </Border>
-       <Border Grid.Column="2" BorderBrush="#DEE8E1" BorderThickness="1"
-        Background="#F9FBF9" CornerRadius="6" Padding="7">
+       <Border Grid.Column="2" Grid.ColumnSpan="3" BorderBrush="#DEE8E1"
+        Background="#F9FBF9" CornerRadius="6" Padding="9">
         <StackPanel>
-         <TextBlock Text="夹具 1 · B5" FontWeight="SemiBold" Foreground="#475668" Margin="0,0,0,5"/>
-          <TextBlock Text="{Binding Clamp1GpioLabel}" FontSize="10" Foreground="#627C9D" Margin="0,0,0,6" ToolTip="{Binding LastClampStatus}"/>
-         <Button Content="压紧" Click="Clamp1Press_Click" IsEnabled="{Binding CanInvokeManualIo}" Margin="0,0,0,4" MinHeight="30"/>
-         <Button Content="释放" Click="Clamp1Release_Click" IsEnabled="{Binding CanInvokeManualIo}" MinHeight="30"/>
-        </StackPanel>
-       </Border>
-       <Border Grid.Column="4" BorderBrush="#DEE8E1" BorderThickness="1"
-        Background="#F9FBF9" CornerRadius="6" Padding="7">
-        <StackPanel>
-         <TextBlock Text="夹具 2 · B4" FontWeight="SemiBold" Foreground="#475668" Margin="0,0,0,5"/>
-          <TextBlock Text="{Binding Clamp2GpioLabel}" FontSize="10" Foreground="#627C9D" Margin="0,0,0,6" ToolTip="{Binding LastClampStatus}"/>
-         <Button Content="压紧" Click="Clamp2Press_Click" IsEnabled="{Binding CanInvokeManualIo}" Margin="0,0,0,4" MinHeight="30"/>
-         <Button Content="释放" Click="Clamp2Release_Click" IsEnabled="{Binding CanInvokeManualIo}" MinHeight="30"/>
+         <TextBlock Text="夹具" FontWeight="SemiBold" Foreground="#475668"
+          Margin="0,0,0,5"/>
+         <StackPanel Orientation="Horizontal" Margin="0,0,0,7">
+          <Button Content="压紧" Click="FixturePress_Click"
+           IsEnabled="{Binding CanInvokeManualIo}" MinWidth="95" MinHeight="34"
+           Margin="0,0,9,0" Padding="10,5"/>
+          <Button Content="释放" Click="FixtureRelease_Click"
+           IsEnabled="{Binding CanInvokeManualIo}" MinWidth="95" MinHeight="34"
+           Padding="10,5"/>
+         </StackPanel>
+         <TextBlock Text="{Binding LastClampStatus}" Foreground="#647A90"
+          FontSize="11" TextWrapping="Wrap" MaxHeight="44"
+          ToolTip="这里显示主控命令及 GPIO 状态，机械位置仍需真实反馈"/>
         </StackPanel>
        </Border>
       </Grid>

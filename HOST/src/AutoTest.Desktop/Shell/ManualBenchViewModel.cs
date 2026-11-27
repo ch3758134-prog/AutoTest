@@ -881,17 +881,34 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
         await ApplyClampAsync();
     }
 
-    private async Task ApplyClampAsync() => await Execute("夹具" + _selectedClamp, async () =>
+    // A fixture is one operator action, not two independent configuration
+    // panels. Keep the physical channel order fixed for this TestCtr station:
+    // press 1→2, release 2→1. Each command still uses the exact verified
+    // hardware authorization and never claims mechanical travel from USB ACK.
+    public Task ApplyFixtureAsync(bool press) => Execute(
+        press ? "夹具压紧" : "夹具释放", async () =>
+        {
+            if (!CanInvokeManualIo)
+                throw new InvalidOperationException("主控未就绪或正在执行测试，禁止夹具动作。");
+            foreach (var channel in press ? new byte[] { 1, 2 } : new byte[] { 2, 1 })
+                await SendClampCoreAsync(channel, press);
+            Status = (press ? "压紧" : "释放") +
+                "：两路主控输出指令已执行。GPIO 读回不代表机械到位；请核对现场。";
+        });
+
+    private Task ApplyClampAsync() => Execute("夹具" + _selectedClamp,
+        () => SendClampCoreAsync(_selectedClamp, _clampPress));
+
+    private async Task SendClampCoreAsync(byte clamp, bool press)
     {
-        byte clamp = _selectedClamp;
-        bool press = _clampPress;
         if (!_hardware.IsConnected)
-            throw new IOException("USB 未连接，请先点击顶部“连接”。");
+            throw new IOException("USB 未连接，请先点击顶部连接。");
         try
         {
             if (clamp == 1) Clamp1GpioLabel = "待回读";
             else Clamp2GpioLabel = "待回读";
-            await _hardware.SendManualClampAsync(clamp, press, ClampExpectedConsent);
+            var consent = "AUTHORIZE CLAMP " + clamp + (press ? " PRESS" : " RELEASE");
+            await _hardware.SendManualClampAsync(clamp, press, consent);
             ClampConfirmation = "";
             LastClampStatus = "夹具" + clamp + " " + (press ? "压紧" : "释放") +
                 " 请求主控 ACK；实际机械到位未测量。";
@@ -923,7 +940,7 @@ public sealed partial class ManualBenchViewModel : BindableBase, IDisposable
             LastClampStatus = "夹具" + clamp + " 操作失败或未确认；实体状态 UNKNOWN。";
             throw;
         }
-    });
+    }
 
     public void Dispose()
     {

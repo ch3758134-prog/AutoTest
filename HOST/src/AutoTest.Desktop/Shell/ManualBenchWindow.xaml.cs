@@ -643,14 +643,10 @@ public partial class ManualBenchWindow : Window
             Clipboard.SetText(entry.Data);
     }
 
-    private async void Clamp1Press_Click(object sender, RoutedEventArgs e) =>
-        await _model.ApplyClampSelectionAsync(1, true);
-    private async void Clamp1Release_Click(object sender, RoutedEventArgs e) =>
-        await _model.ApplyClampSelectionAsync(1, false);
-    private async void Clamp2Press_Click(object sender, RoutedEventArgs e) =>
-        await _model.ApplyClampSelectionAsync(2, true);
-    private async void Clamp2Release_Click(object sender, RoutedEventArgs e) =>
-        await _model.ApplyClampSelectionAsync(2, false);
+    private async void FixturePress_Click(object sender, RoutedEventArgs e) =>
+        await _model.ApplyFixtureAsync(true);
+    private async void FixtureRelease_Click(object sender, RoutedEventArgs e) =>
+        await _model.ApplyFixtureAsync(false);
 
     private void SelectNamedOperation_Click(object sender, RoutedEventArgs e)
     {
