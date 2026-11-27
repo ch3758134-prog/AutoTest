@@ -28,8 +28,9 @@ public sealed class ProductionStartGate
         {
             if (_armedRun is { } previous && previous == run)
                 throw new InvalidOperationException("Inspection cannot be rearmed.");
-            if (_armedRun is not null && !_claimed)
-                throw new InvalidOperationException("An earlier inspection is armed.");
+            if (_armedRun is not null)
+                throw new InvalidOperationException(
+                    "Previous inspection must be explicitly disarmed before another DUT.");
             _armedRun = run;
             _claimed = false;
             _releaseObserved = false;
