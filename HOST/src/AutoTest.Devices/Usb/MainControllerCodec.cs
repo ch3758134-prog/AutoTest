@@ -7,6 +7,32 @@ public static class MainControllerCodec
     // Main_Control/Main_Control branch, 2026-11-20: SET [baud code 0..7],
     // GET => [baud code]. ECU_CAN_PORT only; KEY CAN remains fixed 500k.
     public const byte SetEcuCanBaud = 0x42, GetEcuCanBaud = 0x43;
+    // Three external, debounced TestCtr buttons on PTC7/6/5, NOT KEY_SIM K1..K20.
+    public const byte ExternalKeyEvent = 0x44, GetExternalKeyInputs = 0x45;
+
+    public static ExternalKeyInputEvent ParseExternalKeyEvent(UsbResponse response)
+    {
+        if (response.Sequence != 0 || response.Command != ExternalKeyEvent ||
+            response.Status != 0 || response.Payload.Length != 5)
+            throw new InvalidDataException("主控外部 KEY 0x44 事件帧格式错误。");
+        var data = response.Payload;
+        if (data[0] is < 1 or > 3 || data[1] > 1 || (data[2] & 0xF8) != 0 ||
+            ((data[2] >> (data[0] - 1)) & 1) != data[1])
+            throw new InvalidDataException("主控外部 KEY 0x44 编号或 GPIO 电平不合法。");
+        return new ExternalKeyInputEvent(data[0], data[1], data[2],
+            (ushort)(data[3] | (data[4] << 8)), DateTimeOffset.UtcNow);
+    }
+
+    public static async Task<ExternalKeyInputSnapshot> ReadExternalKeyInputsAsync(
+        UsbSessionService usb, CancellationToken ct = default)
+    {
+        var response = await usb.RequestAsync(GetExternalKeyInputs,
+            ReadOnlyMemory<byte>.Empty, TimeSpan.FromSeconds(3), ct).ConfigureAwait(false);
+        if (response.Payload.Length != 3 || (response.Payload[0] & 0xF8) != 0)
+            throw new InvalidDataException("主控 0x45 外部 KEY 电平快照必须为合法的 3 字节。");
+        return new ExternalKeyInputSnapshot(response.Payload[0],
+            (ushort)(response.Payload[1] | (response.Payload[2] << 8)));
+    }
 
     public static byte EcuCanBaudCode(int kbps) => kbps switch
     {
@@ -84,3 +110,11 @@ public static class MainControllerCodec
     // RL_DRV is internal hardware setup and must NEVER be exposed as a USB command.
     // GPIO readback is not a physical clamp-position or valve-voltage measurement.
 }
+
+    
+/// <summary>Authenticated, CRC-checked 0x44 external KEY input; level polarity not calibrated.</summary>
+public readonly record struct ExternalKeyInputEvent(
+    byte Key, byte Level, byte Levels, ushort Sequence, DateTimeOffset ReceivedUtc);
+
+/// <summary>Read-only 0x45 debounced levels and the MCU change counter.</summary>
+public readonly record struct ExternalKeyInputSnapshot(byte Levels, ushort Sequence);
