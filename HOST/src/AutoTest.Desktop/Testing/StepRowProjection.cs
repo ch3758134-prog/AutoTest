@@ -191,7 +191,8 @@ public sealed class StepRowProjection : BindableBase
                 " · " + Prop("durationMs") + " ms",
             "WaveStop" => "停止采集 " + Prop("captureKey"),
             "WaveAnalyze" or "WaveCompare" => "波形配置 " +
-                (Prop("profile").Length > 0 ? Prop("profile") : "未选择"),
+                (Prop("profile").Length > 0 ? Prop("profile") : "未选择") +
+                " · 标准 " + Prop("reference"),
                         "Sequence" => "按顺序执行子步骤",
             _ => StepUiCatalog.Label(step, _mappings) + " · 打开属性查看参数"
         };

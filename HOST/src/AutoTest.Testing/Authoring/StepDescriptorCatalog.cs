@@ -306,11 +306,13 @@ public sealed class StepDescriptorCatalog
         Node("WaveAnalyze", StepExecutionCapability.Hardware, StepEditorKind.WaveAnalysis,
             null, P("captureKey", "采集组", StepParameterKind.Identifier, "capture1"),
             P("variable", "分析结果变量", StepParameterKind.Identifier, "waveResult"),
-            P("profile", "波形判定配置", StepParameterKind.Mapping, ""));
+            P("profile", "波形判定配置", StepParameterKind.Mapping, ""),
+            P("reference", "标准波形", StepParameterKind.Identifier, "default"));
         Node("WaveCompare", StepExecutionCapability.Hardware, StepEditorKind.WaveAnalysis,
             null, P("captureKey", "采集组", StepParameterKind.Identifier, "capture1"),
             P("variable", "判定结果变量", StepParameterKind.Identifier, "waveVerdict"),
-            P("profile", "波形判定配置", StepParameterKind.Mapping, ""));
+            P("profile", "波形判定配置", StepParameterKind.Mapping, ""),
+            P("reference", "标准波形", StepParameterKind.Identifier, "default"));
 
         // Only executable operations appear in the authoring palette. The
         // contextual CASE action is exposed only while editing a SWITCH.
