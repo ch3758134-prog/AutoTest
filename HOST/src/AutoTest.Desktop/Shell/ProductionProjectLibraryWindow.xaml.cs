@@ -54,6 +54,8 @@ public partial class ProductionProjectLibraryWindow : Window
             var bindings = await _catalog.ListBindingsAsync();
             _loadedPackages = packages;
             ApplySearchFilter();
+            EmptyCatalogHint.Visibility = packages.Count == 0
+                ? Visibility.Visible : Visibility.Collapsed;
             ModeBox.SelectedIndex = settings.Mode switch
             {
                 ProductionRoutingSettings.Single => 0,
