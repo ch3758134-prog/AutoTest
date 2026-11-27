@@ -47,7 +47,15 @@ public static class DbcParserAdapter
                 messages[^1] = current;
             }
         }
-        if (messages.Count == 0) throw new ProjectDataException("DBC_PARSE", "No BO_ messages found.");
+        // An explicitly structured empty DBC is valid for authoring. Reject
+        // arbitrary non-DBC text without messages, preserving strict import.
+        if (messages.Count == 0 &&
+            !(text.Contains("VERSION \"\"", StringComparison.Ordinal) &&
+              text.Contains("NS_ :", StringComparison.Ordinal) &&
+              text.Contains("BS_:", StringComparison.Ordinal) &&
+              text.Contains("BU_:", StringComparison.Ordinal)))
+            throw new ProjectDataException("DBC_PARSE",
+                "DBC has no messages and no complete valid database header.");
         return new DbcDatabase(name, 1, nodes.Distinct().ToImmutableArray(),
             messages.ToImmutableArray()).Validate(allowSignalOverlaps);
     }

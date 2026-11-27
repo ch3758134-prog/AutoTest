@@ -179,6 +179,7 @@ public sealed partial class MainWindowViewModel : BindableBase
         CheckActiveCommand = new DelegateCommand(CheckActive);
         OpenDbcToolCommand = new DelegateCommand(async () => await OpenDbcToolAsync());
         OpenIndependentDbcCommand = new DelegateCommand(async () => await OpenIndependentDbcAsync());
+        NewIndependentDbcCommand = new DelegateCommand(async () => await NewIndependentDbcAsync());
         OpenUdsWorkbenchCommand = new DelegateCommand(OpenUdsWorkbench);
         OpenRecordHistoryCommand = new DelegateCommand(OpenRecordHistory);
         ReturnToTestCommand = new DelegateCommand(async () => await ReturnToTestAsync());
@@ -274,7 +275,7 @@ public sealed partial class MainWindowViewModel : BindableBase
     public MonitorDisplayCollection<CanMonitorRow> CanRecords { get; } = new();
     public MonitorDisplayCollection<DecodedCanRow> DecodedCanRecords { get; } = new();
     public string ActiveDbcLabel => _workspace.Current?.Definition.Assets
-        .FirstOrDefault(a => a.Kind == ProjectWorkspaceService.DbcKind)?.Name ?? "导入 DBC";
+        .FirstOrDefault(a => a.Kind == ProjectWorkspaceService.DbcKind)?.Name ?? "设置 DBC";
 
     public ObservableCollection<ResourceTreeNode> ResourceNodes { get; } = new();
 
@@ -383,6 +384,7 @@ public sealed partial class MainWindowViewModel : BindableBase
     public DelegateCommand CheckActiveCommand { get; }
     public DelegateCommand OpenDbcToolCommand { get; }
     public DelegateCommand OpenIndependentDbcCommand { get; }
+    public DelegateCommand NewIndependentDbcCommand { get; }
     public DelegateCommand OpenUdsWorkbenchCommand { get; }
     public DelegateCommand OpenRecordHistoryCommand { get; }
     public DelegateCommand HelpCommand { get; }
@@ -880,7 +882,11 @@ public sealed partial class MainWindowViewModel : BindableBase
         }
         if (databases.Length == 0)
         {
-            await ImportDbcAsync();
+            var choice = MessageBox.Show(
+                "当前工程还没有 DBC。\n\n是：新建空白 DBC\n否：导入已有 DBC",
+                "设置工程 DBC", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+            if (choice == MessageBoxResult.Yes) await CreateDbcForProjectAsync();
+            else if (choice == MessageBoxResult.No) await ImportDbcAsync();
             return;
         }
         // DBC edits are a separate owned window. Do not silently switch the
@@ -2245,6 +2251,60 @@ public sealed partial class MainWindowViewModel : BindableBase
         var opened = await _workspace.OpenDbcEditorAsync(id);
         var editor = new DbcWorkbenchViewModel(_workspace, _dbcDialogs, opened);
         ShowDbcWindowCore(id.Value, name, editor);
+    }
+
+    private async Task NewIndependentDbcAsync()
+    {
+        if (_closeGuardActive) return;
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = "新建 DBC",
+            Filter = "CAN DBC 文件 (*.dbc)|*.dbc",
+            DefaultExt = ".dbc",
+            AddExtension = true,
+            OverwritePrompt = false
+        };
+        if (dialog.ShowDialog(global::System.Windows.Application.Current.MainWindow) != true)
+            return;
+        try
+        {
+            var path = Path.GetFullPath(dialog.FileName);
+            if (File.Exists(path))
+                throw new IOException("同名 DBC 文件已经存在。请打开已有文件，或使用不同名称。");
+            var name = Path.GetFileNameWithoutExtension(path);
+            var source = AutoTest.Projects.Dbc.DbcParserAdapter.Export(
+                AutoTest.Projects.Dbc.DbcDatabase.Create(name));
+            var document = AutoTest.Projects.Dbc.Editing.DbcWorkbenchDocument.Import(
+                name, source);
+            await AutoTest.Projects.Dbc.Editing.DbcDocumentStore.SaveAsync(
+                document, path, expectedFileHash: null);
+            var opened = await AutoTest.Projects.Dbc.Editing.DbcDocumentStore.OpenAsync(path);
+            var editor = DbcWorkbenchViewModel.ForIndependentFile(
+                _dbcDialogs, opened.Document, opened.Receipt);
+            ShowDbcWindowCore(Guid.NewGuid(), name, editor);
+            StatusMessage = "已新建 DBC：" + name + "。可以直接添加报文和信号。";
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or
+            InvalidDataException or ArgumentException or ProjectDataException or
+            NotSupportedException or FormatException)
+        {
+            StatusMessage = "新建 DBC 失败：" + error.Message;
+            _fileDialogs.ShowError(StatusMessage);
+        }
+    }
+
+    private async Task CreateDbcForProjectAsync()
+    {
+        if (_workspace.Current is null) return;
+        var name = _fileDialogs.AskResourceName("新建当前工程 DBC",
+            _workspace.Current.Definition.Name + " 通讯矩阵");
+        if (name is null) return;
+        await RunOperationAsync(async () =>
+        {
+            var dbc = await _workspace.CreateDbcAsync(name);
+            await ShowDbcWindowAsync(dbc.Id, dbc.Name);
+            StatusMessage = "已创建工程 DBC，可以直接添加报文和信号。";
+        });
     }
 
     /// <summary>
