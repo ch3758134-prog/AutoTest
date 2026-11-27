@@ -13,13 +13,13 @@
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
      <Button Content="重新核对" Command="{Binding RefreshEngineeringSetupCommand}"
       Padding="12,7" Margin="0,0,8,0"/>
-     <Button Content="返回测试项目" Command="{Binding OpenFirstTestProjectCommand}"
+     <Button Content="返回检测流程" Command="{Binding OpenFirstTestProjectCommand}"
       Padding="13,7" Style="{StaticResource AtPrimaryButton}"/>
     </StackPanel>
     <StackPanel VerticalAlignment="Center">
      <TextBlock Text="工程检查" FontSize="15" FontWeight="SemiBold"
       Foreground="#253C53"/>
-     <TextBlock Text="检查测试用例和关联资源是否可用" FontSize="11"
+     <TextBlock Text="检查工程定义、资源和引用；定位阻断项后修正" FontSize="11"
       Foreground="#75889A"/>
     </StackPanel>
    </DockPanel>
@@ -27,7 +27,7 @@
   <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
    HorizontalScrollBarVisibility="Disabled">
    <StackPanel MaxWidth="1080" Margin="22,20,22,28">
-    <TextBlock Text="工程检查结果" FontWeight="SemiBold" FontSize="17"
+    <TextBlock Text="工程检查 · 待处理问题" FontWeight="SemiBold" FontSize="17"
      Foreground="#294B6B" Margin="0,0,0,8"/>
     <TextBlock Text="{Binding SetupTestStatus}" TextWrapping="Wrap"
      Foreground="#4C6880" Margin="0,0,0,11"/>
@@ -38,7 +38,7 @@
        <TextBlock DockPanel.Dock="Right"
         Text="{Binding SetupRootCauseCount,StringFormat='{}{0} 项问题'}"
         FontWeight="SemiBold" Foreground="#2C6594"/>
-       <TextBlock Text="用例引用检查" FontWeight="SemiBold" FontSize="14"
+       <TextBlock Text="用例及资源引用问题" FontWeight="SemiBold" FontSize="14"
         Foreground="#294B68"/>
       </DockPanel>
       <TextBlock Text="{Binding SetupDependencySummary}" TextWrapping="Wrap"
@@ -48,7 +48,7 @@
         <DataTemplate>
          <Border Background="White" BorderBrush="#DFE7EF" BorderThickness="1"
           CornerRadius="5" Margin="0,0,0,7" Padding="10,6">
-          <Expander>
+          <Expander IsExpanded="True">
            <Expander.Header>
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
              <TextBlock Text="{Binding Title}" FontWeight="SemiBold"
@@ -60,9 +60,9 @@
            <StackPanel Margin="6,9,0,8">
             <TextBlock Text="{Binding Explanation}" TextWrapping="Wrap"
              Foreground="#506C82" Margin="0,0,0,9"/>
-            <Button Content="查看相关用例或资源" HorizontalAlignment="Left"
+            <Button Content="定位问题相关内容" HorizontalAlignment="Left"
              Tag="{Binding}" Click="LocateDependency_Click" Padding="12,7"
-             ToolTip="定位相关资源供检查，不会自动修改内容"/>
+             ToolTip="定位到相关工程资源；修复仍由工程人员确认"/>
            </StackPanel>
           </Expander>
          </Border>
