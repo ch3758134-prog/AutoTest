@@ -14,11 +14,11 @@ public sealed record ProductionFixtureConfiguration(
     int SettleDelayMs = 0, bool AutoClampEnabled = true)
 {
     public static ProductionFixtureConfiguration Draft => new(
-        "SLOT-01", false, false, "MCU:PTB1/J1-B5",
+        "SLOT-01", true, true, "MCU:PTB1/J1-B5",
         "MCU:PTC2/J1-B4", "NOT_WIRED", "NOT_WIRED",
         "NOT_WIRED", "NOT_WIRED", "NOT_WIRED", 3000,
         "AFTER_DURABLE_RECORD_AND_SAFE_RELEASE_CONFIRMATION",
-        0, true, true, 0, false); // New station drafts never implicitly energize a fixture.
+        1, true, true, 0, true); // One fixed two-actuator station; real START still required.
 
     public void Validate()
     {

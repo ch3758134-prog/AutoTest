@@ -65,57 +65,15 @@
     </Border>
     <Border Style="{StaticResource Panel}">
      <StackPanel>
-      <TextBlock Text="夹具" Style="{StaticResource Section}"/>
-      <CheckBox x:Name="AutoClamp" Content="检测时自动压紧，结束后请求释放"
-       Checked="ConfigChanged" Unchecked="ConfigChanged" Margin="0,0,0,11"/>
-      <WrapPanel>
-       <CheckBox x:Name="Clamp1" Content="使用夹具 1"
-        Checked="ConfigChanged" Unchecked="ConfigChanged"
-        Margin="0,0,20,8"/>
-       <CheckBox x:Name="Clamp2" Content="使用夹具 2"
-        Checked="ConfigChanged" Unchecked="ConfigChanged"
-        Margin="0,0,20,8"/>
-       <TextBlock Text="压紧顺序" Margin="0,4,8,0"/>
-       <ComboBox x:Name="FirstClampChoice" Width="135"
-        SelectionChanged="ConfigChanged" Margin="0,0,0,8">
-        <ComboBoxItem Content="先夹具 1"/>
-        <ComboBoxItem Content="先夹具 2"/>
-       </ComboBox>
-      </WrapPanel>
+      <TextBlock Text="夹具动作" Style="{StaticResource Section}"/>
+      <TextBlock Text="夹具 1 → 夹具 2 自动压紧；检测完成后按相反顺序释放。"
+       Foreground="#263D52" FontSize="14" TextWrapping="Wrap"/>
+      <TextBlock Text="压紧后以本台 ECU CAN 新收到的报文确认通信就绪。"
+       Foreground="#547087" TextWrapping="Wrap" Margin="0,9,0,0"/>
+      <TextBlock Text="ECU 通信确认不是机械位置传感器，也不替代独立的人员安全防护。"
+       Foreground="#647B8D" FontSize="12" TextWrapping="Wrap" Margin="0,7,0,0"/>
       <TextBlock x:Name="FixtureSummary" Foreground="#547087"
-       TextWrapping="Wrap" Margin="0,4,0,7"/>
-      <Expander Header="实体输入、机械反馈和稳定时间" Margin="0,8,0,0">
-       <StackPanel Margin="0,13,0,0">
-        <UniformGrid Columns="2">
-         <StackPanel>
-          <TextBlock Text="启动按钮输入" Margin="0,0,0,3"/>
-          <TextBox x:Name="StartInput" TextChanged="ConfigChanged"/>
-         </StackPanel>
-         <StackPanel>
-          <TextBlock Text="停止按钮输入" Margin="0,0,0,3"/>
-          <TextBox x:Name="StopInput" TextChanged="ConfigChanged"/>
-         </StackPanel>
-         <StackPanel>
-          <TextBlock Text="安全互锁输入" Margin="0,0,0,3"/>
-          <TextBox x:Name="InterlockInput" TextChanged="ConfigChanged"/>
-         </StackPanel>
-         <StackPanel>
-          <TextBlock Text="压紧反馈输入" Margin="0,0,0,3"/>
-          <TextBox x:Name="ClosedFeedback" TextChanged="ConfigChanged"/>
-         </StackPanel>
-         <StackPanel>
-          <TextBlock Text="释放反馈输入" Margin="0,0,0,3"/>
-          <TextBox x:Name="OpenFeedback" TextChanged="ConfigChanged"/>
-         </StackPanel>
-         <StackPanel>
-          <TextBlock Text="机械稳定时间（毫秒）" Margin="0,0,0,3"/>
-          <TextBox x:Name="SettleDelayInput" TextChanged="ConfigChanged"/>
-         </StackPanel>
-        </UniformGrid>
-        <TextBlock Text="没有机械反馈时，主控指令成功不能说明夹具已经到位。"
-         FontSize="12" Foreground="#7D6373" TextWrapping="Wrap"/>
-       </StackPanel>
-      </Expander>
+       TextWrapping="Wrap" Margin="0,7,0,0"/>
      </StackPanel>
     </Border>
     <Border Style="{StaticResource Panel}">

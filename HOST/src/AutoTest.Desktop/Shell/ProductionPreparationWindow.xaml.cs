@@ -92,16 +92,8 @@ public partial class ProductionPreparationWindow : Window
         {
             _draft = await StationDeviceConfigurationStore.LoadAsync();
             var fixture = _draft.Fixture;
-            AutoClamp.IsChecked = fixture.AutoClampEnabled;
-            Clamp1.IsChecked = fixture.UseClamp1;
-            Clamp2.IsChecked = fixture.UseClamp2;
-            FirstClampChoice.SelectedIndex = fixture.FirstClamp == 2 ? 1 : 0;
-            StartInput.Text = DisplayInput(fixture.StartInput);
-            StopInput.Text = DisplayInput(fixture.StopInput);
-            InterlockInput.Text = DisplayInput(fixture.InterlockInput);
-            ClosedFeedback.Text = DisplayInput(fixture.ClampClosedFeedback);
-            OpenFeedback.Text = DisplayInput(fixture.ClampOpenFeedback);
-            SettleDelayInput.Text = fixture.SettleDelayMs.ToString();
+            // One fixed two-actuator fixture; there is no user-created
+            // clamp or mechanical-sensor admission configuration.
             _dirty = false;
             _ready = true;
             ResetOldConfig.Visibility = Visibility.Collapsed;
@@ -136,30 +128,17 @@ public partial class ProductionPreparationWindow : Window
 
     private void RefreshFixture()
     {
-        FixtureSummary.Text = AutoClamp.IsChecked != true
-            ? "自动夹具未启用。可以在手动台架验证压紧和释放。"
-            : Clamp1.IsChecked != true && Clamp2.IsChecked != true
-                ? "请选择实际使用的夹具输出。"
-                : "自动夹具已设置。机械是否到位仍须由可信反馈或现场检查确认。";
+        FixtureSummary.Text = "固定工位 · 两路夹具输出 · ECU CAN 功能就绪反馈。";
     }
 
     private StationDeviceConfiguration CaptureDraft()
     {
-        if (!int.TryParse(SettleDelayInput.Text, out var delay) ||
-            delay is < 0 or > 30000)
-            throw new InvalidDataException("机械稳定时间应为 0～30000 毫秒。");
         var fixture = _draft.Fixture with
         {
-            AutoClampEnabled = AutoClamp.IsChecked == true,
-            UseClamp1 = Clamp1.IsChecked == true,
-            UseClamp2 = Clamp2.IsChecked == true,
-            FirstClamp = FirstClampChoice.SelectedIndex == 1 ? 2 : 1,
-            StartInput = InputValue(StartInput.Text),
-            StopInput = InputValue(StopInput.Text),
-            InterlockInput = InputValue(InterlockInput.Text),
-            ClampClosedFeedback = InputValue(ClosedFeedback.Text),
-            ClampOpenFeedback = InputValue(OpenFeedback.Text),
-            SettleDelayMs = delay
+            AutoClampEnabled = true,
+            UseClamp1 = true, UseClamp2 = true,
+            FirstClamp = 1,
+            Clamp1PressHigh = true, Clamp2PressHigh = true
         };
         var next = _draft with { Fixture = fixture, Revision = _draft.Revision + 1 };
         next.Validate();
@@ -195,7 +174,7 @@ public partial class ProductionPreparationWindow : Window
                 _autosave.Stop();
                 _autosave.Start();
             }
-            else Say("已自动保存设备设置。正式检测仍须完成实体输入和记录验收。");
+            else Say("已保存工位设备设置。");
             return !_dirty;
         }
         catch (Exception error) when (error is not OutOfMemoryException)

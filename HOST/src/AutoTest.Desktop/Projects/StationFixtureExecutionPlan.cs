@@ -38,40 +38,20 @@ public sealed class StationFixtureExecutionPlan
         _clamp2PressHigh = clamp2PressHigh;
     }
 
+    /// <summary>
+    /// This station has one fixed two-actuator fixture. Never ask an operator
+    /// to enable outputs or choose the order on every ECU project.
+    /// Main controller 0x18: logical 1=press, 0=release; the real external
+    /// pneumatic action still requires physical observation.
+    /// </summary>
     public static StationFixtureExecutionPlan From(ProductionFixtureConfiguration fixture)
     {
         ArgumentNullException.ThrowIfNull(fixture);
         fixture.Validate();
-        var order = new List<byte>(2);
-        if (!fixture.AutoClampEnabled)
-        {
-            return new(Array.Empty<StationClampAction>(),
-                Array.Empty<StationClampAction>(), 0,
-                fixture.MovementTimeoutMs, fixture.SettleDelayMs,
-                fixture.Clamp1PressHigh, fixture.Clamp2PressHigh);
-        }
-        if (!fixture.UseClamp1 && !fixture.UseClamp2)
-            throw new InvalidDataException(
-                "自动夹具已启用，但工位没有绑定实际控制输出；" +
-                "禁止在没有装夹动作的情况下开始 FLASH/TEST。");
-        if (fixture.UseClamp1 && fixture.UseClamp2)
-        {
-            // No silent default for two mechanical actuators: the order must
-            // have been explicitly authored in station configuration.
-            if (fixture.FirstClamp is not (1 or 2))
-                throw new InvalidDataException("双夹具必须明确配置压紧顺序。");
-            order.Add((byte)fixture.FirstClamp);
-            order.Add((byte)(3 - fixture.FirstClamp));
-        }
-        else if (fixture.UseClamp1) order.Add(1);
-        else if (fixture.UseClamp2) order.Add(2);
-        byte mask = (byte)((fixture.UseClamp1 ? 1 : 0) |
-                           (fixture.UseClamp2 ? 2 : 0));
         return new(
-            order.Select(x => new StationClampAction(x, true)).ToArray(),
-            order.AsEnumerable().Reverse()
-                .Select(x => new StationClampAction(x, false)).ToArray(),
-            mask, fixture.MovementTimeoutMs, fixture.SettleDelayMs,
-            fixture.Clamp1PressHigh, fixture.Clamp2PressHigh);
+            new[] { new StationClampAction(1, true), new StationClampAction(2, true) },
+            new[] { new StationClampAction(2, false), new StationClampAction(1, false) },
+            0x03, fixture.MovementTimeoutMs, fixture.SettleDelayMs,
+            clamp1PressHigh: true, clamp2PressHigh: true);
     }
 }

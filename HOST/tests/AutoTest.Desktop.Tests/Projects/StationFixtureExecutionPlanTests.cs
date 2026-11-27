@@ -6,135 +6,62 @@ namespace AutoTest.Desktop.Tests.Projects;
 public sealed class StationFixtureExecutionPlanTests
 {
     [Fact]
-    public void DisabledFixtureNeverEmitsAnyOutputCommands()
+    public void FixedStationAlwaysPressesBothInOrderAndReleasesInReverse()
     {
         var plan = StationFixtureExecutionPlan.From(ProductionFixtureConfiguration.Draft);
-        Assert.Empty(plan.Press);
-        Assert.Empty(plan.Release);
-        Assert.Equal((byte)0, plan.AllowedOutputMask);
-    }
-
-    [Theory]
-    [InlineData(true, false, 1, 1)]
-    [InlineData(false, true, 2, 2)]
-    public void SingleClampOperatesOnlyItsExplicitlySelectedOutput(
-        bool first, bool second, byte expected, byte mask)
-    {
-        var station = ProductionFixtureConfiguration.Draft with
-        {
-            UseClamp1 = first, UseClamp2 = second, AutoClampEnabled = true
-        };
-        var plan = StationFixtureExecutionPlan.From(station);
-        Assert.Equal(mask, plan.AllowedOutputMask);
-        Assert.Equal(new[] { new StationClampAction(expected, true) }, plan.Press);
-        Assert.Equal(new[] { new StationClampAction(expected, false) }, plan.Release);
-    }
-
-    [Theory]
-    [InlineData(1, 2)]
-    [InlineData(2, 1)]
-    public void DualClampUsesDeclaredOrderAndReleasesInReverse(
-        byte first, byte second)
-    {
-        var station = ProductionFixtureConfiguration.Draft with
-        {
-            UseClamp1 = true, UseClamp2 = true, AutoClampEnabled = true,
-            FirstClamp = first, MovementTimeoutMs = 6500
-        };
-        var plan = StationFixtureExecutionPlan.From(station);
         Assert.Equal((byte)3, plan.AllowedOutputMask);
         Assert.Equal(new[]
         {
-            new StationClampAction(first, true), new StationClampAction(second, true)
+            new StationClampAction(1, true), new StationClampAction(2, true)
         }, plan.Press);
         Assert.Equal(new[]
         {
-            new StationClampAction(second, false), new StationClampAction(first, false)
+            new StationClampAction(2, false), new StationClampAction(1, false)
         }, plan.Release);
-        Assert.Equal(6500, plan.MovementTimeoutMs);
     }
 
-    [Theory]
-    [InlineData(true, true, false)]
-    [InlineData(false, false, true)]
-    public void OneLogicalFixturePressReleaseRespectsElectricalPolarity(
-        bool pressHigh, bool expectedHighWhenPress, bool expectedHighWhenReleased)
+    [Fact]
+    public void HistoricalOptionalFlagsCannotSuppressActualFixture()
     {
-        var config = ProductionFixtureConfiguration.Draft with
+        var old = ProductionFixtureConfiguration.Draft with
         {
-            UseClamp1 = true, AutoClampEnabled = true, Clamp1PressHigh = pressHigh,
-            SettleDelayMs = 500
+            AutoClampEnabled = false, UseClamp1 = false, UseClamp2 = false,
+            FirstClamp = 0
         };
-        var plan = StationFixtureExecutionPlan.From(config);
-        Assert.Equal(expectedHighWhenPress, plan.OutputLevelHigh(plan.Press.Single()));
-        Assert.Equal(expectedHighWhenReleased, plan.OutputLevelHigh(plan.Release.Single()));
+        var plan = StationFixtureExecutionPlan.From(old);
+        Assert.Equal((byte)3, plan.AllowedOutputMask);
+        Assert.Equal(2, plan.Press.Count);
+    }
+
+    [Fact]
+    public void FixedHardwarePolarityIsLogicalPressHighForBoth()
+    {
+        var plan = StationFixtureExecutionPlan.From(
+            ProductionFixtureConfiguration.Draft with
+            {
+                Clamp1PressHigh = false, Clamp2PressHigh = false
+            });
+        Assert.All(plan.Press, x => Assert.True(plan.OutputLevelHigh(x)));
+        Assert.All(plan.Release, x => Assert.False(plan.OutputLevelHigh(x)));
+    }
+
+    [Fact]
+    public void TimeoutAndConfiguredSettlingRemainBounded()
+    {
+        var plan = StationFixtureExecutionPlan.From(
+            ProductionFixtureConfiguration.Draft with
+            {
+                MovementTimeoutMs = 6500, SettleDelayMs = 500
+            });
+        Assert.Equal(6500, plan.MovementTimeoutMs);
         Assert.Equal(500, plan.SettleDelayMs);
     }
 
     [Fact]
-    public void Output2PolarityIsIndependentOfOutput1()
+    public void InvalidTimeoutRemainsAnError()
     {
-        var plan = StationFixtureExecutionPlan.From(ProductionFixtureConfiguration.Draft with
-        {
-            UseClamp2 = true, AutoClampEnabled = true,
-            Clamp1PressHigh = true, Clamp2PressHigh = false
-        });
-        Assert.False(plan.OutputLevelHigh(plan.Press.Single()));
-        Assert.True(plan.OutputLevelHigh(plan.Release.Single()));
-    }
-
-    [Fact]
-    public void DisableAndReenableKeepsVerifiedPhysicalOutputRouting()
-    {
-        var installed = ProductionFixtureConfiguration.Draft with
-        {
-            UseClamp1 = false, UseClamp2 = true,
-            Clamp2PressHigh = false, AutoClampEnabled = false
-        };
-        var disabled = StationFixtureExecutionPlan.From(installed);
-        Assert.Empty(disabled.Press);
-        Assert.Equal((byte)0, disabled.AllowedOutputMask);
-        var restored = StationFixtureExecutionPlan.From(installed with
-        {
-            AutoClampEnabled = true
-        });
-        Assert.Single(restored.Press);
-        Assert.Equal((byte)2, restored.AllowedOutputMask);
-        Assert.False(restored.OutputLevelHigh(restored.Press[0]));
-    }
-
-    [Fact]
-    public void ExcessiveStabilizationDelayIsInvalidNotSilentlyClamped()
-    {
-        var config = ProductionFixtureConfiguration.Draft with
-        {
-            UseClamp1 = true, AutoClampEnabled = true, SettleDelayMs = 30001
-        };
-        Assert.Throws<System.IO.InvalidDataException>(
-            () => StationFixtureExecutionPlan.From(config));
-    }
-
-    [Fact]
-    public void AutoClampEnabledWithoutAnyOutputMustNotSilentlyRunUnclamped()
-    {
-        var invalid = ProductionFixtureConfiguration.Draft with
-        {
-            AutoClampEnabled = true,
-            UseClamp1 = false,
-            UseClamp2 = false
-        };
-        Assert.Throws<System.IO.InvalidDataException>(
-            () => StationFixtureExecutionPlan.From(invalid));
-    }
-
-    [Fact]
-    public void DualClampMustNotSilentlyChooseOrder()
-    {
-        var station = ProductionFixtureConfiguration.Draft with
-        {
-            UseClamp1 = true, UseClamp2 = true, AutoClampEnabled = true
-        };
-        Assert.Throws<System.IO.InvalidDataException>(
-            () => StationFixtureExecutionPlan.From(station));
+        Assert.Throws<System.IO.InvalidDataException>(() =>
+            StationFixtureExecutionPlan.From(
+                ProductionFixtureConfiguration.Draft with { MovementTimeoutMs = 1 }));
     }
 }
