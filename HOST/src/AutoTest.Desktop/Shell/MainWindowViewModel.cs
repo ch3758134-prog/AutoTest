@@ -426,13 +426,18 @@ public sealed partial class MainWindowViewModel : BindableBase
     private async Task OpenDefaultEngineeringDocumentAsync()
     {
         if (_workspace.Current is null) return;
-        if (TestProjectCount == 0)
+        if (TestProjectCount != 1)
         {
-            // Do not silently modify a preexisting empty engineering project.
-            // A new project is explicitly seeded in OpenNewProjectAsync.
+            // Legacy or damaged projects are repairable, never guessed from a
+            // second TEST project and never allowed to throw on window startup.
+            StatusMessage = TestProjectCount == 0
+                ? "工程没有正式 TEST 项目，请先建立测试程序。"
+                : "旧工程有多份 TEST 项目，必须先整理为唯一执行顺序。";
             ShowProjectConfiguration();
             return;
         }
+        try
+        {
         // Opening an ECU project means editing its TEST cases, not opening a
         // management editor for the invocation list or an empty project tree.
         var project = _workspace.Current.Definition.Assets.SingleOrDefault(a =>
@@ -461,6 +466,15 @@ public sealed partial class MainWindowViewModel : BindableBase
             new ResourceTreeNode(caseAsset.Name, "", caseAsset.RelativePath,
                 caseAsset.Kind, caseAsset, role: "Case"));
         await OpenSelectedResourceAsync();
+        }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            // A broken TEST definition should show an actionable engineering
+            // problem, not escape through startup's async void UI event.
+            StatusMessage = "测试工程无法直接打开用例：" + error.Message;
+            System.Diagnostics.Trace.TraceWarning("Default TEST editor failed: " + error);
+            ShowProjectConfiguration();
+        }
     }
 
     private async Task ReturnToTestAsync()
