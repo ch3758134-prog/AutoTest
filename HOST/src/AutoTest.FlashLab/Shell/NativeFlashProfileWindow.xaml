@@ -12,12 +12,10 @@
   </Grid.RowDefinitions>
   <StackPanel Grid.Row="0" Margin="0,0,0,14">
    <TextBlock Text="ECU 烧录配置" FontSize="22" FontWeight="SemiBold" Foreground="#20364A"/>
-   <TextBlock Text="工程内统一维护固件、安全文件和原生参数；无需再次导入 CanTool XML"
+   <TextBlock Text="选择 HEX，设置 ECU 通信与擦写参数。安全算法由软件固定提供。"
               FontSize="12" Foreground="#62798D" Margin="0,5,0,0"/>
-   <TextBlock Text="烧录方法：CanTool-HydEPB-v1（仅已验证 HydEPB）"
-               Foreground="#5D7184" FontSize="12" Margin="0,9,0,0"/>
-   <TextBlock Text="其他 ECU 的地址和安全算法需单独验证；工程名称、扫码编号不会自动改变烧录方法。"
-               Foreground="#9B5E16" FontSize="12" TextWrapping="Wrap" Margin="0,5,0,0"/>
+   <TextBlock Text="当前支持已验证的 HydEPB 烧录方法；其他型号必须先完成真实验证。"
+               Foreground="#8D621F" FontSize="12" Margin="0,6,0,0"/>
   </StackPanel>
   <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
                 HorizontalScrollBarVisibility="Disabled">
@@ -25,7 +23,7 @@
     <Border Padding="16" Background="White" CornerRadius="9"
             BorderBrush="#DFE7EF" BorderThickness="1" Margin="0,0,0,12">
      <StackPanel>
-      <TextBlock Text="一、固件 HEX" FontSize="15" FontWeight="SemiBold"
+      <TextBlock Text="固件 HEX" FontSize="15" FontWeight="SemiBold"
                  Foreground="#20364A" Margin="0,0,0,10"/>
       <DockPanel>
        <Button x:Name="FirmwareImportButton" DockPanel.Dock="Right" Content="选择 HEX" Click="ImportFirmware_Click"
@@ -34,7 +32,7 @@
         <TextBlock x:Name="FirmwareLabel" Text="尚未导入固件"
                    TextTrimming="CharacterEllipsis" Foreground="#325574"
                    ToolTip="{Binding Text,RelativeSource={RelativeSource Self}}"/>
-        <TextBlock Text="导入后复制到工程内部；更换固件后请检查实际烧录计划"
+        <TextBlock Text="保存到当前工程；更换后可直接校验烧录范围"
                    Foreground="#75889B" FontSize="11" Margin="0,5,0,0"/>
        </StackPanel>
       </DockPanel>
@@ -43,27 +41,9 @@
     <Border Padding="16" Background="White" CornerRadius="9"
             BorderBrush="#DFE7EF" BorderThickness="1" Margin="0,0,0,12">
      <StackPanel>
-      <TextBlock Text="二、安全文件" FontSize="15" FontWeight="SemiBold"
-                 Foreground="#20364A" Margin="0,0,0,10"/>
-      <DockPanel>
-       <Button x:Name="SecurityImportButton" DockPanel.Dock="Right" Content="选择安全 DLL" Click="ImportSecurity_Click"
-               Padding="14,8" Margin="12,0,0,0" MinWidth="110"/>
-       <StackPanel VerticalAlignment="Center">
-        <TextBlock x:Name="SecurityLabel" Text="尚未导入安全算法"
-                   TextTrimming="CharacterEllipsis" Foreground="#325574"
-                   ToolTip="{Binding Text,RelativeSource={RelativeSource Self}}"/>
-        <TextBlock Text="仅接受现有已校验的 SafetyFile；与本工程固件一同固定引用"
-                   Foreground="#75889B" FontSize="11" Margin="0,5,0,0"/>
-       </StackPanel>
-      </DockPanel>
-     </StackPanel>
-    </Border>
-    <Border Padding="16" Background="White" CornerRadius="9"
-            BorderBrush="#DFE7EF" BorderThickness="1" Margin="0,0,0,12">
-     <StackPanel>
-      <TextBlock Text="三、烧录参数" FontSize="15" FontWeight="SemiBold"
+      <TextBlock Text="烧录参数" FontSize="15" FontWeight="SemiBold"
                  Foreground="#20364A" Margin="0,0,0,4"/>
-      <TextBlock Text="严格对应先前提供的 Configuration(3).xml；已知 HydEPB 参数直接带入工程草稿"
+      <TextBlock Text="修改有效参数后自动保存"
                  Foreground="#65798C" FontSize="11" Margin="0,0,0,13"/>
       <TextBlock Text="诊断 CAN ID（十六进制）" FontWeight="SemiBold"
                  Foreground="#354E66" Margin="0,0,0,7"/>
@@ -85,8 +65,9 @@
         <TextBox x:Name="BootRxBox" Padding="8,6" Margin="0,5,0,0" TextChanged="EditorChanged"/>
        </StackPanel>
       </UniformGrid>
-      <TextBlock Text="原始参考字段（保留 XML 原义；当前不额外触发 UDS 操作）"
-                 FontWeight="SemiBold" Foreground="#354E66" Margin="0,2,0,7"/>
+      <Expander Header="参考字段（仅兼容原始参数）" IsExpanded="False"
+                Foreground="#637E94" Margin="0,2,0,10">
+        <StackPanel Margin="0,8,0,0">
       <UniformGrid Columns="4">
        <StackPanel Margin="0,0,10,12">
         <TextBlock Text="VersionID" FontSize="11" Foreground="#667B8F"/>
@@ -105,6 +86,8 @@
         <TextBox x:Name="AppFeatureBox" Padding="8,6" Margin="0,5,0,0" TextChanged="EditorChanged"/>
        </StackPanel>
       </UniformGrid>
+        </StackPanel>
+      </Expander>
       <TextBlock Text="FLASH 范围与 CAN 波特率" FontWeight="SemiBold"
                  Foreground="#354E66" Margin="0,0,0,7"/>
       <UniformGrid Columns="3">
@@ -135,7 +118,7 @@
                    Foreground="#765722" TextWrapping="Wrap" FontSize="12" Margin="0,5,0,0"/>
        </StackPanel>
       </Border>
-      <TextBlock Text="校验结果 · 实际待下载计划" FontWeight="SemiBold"
+      <TextBlock Text="烧录计划" FontWeight="SemiBold"
                  Foreground="#354E66" Margin="0,15,0,6"/>
       <TextBox x:Name="JobDetailsLabel" Text="尚未完成离线 Job 校验"
                Background="#F3F7FA" BorderBrush="#DCE6EF" IsReadOnly="True"

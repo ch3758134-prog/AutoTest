@@ -63,8 +63,8 @@ public static class ProductionProjectPackageService
         foreach (var item in project.Assets) paths.Add(item.RelativePath.Replace('\\', '/'));
         paths.Add(flash.Profile.FirmwareRelativePath
             ?? throw new InvalidDataException("缺少工程固件资源。"));
-        paths.Add(flash.Profile.SecurityRelativePath
-            ?? throw new InvalidDataException("缺少工程安全算法资源。"));
+        // SafetyFile is embedded in AutoTest itself, not another asset selected
+        // for each ECU project or included in the production engineering bundle.
 
         if (paths.Count > MaxEntries)
             throw new InvalidDataException("工程文件数量超过导入限制。");

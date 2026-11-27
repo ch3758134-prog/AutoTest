@@ -42,7 +42,6 @@ public partial class NativeFlashProfileWindow : Window
         }) input.IsEnabled = enabled;
         BaudBox.IsEnabled = enabled;
         FirmwareImportButton.IsEnabled = enabled;
-        SecurityImportButton.IsEnabled = enabled;
     }
 
     public NativeFlashProfileWindow(string projectRoot)
@@ -93,12 +92,11 @@ public partial class NativeFlashProfileWindow : Window
             DiagnosticsIdBox.Text = FormatOptional(_draft.ReferenceDiagnosticsCanId);
             BootFeatureBox.Text = _draft.ReferenceBootFeature ?? "";
             AppFeatureBox.Text = _draft.ReferenceAppFeature ?? "";
-            FirmwareLabel.Text = _draft.FirmwareRelativePath ?? "尚未导入固件";
-            SecurityLabel.Text = _draft.SecurityRelativePath ?? "尚未导入安全算法";
-            StatusLabel.Text = _saved is null
-                ? "新工程配置尚未保存；选择 HEX 与安全文件"
-                : "工程内已保存烧录参数 · 修订 " + _saved.Profile.Revision +
-                  "；还须配置 HEX 和安全文件。";
+            FirmwareLabel.Text = _draft.FirmwareDisplayName ??
+                (_draft.FirmwareRelativePath is null ? "尚未选择 HEX" : "已选择 HEX 固件");
+            StatusLabel.Text = _draft.FirmwareRelativePath is null
+                ? "请选择 HEX 固件；烧录参数会自动保存。"
+                : "烧录参数已就绪，可校验烧录计划。";
         }
         catch (Exception error) when (error is IOException or FormatException or InvalidDataException
                                      or UnauthorizedAccessException or NotSupportedException or JsonException)
@@ -181,13 +179,13 @@ public partial class NativeFlashProfileWindow : Window
             if (_saved is not null &&
                 Equals(next with { Revision = _saved.Profile.Revision }, _saved.Profile))
             {
-                StatusLabel.Text = "原生配置已保存 · 修订 " + _saved.Profile.Revision;
+                StatusLabel.Text = "已保存";
                 return true;
             }
             _saved = await NativeFlashProfileStore.SaveDraftAsync(_root,
                 next, _saved?.ProfileSha256);
             _draft = _saved.Profile;
-            StatusLabel.Text = "已自动保存原生配置 · 修订 " + _saved.Profile.Revision;
+            StatusLabel.Text = "已自动保存";
             return true;
         }
         catch (Exception error) when (error is IOException or InvalidDataException or
@@ -223,10 +221,11 @@ public partial class NativeFlashProfileWindow : Window
             _draft = next with
             {
                 FirmwareRelativePath = imported.RelativePath,
-                FirmwareSha256 = imported.Sha256
+                FirmwareSha256 = imported.Sha256,
+                FirmwareDisplayName = Path.GetFileName(dialog.FileName)
             };
-            FirmwareLabel.Text = imported.RelativePath;
-            JobDetailsLabel.Text = "固件已更换，原 Job 预览失效，请重新校验。";
+            FirmwareLabel.Text = Path.GetFileName(dialog.FileName);
+            JobDetailsLabel.Text = "HEX 已更新，可重新检查烧录范围。";
             _importBusy = false;
             if (!await SaveAsync())
                 StatusLabel.Text = "固件已经导入但配置尚未持久保存；请处理错误后再退出。";
@@ -241,49 +240,9 @@ public partial class NativeFlashProfileWindow : Window
         }
     }
 
-    private async void ImportSecurity_Click(object sender, RoutedEventArgs e)
-    {
-        if (_loadFailure || _importBusy || _closing) return;
-        var dialog = new OpenFileDialog
-        {
-            Title = "选择已审查 SafetyFile.dll",
-            Filter = "DLL|*.dll"
-        };
-        if (dialog.ShowDialog(this) != true) return;
-        _importBusy = true;
-        SetFieldsEditable(false);
-        try
-        {
-            var next = ReadFields();
-            var imported = await NativeFlashProfileStore.ImportSecurityAsync(
-                _root, dialog.FileName);
-            _draft = next with
-            {
-                SecurityRelativePath = imported.RelativePath,
-                SecuritySha256 = imported.Sha256
-            };
-            SecurityLabel.Text = imported.RelativePath;
-            JobDetailsLabel.Text = "安全文件已更换，原 Job 预览失效，请重新校验。";
-            _importBusy = false;
-            if (!await SaveAsync())
-                StatusLabel.Text = "安全文件已导入但配置尚未持久保存；请处理错误后再退出。";
-        }
-        catch (Exception error) when (error is IOException or FormatException or InvalidDataException
-                                      or NotSupportedException or UnauthorizedAccessException or JsonException)
-        { StatusLabel.Text = "安全文件导入失败：" + error.Message; }
-        finally
-        {
-            _importBusy = false;
-            SetFieldsEditable(!_loadFailure);
-        }
-    }
-
     private static string FormatFrozenJob(CanToolFlashJob job)
     {
         var text =
-            "编程任务 SHA256：" + job.Fingerprint + "\n" +
-            "固件 SHA256：" + job.FirmwareSha256 + "\n" +
-            "安全文件 SHA256：" + job.SecuritySha256 + "\n" +
             "Flash 范围：0x" + job.FlashStart.ToString("X8") + "～0x" +
                 job.FlashEndInclusive.ToString("X8") + "\n" +
             "计划下载：" + job.Blocks.Length + " 块 × " +
@@ -323,8 +282,8 @@ public partial class NativeFlashProfileWindow : Window
             var job = await Task.Run(() =>
                 NativeFlashJobBuilder.Freeze(source.Profile, _root));
             JobDetailsLabel.Text = FormatFrozenJob(job);
-            StatusLabel.Text = $"离线冻结成功：{job.Blocks.Length} 个块，" +
-                $"计划 {job.PlannedBytes:N0} 字节，任务 SHA {job.Fingerprint[..12]}…；没有发送任何 CAN。";
+            StatusLabel.Text = $"校验通过：{job.Blocks.Length} 个块，" +
+                $"计划 {job.PlannedBytes:N0} 字节；尚未向 ECU 发送指令。";
         }
         catch (Exception error) when (error is IOException or FormatException or InvalidDataException
                                       or NotSupportedException or UnauthorizedAccessException or

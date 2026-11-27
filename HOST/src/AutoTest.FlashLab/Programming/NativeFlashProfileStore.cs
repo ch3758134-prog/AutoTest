@@ -9,9 +9,9 @@ using AutoTest.FlashLab.Configuration;
 namespace AutoTest.FlashLab.Programming;
 
 /// <summary>
-/// One current native profile at a fixed project-relative location. The source
-/// XML is never required. Imported firmware and security DLLs are content-addressed
-/// local project resources, independent of the original external file location.
+/// One current native FLASH parameter set in the ECU engineering project.
+/// The source XML is not required; the user selects HEX, and AutoTest supplies
+/// the fixed verified SafetyFile from its embedded installation resource.
 /// </summary>
 public static class NativeFlashProfileStore
 {
@@ -196,16 +196,10 @@ public static class NativeFlashProfileStore
             "assets/flash/firmware", parsed.Sha256, ext, ct).ConfigureAwait(false);
     }
 
-    public static async Task<ImportedAsset> ImportSecurityAsync(string root,
-        string sourcePath, CancellationToken ct = default)
-    {
-        var inspected = CanToolSecurityProvider.Inspect(sourcePath);
-        if (inspected.Kind != CanToolSecurityKind.CanToolReferenceBuiltInLfsr)
-            throw new NotSupportedException(
-                "当前参考 HydEPB 工作流仅允许已核实 SHA 的原始 SafetyFile；未知 DLL 不可用于实体编程。");
-        return await ImportContentAddressedAsync(root, inspected.Path,
-            "assets/flash/security", inspected.Sha256, ".dll", ct).ConfigureAwait(false);
-    }
+    [Obsolete("The safety library is fixed in AutoTest; project import was retired.")]
+    public static Task<ImportedAsset> ImportSecurityAsync(string root,
+        string sourcePath, CancellationToken ct = default) =>
+        throw new NotSupportedException("安全文件由 AutoTest 固定提供，不允许更换。");
 
     private static async Task<ImportedAsset> ImportContentAddressedAsync(string root,
         string source, string folder, string sha, string extension, CancellationToken ct)
@@ -247,8 +241,7 @@ public static class NativeFlashJobBuilder
         profile.ValidateForFreeze();
         var firmware = CheckedPinnedFile(projectRoot, profile.FirmwareRelativePath!,
             profile.FirmwareSha256!, "固件");
-        var security = CheckedPinnedFile(projectRoot, profile.SecurityRelativePath!,
-            profile.SecuritySha256!, "安全算法");
+        var security = FixedSafetyFile.EnsureAvailable();
         // Calls the SAME proven F2 builder, but directly from strong typed
         // native parameters. No XML loading, generation or temp files.
         return CanToolFlashJob.Freeze(profile, firmware,

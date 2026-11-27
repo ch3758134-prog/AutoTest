@@ -112,11 +112,7 @@
        VerticalAlignment="Center" HorizontalAlignment="Center"/>
      </Border>
      <TextBlock Text="AutoTest" Margin="7,0,0,0" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
-     <TextBlock Text="{Binding RuntimeBuildLabel}" Margin="8,0,0,0"
-      FontSize="10" Foreground="#768A9B" VerticalAlignment="Center"
-      ToolTip="{Binding RuntimeBuildDetails}" />
-     <TextBlock Text="ECU 测试工作台" Margin="9,0,0,0" Foreground="#60758B"
-      FontSize="11" VerticalAlignment="Center"/>
+
     </StackPanel>
     <!-- Primary tasks. Production and engineering share the real station,
          scanner and TEST/FLASH execution services; RECORD is a direct task. -->

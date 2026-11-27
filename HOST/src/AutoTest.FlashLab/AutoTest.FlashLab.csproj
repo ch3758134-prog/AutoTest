@@ -14,4 +14,10 @@
     <ProjectReference Include="../AutoTest.Devices/AutoTest.Devices.csproj" />
     <ProjectReference Include="../AutoTest.Specialists/AutoTest.Specialists.csproj" />
   </ItemGroup>
+  <!-- The user-supplied, SHA-verified fixed SafetyFile is an internal application
+       resource, not a selectable per-project file or a separately deployed DLL. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Assets/SafetyFile.dll.gz"
+                      LogicalName="AutoTest.FlashLab.FixedSafetyFileGzip" />
+  </ItemGroup>
 </Project>

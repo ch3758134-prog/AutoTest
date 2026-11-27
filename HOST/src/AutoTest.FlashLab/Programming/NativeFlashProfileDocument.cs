@@ -36,6 +36,8 @@ public sealed record NativeFlashProfileDocument(
     string? ReferenceAppFeature = null)
     : IFlashParameterSource
 {
+    // Human-readable source filename. The stored firmware copy remains hashed.
+    public string? FirmwareDisplayName { get; init; }
     public const string VerifiedMethod = "CanTool-HydEPB-v1";
     public const int CurrentSchema = 1;
     public static NativeFlashProfileDocument CreateDraft(string ecuModelCode) =>
@@ -112,7 +114,8 @@ public sealed record NativeFlashProfileDocument(
         if ((FlashStart != 0 || FlashEndInclusive != 0) && FlashStart >= FlashEndInclusive)
             throw new FormatException("擦除地址区间无效。");
         ValidatePin(FirmwareRelativePath, FirmwareSha256, "固件");
-        ValidatePin(SecurityRelativePath, SecuritySha256, "安全算法");
+        // Security is supplied by the AutoTest runtime, never per project.
+        // Historical JSON fields are ignored rather than requested again.
         // Non-executable provenance fields from the user's original CanTool
         // XML must be retained faithfully without treating them as new services.
         if (ReferenceVersionCanId is > 0x1FFFFFFF ||
@@ -148,9 +151,8 @@ public sealed record NativeFlashProfileDocument(
         CheckEndpoint(BootRequestCanId, BootResponseCanId, "Boot");
         if (FlashStart >= FlashEndInclusive)
             throw new FormatException("请配置真实 ECU 擦除范围。");
-        if (string.IsNullOrWhiteSpace(FirmwareRelativePath) ||
-            string.IsNullOrWhiteSpace(SecurityRelativePath))
-            throw new FormatException("当前型号必须选择受控固件与受审安全算法。");
+        if (string.IsNullOrWhiteSpace(FirmwareRelativePath))
+            throw new FormatException("请选择当前 ECU 的 HEX 固件。");
 
         // The physical reference was verified for ONE ECU model only.
         // A new model code with copied CAN IDs and Flash addresses is NOT
