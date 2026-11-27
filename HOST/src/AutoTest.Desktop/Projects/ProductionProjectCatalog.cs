@@ -143,6 +143,26 @@ public sealed class ProductionProjectCatalog
             cmd.Parameters.AddWithValue("$manifest", installed.ManifestPath);
             cmd.Parameters.AddWithValue("$at", installed.InstalledAtUtc.ToString("O"));
             await cmd.ExecuteNonQueryAsync(ct);
+            // The model marker belongs to the ECU project, not a new
+            // production recipe. Importing a newer version updates the
+            // station's one marker-to-project route automatically.
+            var model = (await ProjectRepository.OpenDefinitionAsync(
+                installed.ManifestPath, ct)).EcuModelCode;
+            if (!string.IsNullOrWhiteSpace(model))
+            {
+                var marker = FixedMarkerBarcode.NormalizeMarker(model);
+                using var route = db.CreateCommand();
+                route.CommandText = """
+                    INSERT INTO marker_routes(marker,package_sha,revision)
+                    VALUES($marker,$sha,1)
+                    ON CONFLICT(marker) DO UPDATE SET
+                        package_sha=excluded.package_sha,
+                        revision=marker_routes.revision+1
+                    """;
+                route.Parameters.AddWithValue("$marker", marker);
+                route.Parameters.AddWithValue("$sha", installed.PackageSha256);
+                await route.ExecuteNonQueryAsync(ct);
+            }
             return installed;
         }
         finally { _writeGate.Release(); }

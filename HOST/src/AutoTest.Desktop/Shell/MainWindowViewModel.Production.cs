@@ -207,73 +207,35 @@ public sealed partial class MainWindowViewModel
             throw new InvalidDataException("已安装工程版本与工程库记录不一致。");
         var context = new OpenProjectContext(project, path,
             Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)));
-        var native = await NativeFlashPublicationStore.LoadPublishedAsync(
-            context.RootDirectory)
-            ?? throw new InvalidDataException("检测工程缺少有效烧录配置。");
-        _ = NativeFlashPublicationStore.FreezePublished(context.RootDirectory, native);
-        // A failed CAN reconfiguration must never activate another TEST/FLASH
-        // deployment. The library snapshot is already immutable and verified.
+        var native = await NativeFlashProfileStore.LoadAsync(context.RootDirectory)
+            ?? throw new InvalidDataException("检测工程缺少原生 FLASH 参数。");
+        _ = NativeFlashJobBuilder.Freeze(native.Profile, context.RootDirectory);
         if (_hardware.IsConnected)
         {
             _hardware.SelectRequestedEcuCanBitrate(native.Profile.EcuCanKbps);
             var confirmed = await _hardware.ApplyRequestedEcuCanBitrateAsync();
             if (confirmed != native.Profile.EcuCanKbps)
-                throw new IOException("主控 CAN 波特率未确认，请检查连接后重新扫码。");
+                throw new IOException("主控 ECU CAN 波特率未确认，请检查连接。");
         }
-
-        StationDeploymentStore.Verified? previous = null;
-        try { previous = await StationDeploymentStore.RestoreAsync(); }
-        catch (Exception oldError) when (oldError is IOException or InvalidDataException or
-            UnauthorizedAccessException or AutoTest.Projects.Project.ProjectDataException)
-        {
-            // A removed development directory must not prevent loading a
-            // separately verified installed package. It is not a valid
-            // rollback target, and will never be used to authorize execution.
-            System.Diagnostics.Trace.TraceWarning(
-                "Previous production selection unavailable: " + oldError);
-        }
-        var unchanged = previous is not null &&
-            previous.Project.Definition.Id == context.Definition.Id &&
-            string.Equals(previous.Project.ManifestSha256, context.ManifestSha256,
-                StringComparison.OrdinalIgnoreCase);
-        if (unchanged && _automaticTestPlans.Current is { } plan &&
-            string.Equals(plan.Project.ManifestPath, context.ManifestPath,
-                StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(plan.Project.ManifestSha256, context.ManifestSha256,
-                StringComparison.OrdinalIgnoreCase))
-            return true;
-
+        var previousPlan = _automaticTestPlans.Current?.Project;
+        var previousProject = _workspace.Current;
         try
         {
-            if (!unchanged)
-                await StationDeploymentStore.DeployAsync(context);
             await _automaticTestPlans.RestoreAsync(context,
-                requireProductionDeployment: true);
-            // All real TEST, DBC, WAVE and CAN services share this single
-            // active project context; a scan selects that very project.
-            await _workspace.OpenAsync(context.ManifestPath);
+                requireProductionDeployment: false);
             if (_automaticTestPlans.Current is null)
                 throw new InvalidDataException(_automaticTestPlans.Issue);
+            // Scanner routing selects one active project context for DBC,
+            // wave and actual TEST; no secondary deployed recipe is installed.
+            await _workspace.OpenAsync(context.ManifestPath);
         }
         catch
         {
-            // A package install/plan error is NOT permission to leave a
-            // half-selected candidate. Restore the previous checked package.
-            if (previous is not null && !unchanged)
-            {
-                try
-                {
-                    await StationDeploymentStore.DeployAsync(previous.Project);
-                    await _automaticTestPlans.RestoreAsync(previous.Project,
-                        requireProductionDeployment: true);
-                }
-                catch (Exception restoreError) when (restoreError is not OutOfMemoryException)
-                {
-                    StatusMessage = "工程切换失败，原工程也无法安全恢复：" +
-                        restoreError.Message + "。请停止工位操作并检查工程库。";
-                    throw new InvalidDataException(StatusMessage, restoreError);
-                }
-            }
+            if (previousPlan is not null)
+                await _automaticTestPlans.RestoreAsync(previousPlan,
+                    requireProductionDeployment: false);
+            if (previousProject is not null)
+                await _workspace.OpenAsync(previousProject.ManifestPath);
             throw;
         }
         StatusMessage = "已选择检测工程：" + project.Name +
@@ -316,21 +278,11 @@ public sealed partial class MainWindowViewModel
             var draft = await NativeFlashProfileStore.LoadAsync(project.RootDirectory)
                 ?? throw new InvalidDataException("该 ECU 工程尚未保存原生烧录工艺。");
             _ = NativeFlashJobBuilder.Freeze(draft.Profile, project.RootDirectory);
-            // "更新生产工程" is the explicit operator choice. The operation
-            // only installs verified project content; it performs no physical
-            // clamp, CAN or FLASH action. Real production retains all gates.
-            // Publish the exact observed draft, then bind the station to the
-            // verified manifest + ordered TEST + firmware/seed/key fingerprints.
-            // On failure the former station pin cannot silently accept a new
-            // release: StationDeploymentStore.VerifyAsync will reject it.
-            await NativeFlashPublicationStore.PublishAsync(
-                project.RootDirectory, draft.ProfileSha256);
-            // Install a verified, immutable local production package. This is
-            // internal packaging, not a manual user export/import round trip.
-            // One exact barcode marker still needs a station-owned binding.
+            // Saved resources are already the authored engineering project.
+            // Copy their exact files into the station library, with no second
+            // publication/approval model; physical actions happen only on START.
             var installed = await _productionCatalog.InstallEngineeringProjectAsync(
                 project.ManifestPath);
-            var deployed = await StationDeploymentStore.DeployAsync(project);
             StatusMessage = "工程已准备就绪：" + installed.ProjectName + "。";
             await RefreshEngineeringSetupAsync();
             if (!singleApply)
