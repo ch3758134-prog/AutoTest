@@ -272,7 +272,7 @@ public sealed class StepDescriptorCatalog
         // engineering debug and production; no second execution capability.
         Node("Write", StepExecutionCapability.Hardware, StepEditorKind.CanFrame,
             null, P("target", "操作对象", StepParameterKind.Mapping, ""),
-            P("value", "动作或报文数据", StepParameterKind.Expression, "Pulse"),
+            P("value", "动作或报文数据", StepParameterKind.Expression, "Hold:0x00000:1000"),
             P("periodMs", "CAN 周期（ms）", StepParameterKind.Integer, "0",
                 required: false, min: 0, max: 600000),
             P("durationMs", "周期持续时间（ms）", StepParameterKind.Integer, "0",
@@ -324,7 +324,7 @@ public sealed class StepDescriptorCatalog
         Action("key", "Write", "CAN 与工位", "按键动作",
             "选择 20 Key 组合并设置保持；保持时间结束后最后组合继续保持。",
             "button", "target", StepEditorKind.KeyAction, true, false,
-            ("value", "Pulse"));
+            ("value", "Hold:0x00000:1000"));
         Action("ign", "Write", "CAN 与工位", "切换 IGN",
             "切换固定工位 IGN 输出状态。",
             "ign", "target", StepEditorKind.Ignition, true, false,

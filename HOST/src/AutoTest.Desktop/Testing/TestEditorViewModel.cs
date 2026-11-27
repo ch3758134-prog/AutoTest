@@ -280,7 +280,7 @@ public sealed class TestEditorViewModel : BindableBase
     }
     private static string OperatorExecutionStatus(RealStepStatus status) => status switch
     {
-        RealStepStatus.Completed => "已执行",
+        RealStepStatus.Completed => "执行成功",
         RealStepStatus.Skipped => "已跳过",
         RealStepStatus.ConditionFalse => "条件不成立",
         RealStepStatus.NoData => "未收到数据",
@@ -292,12 +292,14 @@ public sealed class TestEditorViewModel : BindableBase
     };
 
     private static string OperatorExecutionStatus(RealStepFact fact) =>
-        fact.Type != "WaveCompare" ? OperatorExecutionStatus(fact.Status) :
-        fact.Status switch
+        fact.Type switch
         {
-            RealStepStatus.Completed => "波形通过",
-            RealStepStatus.ConditionFalse => "波形失败",
-            RealStepStatus.NoData or RealStepStatus.InvalidData => "波形无法判定",
+            "AssertSignal" or "Expect" or "WaitUntil" or "WaveCompare" when
+                fact.Status == RealStepStatus.Completed => "判定通过",
+            "AssertSignal" or "Expect" or "WaitUntil" or "WaveCompare" when
+                fact.Status == RealStepStatus.ConditionFalse => "判定失败",
+            "WaveCompare" when fact.Status is RealStepStatus.NoData or RealStepStatus.InvalidData
+                => "波形无法判定",
             _ => OperatorExecutionStatus(fact.Status)
         };
 

@@ -32,18 +32,14 @@ public sealed class StepRowProjection : BindableBase
         "Write" when _draftActionKey == "key" => "⌁",
         "Write" when _targetKind == TestTargetKind.Ignition => "◈",
         "Write" when _targetKind is TestTargetKind.Button or TestTargetKind.RawKey => "⌁",
-        "Write" or "CanSend" => "⇄",
+        "Write" => "⇄",
         "Read" => "↧",
-        "WaitUntil" or "CanWait" or "Wait" or "When" => "◷",
-        "UdsRequest" => "◇",
-        "Flash" => "⇧",
-        "WaveStart" or "WaveCapture" => "〰",
+        "WaitUntil" or "Wait" => "◷",
+        "WaveStart" => "〰",
         "WaveStop" or "WaveAnalyze" or "WaveCompare" => "≋",
         "If" or "Switch" or "Case" => "⑂",
         "Loop" => "⟳",
-        "TryCatch" => "⚑",
-        "Subroutine" or "CallSubroutine" => "↳",
-        "SetVariable" or "Calculate" => "𝑥",
+        "        "SetVariable" or "Calculate" => "𝑥",
         "Expect" => "✓",
         _ => Item.Icon
     };
@@ -54,12 +50,10 @@ public sealed class StepRowProjection : BindableBase
         "Write" when _draftActionKey is "ign" or "key" => "Hardware",
         "Write" when _targetKind is TestTargetKind.Ignition or
             TestTargetKind.Button or TestTargetKind.RawKey => "Hardware",
-        "Write" or "CanSend" or "CanWait" or "CanStopPeriodic" or "Read" or "WaitUntil" or "AssertSignal" => "Can",
-        "Flash" => "Flash",
-        "UdsRequest" => "Uds",
-        "WaveStart" or "WaveStop" or "WaveAnalyze" or "WaveCapture" or "WaveCompare" => "Wave",
-        "If" or "Switch" or "Case" or "When" or "Loop" or "TryCatch" or "Sequence" or
-            "Subroutine" or "CallSubroutine" => "Flow",
+        "Write" when _targetKind is TestTargetKind.RawKey or TestTargetKind.Button or TestTargetKind.Ignition => "Hardware",
+        "Write" or "Read" or "WaitUntil" or "AssertSignal" or "CanStopPeriodic" => "Can",
+        "WaveStart" or "WaveStop" or "WaveAnalyze" or "WaveCompare" => "Wave",
+        "If" or "Switch" or "Case" or "Loop" or "Sequence" => "Flow",
         _ => "Neutral"
     };
     public bool IsSearchMatch { get; }
@@ -117,22 +111,12 @@ public sealed class StepRowProjection : BindableBase
     public string CanFrameLine { get; } = "";
     public string CanDataLine { get; } = "";
     public string ResourceDisplay { get; }
-    public string TypeLabel => Item.Step?.Type switch
-    {
-        "Write" when _targetKind == TestTargetKind.RawKey || _targetKind == TestTargetKind.Button || _draftActionKey == "key" => "按键",
-        "Write" when _targetKind == TestTargetKind.Ignition || _draftActionKey == "ign" => "IGN",
-        "Write" or "CanSend" => "CAN 发送",
-        "AssertSignal" => "信号判定",
-        "Read" => "信号读取",
-        "WaitUntil" => "信号等待",
-        "Flash" => "烧录",
-        "UdsRequest" => "UDS",
-        _ => Kind
-    };
+    public string TypeLabel => Item.Step is { } node
+        ? StepUiCatalog.Label(node, _mappings) : "";
     public string StateTone => State switch
     {
-        "已执行" => "Done",
-        "超时" or "数据无效" or "设备错误" or "无数据" or "步骤类型不支持" or "未知类型" => "Error",
+        "判定通过" => "Done",
+        "超时" or "数据无效" or "设备错误" or "无数据" or "判定失败" or "步骤类型不支持" or "未知类型" => "Error",
         "待完善" or "暂不能运行" or "结果待核查" => "Warning",
         "已关闭" or "已跳过" or "条件不成立" or "已取消" => "Muted",
         _ => "Idle"
@@ -167,7 +151,7 @@ public sealed class StepRowProjection : BindableBase
         // Match the same fields as TestEditorViewModel.MatchesSearch so the
         // count, Enter navigation and yellow row highlight cannot disagree.
         IsSearchMatch = !string.IsNullOrWhiteSpace(search) && step is not null &&
-            (step.Name + " " + StepUiCatalog.Label(step, _mappings) + " "
+            (step.Name + " " + StepUiCatalog.Label(step, _mappings) + " " +
              string.Join(" ", step.Properties
                  .Where(x => StepUiCatalog.IsOperatorProperty(x.Key))
                  .Select(x => StepUiCatalog.PropertyLabel(x.Key) + " " + x.Value)))
@@ -190,16 +174,10 @@ public sealed class StepRowProjection : BindableBase
             "If" => "IF " + Prop("variable") + " " +
                 (Prop("operator").Length == 0 ? "==" : Prop("operator")) +
                 " " + Prop("equals"),
-            "When" => "等待条件 " + Prop("variable") + " = " + Prop("equals") +
-                " · 超时 " + Prop("timeoutMs") + " ms",
-            "Switch" => "按变量 " + Prop("variable") + " 分派",
+                        "Switch" => "按变量 " + Prop("variable") + " 分派",
             "Case" => "匹配值 " + Prop("equals"),
             "Write" => HumanWriteSummary(Prop("target"), Prop("value"), _targetKind),
-            "CanSend" => "待转换的 CAN 发送 · " +
-                (Prop("dbcMessage").Length > 0 ? Prop("dbcMessage") : step.Name),
-            "CanWait" => "待转换的 CAN 等待 · " +
-                (Prop("dbcMessage").Length > 0 ? Prop("dbcMessage") : step.Name),
-            "Read" => "读取 " + displayTarget + " → " + Prop("variable") +
+                        "Read" => "读取 " + displayTarget + " → " + Prop("variable") +
                 " · " + (Prop("mode") == "Latest" ? "最新有效值" : "等待新数据"),
             "WaitUntil" => "信号 " + displayTarget + " · 超时 " + Prop("timeoutMs") + " ms",
             "CanStopPeriodic" => "停止本次测试的全部 ECU CAN 周期发送",
@@ -210,18 +188,13 @@ public sealed class StepRowProjection : BindableBase
             "SetVariable" => Prop("variable") + " = " + Prop("value"),
             "Calculate" => "计算 " + Prop("variable") + " = " + Prop("left") +
                 " " + Prop("operator") + " " + Prop("right"),
-            "UdsRequest" => "UDS 服务 " + Prop("service") + "（执行待授权）",
-            "WaveStart" or "WaveCapture" => "采集 " + Prop("captureKey") +
+            "WaveStart" => "采集 " + Prop("captureKey") +
                 " · " + Prop("durationMs") + " ms",
             "WaveStop" => "停止采集 " + Prop("captureKey"),
             "WaveAnalyze" or "WaveCompare" => "参考 " + (Prop("reference").Length > 0
                 ? Prop("reference") : "未选择") + " · 波形判定",
-            "Flash" => "烧录配置 " + Prop("programmingProfile") + "（禁止自动执行）",
-            "TryCatch" => "TRY / CATCH / FINALLY",
-            "Subroutine" => "子程序 " + step.Name,
-            "CallSubroutine" => "调用 " + Prop("target"),
-            "Sequence" => "按顺序执行子步骤",
-            _ => StepUiCatalog.Label(step.Type) + " · 打开属性查看参数"
+                        "Sequence" => "按顺序执行子步骤",
+            _ => StepUiCatalog.Label(step, _mappings) + " · 打开属性查看参数"
         };
         if (step.Type == "If" &&
             (!step.Slots.TryGetValue("then", out var thenArm) ||
@@ -299,13 +272,13 @@ public sealed class StepRowProjection : BindableBase
              !thenSteps.Any(StepExecutionPolicy.IsEnabled)) &&
             (!step.Slots.TryGetValue("else", out var elseSteps) ||
              !elseSteps.Any(StepExecutionPolicy.IsEnabled)) ? "待完善" :
-            step.Type is "KeySet" or "CanSend" or "CanWait" && realFact is null
-                ? "步骤类型不支持" :
             realFact is not null ? realFact.Status switch
             {
-                RealStepStatus.Completed => "已执行",
+                RealStepStatus.Completed => step.Type is "AssertSignal" or "Expect" or "WaveCompare" or "WaitUntil"
+                    ? "判定通过" : "执行成功",
                 RealStepStatus.Skipped => "已跳过",
-                RealStepStatus.ConditionFalse => "条件不成立",
+                RealStepStatus.ConditionFalse => step.Type is "AssertSignal" or "Expect" or "WaveCompare" or "WaitUntil"
+                    ? "判定失败" : "条件不成立",
                 RealStepStatus.NoData => "无数据",
                 RealStepStatus.Timeout => "超时",
                 RealStepStatus.InvalidData => "数据无效",
@@ -313,9 +286,8 @@ public sealed class StepRowProjection : BindableBase
                 RealStepStatus.Cancelled => "已取消",
                 _ => "结果待核查"
             } : descriptor is null ? "未知类型" :
-            descriptor.ExecutableV1 || step.Type is "Write" or "Read" or "WaitUntil" or "AssertSignal" or "CanStopPeriodic" or
-                "Calculate" or "Expect" or "WaveStart" or "WaveStop" or "WaveAnalyze"
-                ? "未执行" : "暂不能运行";
+            descriptor.Execution == StepExecutionCapability.Unsupported
+                ? "暂不能运行" : "未执行";
     }
 
     private static string HumanWriteSummary(string target, string value, TestTargetKind? kind)

@@ -34,7 +34,7 @@ public sealed class StepActionCatalogContractTests
 
         Assert.Equal("HEX:0000000000000000", can.Properties["value"]);
         Assert.Equal("0", can.Properties["periodMs"]);
-        Assert.Equal("Pulse", key.Properties["value"]);
+        Assert.Equal("Hold:0x00000:1000", key.Properties["value"]);
         Assert.Equal("ON", ign.Properties["value"]);
         Assert.Equal("target", catalog.FindAction("can")!.TargetProperty);
     }
