@@ -80,7 +80,7 @@ public sealed partial class ProjectWorkspaceService
                     next.ManifestPath, asset.Id, updated.Revision, asset.Name, path, updated.Sha256, reread));
             }, ct);
             Current = result.Context;
-            CurrentChanged?.Invoke(this, EventArgs.Empty);
+            NotifyCurrentChanged();
             return result.Session;
         }
         finally { _writeLock.Release(); }

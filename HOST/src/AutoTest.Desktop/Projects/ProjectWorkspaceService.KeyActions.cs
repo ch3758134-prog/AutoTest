@@ -105,7 +105,7 @@ public sealed partial class ProjectWorkspaceService
                 Current = new OpenProjectContext(verified, current.ManifestPath, hash);
                 var session = new KeyActionCatalogSession(verified.Id, current.ManifestPath,
                     asset.Id, nextAsset.Revision, newSha, reloaded);
-                CurrentChanged?.Invoke(this, EventArgs.Empty);
+                NotifyCurrentChanged();
                 return session;
             }
             catch

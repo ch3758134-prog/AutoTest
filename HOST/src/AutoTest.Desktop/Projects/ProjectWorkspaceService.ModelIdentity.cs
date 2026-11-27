@@ -33,7 +33,7 @@ public sealed partial class ProjectWorkspaceService
             var verified = await ProjectRepository.OpenDefinitionAsync(current.ManifestPath, ct);
             var hash = await HashFileAsync(current.ManifestPath, ct);
             Current = new OpenProjectContext(verified, current.ManifestPath, hash);
-            CurrentChanged?.Invoke(this, EventArgs.Empty);
+            NotifyCurrentChanged();
         }
         finally { _writeLock.Release(); }
     }
@@ -59,7 +59,7 @@ public sealed partial class ProjectWorkspaceService
                 ;
             var hash = await HashFileAsync(current.ManifestPath, ct);
             Current = new OpenProjectContext(verified, current.ManifestPath, hash);
-            CurrentChanged?.Invoke(this, EventArgs.Empty);
+            NotifyCurrentChanged();
         }
         finally { _writeLock.Release(); }
     }
