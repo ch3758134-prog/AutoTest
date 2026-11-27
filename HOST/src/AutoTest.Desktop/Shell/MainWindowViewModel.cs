@@ -988,12 +988,12 @@ public sealed partial class MainWindowViewModel : BindableBase
             editor.RedoCommand.CanExecute()) editor.RedoCommand.Execute();
         else StatusMessage = "此编辑页当前没有可重做的步骤操作。";
     }
-    private void CheckActive()
+    private async void CheckActive()
     {
         switch (ActiveEditorTab?.Editor)
         {
             case TestProjectWorkbenchViewModel project:
-                project.PreflightSelectedCommand.Execute(); break;
+                await project.CheckDefinitionAsync(); break;
             case TestEditorViewModel editor:
                 editor.PreflightCommand.Execute(); break;
             default: StatusMessage = "请先打开测试项目或用例，再检查真实工程资源与 TEST 结构。"; break;

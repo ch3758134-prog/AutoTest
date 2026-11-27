@@ -29,9 +29,6 @@ public static class TestTargetCatalog
         bool includeAllDbcSignals = false)
     {
         var context = workspace.Current ?? throw new InvalidOperationException("工程未打开。");
-        var activeTcfId = workspace.SelectedTestConfiguration;
-        var activeTcf = includeAllDbcSignals ? null :
-            await workspace.ReadSelectedTestConfigurationAsync(ct);
         return await Task.Run(async () =>
         {
             var choices = new List<MappingChoice>
@@ -46,13 +43,6 @@ public static class TestTargetCatalog
                     ProjectWorkspaceService.WaveSettingsKind)) continue;
                 if (includeAllDbcSignals && asset.Kind != ProjectWorkspaceService.DbcKind)
                     continue;
-                if (activeTcf is not null)
-                {
-                    if (asset.Kind == ProjectWorkspaceService.DbcKind &&
-                        activeTcf.DbcAssetId != asset.Id.Value) continue;
-                    if (asset.Kind == ProjectWorkspaceService.ControllerKind &&
-                        activeTcf.ButtonAssetId != asset.Id.Value) continue;
-                }
                 ct.ThrowIfCancellationRequested();
                 var path = ProjectPathPolicy.Normalize(context.RootDirectory, asset.RelativePath);
                 var bytes = await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false);
@@ -129,9 +119,9 @@ public static class TestTargetCatalog
                 }
             }
             if (workspace.Current?.ManifestPath != context.ManifestPath ||
-                (!includeAllDbcSignals && workspace.SelectedTestConfiguration != activeTcfId))
+                workspace.Current.ManifestSha256 != context.ManifestSha256)
                 throw new ProjectDataException("PROJECT_CHANGED",
-                    "工程或当前 TCF 在选择测试对象期间发生变化。");
+                    "加载测试对象期间 ECU 工程或资源修订发生变化。");
             return (IReadOnlyList<MappingChoice>)choices;
         }, ct);
     }

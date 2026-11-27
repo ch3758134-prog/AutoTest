@@ -207,6 +207,56 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     public DelegateCommand ClearSelectionCommand { get; }
     public DelegateCommand RunSelectedCommand { get; }
     public DelegateCommand StopSelectedCommand { get; }
+
+    /// <summary>
+    /// Checks the edited canonical TEST project and the resources actually
+    /// referenced by its cases. No scanner, USB grant, FLASH or hardware
+    /// actuation is required for an authoring check.
+    /// </summary>
+    public async Task CheckDefinitionAsync()
+    {
+        if (IsBusy) return;
+        IsBusy = true;
+        try
+        {
+            var definition = Compose();
+            definition.Validate();
+            var context = _workspace.Current ??
+                throw new InvalidOperationException("请先打开 ECU 工程。");
+            var inherited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var entry in definition.Packages)
+            {
+                var asset = context.Definition.Assets.FirstOrDefault(a =>
+                    a.Id.Value == entry.PackageAssetId &&
+                    a.Kind == ProjectWorkspaceService.TestProgramKind);
+                if (asset is null)
+                    throw new InvalidDataException("TEST 用例资源不存在：" + entry.DisplayName);
+                var opened = await _workspace.OpenTestEditorAsync(asset.Id);
+                var plan = _realTest is null
+                    ? new PlanCompiler().Prepare(opened.Document,
+                        allowRealOperations: true, inheritedVariables: inherited)
+                    : _realTest.Prepare(opened.Document, inherited);
+                if (!plan.Diagnostics.IsEmpty)
+                    throw new InvalidDataException(entry.DisplayName + "：" +
+                        string.Join("；", plan.Diagnostics));
+                foreach (var map in TestRunStepScope.RequiredMappings(opened.Document))
+                    await AutomaticTestResourceContract.ValidateMappingAsync(
+                        context, map, CancellationToken.None);
+                inherited.UnionWith(TestVariableFlowValidator.GuaranteedAfter(
+                    opened.Document, inherited));
+            }
+            if (!ReferenceEquals(context, _workspace.Current))
+                throw new IOException("检查期间工程已发生变化，请重试。");
+            StatusMessage = "TEST 项目定义及 " + definition.Packages.Count +
+                " 个有序用例检查完成；未启动设备或运行测试。";
+        }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            StatusMessage = "TEST 项目需要修改：" + error.Message;
+        }
+        finally { IsBusy = false; }
+    }
+
     public int SelectedCount => Packages.Count(x => x.RunSelected);
     public int TotalCount => Packages.Count;
     public string SelectionSummary => SelectedCount + " / " + TotalCount + " 个用例（本次实际运行范围）";
@@ -333,6 +383,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
             var fixedManifest = context.ManifestSha256;
             var fixedEpoch = _hardware.CurrentStationEpoch;
             var prepared = new List<FrozenSelectedCase>();
+            var inherited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var row in selected)
             {
                 var asset = context.Definition.Assets.FirstOrDefault(a =>
@@ -343,7 +394,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
                 if (opened.AssetRevision != asset.Revision ||
                     !string.Equals(opened.FileHash, asset.Sha256, StringComparison.OrdinalIgnoreCase))
                     throw new IOException("准备时 TEST 用例“" + row.Name + "”被外部修改。");
-                var plan = _realTest.Prepare(opened.Document);
+                var plan = _realTest.Prepare(opened.Document, inherited);
                 if (!plan.Diagnostics.IsEmpty)
                     throw new InvalidDataException(row.Name + " 步骤预检：" +
                         string.Join("; ", plan.Diagnostics));
@@ -355,6 +406,8 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
 
                 prepared.Add(new FrozenSelectedCase(row.ToEntry(), runDocument,
                     plan.Fingerprint, asset.Revision, asset.Sha256));
+                inherited.UnionWith(TestVariableFlowValidator.GuaranteedAfter(
+                    runDocument, inherited));
             }
             if (!ReferenceEquals(context, _workspace.Current) ||
                 context.ManifestSha256 != fixedManifest ||
@@ -435,6 +488,8 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
             shared = await _realTest.OpenProjectSessionAsync(
                 ordered, Guid.NewGuid(), _frozenDut, token,
                 allowOrderedSubset: true);
+            var activeProjectRun = shared ??
+                throw new IOException("TEST 项目运行会话未能创建。");
             BatchResults.Add("同一 TEST 会话执行选中用例，CAN 周期发送保持至显式停止或结束。");
 
             foreach (var item in batch)
@@ -467,7 +522,7 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
                 RealRunResult result;
                 try
                 {
-                    result = await shared.ExecuteCaseAsync(item.Document, token);
+                    result = await activeProjectRun.ExecuteCaseAsync(item.Document, token);
                 }
                 finally { _realTest.StepReported -= OnStep; }
                 BatchResults.Add(index + ". " + item.Entry.DisplayName + " · " +

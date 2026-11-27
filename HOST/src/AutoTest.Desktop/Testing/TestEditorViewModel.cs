@@ -43,7 +43,6 @@ public sealed class TestEditorViewModel : BindableBase
     private string _runSummary = "尚未执行";
     private readonly StepDescriptorCatalog _catalog = StepDescriptorCatalog.Builtins();
     private OpenProjectContext? _choiceContext;
-    private AssetId? _choiceTcf;
     private IReadOnlyList<MappingChoice>? _choiceCache;
     private Task<IReadOnlyList<MappingChoice>>? _choiceLoading;
 
@@ -863,11 +862,9 @@ public sealed class TestEditorViewModel : BindableBase
     private async Task<IReadOnlyList<MappingChoice>> AvailableObjectsAsync()
     {
         var context = _workspace.Current;
-        var tcf = _workspace.SelectedTestConfiguration;
-        if (!ReferenceEquals(context, _choiceContext) || tcf != _choiceTcf)
+        if (!ReferenceEquals(context, _choiceContext))
         {
             _choiceContext = context;
-            _choiceTcf = tcf;
             _choiceCache = null;
             _choiceLoading = null;
         }
@@ -876,8 +873,7 @@ public sealed class TestEditorViewModel : BindableBase
         {
             var loading = _choiceLoading ??= TestTargetCatalog.LoadAsync(_workspace);
             var choices = await loading;
-            if (ReferenceEquals(context, _workspace.Current) &&
-                tcf == _workspace.SelectedTestConfiguration)
+            if (ReferenceEquals(context, _workspace.Current))
                 _choiceCache = choices;
             return choices;
         }
