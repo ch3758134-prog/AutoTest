@@ -242,7 +242,7 @@ public partial class TestEditorView : UserControl
         // Respect actual available editor DIPs and Windows work area.
         // The chooser must stay wholly reachable on 1366x768 at 150% DPI.
         PaletteSurface.Width = Math.Clamp(
-            Math.Min(width - 50, Math.Max(400, ActualWidth - 18)), 400, 690);
+            Math.Min(width - 50, Math.Max(460, ActualWidth - 18)), 460, 760);
         PaletteSurface.MaxHeight = Math.Clamp(
             Math.Min(height - 85, SystemParameters.WorkArea.Height - 65), 280, 530);
         PaletteList.MaxHeight = Math.Max(165, PaletteSurface.MaxHeight - 175);
@@ -253,11 +253,7 @@ public partial class TestEditorView : UserControl
             StepActionPaletteCatalog.Categories(_paletteActions);
         PaletteCategories.SelectedIndex = 0;
         var target = _viewModel.SelectedItem;
-        PaletteHint.Text = caseOnly
-            ? "当前插入位置：SWITCH / CASE 分支"
-            : target is null ? "先选择目标阶段或流程分支"
-            : "当前插入位置：" + StepUiCatalog.PhaseLabel(target.Phase) +
-              " / " + target.Label;
+        PaletteHint.Text = DescribePaletteInsertion(target, caseOnly);
         PaletteSearch.Text = "";
         RefreshPaletteItems("");
         // Preserve the selected item from the currently visible category.
@@ -267,6 +263,22 @@ public partial class TestEditorView : UserControl
             PaletteSearch.Focus();
             PaletteSearch.SelectAll();
         }), DispatcherPriority.Input);
+    }
+
+    private static string DescribePaletteInsertion(StepTreeItem? target, bool caseOnly)
+    {
+        if (caseOnly) return "插入位置：当前 SWITCH 的 CASE 分支";
+        if (target is null) return "插入位置：当前用例";
+        return target.Kind switch
+        {
+            StepTreeItemKind.Phase =>
+                $"插入位置：{StepUiCatalog.PhaseLabel(target.Phase)} 阶段末尾",
+            StepTreeItemKind.Slot =>
+                $"插入位置：{target.Parent?.Step?.Name ?? "流程"} / {StepUiCatalog.SlotLabel(target.SlotName ?? "")}",
+            StepTreeItemKind.Step =>
+                $"当前选中步骤：{target.Step?.Name ?? target.Label}",
+            _ => "插入位置：当前用例"
+        };
     }
 
     private void PaletteSearch_Changed(object sender, TextChangedEventArgs e)

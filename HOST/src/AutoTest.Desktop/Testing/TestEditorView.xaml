@@ -380,54 +380,55 @@
   <!-- Wide grouped palette: common actions visible together, one click inserts a formal TEST draft. -->
   <Popup x:Name="ActionPalette" Placement="Center"
    PlacementTarget="{Binding ElementName=StepsList}" StaysOpen="False" AllowsTransparency="True">
-   <Border x:Name="PaletteSurface" Width="690" MaxHeight="560" Background="White"
-    CornerRadius="8" BorderBrush="#DFE5E4" BorderThickness="1" Padding="12,11">
-    <Border.Effect><DropShadowEffect BlurRadius="22" ShadowDepth="5" Opacity="0.24"/></Border.Effect>
+   <Border x:Name="PaletteSurface" Width="760" MaxHeight="620" Background="White"
+    CornerRadius="10" BorderBrush="#D8E2EC" BorderThickness="1" Padding="16,14">
+    <Border.Effect><DropShadowEffect BlurRadius="24" ShadowDepth="5" Opacity="0.20"/></Border.Effect>
     <DockPanel LastChildFill="True">
      <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
-      <Button DockPanel.Dock="Right" Content="✕" Width="28" Height="27" MinWidth="0"
+      <Button DockPanel.Dock="Right" Content="✕" Width="32" Height="32" MinWidth="0"
        Style="{StaticResource AtQuietButton}" Click="PaletteCancel_Click"
        ToolTip="关闭步骤选择" Margin="12,0,0,0"/>
       <StackPanel>
-       <TextBlock Text="添加测试步骤" FontSize="17" FontWeight="SemiBold" Foreground="#2F3C4B"/>
-       <TextBlock x:Name="PaletteHint" Text="当前插入位置"
-        FontSize="11" Foreground="#61758A" Margin="0,3,0,0"
-        TextTrimming="CharacterEllipsis" ToolTip="根据当前选中的阶段或步骤确定插入位置"/>
+       <TextBlock Text="添加测试步骤" FontSize="20" FontWeight="SemiBold" Foreground="#243548"/>
+       <TextBlock x:Name="PaletteHint" Text="插入位置"
+        FontSize="13" Foreground="#526579" Margin="0,4,0,0"
+        TextTrimming="CharacterEllipsis"/>
       </StackPanel>
      </DockPanel>
-     <Border DockPanel.Dock="Top" Background="#F8FAF9" BorderBrush="#DCE5E2"
-      BorderThickness="1" CornerRadius="7" Margin="0,0,0,10" Padding="6,2">
+     <Border DockPanel.Dock="Top" Background="#F8FAFC" BorderBrush="#DCE4ED"
+      BorderThickness="1" CornerRadius="7" Margin="0,0,0,10" Padding="8,2">
       <DockPanel>
-       <TextBlock DockPanel.Dock="Left" Text="⌕" FontSize="18" Foreground="#627C9D"
-        VerticalAlignment="Center" Margin="3,0,7,0"/>
+       <TextBlock DockPanel.Dock="Left" Text="⌕" FontSize="20" Foreground="#52708F"
+        VerticalAlignment="Center" Margin="3,0,8,0"/>
        <TextBox x:Name="PaletteSearch" TextChanged="PaletteSearch_Changed"
-        KeyDown="PaletteSearch_KeyDown" ToolTip="输入 CAN、IGN、按键、等待、IF、波形等关键词"
-        Height="32" BorderThickness="0" Background="Transparent"
+        KeyDown="PaletteSearch_KeyDown" ToolTip="搜索 CAN、按键、信号、判定、流程或波形"
+        Height="40" FontSize="15" BorderThickness="0" Background="Transparent"
         VerticalContentAlignment="Center" Padding="5,3"/>
       </DockPanel>
      </Border>
-     <TextBlock DockPanel.Dock="Bottom" Text="Enter 添加  ·  Esc 关闭"
-      Foreground="#7A8EA6" FontSize="11" Margin="0,8,0,0"/>
+     <TextBlock DockPanel.Dock="Bottom" Text="Enter 添加    Esc 关闭"
+      Foreground="#61758A" FontSize="12" Margin="0,10,0,0"/>
      <DockPanel>
-      <ListBox x:Name="PaletteCategories" DockPanel.Dock="Top" Height="40"
-       SelectionChanged="PaletteCategory_Changed" Background="#F6F8FA"
-       BorderBrush="#E1E7E5" BorderThickness="1" FontSize="14"
+      <ListBox x:Name="PaletteCategories" DockPanel.Dock="Top" Height="42"
+       SelectionChanged="PaletteCategory_Changed" Background="#F5F8FB"
+       BorderBrush="#DCE4ED" BorderThickness="1" FontSize="14"
        ScrollViewer.HorizontalScrollBarVisibility="Auto"
-       ScrollViewer.VerticalScrollBarVisibility="Disabled" Margin="0,0,0,8">
+       ScrollViewer.VerticalScrollBarVisibility="Disabled" Margin="0,0,0,9">
        <ListBox.ItemsPanel>
         <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
        </ListBox.ItemsPanel>
        <ListBox.ItemContainerStyle>
         <Style TargetType="{x:Type ListBoxItem}">
-         <Setter Property="Padding" Value="11,6"/>
-         <Setter Property="Margin" Value="2,2"/>
+         <Setter Property="Padding" Value="13,7"/>
+         <Setter Property="Margin" Value="2,3"/>
          <Setter Property="Height" Value="34"/>
          <Setter Property="VerticalContentAlignment" Value="Center"/>
-         <Setter Property="Foreground" Value="#263D54"/>
+         <Setter Property="Foreground" Value="#344B62"/>
+         <Setter Property="Background" Value="Transparent"/>
          <Style.Triggers>
           <Trigger Property="IsSelected" Value="True">
-           <Setter Property="Background" Value="#E8F0FC"/>
-           <Setter Property="Foreground" Value="#1C5DA6"/>
+           <Setter Property="Background" Value="#E5F0FF"/>
+           <Setter Property="Foreground" Value="#155DA8"/>
            <Setter Property="FontWeight" Value="SemiBold"/>
           </Trigger>
          </Style.Triggers>
@@ -435,43 +436,57 @@
        </ListBox.ItemContainerStyle>
       </ListBox>
       <TextBlock x:Name="PaletteEmptyHint" DockPanel.Dock="Bottom"
-       Visibility="Collapsed" Text="当前分类没有可添加的步骤"
-       Padding="18,15" Foreground="#697D90" TextAlignment="Center"/>
-      <ListBox x:Name="PaletteList" MinHeight="165" MaxHeight="390"
+       Visibility="Collapsed" Text="没有匹配的可执行步骤"
+       Padding="20,20" Foreground="#526579" FontSize="14" TextAlignment="Center"/>
+      <ListBox x:Name="PaletteList" MinHeight="190" MaxHeight="430"
        MouseDoubleClick="PaletteList_DoubleClick" KeyDown="PaletteList_KeyDown"
        PreviewMouseLeftButtonUp="PaletteList_PreviewMouseLeftButtonUp"
        ScrollViewer.HorizontalScrollBarVisibility="Disabled"
        ScrollViewer.VerticalScrollBarVisibility="Auto"
-       Background="#FFFFFF" BorderBrush="#E1E7E5" BorderThickness="1" FontSize="12">
+       Background="#FFFFFF" BorderBrush="#DCE4ED" BorderThickness="1" FontSize="14">
        <ListBox.ItemsPanel>
-        <ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate>
+        <ItemsPanelTemplate><VirtualizingStackPanel/></ItemsPanelTemplate>
        </ListBox.ItemsPanel>
        <ListBox.ItemContainerStyle>
         <Style TargetType="{x:Type ListBoxItem}">
-         <Setter Property="MinHeight" Value="38"/>
-         <Setter Property="Margin" Value="3,2"/>
-         <Setter Property="Padding" Value="10,7"/>
-         <Setter Property="Background" Value="#FBFCFD"/>
-         <Setter Property="BorderBrush" Value="#DEE6E8"/>
+         <Setter Property="MinHeight" Value="64"/>
+         <Setter Property="Margin" Value="4,3"/>
+         <Setter Property="Padding" Value="12,9"/>
+         <Setter Property="Background" Value="#FFFFFF"/>
+         <Setter Property="BorderBrush" Value="#E1E8EF"/>
          <Setter Property="BorderThickness" Value="1"/>
          <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
          <Style.Triggers>
           <Trigger Property="IsMouseOver" Value="True">
-           <Setter Property="Background" Value="#F0F5FC"/>
-           <Setter Property="BorderBrush" Value="#9EBCE8"/>
+           <Setter Property="Background" Value="#F4F8FD"/>
+           <Setter Property="BorderBrush" Value="#A9C4E2"/>
           </Trigger>
           <Trigger Property="IsSelected" Value="True">
-           <Setter Property="Background" Value="#E7F0FF"/>
-           <Setter Property="BorderBrush" Value="#89B0E9"/>
+           <Setter Property="Background" Value="#EDF4FF"/>
+           <Setter Property="BorderBrush" Value="#7DA9D9"/>
           </Trigger>
          </Style.Triggers>
         </Style>
        </ListBox.ItemContainerStyle>
        <ListBox.ItemTemplate>
         <DataTemplate>
-         <TextBlock Text="{Binding Title}" ToolTip="{Binding Description}"
-          FontWeight="SemiBold" Foreground="#273B50" FontSize="13"
-          VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+         <Grid>
+          <Grid.ColumnDefinitions>
+           <ColumnDefinition Width="*"/>
+           <ColumnDefinition Width="Auto"/>
+          </Grid.ColumnDefinitions>
+          <StackPanel VerticalAlignment="Center">
+           <TextBlock Text="{Binding Title}" FontWeight="SemiBold"
+            Foreground="#243548" FontSize="15" TextTrimming="CharacterEllipsis"/>
+           <TextBlock Text="{Binding Description}" Foreground="#526579"
+            FontSize="12.5" TextWrapping="Wrap" Margin="0,3,10,0"
+            MaxHeight="34"/>
+          </StackPanel>
+          <Border Grid.Column="1" Background="#F1F5F9" CornerRadius="5"
+           Padding="8,4" VerticalAlignment="Center">
+           <TextBlock Text="{Binding Category}" Foreground="#526579" FontSize="11"/>
+          </Border>
+         </Grid>
         </DataTemplate>
        </ListBox.ItemTemplate>
       </ListBox>
