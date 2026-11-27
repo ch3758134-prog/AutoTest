@@ -119,6 +119,11 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         private set => SetProperty(ref _startRequestStatus, value);
     }
 
+    public string CurrentInspectionBarcode =>
+        !string.IsNullOrEmpty(_activeRunBarcode) &&
+        (IsOperatorRunning || _productionVerdict != "等待检测结果")
+            ? _activeRunBarcode : LastObservedBarcode;
+
     public string ProductionHeadline =>
         IsOperatorRunning ? "正在检测 ECU" :
         _productionVerdict == "PASS" ? "检测合格" :
@@ -537,6 +542,7 @@ public sealed partial class AutomaticTestHomeViewModel : BindableBase, IDisposab
         RaisePropertyChanged(nameof(DutSerial));
         RaisePropertyChanged(nameof(ScanStatus));
         RaisePropertyChanged(nameof(LastObservedBarcode));
+        RaisePropertyChanged(nameof(CurrentInspectionBarcode));
         RaisePropertyChanged(nameof(LastObservedAt));
         RaisePropertyChanged(nameof(ScannerDiagnostic));
         RaisePropertyChanged(nameof(ScanTraceSummary));

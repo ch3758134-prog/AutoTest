@@ -35,6 +35,7 @@ public sealed partial class AutomaticTestHomeViewModel
             _prepared = null;
             _acceptedStationEpoch = 0;
             _productionVerdict = "等待检测结果";
+            _activeRunBarcode = "";
             var routed = await _productionCatalog.ResolveAsync(raw);
             if (!CurrentScan()) return;
             if (!routed.Accepted || routed.Package is null)

@@ -28,6 +28,9 @@ public sealed partial class AutomaticTestHomeViewModel
     private bool _operatorRunning;
     private int _startRequestInFlight;
     private string _productionVerdict = "等待检测结果";
+    // The active DUT remains pinned to its inspection RunId even if another
+    // barcode is observed during the physical cycle.
+    private string _activeRunBarcode = "";
     private string _productionBatchToday = "今日检测数据正在读取";
     public string ProductionBatchToday
     {
@@ -654,6 +657,8 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;padding:12px;
         string? productionOutcomeCandidate = null;
         string? failure = null;
         _operatorRunId = Guid.NewGuid();
+        _activeRunBarcode = scan.RawBarcode;
+        RaisePropertyChanged(nameof(CurrentInspectionBarcode));
         _operatorStop = new CancellationTokenSource();
         var ct = _operatorStop.Token;
         OperatorEvents.Clear();
