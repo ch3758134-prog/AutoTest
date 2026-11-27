@@ -298,13 +298,20 @@ public partial class MainWindow : Window
         // Inspection preparation already contains its own full-width editors
         // (scanner, FLASH entry and fixture procedure). A redundant shell-side
         // Inspector would unnecessarily compress those configuration tabs.
-        var showInspector = _inspectorVisible &&
-            _viewModel.ActiveEditorTab?.View is not ProjectConfigurationOverviewView &&
+        var content = _viewModel.ActiveEditorTab?.View;
+        // Project home/resources are full-width task surfaces, not step editors.
+        // They must not inherit an empty 410px inspector or an irrelevant CAN
+        // observation tray from the last TEST editor.
+        var isProjectLanding = content is ProjectOverviewView or
+            EngineeringResourcesView or ProjectConfigurationOverviewView;
+        var showInspector = _inspectorVisible && !isProjectLanding &&
             (_viewModel.ActiveEditorTab?.Inspector is not null);
-        InspectorColumn.Width = new GridLength(showInspector ? Math.Clamp(ActualWidth * 0.28, 350, 440) : 0);
+        InspectorColumn.Width = new GridLength(
+            showInspector ? Math.Clamp(ActualWidth * 0.28, 350, 440) : 0);
         InspectorSplitterColumn.Width = new GridLength(showInspector ? 4 : 0);
-        BottomRow.Height = new GridLength(_bottomVisible ? 180 : 0);
-        BottomSplitterRow.Height = new GridLength(_bottomVisible ? 4 : 0);
+        var showObservation = _bottomVisible && !isProjectLanding;
+        BottomRow.Height = new GridLength(showObservation ? 180 : 0);
+        BottomSplitterRow.Height = new GridLength(showObservation ? 4 : 0);
     }
 
     private void ToggleBottom_Click(object sender, RoutedEventArgs e)
