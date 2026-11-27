@@ -184,9 +184,9 @@
      VerticalContentAlignment="Center" Padding="6,3" FontSize="13"
      TextChanged="ResourceSearch_TextChanged"
      ToolTip="输入名称，仅高亮工程树匹配对象；清空后恢复，单击再打开编辑"/>
-    <TextBlock Text="工程导航" FontSize="14" FontWeight="SemiBold"
+    <TextBlock Text="测试工程" FontSize="14" FontWeight="SemiBold"
      VerticalAlignment="Center" Margin="0,0,8,0"
-     ToolTip="工程首页、TEST 项目与用例均可单击打开；生产工位配置请用顶部“生产准备”"/>
+     ToolTip="检测流程定义执行顺序；用例库管理定义；工位设置位于顶部“设置”"/>
    </DockPanel>
   </Border>
   <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
@@ -199,7 +199,7 @@
     PreviewMouseRightButtonDown="Navigator_RightClick">
     <TreeView.ContextMenu>
      <ContextMenu DataContext="{Binding PlacementTarget.DataContext,RelativeSource={RelativeSource Self}}">
-      <MenuItem Header="打开测试项目" Command="{Binding OpenFirstTestProjectCommand}"/>
+      <MenuItem Header="打开检测流程" Command="{Binding OpenFirstTestProjectCommand}"/>
       <MenuItem Header="新建测试用例并加入项目" Command="{Binding NewTestProgramCommand}"/>
       <MenuItem Header="导入 DBC 数据库" Command="{Binding ImportDbcCommand}"/>
       <Separator/>
