@@ -67,3 +67,33 @@
 - 禁止无实测依据的固定 9/10；按业务闭环、交互效率、可追溯、硬件安全、异常恢复逐项评分。
 - 用户的本地 Codex 只拉取编译运行；R1 源码需由实施方实际修改并提交。管理文档只写 Project_Management。
 - 不更改 main、不新建分支、不自行启动 CI。
+
+
+## 七｜R1 第一批破坏性重构实际施工记录（2026-11-26）
+
+**此节优先于本文件此前“尚未实施”口径。** 用户明确下达“破坏性重构吧，直接开始”。实施仅在 R1，原基线 `51445ed09bf7383eb454b9e0c55320c4a6fde467`，本次报告 HEAD `d19aef685249913691b7a02005b58179db941046`。
+
+### 已经真实写入 GitHub R1 的源码
+
+1. **唯一扫码合同：** 在 `AutoTest.Application/Production/FixedMarkerBarcode.cs` 新增独立识别器，仅按完整编号开头 `Marker + '-'` 精确识别，保存完整扫码原文；不拆序列号、不做关键词全文包含，不自动推断型号或夹具。标记长度与字符集是当前首版实现约束，可随未来实际标签合同受控调整。
+2. **唯一生产工程路由：** `ProductionProjectCatalog` 从三模式/登记表改为 SQLite `marker_routes`，标记唯一关联一个安装包版本，重绑增加规则修订。保留完整工程包导入与资源验证。废弃的 `routes/settings/serial_registry` 不再有运行权威；首次删除旧表前会生成数据库备份，备份失败就阻止切换。
+3. **管理窗口重建：** `ProductionProjectLibraryWindow.xaml[.cs]` 移除单工程模式、分隔字段输入、硬件码、逐编号注册及 CSV 匹配；只提供工程导入/查看、固定标记关联及只读扫码预览。生产扫描真实 COM 时根据唯一标记选包，锁定规则版本和包哈希；扫描本身不发 START/夹具/FLASH。
+4. **工程不再定义固定工位动作：** `ProductionPreparationService` 删除工程夹具冻结合同；`StationDeploymentStore` 删除 InspectionProcedure 字段、部署格式提升 v3；`AutomaticTestHomeViewModel.Run` 删除工程 BeforeStart/AfterFinish 工位动作执行，固定夹具仅由工位设备计划控制；工程中的旧 Inspection 资源会在包审查时报错要求移除，产品特定动作应改写成 TEST 步骤。
+5. **源代码级删除而非隐藏：** 删除旧 `InspectionStationProcedureEditorView.xaml[.cs]`、`InspectionStationProcedureEditorViewModel.cs`，删除工程 UI 的新增/打开路径。
+6. **设备配置纯化：** 新 `StationDeviceConfiguration` 和 `StationDeviceConfigurationStore`（SchemaVersion=3）独立保存工位设备/夹具配置，相关 UI 和扫描/调试调用已切换；删除 `ProductionIdentityContracts.cs`、`StationProductionConfigurationStore.cs` 及其三模式相关测试。新的设备配置路径为 `%LOCALAPPDATA%/AutoTest/station-device/station-device.json`；旧混合草稿不会被当作新设备配置静默加载，需现场核对接线。
+7. **测试源码调整：** 更新纯数据扫码合同/路由测试，新增设备配置隔离与安全阻断测试。**测试文件存在≠测试已经运行**。
+
+### 核对与证据边界
+
+- GitHub Compare：相对 `51445ed09bf7383eb454b9e0c55320c4a6fde467`，27 个提交，25 文件变化，新增 795 行 / 删除 2406 行，其中删除 6 个旧源文件/测试文件。
+- 静态回读全部现存 Desktop C# 130 文件与 Desktop.Tests C# 39 文件，未发现对已删除 `ProductionBarcodeRule`、`StationProductionConfigurationStore`、`ProductionIdentityResolver`、工程工位动作编辑器等旧类型的引用。两处 WPF 管理窗口 XAML 标签、名称与事件映射静态检查无明显错误。
+- 当前工具环境没有 Windows .NET SDK/dotnet，**未进行 Release 编译或单测执行，尚不能声称无编译错误**。不主动触发 CI，也不能用静态审查声称真实 ECU 通过。
+- **未完成 P0：** 目前 `AutoTest.Application/Production` 的正式会话/流程与 Desktop 生产 Run 编排尚未完全统一；实体 START、夹具可靠到位反馈、正式 InspectionWriter 到 TEST StepOccurrence 的生产证据链仍不具备闭环；硬件门禁与正式 PASS 阻断保持。
+- 开发调试已有真实执行能力的源码继续保留；没有用 mock 填充正式生产阶段或将工程调试报告冒充生产检测报告。下一阶段应以单一生产过程控制器 + 真实记录适配的完整运行证据为主，不应返回旧的扫码发布/工位脚本架构。
+
+### 首次运行注意
+
+- 因为是破坏性数据合同切换，旧扫码映射不再生效，生产管理员需要按标记重新关联已导入的工程包。
+- 旧工位混合配置不会自动迁移或授权夹具；工位设备设置需要根据真实接线重新确认。首次实测应先验证扫码原文和工程匹配，然后核对主控、CAN 速率、夹具安全，再运行真实开发调试链。正式生产门禁仍应阻断。
+
+当前阶段标志：**SOURCE_REFACTOR_APPLIED / BUILD_NOT_VERIFIED / FIELD_NOT_VERIFIED / FORMAL_PRODUCTION_BLOCKED**。
