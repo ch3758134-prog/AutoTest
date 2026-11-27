@@ -270,6 +270,8 @@ public sealed partial class HardwareConnectionService : IAsyncDisposable
     public ICanFrameHub? ConnectedCanHub => IsConnected ? _hub : null;
     public event Action<string>? EvidenceRecorded;
     public event Action<CanObservation>? FrameObserved;
+    /// <summary>Only decoded real USB 0x44 GPIO changes; not KEY_SIM CAN activity.</summary>
+    public event Action<ExternalKeyInputEvent>? ExternalKeyObserved;
     /// <summary>
     /// Host-observed successful USB 0x40 ACK, NOT a physical CAN-bus transmit
     /// confirmation or ECU reception. Never expose sensitive FLASH traffic.
@@ -361,6 +363,28 @@ public sealed partial class HardwareConnectionService : IAsyncDisposable
                 Record("USB " + ev.Operation + "/" + ev.Stage + " " + ev.Outcome +
                     (ev.NativeErrorHex is null ? "" : " " + ev.NativeErrorHex));
             pending = new UsbSessionService(link);
+            var externalKeySession = pending;
+            pending.AsynchronousResponse += response =>
+            {
+                if (response.Command != MainControllerCodec.ExternalKeyEvent ||
+                    !ReferenceEquals(_usb, externalKeySession) || CurrentStationEpoch == 0)
+                    return;
+                try
+                {
+                    var keyEvent = MainControllerCodec.ParseExternalKeyEvent(response);
+                    foreach (Action<ExternalKeyInputEvent> observer in ExternalKeyObserved?.GetInvocationList()
+                                 .Cast<Action<ExternalKeyInputEvent>>() ??
+                                 Enumerable.Empty<Action<ExternalKeyInputEvent>>())
+                    {
+                        try { observer(keyEvent); }
+                        catch (Exception error) { Record("实体 KEY 视图处理失败：" + error.Message); }
+                    }
+                }
+                catch (InvalidDataException error)
+                {
+                    Record("USB 外部 KEY 事件格式错误：" + error.Message);
+                }
+            };
             pending.StateChanged += state =>
             {
                 if (state != UsbSessionState.Faulted) return;
@@ -462,6 +486,21 @@ public sealed partial class HardwareConnectionService : IAsyncDisposable
             throw;
         }
         finally { _lifecycle.Release(); }
+    }
+
+    /// <summary>Real USB 0x45 request for current debounced PTC7/6/5 levels.</summary>
+    public async Task<ExternalKeyInputSnapshot> ReadExternalKeyInputsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var session = _usb;
+        var epoch = CurrentStationEpoch;
+        if (session is null || !IsConnected || epoch <= 0)
+            throw new IOException("主控板未连接，无法读取实体 KEY 输入。");
+        var snapshot = await MainControllerCodec.ReadExternalKeyInputsAsync(
+            session, cancellationToken);
+        if (CurrentStationEpoch != epoch || !ReferenceEquals(_usb, session))
+            throw new IOException("主控连接已改变，实体 KEY 快照不可沿用。");
+        return snapshot;
     }
 
     private async Task ObserveBusAsync(CanFrameHub hub, BusRole role, CancellationToken ct)
