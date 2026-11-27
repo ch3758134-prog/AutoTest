@@ -292,17 +292,8 @@ public sealed partial class MainWindowViewModel
                 {
                     var draftJob = await Task.Run(() =>
                         NativeFlashJobBuilder.Freeze(saved.Profile, project.RootDirectory));
-                    var published = await NativeFlashPublicationStore.LoadPublishedAsync(
-                        project.RootDirectory);
-                    flash = published is null
-                        ? "烧录草稿校验通过；尚未确认用于生产。"
-                        : string.Equals(published.ProfileSha256, saved.ProfileSha256,
-                              StringComparison.OrdinalIgnoreCase) &&
-                          string.Equals(published.JobFingerprint, draftJob.Fingerprint,
-                              StringComparison.OrdinalIgnoreCase)
-                            ? "烧录草稿与已发布工艺一致；仍需现场 ECU/APP 后验。"
-                            : "烧录草稿已更改，与已发布生产工艺不同；" +
-                              "旧版生产仍固定使用已发布版本，确认后新草稿才生效。";
+                    flash = "原生 FLASH 配置已保存 · 固件与参数可创建实际烧录计划；" +
+                        "最终烧录与 APP 后验以真实 ECU 运行结果为准。";
                 }
             }
             catch (Exception error) when (error is IOException or InvalidDataException or
@@ -314,22 +305,17 @@ public sealed partial class MainWindowViewModel
 
             try
             {
-                var verified = await StationDeploymentStore.RestoreAsync();
-                productionPin = verified is null
-                    ? "当前工程尚未确认用于正式生产；请核对后点击确认。"
-                    : string.Equals(verified.Project.ManifestPath, project.ManifestPath,
-                          StringComparison.OrdinalIgnoreCase) &&
-                      string.Equals(verified.Project.ManifestSha256, project.ManifestSha256,
-                          StringComparison.OrdinalIgnoreCase)
-                        ? "此 ECU 工程及发布工艺已经本工位锁定；" +
-                          "实体 START、实际夹具到位和生产 RECORD 仍未验收。"
-                        : "工位绑定的是另一版 ECU 工程；请核对当前工程后重新确认。";
+                var installed = await _productionCatalog.ListAsync();
+                productionPin = installed.Any(x =>
+                    x.ProjectId == project.Definition.Id.Value)
+                    ? "本型号工程已在本机生产工程库中；切换到生产检测可直接扫码匹配。"
+                    : "当前工程已保存；进入生产检测时自动复制到本机工程库。";
             }
             catch (Exception error) when (error is IOException or InvalidDataException or
                 UnauthorizedAccessException or ArgumentException or NotSupportedException or
                 ProjectDataException or FormatException or System.Text.Json.JsonException)
             {
-                productionPin = "当前生产配置已失效：" + error.Message;
+                productionPin = "本机生产工程库需要检查：" + error.Message;
             }
         }
         finally
