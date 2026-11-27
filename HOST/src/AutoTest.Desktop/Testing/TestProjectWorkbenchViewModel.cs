@@ -252,10 +252,8 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         ReloadCommand = new DelegateCommand(async () => await ReloadAsync(), () => !IsBusy);
         SelectAllCommand = new DelegateCommand(() => SetSelection(true));
         ClearSelectionCommand = new DelegateCommand(() => SetSelection(false));
-        PreflightSelectedCommand = new DelegateCommand(async () => await PrepareSelectedAsync(),
-            () => !IsBusy);
         RunSelectedCommand = new DelegateCommand(async () => await RunSelectedAsync(),
-            () => !IsBusy && IsPrepared && !IsDirty);
+            () => !IsBusy && Packages.Any(x => x.RunSelected));
         StopSelectedCommand = new DelegateCommand(StopSelected,
             () => _batchCancellation is not null);
         LoadRows(session.Document);
@@ -313,7 +311,6 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     public DelegateCommand ReloadCommand { get; }
     public DelegateCommand SelectAllCommand { get; }
     public DelegateCommand ClearSelectionCommand { get; }
-    public DelegateCommand PreflightSelectedCommand { get; }
     public DelegateCommand RunSelectedCommand { get; }
     public DelegateCommand StopSelectedCommand { get; }
     public int SelectedCount => Packages.Count(x => x.RunSelected);
@@ -460,11 +457,8 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
                 if (asset is null)
                     throw new InvalidDataException("用例文件不存在：" + row.Name);
                 if (!row.MatchesPinnedRevision(asset.Revision, asset.Sha256))
-                    throw new InvalidDataException("测试用例“" + row.Name + "”的固定引用与当前 TEST 资源不一致：" +
-                        "项目 r" + row.Revision + "，当前资源 r" + asset.Revision + "。" +
-                        (row.CanAdoptLatest
-                            ? "请在用例列表核对并明确采用新的受控修订。"
-                            : "资源丢失、倒退或同版本 SHA256 异常时禁止更新引用；请先恢复或重新建立合规 TEST 资产。"));
+                    throw new InvalidDataException("用例“" + row.Name +
+                        "”尚未同步当前内容，请重新打开用例。");
                 var opened = await _workspace.OpenTestEditorAsync(AssetId.Create(row.AssetId));
                 if (!row.MatchesPinnedRevision(opened.AssetRevision, opened.FileHash))
                     throw new IOException("准备时测试用例“" + row.Name + "”的内容或修订已变化，请重新检查。");
@@ -540,8 +534,16 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
     /// functional batch.</summary>
     private async Task RunSelectedAsync()
     {
-        if (IsBusy || IsDirty || _realTest is null || _hardware is null ||
-            _frozen.Count == 0 || _frozenManifestSha is null) return;
+        if (IsBusy || _realTest is null || _hardware is null) return;
+        // One user action: save and prepare the current selected scope before
+        // acquiring the real device. No separate "check selected" workflow.
+        if (IsDirty)
+        {
+            await SaveAsync(silent: true);
+            if (IsDirty) return;
+        }
+        if (!IsPrepared) await PrepareSelectedAsync();
+        if (!IsPrepared || _frozenManifestSha is null) return;
         if (DutIdentity != _frozenDut ||
             _hardware.CurrentStationEpoch != _frozenStationEpoch || !_hardware.IsConnected ||
             _workspace.Current?.ManifestSha256 != _frozenManifestSha ||
@@ -752,6 +754,9 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
                 asset.Id.Value == row.AssetId &&
                 asset.Kind == ProjectWorkspaceService.TestProgramKind);
             row.RefreshAvailableRevision(current?.Revision, current?.Sha256);
+            if (row.CanAdoptLatest && !IsBusy && !IsPrepared &&
+                _realTest?.IsRunning != true && _hardware?.IsTestRunApproved != true)
+                row.AdoptCurrentRevision();
         }
         RaisePropertyChanged(nameof(HasStaleReferences));
         _ = RefreshStepCountsAsync();
@@ -1090,7 +1095,6 @@ public sealed class TestProjectWorkbenchViewModel : BindableBase
         RemoveCommand?.RaiseCanExecuteChanged();
         UpCommand?.RaiseCanExecuteChanged(); DownCommand?.RaiseCanExecuteChanged();
         SaveCommand?.RaiseCanExecuteChanged(); ReloadCommand?.RaiseCanExecuteChanged();
-        PreflightSelectedCommand?.RaiseCanExecuteChanged();
         RunSelectedCommand?.RaiseCanExecuteChanged();
         StopSelectedCommand?.RaiseCanExecuteChanged();
         if (!IsBusy && IsDirty)

@@ -19,10 +19,6 @@
    <DockPanel Margin="14,0">
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
      VerticalAlignment="Center">
-     <Button Content="检查关联资源" Click="OpenDependencyReview_Click"
-      Margin="0,0,8,0" Padding="10,7" ToolTip="按真实资源根因查看失效引用，不会自动采用新版"/>
-     <Button Content="检查所选" Command="{Binding PreflightSelectedCommand}"
-      Margin="0,0,8,0" Padding="11,7"/>
      <Button Content="▶ 运行所选" Command="{Binding RunSelectedCommand}"
       Style="{StaticResource AtPrimaryButton}" Margin="0,0,7,0" Padding="11,7"/>
      <Button Content="■ 停止" Command="{Binding StopSelectedCommand}" Padding="10,7"/>
@@ -117,62 +113,6 @@
             Background="Transparent" BorderThickness="0"
             Padding="3,2" ToolTip="打开此用例编辑步骤"
             Style="{StaticResource AtQuietButton}"/>
-           <StackPanel Orientation="Horizontal" MinHeight="20" ToolTip="{Binding PinDetail}">
-            <TextBlock Text="{Binding PinStatus}" FontSize="11" Foreground="#61788C"
-             TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-            <Button Content="更新引用…" Tag="{Binding}" Click="AdoptCurrentRevision_Click"
-             FontSize="10" Margin="6,0,0,0" Padding="4,0" Height="17" MinHeight="0"
-             ToolTip="使用当前编辑的用例内容更新本次调用">
-             <Button.Style>
-              <Style TargetType="{x:Type Button}" BasedOn="{StaticResource AtQuietButton}">
-               <Setter Property="Visibility" Value="Collapsed"/>
-               <Style.Triggers>
-                <DataTrigger Binding="{Binding CanAdoptLatest}" Value="True">
-                 <Setter Property="Visibility" Value="Visible"/>
-                </DataTrigger>
-               </Style.Triggers>
-              </Style>
-             </Button.Style>
-            </Button>
-            <Button Content="恢复未加入的用例" Tag="{Binding}" Click="RestoreLegacyInclusion_Click"
-             FontSize="10" Margin="6,0,0,0" Padding="4,0" Height="17"
-             MinHeight="0" Foreground="#94651F"
-             ToolTip="旧工程存在被排除的实例；恢复并保存后才可以进行完整正式检测">
-             <Button.Style>
-              <Style TargetType="{x:Type Button}" BasedOn="{StaticResource AtQuietButton}">
-               <Setter Property="Visibility" Value="Collapsed"/>
-               <Style.Triggers>
-                <DataTrigger Binding="{Binding Enabled}" Value="False">
-                 <Setter Property="Visibility" Value="Visible"/>
-                </DataTrigger>
-               </Style.Triggers>
-              </Style>
-             </Button.Style>
-            </Button>
-           </StackPanel>
-          </StackPanel>
-         </DataTemplate>
-         </DataGridTemplateColumn.CellTemplate>
-        </DataGridTemplateColumn>
-        <!-- Presence in the ordered project is production participation.
-             Only the engineer's temporary run selection remains editable. -->
-        <DataGridTextColumn Header="步骤" Binding="{Binding StepCountLabel}"
-         IsReadOnly="True" Width="78"/>
-        <DataGridTemplateColumn Header="调整" Width="184">
-         <DataGridTemplateColumn.CellTemplate>
-          <DataTemplate>
-           <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="6,0,0,0">
-            <Button Content="↑" Tag="{Binding}" Click="MoveRowUp_Click"
-             Width="35" MinWidth="0" Height="31" MinHeight="0" Padding="0"
-             Margin="0,0,7,0" FontSize="15" ToolTip="上移此用例"/>
-            <Button Content="↓" Tag="{Binding}" Click="MoveRowDown_Click"
-             Width="35" MinWidth="0" Height="31" MinHeight="0" Padding="0"
-             Margin="0,0,7,0" FontSize="15" ToolTip="下移此用例"/>
-            <Button Content="移除" Tag="{Binding}" Click="RemoveRow_Click"
-             Width="64" MinWidth="0" Height="31" MinHeight="0" Padding="5,0"
-             FontSize="12" Foreground="#B73D46"
-             ToolTip="从测试项目移除此条用例；原 TEST 文件保留"/>
-           </StackPanel>
           </DataTemplate>
          </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
@@ -180,111 +120,30 @@
       </DataGrid>
      </Grid>
     </Border>
-  <Expander Grid.Row="2" Header="项目准备 / 项目收尾 · 开发运行参数"
-   Background="#F5F8FC" BorderBrush="#DCE6EF" BorderThickness="1,1,1,0"
-   MaxHeight="300" IsExpanded="False" ToolTip="仅高级设置，正式项目顺序始终在上方列表">
-   <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="270">
-    <StackPanel Margin="13,11,13,13">
-    <Border Background="#F7FAFD" BorderBrush="#DDE8F3" BorderThickness="1"
-     CornerRadius="7" Padding="12" Margin="0,0,0,13">
-     <StackPanel>
-      <TextBlock Text="测试前准备 / 测试后收尾" FontSize="14" FontWeight="SemiBold"
-       Foreground="#294A70" Margin="0,0,0,6"/>
-      <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-       <TextBlock Text="选择已有 TEST 定义" VerticalAlignment="Center" Margin="0,0,8,0"/>
-       <ComboBox Width="280" Height="28" ItemsSource="{Binding AvailablePackages}"
-        SelectedItem="{Binding SelectedAvailable,Mode=TwoWay}" DisplayMemberPath="Label"/>
-      </StackPanel>
-      <DockPanel Margin="0,0,0,8">
-       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-        <Button Content="＋ 新建" Command="{Binding CreateProjectSetupCommand}"
-         Margin="0,0,5,0" ToolTip="创建新的准备流程并进入步骤编辑"/>
-        <Button Content="绑定" Command="{Binding SetProjectSetupCommand}" Margin="0,0,5,0"/>
-        <Button Content="编辑步骤" Command="{Binding OpenProjectSetupCommand}" Margin="0,0,5,0"/>
-        <Button Content="移除" Command="{Binding RemoveProjectSetupCommand}"/>
-       </StackPanel>
-       <TextBlock Text="项目准备" Width="86" FontWeight="SemiBold" VerticalAlignment="Center"/>
-       <TextBlock Text="{Binding ProjectSetupLabel}" Foreground="#537089"
-        VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-      </DockPanel>
-      <DockPanel>
-       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-        <Button Content="＋ 新建" Command="{Binding CreateProjectTeardownCommand}"
-         Margin="0,0,5,0" ToolTip="创建并绑定可选项目收尾 TEST 步骤树"/>
-        <Button Content="绑定" Command="{Binding SetProjectTeardownCommand}" Margin="0,0,5,0"/>
-        <Button Content="编辑步骤" Command="{Binding OpenProjectTeardownCommand}" Margin="0,0,5,0"/>
-        <Button Content="移除" Command="{Binding RemoveProjectTeardownCommand}"/>
-       </StackPanel>
-       <TextBlock Text="项目收尾" Width="86" FontWeight="SemiBold" VerticalAlignment="Center"/>
-       <TextBlock Text="{Binding ProjectTeardownLabel}" Foreground="#537089"
-        VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-      </DockPanel>
+  <Border Grid.Row="2" Background="#F7F9FC" BorderBrush="#DCE5EF"
+   BorderThickness="0,1,0,0" Padding="12,8">
+   <StackPanel>
+    <DockPanel Margin="0,0,0,6">
+     <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
+      <Button Content="全选" Command="{Binding SelectAllCommand}" Margin="0,0,5,0"/>
+      <Button Content="清空" Command="{Binding ClearSelectionCommand}"/>
      </StackPanel>
-    </Border>
-    <!-- Engineer-only temporary selection does not alter the formal tree. -->
-    <Border Background="#EDF7F2" BorderBrush="#E7EFFB" BorderThickness="1"
-     CornerRadius="7" Padding="11,8" Margin="0,0,0,12">
-     <DockPanel>
-      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-       <Button Content="全选" Command="{Binding SelectAllCommand}" Margin="0,0,5,0"/>
-       <Button Content="清空" Command="{Binding ClearSelectionCommand}" Margin="0,0,7,0"/>
-       <Button Content="▷ 检查所选" Command="{Binding PreflightSelectedCommand}"
-        Style="{StaticResource AtPrimaryButton}"/>
-      </StackPanel>
-      <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-       <TextBlock Text="本次开发调试" FontSize="13" FontWeight="SemiBold" Margin="0,0,14,0"
-        VerticalAlignment="Center"/>
-       <TextBlock Text="{Binding SelectedCount}" Foreground="#3478D6" FontSize="19"
-        FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,2,0"/>
-       <TextBlock Text="{Binding TotalCount,StringFormat=' / {0} 个用例'}" FontSize="12"
-        Foreground="#627C9D" VerticalAlignment="Center">
-        <TextBlock.LayoutTransform><ScaleTransform ScaleX="1" ScaleY="1"/></TextBlock.LayoutTransform>
-       </TextBlock>
-      </StackPanel>
-     </DockPanel>
-    </Border>
-    <Border Background="#F7F9FC" BorderBrush="#DCE5EF" BorderThickness="1"
-     CornerRadius="6" Padding="10" Margin="0,0,0,12">
-     <StackPanel>
-      <StackPanel Orientation="Horizontal">
-       <TextBlock Text="ECU 唯一编号" FontWeight="SemiBold" VerticalAlignment="Center"
-        Margin="0,0,9,0"/>
-       <TextBox Width="240" Height="28" VerticalContentAlignment="Center"
-        Text="{Binding DutIdentity,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-        ToolTip="开发批量联调可不填 ECU 编号，按未绑定 DUT 的诊断记录归档，不计出厂数量"/>
-
-       <Button Content="▶ 运行所选" Command="{Binding RunSelectedCommand}"
-        Style="{StaticResource AtPrimaryButton}" Margin="0,0,5,0"/>
-       <Button Content="■ 停止" Command="{Binding StopSelectedCommand}"/>
-      </StackPanel>
-      <StackPanel Margin="0,8,0,0" Orientation="Horizontal">
-       <StackPanel.Style><Style TargetType="StackPanel">
-        <Style.Triggers>
-         <DataTrigger Binding="{Binding ExpectedFlashApproval}" Value="">
-          <Setter Property="Visibility" Value="Collapsed"/>
-         </DataTrigger>
-        </Style.Triggers>
-       </Style></StackPanel.Style>
-       <TextBlock Text="FLASH 实体授权" VerticalAlignment="Center" Margin="0,0,9,0"/>
-       <TextBox Width="390" Height="27" VerticalContentAlignment="Center"
-        Text="{Binding FlashApproval,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-        ToolTip="{Binding ExpectedFlashApproval}"/>
-       <TextBlock Text="需输入完整授权指纹，授权不保存" Margin="8,0,0,0"
-        Foreground="#64758C" VerticalAlignment="Center"/>
-      </StackPanel>
-      <ItemsControl ItemsSource="{Binding BatchResults}" Margin="0,6,0,0">
-       <ItemsControl.ItemTemplate><DataTemplate>
-        <TextBlock Text="{Binding}" TextWrapping="Wrap" Foreground="#455E76" FontSize="11"
-         Margin="0,2,0,0"/>
-       </DataTemplate></ItemsControl.ItemTemplate>
-      </ItemsControl>
-
-     </StackPanel>
-    </Border>
-
+     <TextBlock Text="{Binding SelectionSummary}" VerticalAlignment="Center" FontWeight="SemiBold"/>
+    </DockPanel>
+    <StackPanel Orientation="Horizontal">
+     <TextBlock Text="ECU 编号（调试可留空）" VerticalAlignment="Center" Margin="0,0,8,0"/>
+     <TextBox Width="240" Height="28" VerticalContentAlignment="Center"
+      Text="{Binding DutIdentity,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
     </StackPanel>
-   </ScrollViewer>
-  </Expander>
+    <ItemsControl ItemsSource="{Binding BatchResults}" Margin="0,6,0,0"
+     MaxHeight="110" ScrollViewer.VerticalScrollBarVisibility="Auto">
+     <ItemsControl.ItemTemplate><DataTemplate>
+      <TextBlock Text="{Binding}" TextWrapping="Wrap" FontSize="11" Foreground="#455E76"
+       Margin="0,2,0,0"/>
+     </DataTemplate></ItemsControl.ItemTemplate>
+    </ItemsControl>
+   </StackPanel>
+  </Border>
   <Border Grid.Row="3" Background="#F9FBFD" BorderBrush="#E0E7EE"
    BorderThickness="0,1,0,0">
    <TextBlock Text="{Binding StatusMessage}" Foreground="#5B7188"
