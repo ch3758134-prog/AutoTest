@@ -41,15 +41,24 @@ public sealed class EcuCanFixtureFeedback : IDisposable
         }
     }
 
+    /// <summary>
+    /// A valid ECU CAN observation must be newer than the completed press.
+    /// This is electrical/communication proof only: it never proves mechanical
+    /// closure or a protective interlock.
+    /// </summary>
+    public static bool IsEligibleEcuFrame(CanObservation observation,
+        DateTimeOffset afterPressUtc) =>
+        observation.Frame.Role == BusRole.DutCan &&
+        observation.EvidenceQuality == EvidenceQuality.HostObserved &&
+        observation.Evidence.Value != Guid.Empty &&
+        observation.Time.Utc > afterPressUtc;
+
     private void OnFrame(CanObservation observation)
     {
         lock (_sync)
         {
             if (_disposed || !_armed ||
-                observation.Frame.Role != BusRole.DutCan ||
-                observation.EvidenceQuality != EvidenceQuality.HostObserved ||
-                observation.Evidence.Value == Guid.Empty ||
-                observation.Time.Utc <= _afterPressUtc ||
+                !IsEligibleEcuFrame(observation, _afterPressUtc) ||
                 !_hardware.IsConnected || _hardware.CurrentStationEpoch != _epoch)
                 return;
             _received.TrySetResult(observation);
