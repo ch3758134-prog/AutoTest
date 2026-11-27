@@ -162,7 +162,7 @@ public partial class ProductionPreparationWindow : Window
             SettleDelayMs = delay
         };
         var next = _draft with { Fixture = fixture, Revision = _draft.Revision + 1 };
-        next.ValidateDraft();
+        next.Validate();
         return next;
     }
 
